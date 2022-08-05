@@ -15,6 +15,7 @@
 
 #include <Bpp/Numeric/Function/ReparametrizationFunctionWrapper.h>
 #include <Bpp/Numeric/Function/PowellMultiDimensions.h>
+#include <Bpp/Numeric/Function/Bfgs.h>
 #include <Bpp/Numeric/Function/ThreePointsNumericalDerivative.h>
 #include <Bpp/Numeric/Matrix/MatrixTools.h>
 #include <Bpp/Numeric/Random/RandomTools.h>

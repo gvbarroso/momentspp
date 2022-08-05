@@ -10,15 +10,15 @@
 
 void Model::fireParameterChanged(const bpp::ParameterList& params)
 {
-  driftOperator_->update(params);
-  migrationOperator_->update(params);
-  recombinationOperator_->update(params);
-  mutationOperator_->update(params);
-  selectionOperator_->update(params);
+  drift_->update(params);
+  migration_->update(params);
+  recombination_->update(params);
+  mutation_->update(params);
+  selection_->update(params);
 
   combinedOperator_ = combineOperators_();
   combinedOperator_.computeExpectedSumStats(data);
-  expectedSumStats_ = combinedOperator_
+  expectedSumStats_ = combinedOperator_.getExpectedSumStats();
 
   logLikelihood_ =  fetchCompositeLogLikelihood(expected, observed);
   

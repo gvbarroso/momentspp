@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 29/07/2022
+ * Last modified: 05/08/2022
  *
  */
 
@@ -16,40 +16,40 @@
 #include <algorithm>
 #include <cstdlib>
 
+#include <Bpp/Numeric/AbstractParameterAliasable.h>
+#include <Bpp/Numeric/Constraints.h>
+#include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/Numeric/Function/Functions.h>
 
-#include "Operator.h"
-
 class Model:
+  public bpp::AbstractParameterAliasable,
   public bpp::Function
 {
 
 private:
-  // NOTE "empty" operator given by the indentity matrix with an empty ParameterList?
-  Operator driftOperator_;
-  Operator migrationOperator_;
-  Operator recombinationOperator_;
-  Operator mutationOperator_;
-  Operator selectionOperator_;
-  Operator combinedOperator_;
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> drift_;
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> migration_;
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> recombination_;
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> mutation_;
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> selection_;
+  Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_;
 
   bpp::ParameterList params_;
-  std::vector<double> expectedSumStats_; // NOTE here or within each Operator?
+  std::vector<double> expectedSumStats_;
 
   double logLikelihood_;
   double aic_;
   
 public:
   Model(const bpp::ParameterList& params):
-  Operator(),
-  logLikelihood_(-1.),
-  aic_(-1.)
-  {
-    includeParameters_(params);
-  }
-  
-  Model(const bpp::ParameterList& params):
-  Operator(),
+  drift_(),
+  migration_(),
+  recombination_(),
+  mutation_(),
+  selection_(),
+  combinedOperator_(),
+  params_(),
+  expectedSumStats_(),
   logLikelihood_(-1.),
   aic_(-1.)
   {
@@ -57,7 +57,14 @@ public:
   }
   
   Model():
-  Operator(mmsmc, numberOfKnots, splinesType),
+  drift_(),
+  migration_(),
+  recombination_(),
+  mutation_(),
+  selection_(),
+  combinedOperator_(),
+  params_(),
+  expectedSumStats_(),
   logLikelihood_(-1.),
   aic_(-1.)
   { }
@@ -69,7 +76,11 @@ public:
 
   void setParameters(const bpp::ParameterList& params)
   {
-    Model::setParametersValues(params);
+    if()
+      includeParameters_(params);
+
+    else
+      Model::setParametersValues(params);
   }
 
   double getValue() const
@@ -77,7 +88,7 @@ public:
     return -logLikelihood_;
   }
   
-  void fireParameterChanged(const bpp::ParameterList& params); // sets updated value
+  void fireParameterChanged(const bpp::ParameterList& params); // sets updated values
   
   double getLogLikelihood()
   {
@@ -92,6 +103,15 @@ public:
   double getAic()
   {
     return aic_;
+  }
+
+  void update(const bpp::ParameterList& params); // updates matrices based on params
+
+  void computeExpectedSumStats(const AbstractType& data);
+
+  const std::vector<double>& getExpectedSumStats() const
+  {
+    return expectedSumStats_;
   }
 
 };

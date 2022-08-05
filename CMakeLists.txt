@@ -44,6 +44,16 @@ IF(BLAS_FOUND)
   MESSAGE("   dynamic libraries: ${BLAS_LIBRARIES}")
 ENDIF()
 
+# Eigen3
+FIND_PACKAGE(Eigen3 3.4 REQUIRED NO_MODULE)
+IF(Eigen3_FOUND)
+  INCLUDE_DIRECTORIES(${Eigen3_INCLUDE_DIRS})
+  SET(LIBS ${LIBS} ${Eigen3_LIBRARIES})
+  MESSAGE("-- EIGEN3 libraries found here:")
+  MESSAGE("   includes: ${Eigen3_INCLUDE_DIRS}")
+  MESSAGE("   dynamic libraries: ${Eigen3_LIBRARIES}")
+ENDIF()
+
 # here is a useful function:
 MACRO(IMPROVED_FIND_LIBRARY OUTPUT_LIBS lib_name include_to_find)
   # start:
@@ -99,6 +109,4 @@ INCLUDE(CPack)
 
 # This adds the 'dist' target
 ADD_CUSTOM_TARGET(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-
-
 

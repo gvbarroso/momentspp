@@ -24,26 +24,24 @@ private:
   std::string dataPath_;
   std::string numericalOptimizer_;
 
+  double tolerance_;
+
+  size_t numberOfPopulations_;
   size_t minNumberOfEpochs_;
   size_t maxNumberOfEpochs_;
   size_t numberOfThreads_;
-
-  double functionTolerance_;
-  double parametersTolerance_;
   
 public:
-  OptionsContainer(std::map< std::string, std::string > options):
+  OptionsContainer(std::map<std::string, std::string> options):
   dataPath_(bpp::ApplicationTools::getAFilePath("data_path", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
-  minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, 3, "", true, 4)),
-  maxNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("max_epochs", options, 3, "", true, 4)),
+  tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
+  numberOfPopulations_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, "none")),
+  minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, "none")),
+  maxNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("max_epochs", options, "none")),
   numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options,
                                                                std::thread::hardware_concurrency(),
                                                                "", true, 4)),
-  functionTolerance_(bpp::ApplicationTools::getDoubleParameter("likelihood_tol", options, 1e-4)),
-  parametersTolerance_(bpp::ApplicationTools::getDoubleParameter("params_tol", options,
-                                                                 std::numeric_limits< double >::max(),
-                                                                 "", true, 4))
   { }
   
 public:
@@ -72,14 +70,9 @@ public:
     return numberOfThreads_;
   }
 
-  double getFunctionTolerance()
+  double getTolerance()
   {
-    return functionTolerance_;
-  }
-
-  double getParametersTolerance()
-  {
-    return parametersTolerance_;
+    return tolerance_;
   }
 
 };
