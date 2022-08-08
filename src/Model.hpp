@@ -16,6 +16,10 @@
 #include <algorithm>
 #include <cstdlib>
 
+#include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/Dense>
+
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 #include <Bpp/Numeric/Constraints.h>
 #include <Bpp/Numeric/ParameterList.h>
@@ -27,15 +31,20 @@ class Model:
 {
 
 private:
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> drift_;
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> migration_;
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> recombination_;
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> mutation_;
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> selection_;
+  // the fundamental operators derive from base class Operator
+  // and contain matrices of type Eigen::SparseMatrix<int, Dynamic, Dynamic>
+  DriftOperator* drift_;
+  MigrationOperator* migration_;
+  RecombinationOperator* recombination_;
+  MutationOperator* mutation_;
+  SelectionOperator* selection_;
+
+  // this is just a combination of the above operators
   Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_;
 
   bpp::ParameterList params_;
-  std::vector<double> expectedSumStats_;
+
+  SumStatsLibrary expectedSumStats_;
 
   double logLikelihood_;
   double aic_;
@@ -74,6 +83,8 @@ public:
     return new Model(*this);
   }
 
+  void fireParameterChanged(const bpp::ParameterList& params); // sets updated values
+
   void setParameters(const bpp::ParameterList& params)
   {
     if()
@@ -88,11 +99,43 @@ public:
     return -logLikelihood_;
   }
   
-  void fireParameterChanged(const bpp::ParameterList& params); // sets updated values
-  
   double getLogLikelihood()
   {
     return logLikelihood_;
+  }
+
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> getDriftOperator()
+  {
+    return drift_;
+  }
+
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> getMigrationOperator()
+  {
+    return migration_;
+  }
+
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> getRecombinationOperator()
+  {
+    return recombination_;
+  }
+
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> getMutationOperator()
+  {
+    return mutation_;
+  }
+
+  Eigen::SparseMatrix<int, Dynamic, Dynamic> getSelectionOperator()
+  {
+    return selection_;
+  }
+
+  Eigen::Matrix<double, Dynamic, Dynamic> getCombinedOperator()
+  {
+    return combinedOperator_;
+  }
+  const std::vector<double>& getExpectedSumStats() const
+  {
+    return expectedSumStats_;
   }
   
   void computeAic()
@@ -105,14 +148,12 @@ public:
     return aic_;
   }
 
-  void update(const bpp::ParameterList& params); // updates matrices based on params
+private:
+  void integrateOperators_();
 
-  void computeExpectedSumStats(const AbstractType& data);
+  void update_(const bpp::ParameterList& params); // updates matrices based on params
 
-  const std::vector<double>& getExpectedSumStats() const
-  {
-    return expectedSumStats_;
-  }
+  void computeExpectedSumStats_(const AbstractType& data);
 
 };
 

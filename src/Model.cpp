@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 29/07/2022
+ * Last modified: 05/08/2022
  *
  */
 
@@ -10,18 +10,12 @@
 
 void Model::fireParameterChanged(const bpp::ParameterList& params)
 {
-  drift_->update(params);
-  migration_->update(params);
-  recombination_->update(params);
-  mutation_->update(params);
-  selection_->update(params);
+  update_(params);
+  integrateOperators_();
+  computeExpectedSumStats_();
 
-  combinedOperator_ = combineOperators_();
-  combinedOperator_.computeExpectedSumStats(data);
-  expectedSumStats_ = combinedOperator_.getExpectedSumStats();
-
-  logLikelihood_ =  fetchCompositeLogLikelihood(expected, observed);
-  
-  computeAic();
+  // updates logLikelihood_ and aic_
+  computeCompositeLogLikelihood_(expected, observed);
+  computeAic_();
 }
 

@@ -19,7 +19,6 @@
 #include <Bpp/Numeric/Function/ThreePointsNumericalDerivative.h>
 #include <Bpp/Numeric/Matrix/MatrixTools.h>
 #include <Bpp/Numeric/Random/RandomTools.h>
-#include <Bpp/Numeric/VectorTools.h>
 #include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/App/BppApplication.h>
 #include <Bpp/App/ApplicationTools.h>
@@ -46,50 +45,7 @@ public:
   bestParameters_(),
   bestAic_(std::numeric_limits<double>::max()) 
   {
-    //standard SMC parameters
-    bestParameters_.addParameters(mmsmc -> getParameters());
-    bestParameters_.addParameters(mmsmc -> getLambdaVector());
-    
-    //add Markov-modulation parameters
-    for(size_t i = 0; i < mmsmc -> getParameterScalings().size(); ++i) {
-        
-      //if hotspot model, only bring hotspot intensity to optimization (ie discard PMF probs.)
-      if(mmsmc -> getParameterTransitions()[i] -> getHeterogeneousRateModel() == "Hotspot") {
-        bestParameters_.addParameter(mmsmc -> getParameterScalings()[i] -> getParameter("V2"));  
-      }
-      
-      else if(mmsmc -> getParameterTransitions()[i] -> getHeterogeneousRateModel() == "Gamma") {
-          
-        if(mmsmc -> getParameterScalings()[i] -> getNumberOfCategories() > 1) {
-          bestParameters_.addParameters(mmsmc -> getParameterScalings()[i] -> getIndependentParameters()); 
-        }
-      }
-      
-      else if(mmsmc -> getParameterTransitions()[i] -> getHeterogeneousRateModel() == "Gamma+Hotspot") {
-          
-        if(mmsmc -> getParameterScalings()[i] -> getNumberOfCategories() > 1) {
-          bestParameters_.addParameters(mmsmc -> getParameterScalings()[i] -> getIndependentParameters()); 
-        }
-        
-        else {
-          bestParameters_.addParameter(mmsmc -> getParameterScalings()[i] -> getParameter("heat"));
-        }
-      }
-    }
-    
-    for(size_t i = 0; i < mmsmc -> getParameterTransitions().size(); ++i) {
-        
-      if(mmsmc -> getParameterTransitions()[i] -> getHeterogeneousRateModel() == "Gamma") {
-          
-        if(mmsmc -> getParameterScalings()[i] -> getNumberOfCategories() > 1) {
-          bestParameters_.addParameters(mmsmc -> getParameterTransitions()[i] -> getParameters());
-        }
-      }
-      
-      else {
-        bestParameters_.addParameters(mmsmc -> getParameterTransitions()[i] -> getParameters());
-      }
-    }
+
   }
   
 public:
