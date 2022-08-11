@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 09/08/2022
+ * Last modified: 11/08/2022
  *
  */
 
@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 #include <map>
+
+#include <boost/algorithm/string.hpp>
 
 #include <Bpp/Text/TextTools.h>
 
@@ -28,11 +30,23 @@ private:
 
 public:
   SumStatsLibrary():
-  numPops_(1)
+  numPops_(1),
+  order_(2)
   { }
 
   SumStatsLibrary(size_t numPops):
-  numPops_(numPops)
+  numPops_(numPops),
+  order_(2)
+  { }
+
+  SumStatsLibrary(size_t order):
+  numPops_(1),
+  order_(order)
+  { }
+
+  SumStatsLibrary(size_t numPops, size_t order):
+  numPops_(numPops),
+  order_(order)
   { }
 
   size_t getNumPops()
@@ -67,9 +81,42 @@ public:
 
   void init();
 
+  size_t getNumLdStats()
+  {
+    getNumDDStats() + getNumDzStats();
+  }
+
+  size_t getNumDDStats()
+  {
+    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2) (works for order_ == 2)
+  }
+
+  size_t getNumDzStats()
+  {
+    return numPops_ * numPops_ * numPops_;
+  }
+
+  size_t getNumHetStats()
+  {
+    numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2) (works for order_ == 2)
+  }
+
+  size_t getNumPiTwoStats()
+  {
+    (numPops_ + (numPops_ * (numPops_ - 1) / 2)) * (numPops_ + (numPops_ * (numPops_ - 1) / 2));
+  }
+
+  size_t getNumDiversityStats()
+  {
+    getNumHetStats() + getNumPiTwoStats();
+  }
+
 private:
   void includeHetStats_();
 
   void includeLdStats_();
 
 };
+
+      boost::split(splitLine, line, [=](char c) { return c == '\t'; });
+

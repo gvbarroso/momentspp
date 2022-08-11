@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 09/08/2022
+ * Last modified: 11/08/2022
  *
  */
 
@@ -18,6 +18,8 @@
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 #include <Bpp/Numeric/Constraints.h>
 #include <Bpp/Numeric/ParameterList.h>
+
+#include "SumStatsLibrary.hpp"
 
 class Operator:
   public bpp::AbstractParameterAliasable
@@ -39,14 +41,6 @@ public:
     bpp::addParameters_(params);
   }
 
-  Operator(const bpp::ParameterList& params, size_t matrixSize):
-  AbstractParameterAliasable(""),
-  matrix_()
-  {
-    bpp::addParameters_(params);
-    setUpMatrix(matrixSize);
-  }
-
 public:
   Operator* clone() const
   {
@@ -65,7 +59,7 @@ public:
     return matrix_;
   }
 
-  virtual void setUpMatrix(size_t matrixSize);
+  virtual void setUpMatrix(const SumStatsLibrary& sslib);
 
 };
 

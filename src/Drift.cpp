@@ -9,8 +9,18 @@
 #include "Drift.hpp"
 
 
-void Drift::setUpMatrix(size_t matrixSize)
+void Drift::setUpMatrix(const SumStatsLibrary& sslib)
 {
+  // for each stat in vector Y
+
+
+  for(size_t i = 0; i < sslib.getNumPops(); ++i)
+  {
+
+  }
+
+
+
   matrixSize = 23;
   Eigen::SparseMatrix<int, matrixSize, matrixSize> mat;
 

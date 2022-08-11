@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 09/08/2022
+ * Last modified: 11/08/2022
  *
  */
 
@@ -44,27 +44,12 @@ private:
 
   bpp::ParameterList params_;
 
-  SumStatsLibrary ssl_;
+  SumStatsLibrary sslib_;
 
   double logLikelihood_;
   double aic_;
   
 public:
-  Model(const bpp::ParameterList& params):
-  drift_(),
-  migration_(),
-  recombination_(),
-  mutation_(),
-  selection_(),
-  combinedOperator_(),
-  params_(),
-  ssl_(),
-  logLikelihood_(-1.),
-  aic_(-1.)
-  {
-    includeParameters_(params);
-  }
-  
   Model():
   drift_(),
   migration_(),
@@ -73,10 +58,25 @@ public:
   selection_(),
   combinedOperator_(),
   params_(),
-  ssl_(),
+  sslib_(),
   logLikelihood_(-1.),
   aic_(-1.)
   { }
+
+  Model(const bpp::ParameterList& params, const SumStatsLibrary& sslib):
+  drift_(),
+  migration_(),
+  recombination_(),
+  mutation_(),
+  selection_(),
+  combinedOperator_(),
+  params_(),
+  sslib_(sslib),
+  logLikelihood_(-1.),
+  aic_(-1.)
+  {
+    includeParameters_(params);
+  }
 
   Model* clone() const
   {
@@ -153,7 +153,7 @@ private:
 
   void update_(const bpp::ParameterList& params); // updates matrices based on params
 
-  void computeExpectedSumStats_(const AbstractType& data);
+  void computeExpectedSumStats_(const SomeAbstractType& data);
 
 };
 
