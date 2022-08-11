@@ -1,13 +1,18 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 29/07/2022
+ * Last modified: 09/08/2022
  *
  */
 
 
 #ifndef _OPERATOR_H_
 #define _OPERATOR_H_
+
+
+#include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/Dense>
 
 #include <Bpp/Numeric/Function/Functions.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
@@ -23,15 +28,23 @@ private:
 
 public:
   Operator():
-  AbstractParameterAliasable("")
+  AbstractParameterAliasable(""),
+  matrix_()
   { }
 
   Operator(const bpp::ParameterList& params):
-  AbstractParameterAliasable("")
+  AbstractParameterAliasable(""),
+  matrix_()
   {
     bpp::addParameters_(params);
+  }
 
-    setUpMatrix();
+  Operator(const bpp::ParameterList& params, size_t matrixSize):
+  AbstractParameterAliasable(""),
+  matrix_()
+  {
+    bpp::addParameters_(params);
+    setUpMatrix(matrixSize);
   }
 
 public:
@@ -47,9 +60,12 @@ public:
 
   void fireParameterChanged(const bpp::ParameterList& params);
 
-  void update(const bpp::ParameterList& params); // updates matrix based on params
+  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getMatrix()
+  {
+    return matrix_;
+  }
 
-  virtual void setUpMatrix();
+  virtual void setUpMatrix(size_t matrixSize);
 
 };
 

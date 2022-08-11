@@ -6,7 +6,7 @@
  */
 
 
-#include "Model.h"
+#include "Model.hpp"
 
 void Model::fireParameterChanged(const bpp::ParameterList& params)
 {

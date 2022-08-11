@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 05/08/2022
+ * Last modified: 09/08/2022
  *
  */
 
@@ -23,7 +23,8 @@ class SumStatsLibrary
 
 private:
   size_t numPops_;
-  std::map<std::string, double> stats_;
+  size_t order_; // of the moment; number of tracked lineages
+  std::map<std::string, double> stats_;  // name -> value
 
 public:
   SumStatsLibrary():
@@ -42,6 +43,16 @@ public:
   void setNumPops(size_t numPops)
   {
     numPops_ = numPops;
+  }
+
+  size_t getOrder()
+  {
+    return order_;
+  }
+
+  size_t getNumStats()
+  {
+    return stats_.size()
   }
 
   const std::map<std::string, double>& getStats()

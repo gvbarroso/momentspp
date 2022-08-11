@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 05/08/2022
+ * Last modified: 09/08/2022
  *
  */
 
@@ -33,18 +33,18 @@ class Model:
 private:
   // the fundamental operators derive from base class Operator
   // and contain matrices of type Eigen::SparseMatrix<int, Dynamic, Dynamic>
-  DriftOperator* drift_;
-  MigrationOperator* migration_;
-  RecombinationOperator* recombination_;
-  MutationOperator* mutation_;
-  SelectionOperator* selection_;
+  Drift* drift_;
+  Migration* migration_;
+  Recombination* recombination_;
+  Mutation* mutation_;
+  Selection* selection_;
 
   // this is just a combination of the above operators
   Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_;
 
   bpp::ParameterList params_;
 
-  SumStatsLibrary expectedSumStats_;
+  SumStatsLibrary ssl_;
 
   double logLikelihood_;
   double aic_;
@@ -58,7 +58,7 @@ public:
   selection_(),
   combinedOperator_(),
   params_(),
-  expectedSumStats_(),
+  ssl_(),
   logLikelihood_(-1.),
   aic_(-1.)
   {
@@ -73,7 +73,7 @@ public:
   selection_(),
   combinedOperator_(),
   params_(),
-  expectedSumStats_(),
+  ssl_(),
   logLikelihood_(-1.),
   aic_(-1.)
   { }
@@ -104,12 +104,12 @@ public:
     return logLikelihood_;
   }
 
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> getDriftOperator()
+  Drift* getDriftOperator()
   {
     return drift_;
   }
 
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> getMigrationOperator()
+  Migration* getMigrationOperator()
   {
     return migration_;
   }

@@ -5,6 +5,7 @@
  *
  */
 
+#include "SumStatsLibrary.hpp"
 
 void SumStatsLibrary::init(size_t numPops)
 {
