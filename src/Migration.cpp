@@ -82,3 +82,10 @@ void Migration::setUpMatrix(size_t matrixSize)
   matrix_ = mat;
 
 }
+
+void Migration::update_()
+{
+  matrix_ =  (getParameter() / prevParam_) * matrix_;
+  prevParam_ = getParameter();
+}
+

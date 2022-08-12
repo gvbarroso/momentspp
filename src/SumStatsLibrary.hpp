@@ -27,7 +27,8 @@ class SumStatsLibrary
 private:
   size_t numPops_;
   size_t order_; // of the moment; number of tracked lineages
-  std::map<std::string, double> stats_;  // name -> value
+  std::map<std::string, double> stats_;  // name -> value (Y vector)
+  // NOTE row and column order of matrices follow lexicographical order of stats_'s names
 
 public:
   SumStatsLibrary():
@@ -119,7 +120,7 @@ private:
 
   std::vector<std::string> splitUnder_(const std::string& s)
   {
-    std::vector<std::string> ret;
+    std::vector<std::string> ret(0);
     boost::split(ret, s, boost::is_any_of("_"));
 
     return ret;
@@ -130,11 +131,21 @@ private:
     return bpp::TextTools::toString(i);
   }
 
-  size_t countChars_(const std::string& s, char c)
+  size_t countInstances_(const std::string& ref, const std::string& target)
   {
-    std::string::difference_type n = std::count(std::begin(s), std::end(s), '_');
+    std::string::difference_type n = std::count(std::begin(ref), std::end(ref), target);
     return static_cast<size_t>(n);
   }
+
+  size_t indexLookup_(const std::string& moment)
+  {
+    auto pos = stats_.find(moment);
+
+    if(pos == std::end(stats_)
+      throw bpp::Exception("Moments++::SumStatsLibrary::Could not find index of moment " + moment);
+
+    else
+      return pos - std::begin(stats_);
 
 };
 

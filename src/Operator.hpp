@@ -9,6 +9,8 @@
 #ifndef _OPERATOR_H_
 #define _OPERATOR_H_
 
+#include <vector>
+#include <string>
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -26,19 +28,20 @@ class Operator:
 {
 
 private:
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> matrix_;
+  std::vector<Eigen::SparseMatrix<double, Dynamic, Dynamic>> matrices_; // one matrix per population
+  Eigen::SparseMatrix<double, Dynamic, Dynamic> combinedPopMatrix_;
 
-  double prevParam_; // value of parameter in previous iteration (used for comp. efficiency in update)
+  std::vector<double> prevParams_; // parameters values in immediately previous iteration of optimization
 
 public:
   Operator():
   AbstractParameterAliasable(""),
-  matrix_()
+  matrix_(0)
   { }
 
   Operator(const bpp::ParameterList& params):
   AbstractParameterAliasable(""),
-  matrix_()
+  matrix_(0)
   {
     bpp::addParameters_(params);
   }
@@ -56,19 +59,25 @@ public:
 
   void fireParameterChanged(const bpp::ParameterList& params);
 
-  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getMatrix()
+  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getPopMatrices()
   {
-    return matrix_;
+    return matrices_;
   }
 
-  virtual void setUpMatrix(const SumStatsLibrary& sslib);
+  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getPopMatrix(size_t popIndex)
+  {
+    return matrices_[popIndex];
+  }
+
+  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getCombinedPopMatrix()
+  {
+    return combinedPopMatrix_;
+  }
+
+  virtual void setUpMatrices(const SumStatsLibrary& sslib);
 
 private:
-  void update_()
-  {
-    matrix_ = (getParameter() / prevParam_) * matrix_;
-    prevParam_ = getParameter();
-  }
+  virtual void update_();
 
 };
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 09/08/2022
+ * Last modified: 12/08/2022
  *
  */
 
@@ -28,4 +28,10 @@ void Recombination::setUpMatrix(size_t matrixSize)
 
   matrix_ = mat;
 
+}
+
+void Recombination::update_()
+{
+  matrix_ = (getParameter() / prevParam_) * matrix_;
+  prevParam_ = getParameter();
 }
