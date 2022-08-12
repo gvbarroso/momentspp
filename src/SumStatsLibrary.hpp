@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 11/08/2022
+ * Last modified: 12/08/2022
  *
  */
 
@@ -12,12 +12,13 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #include <boost/algorithm/string.hpp>
 
 #include <Bpp/Text/TextTools.h>
 
-#include "OptionsContainer.h"
+#include "OptionsContainer.hpp"
 
 
 class SumStatsLibrary
@@ -116,7 +117,26 @@ private:
 
   void includeLdStats_();
 
+  std::vector<std::string> splitUnder_(const std::string& s)
+  {
+    std::vector<std::string> ret;
+    boost::split(ret, s, boost::is_any_of("_"));
+
+    return ret;
+  }
+
+  std::string asString_(size_t i)
+  {
+    return bpp::TextTools::toString(i);
+  }
+
+  size_t countChars_(const std::string& s, char c)
+  {
+    std::string::difference_type n = std::count(std::begin(s), std::end(s), '_');
+    return static_cast<size_t>(n);
+  }
+
 };
 
-      boost::split(splitLine, line, [=](char c) { return c == '\t'; });
+
 

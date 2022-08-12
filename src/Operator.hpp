@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 11/08/2022
+ * Last modified: 12/08/2022
  *
  */
 
@@ -27,6 +27,8 @@ class Operator:
 
 private:
   Eigen::SparseMatrix<int, Dynamic, Dynamic> matrix_;
+
+  double prevParam_; // value of parameter in previous iteration (used for comp. efficiency in update)
 
 public:
   Operator():
@@ -60,6 +62,13 @@ public:
   }
 
   virtual void setUpMatrix(const SumStatsLibrary& sslib);
+
+private:
+  void update_()
+  {
+    matrix_ = (getParameter() / prevParam_) * matrix_;
+    prevParam_ = getParameter();
+  }
 
 };
 

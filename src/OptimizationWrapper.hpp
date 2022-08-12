@@ -24,8 +24,8 @@
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Phyl/PseudoNewtonOptimizer.h>
 
-#include "Model.h"
-#include "OptionsContainer.h"
+#include "Model.hpp"
+#include "OptionsContainer.hpp"
 
 
 class OptimizationWrapper
