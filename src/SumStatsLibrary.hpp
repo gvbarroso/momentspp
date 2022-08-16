@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 12/08/2022
+ * Last modified: 16/08/2022
  *
  */
 
@@ -113,31 +113,26 @@ public:
     getNumHetStats() + getNumPiTwoStats();
   }
 
-private:
-  void includeHetStats_();
-
-  void includeLdStats_();
-
-  std::vector<std::string> splitUnder_(const std::string& s)
+  std::vector<std::string> splitString(const std::string& target, const std::string& query)
   {
     std::vector<std::string> ret(0);
-    boost::split(ret, s, boost::is_any_of("_"));
+    boost::split(ret, target, boost::is_any_of(query));
 
     return ret;
   }
 
-  std::string asString_(size_t i)
+  std::string asString(size_t i)
   {
     return bpp::TextTools::toString(i);
   }
 
-  size_t countInstances_(const std::string& ref, const std::string& target)
+  size_t countInstances(const std::string& target, const std::string& query)
   {
-    std::string::difference_type n = std::count(std::begin(ref), std::end(ref), target);
-    return static_cast<size_t>(n);
-  }
+    std::string::difference_type count = std::count(std::begin(target), std::end(target), query);
+    return static_cast<size_t>(count);
+  }sslib
 
-  size_t indexLookup_(const std::string& moment)
+  size_t indexLookup(const std::string& moment)
   {
     auto pos = stats_.find(moment);
 
@@ -146,6 +141,12 @@ private:
 
     else
       return pos - std::begin(stats_);
+  }
+
+private:
+  void includeHetStats_();
+
+  void includeLdStats_();
 
 };
 

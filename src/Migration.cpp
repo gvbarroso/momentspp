@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 10/08/2022
+ * Last modified: 16/08/2022
  *
  */
 
@@ -9,78 +9,205 @@
 #include "Migration.hpp"
 
 
-void Migration::setUpMatrix(size_t matrixSize)
+void Migration::setUpMatrix(const SumStatsLibrary& sslib)
 {
-  matrixSize = 23;
-  Eigen::SparseMatrix<int, matrixSize, matrixSize> mat;
+  size_t numPops = sslib.getNumPops();
 
-  mat(0, 0) = -3;
-  mat(1, 0) = 1;
-  mat(1, 1) = -1;
-  mat(2, 1) = 2;
-  mat(2, 2) = -2;
-  mat(4, 3) = 1;
-  mat(4, 4) = -1;
-  mat(5, 3) = 1;
-  mat(5, 5) = -1;
-  mat(6, 4) = 1;
-  mat(6, 5) = 1;
-  mat(6, 6) = -2;
-  mat(7, 3) = 1;
-  mat(7, 7) = -1;
-  mat(7, 11) = 4;
-  mat(7, 12) = -4;
-  mat(7, 14) = -4;
-  mat(7, 15) = 4;
-  mat(8, 4) = 1;
-  mat(8, 7) = 1;
-  mat(8, 8) = -2;
-  mat(8, 12) = 4;
-  mat(8, 13) = -4;
-  mat(8, 15) = -4;
-  mat(8, 16) = 4;
-  mat(9, 5) = 1;
-  mat(9, 7) = 1;
-  mat(9, 9) = -2;
-  mat(9, 14) = 4;
-  mat(9, 15) = -4;
-  mat(9, 17) = -4;
-  mat(9, 18) = 4;
-  mat(10, 6) = 1;
-  mat(10, 8) = 1;
-  mat(10, 9) = 1;
-  mat(10, 10) = -3;
-  mat(10, 15) = 4;
-  mat(10, 16) = -4;
-  mat(10, 18) = -4;
-  mat(10, 19) = 4;
-  mat(12, 11) = 1;
-  mat(12, 12) = -1;
-  mat(13, 12) = 2;
-  mat(13, 13) = -2;
-  mat(14, 11) = 1;
-  mat(14, 14) = -1;
-  mat(15, 12) = 1;
-  mat(15, 14) = 1;
-  mat(15, 15) = -2;
-  mat(16, 13) = 1;
-  mat(16, 15) = 2;
-  mat(16, 16) = -3;
-  mat(17, 14) = 2;
-  mat(17, 17) = -2;
-  mat(18, 15) = 2;
-  mat(18, 17) = 1;
-  mat(18, 18) = -3;
-  mat(19, 16) = 2;
-  mat(19, 18) = 2;
-  mat(19, 19) = -4;
-  mat(21, 20) = 1;
-  mat(21, 21) = -1;
-  mat(22, 21) = 2;
-  mat(22, 22) = -2;
+  // filling in focal matrix matrices_[i]
+  for(size_t i = 0; i < numPops - 1; ++i)
+  {
+    std::string childPopId = asString(i); // i in m_ij
 
-  matrix_ = mat;
+    // for each pair of populations (parameters m_ij, i != j)
+    for(size_t j = i + 1; j < numPops; ++j)
+    {
+      std::string parentPopId = asString(j); // j in m_ij
 
+      // NOTE even though we deal with order_ = 4 and have pi2(i,j;k,l) in stats,
+      // we only need to loop over pops twice because the loop over stats names takes care of the other pops (k,l)
+
+      // for each stat in vector Y (going by rows of matrices_)
+      for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
+      {
+        std::string mom = *it->first; // full name of moment
+        std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // (cf SumStatsLibrary::init)
+
+        size_t parentPopIdCount = sslib.countInstances(splitMom[1], parentPopId); // count of i in moment's name
+        size_t row = sslib.indexLookup(mom); // row index
+        size_t col = 0; // column index
+
+        if(splitMom[0] == "DD")
+        {
+
+        }
+
+        else if(splitMom[0] == "Dz")
+        {
+
+        }
+
+        else if(splitMom[0] == "pi2")
+        {
+          std::vector<std::string> splitPops = sslib.splitString(mom, ";"); // splits name by semi-colon
+
+          size_t countLeft = sslib.countInstances(splitPops[0], parentPopId); // count of i before ';'
+          size_t countRight = sslib.countInstances(splitPops[1], parentPopId); // count of i after ';'
+
+          // diagonal entry update based on left pair
+          matrices_[i](row, row) = matrices_[i](row, row) - static_cast<double>(countLeft);
+          // diagonal entry update based on right pair
+          matrices_[i](row, row) = matrices_[i](row, row) - static_cast<double>(countRight);
+
+          std::string p1, p2, p3, p4 = childPopId; // starts reference strings
+
+          // left perspective
+          if(countLeft == 1)
+          {
+            if(countRight == 1)
+              p4 = parentPopId;
+
+            else if(countRight == 2)
+              p3, p4 = parentPopId;
+          }
+
+          else if(countLeft == 2)
+          {
+            p2 = parentPopId;
+
+            if(countRight == 1)
+              p4 = parentPopId;
+
+            else if(countRight == 2)
+              p3, p4 = parentPopId;
+          }
+
+          col = sslib.indexLookup("pi2_" + p1 + p2 + ";" + p3 + p4);
+          matrices_[i](row, col) = matrices_[i](row, col) + countLeft;
+
+          p1, p2, p3, p4 = childPopId; // resets reference strings
+
+          // right perspective
+          if(countRight == 1)
+          {
+            if(countLeft == 1)
+              p2 = parentPopId;
+
+            else if(countLeft == 2)
+              p1, p2 = parentPopId;
+          }
+
+          else if(countRight == 2)
+          {
+            p4 = parentPopId;
+
+            if(countLeft == 1)
+              p2 = parentPopId;
+
+            else if(countLeft == 2)
+              p1, p2 = parentPopId;
+          }
+
+          col = sslib.indexLookup("pi2_" + p1 + p2 + ";" + p3 + p4);
+          matrices_[i](row, col) = matrices_[i](row, col) + countRight;
+
+
+          /* non-diagonal update (positive entries) => we need control flow over the counts to look up the correct indices
+          // left perspective
+          if(countLeft == 1)
+          {
+            if(countRight == 0)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + childPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countLeft;
+            }
+
+            else if(countRight == 1)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + parentPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countLeft;
+            }
+
+            else if(countRight == 2)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + parentPopId + parentPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countLeft;
+            }
+          }
+
+          else if(countLeft == 2)
+          {
+            if(countRight == 0)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + childPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countLeft;
+            }
+
+            else if(countRight == 1)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countLeft;
+            }
+
+            else if(countRight == 2)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + parentPopId + parentPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countLeft;
+            }
+          }
+
+          // right perspective
+          if(countRight == 1)
+          {
+            if(countLeft == 0)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + childPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countRight;
+            }
+
+            else if(countLeft == 1)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + childPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countRight;
+            }
+
+            else if(countLeft == 2)
+            {
+              col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + childPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countRight;
+            }
+          }
+
+          else if(countRight == 2)
+          {
+            if(countLeft == 0)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + parentPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countRight;
+            }
+
+            else if(countLeft == 1)
+            {
+              col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countRight;
+            }
+
+            else if(countLeft == 2)
+            {
+              col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + parentPopId);
+              matrices_[i](row, col) = matrices_[i](row, col) + countRight;
+            }
+          }
+        }*/
+
+        else if(splitMom[0] == "H")
+        {
+          matrices_[i](row, row) = -1. * static_cast<int>(parentPopIdCount); // diagonal entry
+
+          sslib.indexLookup("H" + );
+        }
+      }
+    }
+  }
 }
 
 void Migration::update_()

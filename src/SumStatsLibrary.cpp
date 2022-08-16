@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 12/08/2022
+ * Last modified: 16/08/2022
  *
  */
 
@@ -40,5 +40,5 @@ void SumStatsLibrary::includeLdStats_()
       for(size_t k = 0; k < numPops_; ++k)
         for(size_t l = k; l < numPops_; ++l)
           if((k == i == l && j != i) && l < j)
-            stats_.try_emplace("pi2_" + asString_(i) + asString_(j) + "_" + asString_(k) + asString_(l));
+            stats_.try_emplace("pi2_" + asString_(i) + asString_(j) + ";" + asString_(k) + asString_(l));
 }

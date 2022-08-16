@@ -23,10 +23,10 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
     for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
     {
       std::string mom = *it->first; // full name of moment
-      std::vector<std::string> splitMom = splitUnder_(mom); // splits name by underscore char
+      std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
-      size_t popIdCount = countInstances_(splitMom[1], popId); // count of i in moment's name
-      size_t row = indexLookup_(mom); // row index
+      size_t popIdCount = sslib.countInstances(splitMom[1], popId); // count of i in moment's name
+      size_t row = sslib.indexLookup(mom); // row index
       size_t col = 0; // column index
 
       if(splitMom[0] == "DD")
@@ -35,10 +35,10 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
         {
           matrices_[i](row, row) = -3.;
 
-          col = indexLookup_("Dz_" + popId + popId + popId);
+          col = sslib.indexLookup("Dz_" + popId + popId + popId);
           matrices_[i](row, col) = 1.;
 
-          col = indexLookup_("pi2_" + popId + popId + ";" + popId + popId);
+          col = sslib.indexLookup("pi2_" + popId + popId + ";" + popId + popId);
           matrices_[i](row, col) = 1.;
         }
 
@@ -54,7 +54,7 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
           {
             matrices_[i](row, row) = -5.;
 
-            col = indexLookup_("DD_" + popId + popId);
+            col = sslib.indexLookup("DD_" + popId + popId);
             matrices_[i](row, col) = 4.;
           }
 
@@ -69,7 +69,7 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 2)  // if D_x_z_ii where x != i
           {
-            col = indexLookup_("DD_" + popId + splitMom[1][0]);
+            col = sslib.indexLookup("DD_" + popId + splitMom[1][0]);
             matrices_[i](row, col) = 4.;
           }
         }
@@ -77,21 +77,20 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
 
       else if(splitMom[0] == "pi2")
       {
-        std::vector<std::string> splitPops(0);
-        boost::split(splitPops, splitMom[1], boost::is_any_of(";"));
+        std::vector<std::string> splitPops = sslib.splitString(mom, ";"); // splits name by semi-colon
 
-        size_t popIdCountLeft = countInstances_(splitPops[0], popId); // count of i before ';'
-        size_t popIdCountRight = countInstances_(splitPops[1], popId); // count of i after ';'
+        size_t countLeft = sslib.countInstances(splitPops[0], popId); // count of i before ';'
+        size_t countRight = sslib.countInstances(splitPops[1], popId); // count of i after ';'
 
-        if((popIdCountLeft + popIdCountRight) == 4)
+        if((countLeft + countRight) == 4)
         {
           matrices_[i](row, row) = -2.;
 
-          col = indexLookup_("Dz_" + popId + popId + popIds);
+          col = sslib.indexLookup("Dz_" + popId + popId + popIds);
           matrices_[i](row, col) = 1.;
         }
 
-        else if((popIdCountLeft == 2) || (popIdCountLeft == 2))
+        else if((countLeft == 2) || (countLeft == 2))
           matrices_[i](row, row) = -1.;
       }
 
