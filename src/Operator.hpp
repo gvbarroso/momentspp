@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 12/08/2022
+ * Last modified: 17/08/2022
  *
  */
 
@@ -28,8 +28,12 @@ class Operator:
 {
 
 private:
-  std::vector<Eigen::SparseMatrix<double, Dynamic, Dynamic>> matrices_; // one matrix per population
-  Eigen::SparseMatrix<double, Dynamic, Dynamic> combinedPopMatrix_;
+  // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
+  // the overal strategy is that matrices_ are assembled with indices that depend on the order of moments and number of populations
+  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally combined into combinedMatrix_
+  // this way the matrices_ need not be rebuilt during optimization when parameters change (cf. update_ method)
+  std::vector<Eigen::SparseMatrix<double, Dynamic, Dynamic>> matrices_;
+  Eigen::SparseMatrix<double, Dynamic, Dynamic> combinedMatrix_;
 
   std::vector<double> prevParams_; // parameters values in immediately previous iteration of optimization
 
@@ -59,19 +63,20 @@ public:
 
   void fireParameterChanged(const bpp::ParameterList& params);
 
-  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getPopMatrices()
+  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getMatrices()
   {
     return matrices_;
   }
 
-  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getPopMatrix(size_t popIndex)
+  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getMatrix(size_t index)
   {
-    return matrices_[popIndex];
+    // population index for Drift; population-pair index for Migration etc
+    return matrices_[index];
   }
 
-  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getCombinedPopMatrix()
+  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getCombinedMatrix()
   {
-    return combinedPopMatrix_;
+    return combinedMatrix_;
   }
 
   virtual void setUpMatrices(const SumStatsLibrary& sslib);

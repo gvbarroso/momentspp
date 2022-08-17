@@ -17,7 +17,7 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
   // for each population (making this the outer loop seems to be the way to go)
   for(size_t i = 0; i < numPops; ++i)
   {
-    std::string popId = asString(i);
+    std::string popId = sslib.asString(i);
 
     // for each stat in vector Y (going by rows of matrices_)
     for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
