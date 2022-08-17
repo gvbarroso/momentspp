@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 10/08/2022
+ * Last modified: 16/08/2022
  *
  */
 
@@ -22,10 +22,6 @@ public:
 
   Migration(const bpp::ParameterList& params):
   Operator(params)
-  { }
-
-  Migration(const bpp::ParameterList& params, size_t matrixSize):
-  Operator(params, matrixSize)
   { }
 
 };

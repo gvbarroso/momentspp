@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 12/08/2022
+ * Last modified: 16/08/2022
  *
  */
 
@@ -31,17 +31,21 @@ private:
   std::vector<Eigen::SparseMatrix<double, Dynamic, Dynamic>> matrices_; // one matrix per population
   Eigen::SparseMatrix<double, Dynamic, Dynamic> combinedPopMatrix_;
 
-  std::vector<double> prevParams_; // parameters values in immediately previous iteration of optimization
+  bpp::ParameterList prevParams_; // parameters values in immediately previous iteration of optimization
 
 public:
   Operator():
   AbstractParameterAliasable(""),
-  matrix_(0)
+  matrices_(0),
+  combinedPopMatrix_(),
+  prevParams_(0)
   { }
 
   Operator(const bpp::ParameterList& params):
   AbstractParameterAliasable(""),
-  matrix_(0)
+  matrices_(0),
+  combinedPopMatrix_(),
+  prevParams_(0)
   {
     bpp::addParameters_(params);
   }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 09/08/2022
+ * Last modified: 16/08/2022
  *
  */
 
@@ -22,10 +22,6 @@ public:
 
   Drift(const bpp::ParameterList& params):
   Operator(params)
-  { }
-
-  Drift(const bpp::ParameterList& params, size_t matrixSize):
-  Operator(params, matrixSize)
   { }
 
 };
