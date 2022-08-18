@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 17/08/2022
+ * Last modified: 18/08/2022
  *
  */
 
@@ -29,9 +29,9 @@ class Operator:
 
 private:
   // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
-  // the overal strategy is that matrices_ are assembled with indices that depend on the order of moments and number of populations
+  // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally combined into combinedMatrix_
-  // this way the matrices_ need not be rebuilt during optimization when parameters change (cf. update_ method)
+  // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() in each derived class)
   std::vector<Eigen::SparseMatrix<double, Dynamic, Dynamic>> matrices_;
   Eigen::SparseMatrix<double, Dynamic, Dynamic> combinedMatrix_;
 
@@ -65,7 +65,11 @@ public:
     AbstractParameterAliasable::setParametersValues(params);
   }
 
-  void fireParameterChanged(const bpp::ParameterList& params);
+  void Operator::fireParameterChanged(const bpp::ParameterList& params)
+  {
+    matchParametersValues(params);
+    update_();
+  }
 
   const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getMatrices()
   {
@@ -87,6 +91,17 @@ public:
 
 private:
   virtual void update_();
+
+  void combineMatrices_()
+  {
+    combinedMatrix_ = matrices_[0]; // in case operator has only one matrix
+
+    if(matrices_.size() > 1)
+    {
+      for(size_t i = 1; i <= matrices_.size(); ++i)
+        combinedMatrix_ += matrices_[i];
+    }
+  }
 
 };
 

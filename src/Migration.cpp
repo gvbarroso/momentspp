@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 17/08/2022
+ * Last modified: 18/08/2022
  *
  */
 
@@ -12,7 +12,7 @@
 void Migration::setUpMatrix(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
-  size_t index = 0; // matrix index
+  size_t index = 0; // matrix index, referring to the coefficients of the parameter m_ij, i != j
 
   // filling in focal matrix matrices_[index]
   for(size_t i = 0; i < numPops; ++i)
@@ -26,15 +26,15 @@ void Migration::setUpMatrix(const SumStatsLibrary& sslib)
         std::string parentPopId = sslib.asString(j); // j in m_ij
 
         // NOTE even though we deal with order_ = 4 and have pi2(i,j;k,l) in stats,
-        // we only need to loop over pops twice because the loop over stats names takes care of the other pops (k,l)
+        // we only need to loop over pops twice because the loop over stats' names takes care of the other pops (k,l)
 
         // for each stat in vector Y (rows of matrices_[index])
         for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
         {
-          // NOTE add another loop over vector Y to represent cols of matrices_[index] to generalize better to multiple populations?
+          // TODO add another loop over vector Y to represent cols of matrices_[index] to generalize to multiple populations?
 
           std::string mom = *it->first; // full name of moment
-          std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // (cf SumStatsLibrary::init)
+          std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // (see SumStatsLibrary::init)
 
           std::string p1, p2, p3, p4 = childPopId; // inits reference strings for population IDs
 
@@ -55,7 +55,7 @@ void Migration::setUpMatrix(const SumStatsLibrary& sslib)
             else if(parentPopIdCount == 2)
             {
               p2 = parentPopId;
-              col = sslib.indexLookup("DD_" + p1 + p2); // WARNING there is no moment called DD_21 (only DD_12)
+              col = sslib.indexLookup("DD_" + p1 + ps2); // WARNING there is no moment called DD_21 (only DD_12)
               matrices_[index](row, col) = parentPopIdCount;
             }
           }
@@ -232,16 +232,50 @@ void Migration::setUpMatrix(const SumStatsLibrary& sslib)
             sslib.indexLookup("H" + );
           }
         }
-      }
 
-      ++index;
+        ++index;
+      } // end if(i != j)
     }
   }
 }
 
 void Migration::update_()
 {
-  matrix_ =  (getParameter() / prevParam_) * matrix_;
-  prevParam_ = getParameter();
+  // this is a weird-looking but fun way to get the number of populations P from the raw value of P choose 2 ( == matrices_.size())
+  int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
+  int binCoeff = static_cast<int>(matrices_.size()); // raw value of P choose 2
+  for(int i = 2; i < binCoeff; ++i) // we never hit the upper bound of this loop but whatever
+  {
+    if(i * (1 - i) == -binCoeff)  // guaranteed to find if matrices_.size() was built correctly
+    {
+      numPops = i;
+      break;
+    }
+  }
+
+  size_t index = 0;
+  std::string paramName = "";
+
+  for(size_t i = 0; i < numPops; ++i)
+  {
+    for(size_t j = 0; j < numPops; ++j)
+    {
+      if(i != j)
+      {
+        paramName = "m_" + bpp::Textools::toString(i) + bpp::Textools::toString(j);
+
+        double prevVal = prevParams_.getParameterValue(paramName);
+        double newVal = getParameterValue(paramName); // from within itself
+
+        matrices_[index] *= (newVal / prevVal);
+
+        prevParams_.setParameterValue(paramName, newVal); // moves along
+
+        ++index;
+      }
+    }
+  }
+
+  combineMatrices_();
 }
 

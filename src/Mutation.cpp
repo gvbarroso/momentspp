@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 10/08/2022
+ * Last modified: 18/08/2022
  *
  */
 
@@ -9,27 +9,44 @@
 #include "Mutation.hpp"
 
 
-void Mutation::setUpMatrix(size_t matrixSize)
+void Mutation::setUpMatrix(const SumStatsLibrary& sslib)
 {
-  matrixSize = 23;
-  Eigen::SparseMatrix<int, matrixSize, matrixSize> mat;
+  // NOTE for now, this method assumes both the infinite sites model as well as equal mutation rates across pops.
+  // this is why we only access the unique matrix inside matrices_ (using) matrices_[0])
+  for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
+  {
+    std::string mom = *it->first; // full name of moment
+    std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
-  mat(0, 0) = -3;
-  mat(0, 4) = 1;
-  mat(1, 1) = -1;
-  mat(3, 0) = 4;
-  mat(3, 3) = -5;
-  mat(4, 4) = -3;
-  mat(5, 5) = -3;
-  mat(6, 6) = -1;
-  mat(11, 3) = 1;
-  mat(11, 11) = -2;
-  mat(12, 12) = -1;
-  mat(13, 13) = -1;
-  mat(14, 14) = -1;
-  mat(18, 18) = -1;
-  mat(21, 21) = -3;
+    size_t row = sslib.indexLookup(mom); // row index
+    size_t col = 0; // column index
 
-  matrix_ = mat;
+    if(splitMom[0] == "H")
+      matrices_[0](row, row) += 2.; // main diagonal, introducing 1-locus diversity
+
+    else if(splitMom[0] == "pi2")
+    {
+      col = ; // TODO
+      matrices_[0](row, col) += 2.;
+    }
 
 }
+
+void Mutation::update_()
+{
+  std::string paramName = "";
+
+  for(size_t i = 0; i < matrices_.size(); ++i)
+  {
+    paramName = "mu_" + bpp::TexTools::toString(i);
+
+    double prevVal = prevParams_.getParameterValue(paramName);
+    double newVal = getParameterValue(paramName); // from within itself
+
+    matrices_[i] *= (newVal / prevVal);
+    prevParams_.setParameterValue(paramName, newVal);
+  }
+
+  combineMatrices_();
+}
+

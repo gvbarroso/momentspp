@@ -24,10 +24,6 @@ public:
   Operator(params)
   { }
 
-  Mutation(const bpp::ParameterList& params, size_t matrixSize):
-  Operator(params, matrixSize)
-  { }
-
 };
 
 #endif

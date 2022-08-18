@@ -102,11 +102,18 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
 
 void Drift::update_()
 {
+  std::string paramName = "";
+
   for(size_t i = 0; i < matrices_.size(); ++i)
   {
-    std::string param = "N" + bpp::Textools::toString(i);
+    paramName = "N_" + bpp::Textools::toString(i);
 
-    matrices_[i] = (prevParams_[i] / getParameter(param)) * matrices_[i];
-    prevParams_[i] = getParameter(param);
+    double prevVal = prevParams_.getParameterValue(paramName);
+    double newVal = getParameterValue(paramName); // from within itself
+
+    matrices_[i] *= (prevVal / newVal); // for Drift, it's inverted because we scale matrices by 1 / N
+    prevParams_.setParameterValue(paramName, newVal);
   }
+
+  combineMatrices_();
 }
