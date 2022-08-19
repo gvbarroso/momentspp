@@ -55,7 +55,7 @@ void Migration::setUpMatrix(const SumStatsLibrary& sslib)
             else if(parentPopIdCount == 2)
             {
               p2 = parentPopId;
-              col = sslib.indexLookup("DD_" + p1 + ps2); // WARNING there is no moment called DD_21 (only DD_12)
+              col = sslib.indexLookup("DD_" + p1 + p2); // WARNING there is no moment called DD_21 (only DD_12)
               matrices_[index](row, col) = parentPopIdCount;
             }
           }

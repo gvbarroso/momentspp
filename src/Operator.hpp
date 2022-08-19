@@ -94,7 +94,7 @@ private:
 
   void combineMatrices_()
   {
-    combinedMatrix_ = matrices_[0]; // in case operator has only one matrix
+    combinedMatrix_ = matrices_[0];
 
     if(matrices_.size() > 1)
     {

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 16/08/2022
+ * Last modified: 19/08/2022
  *
  */
 
@@ -27,6 +27,7 @@ class SumStatsLibrary
 private:
   size_t numPops_;
   size_t order_; // of the moment; number of tracked lineages
+  // TODO make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)
   std::map<std::string, double> stats_;  // name -> value (Y vector)
   // NOTE row and column order of matrices follow lexicographical order of stats_'s names
 
@@ -51,14 +52,19 @@ public:
   order_(order)
   { }
 
+  SumStatsLibrary(const OptionsContainer& opt):
+  numPops_(opt->getNumberOfPopulations()),
+  order_(opt->getOrder())
+  { }
+
   size_t getNumPops()
   {
     return numPops;
   }
 
-  void setNumPops(size_t numPops)
+  void setNumPops(const OptionsContainer& opt)
   {
-    numPops_ = numPops;
+    numPops_ = opt->getNumberOfPopulations();
   }
 
   size_t getOrder()
@@ -66,9 +72,14 @@ public:
     return order_;
   }
 
+  void setOrder(const OptionsContainer& opt)
+  {
+    order_ = opt->getOrder();
+  }
+
   size_t getNumStats()
   {
-    return stats_.size()
+    return stats_.size();
   }
 
   const std::map<std::string, double>& getStats()
@@ -85,12 +96,12 @@ public:
 
   size_t getNumLdStats()
   {
-    getNumDDStats() + getNumDzStats();
+    return getNumDDStats() + getNumDzStats();
   }
 
   size_t getNumDDStats()
   {
-    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2) (works for order_ == 2)
+    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2)
   }
 
   size_t getNumDzStats()
@@ -100,17 +111,17 @@ public:
 
   size_t getNumHetStats()
   {
-    numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2) (works for order_ == 2)
+    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2)
   }
 
   size_t getNumPiTwoStats()
   {
-    (numPops_ + (numPops_ * (numPops_ - 1) / 2)) * (numPops_ + (numPops_ * (numPops_ - 1) / 2));
+    return (numPops_ + (numPops_ * (numPops_ - 1) / 2)) * (numPops_ + (numPops_ * (numPops_ - 1) / 2));
   }
 
   size_t getNumDiversityStats()
   {
-    getNumHetStats() + getNumPiTwoStats();
+    return getNumHetStats() + getNumPiTwoStats();
   }
 
   std::vector<std::string> splitString(const std::string& target, const std::string& query)
@@ -130,7 +141,7 @@ public:
   {
     std::string::difference_type count = std::count(std::begin(target), std::end(target), query);
     return static_cast<size_t>(count);
-  }sslib
+  }
 
   size_t indexLookup(const std::string& moment)
   {
@@ -147,6 +158,8 @@ private:
   void includeHetStats_();
 
   void includeLdStats_();
+
+  void compress_(); // exploits redundancy among statistics to reduce dimension
 
 };
 

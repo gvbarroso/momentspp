@@ -15,19 +15,19 @@ void Mutation::setUpMatrix(const SumStatsLibrary& sslib)
   // this is why we only access the unique matrix inside matrices_ (using) matrices_[0])
   for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
   {
-    std::string mom = *it->first; // full name of moment
+    std::string mom = *it->first; // full name of focal moment
     std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
     size_t row = sslib.indexLookup(mom); // row index
     size_t col = 0; // column index
 
     if(splitMom[0] == "H")
-      matrices_[0](row, row) += 2.; // main diagonal, introducing 1-locus diversity
+      matrices_[0](row, row) = 2.; // main diagonal, introducing 1-locus diversity
 
     else if(splitMom[0] == "pi2")
     {
-      col = ; // TODO
-      matrices_[0](row, col) += 2.;
+      col = ;
+      matrices_[0](row, col) = 2.;
     }
 
 }
