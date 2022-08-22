@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 19/08/2022
+ * Last modified: 20/08/2022
  *
  */
 
@@ -27,35 +27,59 @@ class SumStatsLibrary
 private:
   size_t numPops_;
   size_t order_; // of the moment; number of tracked lineages
+
+  bool compressed_; // indicates whether symmetrical statistics have been pulled together
+
   // TODO make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)
   std::map<std::string, double> stats_;  // name -> value (Y vector)
   // NOTE row and column order of matrices follow lexicographical order of stats_'s names
 
+
 public:
   SumStatsLibrary():
   numPops_(1),
-  order_(2)
-  { }
+  order_(2),
+  compressed_(false),
+  stats_()
+  {
+    includeStats();
+  }
 
   SumStatsLibrary(size_t numPops):
   numPops_(numPops),
-  order_(2)
-  { }
+  order_(2),
+  compressed_(false),
+  stats_()
+  {
+    includeStats();
+  }
 
   SumStatsLibrary(size_t order):
   numPops_(1),
-  order_(order)
-  { }
+  order_(order),
+  compressed_(false),
+  stats_()
+  {
+    includeStats();
+  }
 
   SumStatsLibrary(size_t numPops, size_t order):
   numPops_(numPops),
-  order_(order)
-  { }
+  order_(order),
+  compressed_(false),
+  stats_()
+  {
+    includeStats();
+  }
 
   SumStatsLibrary(const OptionsContainer& opt):
   numPops_(opt->getNumberOfPopulations()),
-  order_(opt->getOrder())
-  { }
+  order_(opt->getOrder()),
+  compressed_(false),
+  stats_()
+  {
+    includeStats();
+  }
 
   size_t getNumPops()
   {
@@ -154,12 +178,18 @@ public:
       return pos - std::begin(stats_);
   }
 
+  void includeStats()
+  {
+    includeHetStats_();
+    includeLdStats_();
+  }
+
 private:
   void includeHetStats_();
 
   void includeLdStats_();
 
-  void compress_(); // exploits redundancy among statistics to reduce dimension
+  void compress_(); // exploits symmetry among statistics to reduce dimension
 
 };
 
