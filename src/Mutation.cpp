@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 18/08/2022
+ * Last modified: 21/08/2022
  *
  */
 
@@ -9,7 +9,7 @@
 #include "Mutation.hpp"
 
 
-void Mutation::setUpMatrix(const SumStatsLibrary& sslib)
+void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // NOTE for now, this method assumes both the infinite sites model as well as equal mutation rates across pops.
   // this is why we only access the unique matrix inside matrices_ (using) matrices_[0])
@@ -18,21 +18,31 @@ void Mutation::setUpMatrix(const SumStatsLibrary& sslib)
     std::string mom = *it->first; // full name of focal moment
     std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
+    std::string p1, p2, p3, p4 = "";
+
     size_t row = sslib.indexLookup(mom); // row index
     size_t col = 0; // column index
 
     if(splitMom[0] == "H")
-      matrices_[0](row, row) = 2.; // main diagonal, introducing 1-locus diversity
+      matrices_[0](row, row) = 2.; // main diagonal, introducing one-locus diversity
 
     else if(splitMom[0] == "pi2")
     {
-      col = ;
-      matrices_[0](row, col) = 2.;
-    }
+      p1 = splitMom[1][0]; // i pop
+      p2 = splitMom[1][1]; // j pop
+      p3 = splitMom[1][2]; // k pop
+      p4 = splitMom[1][3]; // l pop
 
+      col = sslib.indexLookup("H_" + p1 + p2);
+      matrices_[0](row, col) += 2.;
+
+      col = sslib.indexLookup("H_" + p3 + p4);
+      matrices_[0](row, col) += 2.;
+    }
+  }
 }
 
-void Mutation::update_()
+void Mutation::updateMatrices()
 {
   std::string paramName = "";
 

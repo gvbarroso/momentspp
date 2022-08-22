@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 18/08/2022
+ * Last modified: 21/08/2022
  *
  */
 
@@ -9,7 +9,7 @@
 #include "Migration.hpp"
 
 
-void Migration::setUpMatrix(const SumStatsLibrary& sslib)
+void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
   size_t index = 0; // matrix index, referring to the coefficients of the parameter m_ij, i != j
@@ -227,19 +227,40 @@ void Migration::setUpMatrix(const SumStatsLibrary& sslib)
 
           else if(splitMom[0] == "H")
           {
-            matrices_[index](row, row) = -1. * static_cast<int>(parentPopIdCount); // diagonal entry
+            matrices_[index](row, row) -= 1. * static_cast<int>(parentPopIdCount); // diagonal entry
 
-            sslib.indexLookup("H" + );
+            p1 = splitMom[1][0];
+            p2 = splitMom[1][1];
+
+            if(parentPopIdCount == 1)
+            {
+              if(p1 == childPopId || p2 == childPopId) // H_childPop,parentPop
+              {
+                col = sslib.indexLookup("H_" + childPopId + childPopId);
+                matrices_[index](row, col) -= 1. * static_cast<int>(parentPopIdCount);
+              }
+            }
+
+            else if(parentPopIdCount == 2)
+            {
+              col = sslib.indexLookup("H_" + childPopId + parentPopId); // H_ij
+              matrices_[index](row, col) -= 1. * static_cast<int>(parentPopIdCount); // -1 before compression
+
+              /* H_ji -- before compression
+              * col = sslib.indexLookup("H_" + parentPopId + childPopId);
+              * matrices_[index](row, col) -= 1. * static_cast<int>(parentPopIdCount);
+              */
+            }
           }
         }
 
-        ++index;
-      } // end if(i != j)
+        ++index; // increments matrix index
+      } // ends if(i != j)
     }
   }
 }
 
-void Migration::update_()
+void Migration::updateMatrices()
 {
   // this is a weird-looking but fun way to get the number of populations P from the raw value of P choose 2 ( == matrices_.size())
   int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
