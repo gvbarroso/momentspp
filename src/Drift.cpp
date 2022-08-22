@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 12/08/2022
+ * Last modified: 21/08/2022
  *
  */
 
@@ -10,7 +10,7 @@
 #include "Drift.hpp"
 
 
-void Drift::setUpMatrix(const SumStatsLibrary& sslib)
+void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
 
@@ -100,7 +100,7 @@ void Drift::setUpMatrix(const SumStatsLibrary& sslib)
   }
 }
 
-void Drift::update_()
+void Drift::updateMatrices()
 {
   std::string paramName = "";
 

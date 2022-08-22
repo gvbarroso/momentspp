@@ -87,10 +87,10 @@ public:
     return combinedMatrix_;
   }
 
-  virtual void setUpMatrices(const SumStatsLibrary& sslib);
+  virtual void updateMatrices();
 
 private:
-  virtual void update_();
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib);
 
   void combineMatrices_()
   {

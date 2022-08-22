@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 18/08/2022
+ * Last modified: 21/08/2022
  *
  */
 
@@ -9,7 +9,7 @@
 #include "Recombination.hpp"
 
 
-void Recombination::setUpMatrix(size_t matrixSize)
+void Recombination::setUpMatrices_(size_t matrixSize)
 {
   // NOTE for now, this method assumes equal recombination rates across pops.
   // this is why we only access the unique matrix inside matrices_ (using) matrices_[0])
@@ -28,7 +28,7 @@ void Recombination::setUpMatrix(size_t matrixSize)
   }
 }
 
-void Recombination::update_()
+void Recombination::updateMatrices()
 {
   std::string paramName = "";
 
