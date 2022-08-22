@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 21/08/2022
+ * Last modified: 22/08/2022
  *
  */
 
@@ -26,17 +26,15 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         std::string parentPopId = sslib.asString(j); // j in m_ij
 
         // NOTE even though we deal with order_ = 4 and have pi2(i,j;k,l) in stats,
-        // we only need to loop over pops twice because the loop over stats' names takes care of the other pops (k,l)
+        // we only need to loop over pops twice because the loop over stats takes care of the other pops (k,l)
 
         // for each stat in vector Y (rows of matrices_[index])
         for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
         {
-          // TODO add another loop over vector Y to represent cols of matrices_[index] to generalize to multiple populations?
-
           std::string mom = *it->first; // full name of moment
           std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // (see SumStatsLibrary::init)
 
-          std::string p1, p2, p3, p4 = childPopId; // inits reference strings for population IDs
+          std::string p1, p2, p3, p4 = ""; // inits reference strings for population IDs
 
           size_t parentPopIdCount = sslib.countInstances(splitMom[1], parentPopId); // count of i in moment's name
           size_t row = sslib.indexLookup(mom); // row index
@@ -92,12 +90,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               }
             }
 
+            // NOTE be mindful of interchangeable pi2 statistics (ordered vs non-ordered)
             else if(p1 == parentPopId) // if population index of D in Dz is j in m_ij
             {
-              // helper variables for pi2 entries
-              std::string pair1 = childPopId + p2;
-              std::string pair2 = childPopId + p3;
-
               if(p2 == childPopId)
               {
                 if(p3 == childPopId) // D_j_z_ii
@@ -107,9 +102,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   matrices_[index](row, col) += 1.;
 
                   // the pi2 cols
-                  col = sslib.indexLookup("pi2_" + pair1 + ";" + pair2);
+                  col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + childPopId); // append childPopId to left of p2 and p3
                   matrices_[index](row, col) += 4.;
 
+                  col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + parentPopId); // switch right to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + childPopId); // switch left to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // switch both
+                  matrices_[index](row, col) += 4.;
                 }
 
                 else if(p3 == parentPopId) // D_j_z_ij
@@ -122,7 +125,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   matrices_[index](row, col) += 1.;
 
                   // the pi2 cols
-                  // ...
+                  col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + parentPopId); // append childPopId to left of p2 and p3
+                  matrices_[index](row, col) += 4.;
+
+                  col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + parentPopId + parentPopId); // switch right to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // switch left to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + parentPopId + parentPopId); // switch both
+                  matrices_[index](row, col) += 4.;
                 }
               }
 
@@ -138,7 +151,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   matrices_[index](row, col) += 1.;
 
                   // the pi2 cols
-                  // ...
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + childPopId); // append childPopId to left of p2 and p3
+                  matrices_[index](row, col) += 4.;
+
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // switch right to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + childPopId); // switch left to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + parentPopId); // switch both
+                  matrices_[index](row, col) += 4.;
                 }
 
                 else if(p3 == parentPopId) // D_j_z_jj
@@ -154,7 +177,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   matrices_[index](row, col) += 1.;
 
                   // the pi2 cols
-                  // ...
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // append childPopId to left of p2 and p3
+                  matrices_[index](row, col) += 4.;
+
+                  col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + parentPopId + parentPopId); // switch right to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + parentPopId); // switch left to parentPopId
+                  matrices_[index](row, col) -= 4.;
+
+                  col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + parentPopId + parentPopId); // switch both
+                  matrices_[index](row, col) += 4.;
                 }
               }
             }
@@ -172,7 +205,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             // main diagonal entry update based on right pair
             matrices_[index](row, row) -= static_cast<double>(countRight);
 
-            p1, p2, p3, p4 = childPopId; // re-starts reference strings
+            p1, p2, p3, p4 = childPopId; // resets reference strings
 
             // updates non-diagonal (positive) entries from left perspective
             if(countLeft == 1)
@@ -196,7 +229,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
 
             col = sslib.indexLookup("pi2_" + p1 + p2 + ";" + p3 + p4);
-            matrices_[index](row, col) = matrices_[index](row, col) + countLeft;
+            matrices_[index](row, col) += countLeft;
 
             p1, p2, p3, p4 = childPopId; // resets reference strings
 
@@ -222,7 +255,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
 
             col = sslib.indexLookup("pi2_" + p1 + p2 + ";" + p3 + p4);
-            matrices_[index](row, col) = matrices_[index](row, col) + countRight;
+            matrices_[index](row, col) += countRight;
           }
 
           else if(splitMom[0] == "H")
@@ -234,7 +267,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             if(parentPopIdCount == 1)
             {
-              if(p1 == childPopId || p2 == childPopId) // H_childPop,parentPop
+              if(p1 == childPopId || p2 == childPopId) // H_ij or H_ji
               {
                 col = sslib.indexLookup("H_" + childPopId + childPopId);
                 matrices_[index](row, col) -= 1. * static_cast<int>(parentPopIdCount);
@@ -265,9 +298,10 @@ void Migration::updateMatrices()
   // this is a weird-looking but fun way to get the number of populations P from the raw value of P choose 2 ( == matrices_.size())
   int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
   int binCoeff = static_cast<int>(matrices_.size()); // raw value of P choose 2
+
   for(int i = 2; i < binCoeff; ++i) // we never hit the upper bound of this loop but whatever
   {
-    if(i * (1 - i) == -binCoeff)  // guaranteed to find if matrices_.size() was built correctly
+    if(i * (1 - i) == -2 * binCoeff)  // guaranteed to find if matrices_.size() was built correctly
     {
       numPops = i;
       break;
