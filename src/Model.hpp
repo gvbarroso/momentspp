@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 11/08/2022
+ * Last modified: 22/08/2022
  *
  */
 
@@ -31,24 +31,26 @@ class Model:
 {
 
 private:
-  // the fundamental operators derive from base class Operator
-  // and contain matrices of type Eigen::SparseMatrix<int, Dynamic, Dynamic>
+  // The fundamental operators derive from base class Operator
+  // Each contains matrices of type Eigen::SparseMatrix<int, Dynamic, Dynamic>
   Drift* drift_;
   Migration* migration_;
   Recombination* recombination_;
   Mutation* mutation_;
   Selection* selection_;
 
-  // this is just a combination of the above operators
+  // this is a handy combination of the above operators
   Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_;
 
   bpp::ParameterList params_;
 
   SumStatsLibrary sslib_;
 
+  bool continuousTime_;
+
   double logLikelihood_;
   double aic_;
-  
+
 public:
   Model():
   drift_(),
@@ -59,6 +61,7 @@ public:
   combinedOperator_(),
   params_(),
   sslib_(),
+  continuousTime_(false),
   logLikelihood_(-1.),
   aic_(-1.)
   { }
@@ -72,6 +75,7 @@ public:
   combinedOperator_(),
   params_(),
   sslib_(sslib),
+  continuousTime_(false),
   logLikelihood_(-1.),
   aic_(-1.)
   {
@@ -114,17 +118,17 @@ public:
     return migration_;
   }
 
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> getRecombinationOperator()
+  Recombination* getRecombinationOperator()
   {
     return recombination_;
   }
 
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> getMutationOperator()
+  Mutation* getMutationOperator()
   {
     return mutation_;
   }
 
-  Eigen::SparseMatrix<int, Dynamic, Dynamic> getSelectionOperator()
+  Selection* getSelectionOperator()
   {
     return selection_;
   }
@@ -133,6 +137,7 @@ public:
   {
     return combinedOperator_;
   }
+
   const std::vector<double>& getExpectedSumStats() const
   {
     return expectedSumStats_;
@@ -154,6 +159,8 @@ private:
   void update_(const bpp::ParameterList& params); // updates matrices based on params
 
   void computeExpectedSumStats_(const SomeAbstractType& data);
+
+  void computeCompositeLogLikelihood_(const SomeAbstractType& expected, const SomeAbstractType& observed);
 
 };
 

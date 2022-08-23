@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 10/08/2022
+ * Last modified: 22/08/2022
  *
  */
 
@@ -20,13 +20,11 @@ public:
   Operator()
   { }
 
-  Recombination(const bpp::ParameterList& params):
+  Recombination(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
   Operator(params)
-  { }
-
-  Recombination(const bpp::ParameterList& params, size_t matrixSize):
-  Operator(params, matrixSize)
-  { }
+  {
+    setUpMatrices_(ssl);
+  }
 
 };
 

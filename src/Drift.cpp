@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 21/08/2022
+ * Last modified: 22/08/2022
  *
  */
 
@@ -111,7 +111,7 @@ void Drift::updateMatrices()
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName); // from within itself
 
-    matrices_[i] *= (prevVal / newVal); // for Drift, it's inverted because we scale matrices by 1 / N
+    matrices_[i] *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
     prevParams_.setParameterValue(paramName, newVal);
   }
 

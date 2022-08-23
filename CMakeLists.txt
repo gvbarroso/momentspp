@@ -34,16 +34,6 @@ IF(Boost_FOUND)
   MESSAGE("   dynamic libraries: ${Boost_LIBRARIES}")
 ENDIF()
 
-# BLAS:
-FIND_PACKAGE(BLAS REQUIRED)
-IF(BLAS_FOUND)
-  INCLUDE_DIRECTORIES(${BLAS_INCLUDE_DIRS})
-  SET(LIBS ${LIBS} ${BLAS_LIBRARIES})
-  MESSAGE("-- BLAS libraries found here:")
-  MESSAGE("   includes: ${BLAS_INCLUDE_DIRS}")
-  MESSAGE("   dynamic libraries: ${BLAS_LIBRARIES}")
-ENDIF()
-
 # Eigen3
 FIND_PACKAGE(Eigen3 3.4 REQUIRED NO_MODULE)
 IF(Eigen3_FOUND)

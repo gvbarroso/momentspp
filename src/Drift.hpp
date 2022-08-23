@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 16/08/2022
+ * Last modified: 22/08/2022
  *
  */
 
@@ -10,6 +10,7 @@
 #define _DRIFT_H_
 
 #include "Operator.hpp"
+#include "SumStatsLibrary.hpp"
 
 class Drift:
   public Operator
@@ -20,9 +21,11 @@ public:
   Operator()
   { }
 
-  Drift(const bpp::ParameterList& params):
+  Drift(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
   Operator(params)
-  { }
+  {
+    setUpMatrices_(ssl);
+  }
 
 };
 
