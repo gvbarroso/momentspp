@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 22/08/2022
+ * Last modified: 23/08/2022
  *
  */
 
@@ -42,9 +42,7 @@ private:
   // this is a handy combination of the above operators
   Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_;
 
-  bpp::ParameterList params_;
-
-  SumStatsLibrary sslib_;
+  SumStatsLibrary sslib_; // contains summary statistics
 
   bool continuousTime_;
 
@@ -59,7 +57,6 @@ public:
   mutation_(),
   selection_(),
   combinedOperator_(),
-  params_(),
   sslib_(),
   continuousTime_(false),
   logLikelihood_(-1.),
@@ -73,7 +70,6 @@ public:
   mutation_(),
   selection_(),
   combinedOperator_(),
-  params_(),
   sslib_(sslib),
   continuousTime_(false),
   logLikelihood_(-1.),
@@ -91,21 +87,27 @@ public:
 
   void setParameters(const bpp::ParameterList& params)
   {
-    if()
-      includeParameters_(params);
-
-    else
-      Model::setParametersValues(params);
+    Model::setParametersValues(params);
   }
 
   double getValue() const
   {
     return -logLikelihood_;
   }
+
+  bool continuousTime()
+  {
+    return continuousTime_;
+  }
   
   double getLogLikelihood()
   {
     return logLikelihood_;
+  }
+
+  double getAic()
+  {
+    return aic_;
   }
 
   Drift* getDriftOperator()
@@ -146,11 +148,6 @@ public:
   void computeAic()
   {
     aic_ = 2. * getNumberOfIndependentParameters() - 2. * logLikelihood_;
-  }
-
-  double getAic()
-  {
-    return aic_;
   }
 
 private:

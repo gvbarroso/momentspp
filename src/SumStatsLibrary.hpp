@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 20/08/2022
+ * Last modified: 23/08/2022
  *
  */
 
@@ -15,6 +15,10 @@
 #include <algorithm>
 
 #include <boost/algorithm/string.hpp>
+
+#include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/Dense>
 
 #include <Bpp/Text/TextTools.h>
 
@@ -30,17 +34,20 @@ private:
 
   bool compressed_; // indicates whether symmetrical statistics have been pulled together
 
-  // TODO make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)
+  // make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
+  // row and column order of matrices follow lexicographical order of stats_'s names
   std::map<std::string, double> stats_;  // name -> value (Y vector)
-  // NOTE row and column order of matrices follow lexicographical order of stats_'s names
 
+  // the Eigen representation of the vector of summary statistics
+  Eigen::Matrix<double, Dynamic, 1> y_;
 
 public:
   SumStatsLibrary():
   numPops_(1),
   order_(2),
   compressed_(false),
-  stats_()
+  stats_(),
+  y_()
   {
     includeStats();
   }
@@ -49,7 +56,8 @@ public:
   numPops_(numPops),
   order_(2),
   compressed_(false),
-  stats_()
+  stats_(),
+  y_()
   {
     includeStats();
   }
@@ -58,7 +66,8 @@ public:
   numPops_(1),
   order_(order),
   compressed_(false),
-  stats_()
+  stats_(),
+  y_()
   {
     includeStats();
   }
@@ -67,7 +76,8 @@ public:
   numPops_(numPops),
   order_(order),
   compressed_(false),
-  stats_()
+  stats_(),
+  y_()
   {
     includeStats();
   }
@@ -76,7 +86,8 @@ public:
   numPops_(opt->getNumberOfPopulations()),
   order_(opt->getOrder()),
   compressed_(false),
-  stats_()
+  stats_(),
+  y_()
   {
     includeStats();
   }
@@ -115,6 +126,8 @@ public:
   {
     return stats_.at(name);
   }
+
+
 
   void init();
 

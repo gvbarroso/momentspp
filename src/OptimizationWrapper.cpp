@@ -59,23 +59,15 @@ void OptimizationWrapper::optimizeParameters() {
 void OptimizationWrapper::writeEstimatesToFile(const bpp::ParameterList& params, double aic) {
     
   //writes params in a simple txt format that is easy to parse
-  std::ofstream parameterEstimates;
+  std::ofstream estimates;
   
-  parameterEstimates.open("estimates.txt");
-  parameterEstimates << "AIC = " << aic << endl << endl;
-  
-  std::vector<std::string> parameterNames = params.getParameterNames();
-  
-  for(size_t i = 0; i < params.size(); ++i)
-  {
-    parameterEstimates << params.getParameterNames()[i];
-    parameterEstimates << " ";
+  estimates.open("moments++estimates.txt");
+  estimates << "AIC = " << aic << std::endl << std::endl;
 
-    parameterEstimates << params.getParameterValue(params.getParameterNames()[i]);
-    parameterEstimates << std::endl;
-  }
+  for(size_t i = 0; i < params.size(); ++i)
+    estimates << params[i].getName() << "\t" << params[i].getValue() << "\n";
   
-  parameterEstimates.close();    
+  estimates.close();
 }
 
 void OptimizationWrapper::fireUpdateBestValues_(Model* bestModel, const bpp::ParameterList& params) {

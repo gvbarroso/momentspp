@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 22/08/2022
+ * Last modified: 23/08/2022
  *
  */
 
@@ -13,6 +13,12 @@
 void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
+
+  matrices_.resize(numPops);
+  for(size_t i = 0; i < numPops; ++i)
+    matrices_[i].resize(ssl.getNumStats(), ssl.getNumStats());
+
+  // TODO use Eigen::Triplets here
 
   // for each population (making this the outer loop seems to be the way to go)
   for(size_t i = 0; i < numPops; ++i)
@@ -98,6 +104,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         matrices_[i](row, row) = -1.;
     }
   }
+
+  compressSparseMatrices_();
 }
 
 void Drift::updateMatrices()
