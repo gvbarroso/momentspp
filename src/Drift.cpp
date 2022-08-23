@@ -14,11 +14,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
 
-  matrices_.resize(numPops);
-  for(size_t i = 0; i < numPops; ++i)
-    matrices_[i].resize(ssl.getNumStats(), ssl.getNumStats());
-
-  // TODO use Eigen::Triplets here
+  matrices_.reserve(numPops); // reserves memory for the vector of matrices
+  std::vector<Eigen::Triplet<double>> coefficients(0);
 
   // for each population (making this the outer loop seems to be the way to go)
   for(size_t i = 0; i < numPops; ++i)
@@ -39,17 +36,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       {
         if(popIdCount == 2)
         {
-          matrices_[i](row, row) = -3.;
+          coefficients.push_back(Eigen::Triplet<double>(row, row -3.));
 
           col = sslib.indexLookup("Dz_" + popId + popId + popId);
-          matrices_[i](row, col) = 1.;
+          coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
           col = sslib.indexLookup("pi2_" + popId + popId + ";" + popId + popId);
-          matrices_[i](row, col) = 1.;
+          coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
         else if(popIdCount == 1)
-          matrices_[i](row, row) = -1.;
+          coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
       else if(splitMom[0] == "Dz")
@@ -58,17 +55,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 3)
           {
-            matrices_[i](row, row) = -5.;
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -5.));
 
             col = sslib.indexLookup("DD_" + popId + popId);
-            matrices_[i](row, col) = 4.;
+            coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
           }
 
           else if(popIdCount == 2)
-            matrices_[i](row, row) = -3.;
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -3.));
 
           else if(popIdCount == 1) // if D_i_z_xx where x != i
-            matrices_[i](row, row) = -1.;
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
         }
 
         else // if D_x_z_** where x != i
@@ -76,33 +73,37 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(popIdCount == 2)  // if D_x_z_ii where x != i
           {
             col = sslib.indexLookup("DD_" + popId + splitMom[1][0]);
-            matrices_[i](row, col) = 4.;
+            coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
           }
         }
       }
 
       else if(splitMom[0] == "pi2")
       {
-        std::vector<std::string> splitPops = sslib.splitString(mom, ";"); // splits name by semi-colon
+        std::vector<std::string> splitPops = sslib.splitString(splitMom[1], ";"); // gets the 4 pop indices
 
         size_t countLeft = sslib.countInstances(splitPops[0], popId); // count of i before ';'
         size_t countRight = sslib.countInstances(splitPops[1], popId); // count of i after ';'
 
         if((countLeft + countRight) == 4)
         {
-          matrices_[i](row, row) = -2.;
+          coefficients.push_back(Eigen::Triplet<double>(row, row, -2.));
 
           col = sslib.indexLookup("Dz_" + popId + popId + popIds);
-          matrices_[i](row, col) = 1.;
+          coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
         else if((countLeft == 2) || (countLeft == 2))
-          matrices_[i](row, row) = -1.;
+          coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
       else if(splitMom[0] == "H")
-        matrices_[i](row, row) = -1.;
+        coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
     }
+
+    Eigen::SparseMatrix<double> mat;
+    mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
+    matrices_.emplace_back(mat); // at the i-th position of vector, where i index the population
   }
 
   compressSparseMatrices_();
@@ -114,7 +115,7 @@ void Drift::updateMatrices()
 
   for(size_t i = 0; i < matrices_.size(); ++i)
   {
-    paramName = "N_" + bpp::Textools::toString(i);
+    paramName = "N_" + bpp::Textools::toString(i); // TODO check what to do to icorporate variable pop sizes
 
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName); // from within itself

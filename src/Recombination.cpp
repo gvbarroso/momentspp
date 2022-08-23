@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 22/08/2022
+ * Last modified: 23/08/2022
  *
  */
 
@@ -12,20 +12,23 @@
 void Recombination::setUpMatrices_(size_t matrixSize)
 {
   // NOTE for now, this method assumes equal recombination rates across pops.
-  // this is why we only access the unique matrix inside matrices_ (using) matrices_[0])
+  matrices_.reserve(1);
+  std::vector<Eigen::Triplet<double>> coefficients(0);
+
   for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
   {
     std::string mom = *it->first; // full name of moment
     std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
     size_t row = sslib.indexLookup(mom); // recombination matrix only has entries in main diagonal
+    size_t orderD = static_cast<int>(sslib.countInstances(mon, "D"));
 
-    if(splitMom[0] == "DD")
-      matrices_[0](row, row) -= 2.;
-
-    else if(splitMom[0] == "Dz")
-      matrices_[0](row, row) -= 1.;
+    coefficients.push_back(Eigen::Triplet<double>(row, row, -orderD));
   }
+
+  Eigen::SparseMatrix<double> mat;
+  mat.setFromTriplets(coefficients);
+  matrices_.emplace_back(mat);
 }
 
 void Recombination::updateMatrices()

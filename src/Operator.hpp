@@ -31,10 +31,10 @@ class Operator:
 private:
   // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
-  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally combined into combinedMatrix_
-  // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() in each derived class)
+  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally combined into combinedMatrix_ through addition
+  // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
   std::vector<Eigen::SparseMatrix<double>> matrices_;
-  Eigen::SparseMatrix<double, Dynamic, Dynamic> combinedMatrix_;
+  Eigen::SparseMatrix<double> combinedMatrix_;
 
   bpp::ParameterList prevParams_; // parameters values in immediately previous iteration of optimization
 
@@ -63,23 +63,23 @@ public:
     updateMatrices();
   }
 
-  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getMatrices()
+  const std::vector<Eigen::SparseMatrix<double>>& getMatrices()
   {
     return matrices_;
   }
 
-  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getMatrix(size_t index)
+  const Eigen::SparseMatrix<double>& getMatrix(size_t index)
   {
     // population index for Drift; population-pair index for Migration etc
     return matrices_[index];
   }
 
-  const Eigen::SparseMatrix<int, Dynamic, Dynamic>& getCombinedMatrix()
+  const Eigen::SparseMatrix<double>& getCombinedMatrix()
   {
     return combinedMatrix_;
   }
 
-   // scales matrix(ces) coefficients by (new) parameters values
+  // scales matrix(ces) coefficients by (new) parameters values
   virtual void updateMatrices();
 
 private:
@@ -98,12 +98,18 @@ private:
 
   void combineMatrices_()
   {
-    combinedMatrix_ = matrices_[0];
+    if(matrices_.size() == 0)
+      throw bpp::Exception("Operator::tried to combine non-existing matrices!");
 
-    if(matrices_.size() > 1)
+    else
     {
-      for(size_t i = 1; i <= matrices_.size(); ++i)
-        combinedMatrix_ += matrices_[i];
+      combinedMatrix_ = matrices_[0];
+
+      if(matrices_.size() > 1)
+      {
+        for(size_t i = 1; i <= matrices_.size(); ++i)
+          combinedMatrix_ += matrices_[i];
+      }
     }
   }
 

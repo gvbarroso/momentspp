@@ -22,6 +22,7 @@ public:
   Drift(const SumStatsLibrary& ssl):
   Operator()
   {
+    // TODO check what to do to icorporate variable pop sizes
     for(size_t i = 0; i < ssl->getNumPops(); ++i)
       bpp::addParameter_(new bpp::Parameter("N_" + bpp::toString(i), 1., Parameter::R_PLUS_STAR));
 
@@ -32,6 +33,7 @@ public:
   Drift(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
   Operator()
   {
+    // TODO check what to do to icorporate variable pop sizes
     for(size_t i = 0; i < ssl->getNumPops(); ++i)
       bpp::addParameter_(new bpp::Parameter("N_" + bpp::toString(i), 1., Parameter::R_PLUS_STAR));
 
