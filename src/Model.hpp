@@ -29,6 +29,8 @@
 #include "Migration.hpp"
 #include "Mutation.hpp"
 #include "Recombination.hpp"
+//#include "Selection.hpp"
+//#include "Admixture.hpp"
 #include "SumStatsLibrary.hpp"
 
 class Model:
@@ -51,33 +53,40 @@ private:
 
   SumStatsLibrary sslib_;
 
+  // if discrete time, the number of generations spent inside each epoch
+  std::vector<size_t> epochGenBoundaries_;
+
   bool continuousTime_;
 
   double logLikelihood_;
   double aic_;
 
 public:
-  Model():
-  drift_(),
-  migration_(),
-  recombination_(),
-  mutation_(),
-  //selection_(),
+  Model(const SumStatsLibrary& sslib):
+  drift_(sslib),
+  migration_(sslib),
+  recombination_(sslib),
+  mutation_(sslib),
+  //selection_(sslib),
   combinedOperator_(),
-  sslib_(),
+  expectedY_(),
+  sslib_(sslib),
+  epochGenBoundaries_(0),
   continuousTime_(false),
   logLikelihood_(-1.),
   aic_(-1.)
   { }
 
   Model(const bpp::ParameterList& params, const SumStatsLibrary& sslib):
-  drift_(),
-  migration_(),
-  recombination_(),
-  mutation_(),
-  //selection_(),
+  drift_(params, sslib),
+  migration_(params, sslib),
+  recombination_(params, sslib),
+  mutation_(params, sslib),
+  //selection_(params, sslib),
   combinedOperator_(),
+  expectedY_(),
   sslib_(sslib),
+  epochGenBoundaries_(0),
   continuousTime_(false),
   logLikelihood_(-1.),
   aic_(-1.)
@@ -95,6 +104,13 @@ public:
   void setParameters(const bpp::ParameterList& params)
   {
     AbstractParameterAliasable::setParametersValues(params);
+
+    drift_->fireParametersChanged(params);
+    migration_->fireParametersChanged(params);
+    recombination_->fireParametersChanged(params);
+    mutation_->fireParametersChanged(params);
+    selection_->fireParametersChanged(params);
+    admixture_->fireParametersChanged(params);
   }
 
   double getValue() const

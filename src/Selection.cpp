@@ -11,7 +11,8 @@
 
 void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-
+  // TODO
+  combineMatrices_();
 }
 
 void Mutation::updateMatrices()

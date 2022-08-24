@@ -108,7 +108,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     matrices_.emplace_back(mat); // at the i-th position of vector, where i index the population
   }
 
-  compressSparseMatrices_();
+  combineMatrices_();
 }
 
 void Drift::updateMatrices_()

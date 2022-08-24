@@ -296,6 +296,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
       } // ends if(i != j)
     }
   }
+
+  combineMatrices_();
 }
 
 void Migration::updateMatrices_()

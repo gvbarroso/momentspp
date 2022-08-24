@@ -102,12 +102,12 @@ void OptimizationWrapper::fitModel_(Model* model) {
   std::unique_ptr<bpp::StlOutputStream> profiler;
   std::unique_ptr<bpp::StlOutputStream> messenger;
 
-  std::string optimProfile = "optim_profile.txt";
-  profiler.reset(new bpp::StlOutputStream(new std::ofstream(optimProfile, ios::out)));
+  std::string optimProfile = "profile.txt";
+  profiler.reset(new bpp::StlOutputStream(new std::ofstream(optimProfile, std::ios::out)));
   chosenOptimizer.setProfiler(profiler.get());
   
-  std::string optimMsgs = "optim_messages.txt";
-  messenger.reset(new StlOutputStream(new std::ofstream(optimMsgs, ios::out)));
+  std::string optimMsgs = "messages.txt";
+  messenger.reset(new StlOutputStream(new std::ofstream(optimMsgs, std::ios::out)));
   chosenOptimizer.setMessageHandler(messenger.get());
     
   if(options_.getOptimizer() == "Powell")

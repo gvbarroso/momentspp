@@ -31,6 +31,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   mat.setFromTriplets(coefficients);
   mat.makeCompressed();
   matrices_.emplace_back(mat);
+  combineMatrices_();
 }
 
 void Recombination::updateMatrices_()

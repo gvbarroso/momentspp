@@ -48,6 +48,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   mat.setFromTriplets(coefficients);
   mat.makeCompressed();
   matrices_.emplace_back(mat);
+  combineMatrices_();
 }
 
 void Mutation::updateMatrices_()
