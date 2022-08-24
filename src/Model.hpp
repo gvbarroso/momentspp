@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 23/08/2022
+ * Last modified: 24/08/2022
  *
  */
 
@@ -25,6 +25,12 @@
 #include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/Numeric/Function/Functions.h>
 
+#include "Drift.hpp"
+#include "Migration.hpp"
+#include "Mutation.hpp"
+#include "Recombination.hpp"
+#include "SumStatsLibrary.hpp"
+
 class Model:
   public bpp::AbstractParameterAliasable,
   public bpp::Function
@@ -32,17 +38,18 @@ class Model:
 
 private:
   // The fundamental operators derive from base class Operator
-  // Each contains matrices of type Eigen::SparseMatrix<int, Dynamic, Dynamic>
+  // Each contains matrices of type Eigen::SparseMatrix<double>
   Drift* drift_;
   Migration* migration_;
   Recombination* recombination_;
   Mutation* mutation_;
-  Selection* selection_;
+  //Selection* selection_;
+  //Admixture admixture_;
 
-  // this is a handy combination of the above operators
-  Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_;
+  Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_; // dense combination of the operators
+  Eigen::Matrix<double, Dynamic, 1> expectedY_; // expected sum stats for given parameters
 
-  SumStatsLibrary sslib_; // contains summary statistics
+  SumStatsLibrary sslib_;
 
   bool continuousTime_;
 
@@ -55,7 +62,7 @@ public:
   migration_(),
   recombination_(),
   mutation_(),
-  selection_(),
+  //selection_(),
   combinedOperator_(),
   sslib_(),
   continuousTime_(false),
@@ -68,7 +75,7 @@ public:
   migration_(),
   recombination_(),
   mutation_(),
-  selection_(),
+  //selection_(),
   combinedOperator_(),
   sslib_(sslib),
   continuousTime_(false),
@@ -83,11 +90,11 @@ public:
     return new Model(*this);
   }
 
-  void fireParameterChanged(const bpp::ParameterList& params); // sets updated values
+  void fireParameterChanged(const bpp::ParameterList& params);
 
   void setParameters(const bpp::ParameterList& params)
   {
-    Model::setParametersValues(params);
+    AbstractParameterAliasable::setParametersValues(params);
   }
 
   double getValue() const
@@ -140,24 +147,24 @@ public:
     return combinedOperator_;
   }
 
-  const std::vector<double>& getExpectedSumStats() const
+  const Eigen::Matrix<double, Dynamic, 1>& getExpectedSumStats() const
   {
-    return expectedSumStats_;
-  }
-  
-  void computeAic()
-  {
-    aic_ = 2. * getNumberOfIndependentParameters() - 2. * logLikelihood_;
+    return expectedY_;
   }
 
 private:
   void integrateOperators_();
 
-  void update_(const bpp::ParameterList& params); // updates matrices based on params
+  void updateOperators_(const bpp::ParameterList& params);
 
   void computeExpectedSumStats_(const SomeAbstractType& data);
 
-  void computeCompositeLogLikelihood_(const SomeAbstractType& expected, const SomeAbstractType& observed);
+  void computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed);
+
+  void computeAic_()
+  {
+    aic_ = 2. * getNumberOfIndependentParameters() - 2. * logLikelihood_;
+  }
 
 };
 

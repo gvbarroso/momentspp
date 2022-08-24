@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 23/08/2022
+ * Last modified: 24/08/2022
  *
  */
 
@@ -9,11 +9,12 @@
 #include "Recombination.hpp"
 
 
-void Recombination::setUpMatrices_(size_t matrixSize)
+void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // NOTE for now, this method assumes equal recombination rates across pops.
   matrices_.reserve(1);
   std::vector<Eigen::Triplet<double>> coefficients(0);
+  coefficients.reserve(sslib.getNumStats());
 
   for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
   {
@@ -28,10 +29,11 @@ void Recombination::setUpMatrices_(size_t matrixSize)
 
   Eigen::SparseMatrix<double> mat;
   mat.setFromTriplets(coefficients);
+  mat.makeCompressed();
   matrices_.emplace_back(mat);
 }
 
-void Recombination::updateMatrices()
+void Recombination::updateMatrices_()
 {
   std::string paramName = "";
 
@@ -43,8 +45,8 @@ void Recombination::updateMatrices()
     double newVal = getParameterValue(paramName); // from within itself
 
     matrices_[i] *= (newVal / prevVal);
-    prevParams_.setParameterValue(paramName, newVal);
   }
 
+  prevParams_.matchParametersValues(getParameters());
   combineMatrices_();
 }

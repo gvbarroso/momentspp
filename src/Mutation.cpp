@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 22/08/2022
+ * Last modified: 24/08/2022
  *
  */
 
@@ -12,7 +12,10 @@
 void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // NOTE for now, this method assumes both the infinite sites model as well as equal mutation rates across pops.
-  // this is why we only access the unique matrix inside matrices_ (using) matrices_[0])
+  matrices_.reserve(1);
+  std::vector<Eigen::Triplet<double>> coefficients(0);
+  coefficients.reserve(sslib.getNumStats());
+
   for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
   {
     std::string mom = *it->first; // full name of focal moment
@@ -24,7 +27,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     size_t col = 0; // column index
 
     if(splitMom[0] == "H")
-      matrices_[0](row, row) = 2.; // main diagonal, introducing one-locus diversity
+      coefficients.push_back(Eigen::Triplet<double>(row, row, 2.)); // main diagonal, introducing one-locus diversity
 
     else if(splitMom[0] == "pi2")
     {
@@ -34,15 +37,20 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       p4 = splitMom[1][3]; // l pop
 
       col = sslib.indexLookup("H_" + p1 + p2);
-      matrices_[0](row, col) += 2.;
+      coefficients.push_back(Eigen::Triplet<double>(row, col, 2.));
 
       col = sslib.indexLookup("H_" + p3 + p4);
-      matrices_[0](row, col) += 2.;
+      coefficients.push_back(Eigen::Triplet<double>(row, col, 2.));
     }
   }
+
+  Eigen::SparseMatrix<double> mat;
+  mat.setFromTriplets(coefficients);
+  mat.makeCompressed();
+  matrices_.emplace_back(mat);
 }
 
-void Mutation::updateMatrices()
+void Mutation::updateMatrices_()
 {
   std::string paramName = "";
 
@@ -54,9 +62,9 @@ void Mutation::updateMatrices()
     double newVal = getParameterValue(paramName); // from within itself
 
     matrices_[i] *= (newVal / prevVal);
-    prevParams_.setParameterValue(paramName, newVal);
   }
 
+  prevParams_.matchParametersValues(getParameters());
   combineMatrices_();
 }
 

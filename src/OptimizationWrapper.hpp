@@ -32,14 +32,14 @@ class OptimizationWrapper
 {
     
 private:
-  std::shared_ptr<OptionsContainer> options_;
+  OptionsContainer options_;
   std::vector<std::shared_ptr<Model>> listOfModels_;
 
   bpp::ParameterList bestParameters_;
   double bestAic_;
   
 public:
-  OptimizationWrapper(std::shared_ptr<OptionsContainer> options):
+  OptimizationWrapper(const OptionsContainer& options):
   options_(options),
   listOfModels_(0),
   bestParameters_(),

@@ -60,7 +60,7 @@ public:
   void Operator::fireParameterChanged(const bpp::ParameterList& params)
   {
     matchParametersValues(params);
-    updateMatrices();
+    updateMatrices_();
   }
 
   const std::vector<Eigen::SparseMatrix<double>>& getMatrices()
@@ -79,14 +79,14 @@ public:
     return combinedMatrix_;
   }
 
-  // scales matrix(ces) coefficients by (new) parameters values
-  virtual void updateMatrices();
-
 private:
   // setUpMatrices_ is meant to be called only once for each operator, in order to set the matrix(ces) coefficients
   virtual void setUpMatrices_(const SumStatsLibrary& sslib);
 
-  void compressSparseMatrices_() // from Eigen perspective, NOT w.r.t moments with the same expectation
+  // scales matrix(ces) coefficients by (new) parameters values
+  virtual void updateMatrices_();
+
+  void compressSparseMatrices_() // from Eigen3 perspective, NOT w.r.t moments with the same expectation
   {
     if(matrices_.size() == 0)
       throw bpp::Exception("Operator::tried to compress non-existing matrices!");
@@ -107,7 +107,7 @@ private:
 
       if(matrices_.size() > 1)
       {
-        for(size_t i = 1; i <= matrices_.size(); ++i)
+        for(size_t i = 1; i < matrices_.size(); ++i)
           combinedMatrix_ += matrices_[i];
       }
     }

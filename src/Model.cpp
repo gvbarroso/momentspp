@@ -1,29 +1,38 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 23/08/2022
+ * Last modified: 24/08/2022
  *
  */
 
-
-#include <map>
 
 #include "Model.hpp"
 
 void Model::fireParameterChanged(const bpp::ParameterList& params)
 {
-  update_(params);
+  matchParametersValues(params);
+  updateOperators_(params);
   computeExpectedSumStats_();
 
-  // updates logLikelihood_ and aic_
-  computeCompositeLogLikelihood_(expected, observed);
+  computeCompositeLogLikelihood_(sslib_->getYvec());
   computeAic_();
 }
 
-void Model::update_(const bpp::ParameterList& params)
+void Model::updateOperators_(const bpp::ParameterList& params)
 {
+  if(params.getCommonParametersWith(drift_->getIndependentParameters()).size() > 0)
+    drift_->fireParameterChanged(params);
 
-  integrateOperators_();
+  if(params.getCommonParametersWith(migration_->getIndependentParameters()).size() > 0)
+    migration_->fireParameterChanged(params);
+
+  if(params.getCommonParametersWith(mutation_->getIndependentParameters()).size() > 0)
+    mutation_->fireParameterChanged(params);
+
+  if(params.getCommonParametersWith(recombination_->getIndependentParameters()).size() > 0)
+    recombination_->fireParameterChanged(params);
+
+  integrateOperators_(); // updates combinedOperator_
 }
 
 void Model::integrateOperators_()
@@ -45,7 +54,12 @@ void Model::integrateOperators_()
   }
 }
 
-void Model::computeCompositeLogLikelihood_(const std::map<std::string, double>& expected, const std::map<std::string, double>& observed)
+void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed)
+{
+  // observed - expected
+}
+
+void Model::computeExpectedSumStats_()
 {
 
 }

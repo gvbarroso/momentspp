@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 23/08/2022
+ * Last modified: 24/08/2022
  *
  */
 
@@ -16,6 +16,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
   matrices_.reserve(numPops); // reserves memory for the vector of matrices
   std::vector<Eigen::Triplet<double>> coefficients(0);
+  coefficients.reserve(sslib.getNumStats());
 
   // for each population (making this the outer loop seems to be the way to go)
   for(size_t i = 0; i < numPops; ++i)
@@ -103,13 +104,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
     Eigen::SparseMatrix<double> mat;
     mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
+    mat.makeCompressed();
     matrices_.emplace_back(mat); // at the i-th position of vector, where i index the population
   }
 
   compressSparseMatrices_();
 }
 
-void Drift::updateMatrices()
+void Drift::updateMatrices_()
 {
   std::string paramName = "";
 

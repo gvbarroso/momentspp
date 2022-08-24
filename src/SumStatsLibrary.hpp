@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 23/08/2022
+ * Last modified: 24/08/2022
  *
  */
 
@@ -17,7 +17,6 @@
 #include <boost/algorithm/string.hpp>
 
 #include <Eigen/Core>
-#include <Eigen/Sparse>
 #include <Eigen/Dense>
 
 #include <Bpp/Text/TextTools.h>
@@ -34,9 +33,9 @@ private:
 
   bool compressed_; // indicates whether symmetrical statistics have been pulled together
 
-  // make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
+  // NOTE make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
   // row and column order of matrices follow lexicographical order of stats_'s names
-  std::map<std::string, double> stats_;  // name -> value (Y vector)
+  std::map<std::string, double> stats_;  // name -> value ("observed" Y vector)
 
   // the Eigen representation of the vector of summary statistics
   Eigen::Matrix<double, Dynamic, 1> y_;
@@ -127,7 +126,10 @@ public:
     return stats_.at(name);
   }
 
-
+  const Eigen::Matrix<double, Dynamic, 1>& getYvec()
+  {
+    return y_;
+  }
 
   void init();
 
@@ -138,7 +140,7 @@ public:
 
   size_t getNumDDStats()
   {
-    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2)
+    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2) TODO change according to whether stats are compressed or not
   }
 
   size_t getNumDzStats()
