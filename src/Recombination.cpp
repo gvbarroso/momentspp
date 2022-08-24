@@ -11,7 +11,7 @@
 
 void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-  // NOTE for now, this method assumes equal recombination rates across pops.
+  // for now, this method assumes equal recombination rates across pops.
   matrices_.reserve(1);
   std::vector<Eigen::Triplet<double>> coefficients(0);
   coefficients.reserve(sslib.getNumStats());

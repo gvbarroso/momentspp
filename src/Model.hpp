@@ -107,12 +107,12 @@ public:
     return continuousTime_;
   }
   
-  double getLogLikelihood()
+  double logLikelihood()
   {
     return logLikelihood_;
   }
 
-  double getAic()
+  double aic()
   {
     return aic_;
   }

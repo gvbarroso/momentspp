@@ -123,8 +123,8 @@ void Drift::updateMatrices_()
     double newVal = getParameterValue(paramName); // from within itself
 
     matrices_[i] *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
-    prevParams_.setParameterValue(paramName, newVal);
   }
 
+  prevParams_.matchParametersValues(getParameters());
   combineMatrices_();
 }

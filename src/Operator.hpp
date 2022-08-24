@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 23/08/2022
+ * Last modified: 24/08/2022
  *
  */
 
@@ -80,11 +80,9 @@ public:
   }
 
 private:
-  // setUpMatrices_ is meant to be called only once for each operator, in order to set the matrix(ces) coefficients
-  virtual void setUpMatrices_(const SumStatsLibrary& sslib);
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
 
-  // scales matrix(ces) coefficients by (new) parameters values
-  virtual void updateMatrices_();
+  virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
 
   void compressSparseMatrices_() // from Eigen3 perspective, NOT w.r.t moments with the same expectation
   {

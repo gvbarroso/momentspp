@@ -1,24 +1,19 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 29/07/2022
+ * Last modified: 24/08/2022
  *
  */
 
 
 #include <iostream>
 
-#include "SmcOptimizationWrapper.h"
+#include "OptimizationWrapper.h"
 #include "BackupListenerOv.h"
-#include "Global.h"
-
-using namespace std;
-using namespace bpp;
-
 
 std::shared_ptr<Model> OptimizationWrapper::selectBestModel()
 {
-  size_t bestModelIndex = 0;   
+  size_t index = 0;
   double bestAic = listOfModels_[0]->getAic();
 
   for(size_t i = 1; i < listOfModels_.size(); ++i)
@@ -26,20 +21,19 @@ std::shared_ptr<Model> OptimizationWrapper::selectBestModel()
     if(listOfModels_[i]->getAic() < bestAic)
     {
       bestAic = listOfModels_[i]->getAic();
-      bestModelIndex = i;
+      index = i;
     }
   }
 
-  return listOfModels_[bestModelIndex];
+  return listOfModels_[index];
 }
-  
 
-void OptimizationWrapper::optimizeParameters() {
+void OptimizationWrapper::optimize()
+{
 
   bpp::ParameterList params(bestParameters_);
   
   createAndFitModels_(params);
-  //updates params
   std::shared_ptr<SplinesModel> bestModel = selectBestModel();
 
   params.matchParametersValues(mmsmc_->getParameters());
@@ -56,39 +50,35 @@ void OptimizationWrapper::optimizeParameters() {
   fireUpdateBestValues_(bestSplines.get(), params);
 }
 
-void OptimizationWrapper::writeEstimatesToFile(const bpp::ParameterList& params, double aic) {
+void OptimizationWrapper::writeEstimatesToFile(std::shared_ptr<Model> model) {
     
   //writes params in a simple txt format that is easy to parse
-  std::ofstream estimates;
+  std::ofstream file;
   
-  estimates.open("moments++estimates.txt");
-  estimates << "AIC = " << aic << std::endl << std::endl;
+  file.open("moments++estimates.txt");
+  file << "AIC = " << model->aic() << std::endl << std::endl;
 
-  for(size_t i = 0; i < params.size(); ++i)
-    estimates << params[i].getName() << "\t" << params[i].getValue() << "\n";
+  for(size_t i = 0; i < model->getParameters().size(); ++i)
+    file << getParameters()[i].getName() << "\t" << getParameters()[i].getValue() << "\n";
   
-  estimates.close();
+  file.close();
 }
 
-void OptimizationWrapper::fireUpdateBestValues_(Model* bestModel, const bpp::ParameterList& params) {
+void OptimizationWrapper::fireUpdateBestValues_(Model* model) {
 
-  if(bestModel->getAic() < bestAic_)
+  if(model->aic() < bestAic_)
   {
-    bestAic_ = bestSm->getAic();
-    bestParameters_.matchParametersValues(params);
+    bestAic_ = model->aic();
+    bestParameters_ = model->getParameters();
     
-    bpp::ParameterList estimates = bestModel->getParameters();
-    writeEstimatesToFile(estimates, bestModel->getAic());
+    writeEstimatesToFile(model);
   }
-  
-  else
-    std::cout << "WARNING!!! Optimisation did not reduce AIC!\n";
 }  
 
 void OptimizationWrapper::createAndFitModels_(ParameterList& params) {
 
-  unsigned int minNumEpochs = options_->getMinNumberOfEpochs();
-  unsigned int maxNumEpochs = options_->getMaxNumberOfEpochs();
+  unsigned int minNumEpochs = options_.getMinNumberOfEpochs();
+  unsigned int maxNumEpochs = options_.getMaxNumberOfEpochs();
 
   for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i)
   {
@@ -105,58 +95,54 @@ void OptimizationWrapper::fitModel_(Model* model) {
   
   std::cout << "\nOptimizing model with the following parameters:\n";
 
-  model->fetchModelParameters().printParameters(std::cout);
+  model->getIndependentParameters().printParameters(std::cout);
 
-  bpp::ReparametrizationFunctionWrapper rfw(model, model->fetchModelParameters());
-  bpp::ThreePointsNumericalDerivative tpnd(model);
-   
-  std::unique_ptr<bpp::Optimizer> chosenOptimizer;
+  bpp::Optimizer chosenOptimizer;
 
-  if(options_->getOptimizer() == "Powell")
-    chosenOptimizer.reset(new PowellMultiDimensions(&rfw));
-
-  else if(options_->getOptimizer() == "NewtonRhapson")
-  {
-    tpnd.setParametersToDerivate(model->fetchNonSplinesParameters().getParameterNames());
-    
-    tpnd.enableFirstOrderDerivatives(true);
-    tpnd.enableSecondOrderDerivatives(true);
-    tpnd.enableSecondOrderCrossDerivatives(false); // Pseudo-Newton
-    
-    chosenOptimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
-  }
-
-  std::unique_ptr<StlOutputStream> profiler;
-  std::unique_ptr<StlOutputStream> messenger;
+  std::unique_ptr<bpp::StlOutputStream> profiler;
+  std::unique_ptr<bpp::StlOutputStream> messenger;
 
   std::string optimProfile = "optim_profile.txt";
-  profiler.reset(new StlOutputStream(new std::ofstream(optimProfile, ios::out)));
-  chosenOptimizer->setProfiler(profiler.get());
+  profiler.reset(new bpp::StlOutputStream(new std::ofstream(optimProfile, ios::out)));
+  chosenOptimizer.setProfiler(profiler.get());
   
   std::string optimMsgs = "optim_messages.txt";
   messenger.reset(new StlOutputStream(new std::ofstream(optimMsgs, ios::out)));
-  chosenOptimizer->setMessageHandler(messenger.get());
+  chosenOptimizer.setMessageHandler(messenger.get());
     
-  if(options_->getOptimizer() == "Powell")
-    chosenOptimizer->init(rfw.getParameters());
-  
-  else if(options_->getOptimizer() == "NewtonRhapson")
+  if(options_.getOptimizer() == "Powell")
   {
-    chosenOptimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
-    chosenOptimizer->init(model->fetchModelParameters());
+    bpp::ReparametrizationFunctionWrapper rfw(model, model->getIndependentParameters());
+
+    chosenOptimizer.reset(new PowellMultiDimensions(&rfw));
+    chosenOptimizer.init(rfw.getParameters());
+  }
+
+  else if(options_.getOptimizer() == "NewtonRhapson")
+  {
+    bpp::ThreePointsNumericalDerivative tpnd(model);
+
+    tpnd.setParametersToDerivate(model->fetchNonSplinesParameters().getParameterNames());
+    tpnd.enableFirstOrderDerivatives(true);
+    tpnd.enableSecondOrderDerivatives(true);
+    tpnd.enableSecondOrderCrossDerivatives(false); // Pseudo-Newton
+
+    chosenOptimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
+    chosenOptimizer.setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
+    chosenOptimizer.init(model->fetchModelParameters());
   }
   
-  std::unique_ptr<bpp::FunctionStopCondition> stopCond;
-  stopCond.reset(new bpp::FunctionStopCondition(chosenOptimizer.get(), options_->getFunctionTolerance()));
+  bpp::FunctionStopCondition stopCond;
+  stopCond.reset(new bpp::FunctionStopCondition(chosenOptimizer.get(), options_.getFunctionTolerance()));
   
-  chosenOptimizer->setStopCondition(*stopCond);
+  chosenOptimizer.setStopCondition(*stopCond);
   
-  // handling optimisation issues, e.g. Powell: line minimization failing
+  // handling optimisation issues
   try
   {
     BackupListenerOv blo("backup_params.txt");
-    chosenOptimizer->addOptimizationListener(&blo);
-    chosenOptimizer->optimize();
+    chosenOptimizer.addOptimizationListener(&blo);
+    chosenOptimizer.optimize();
   }
 
   catch(bpp::Exception& e)
@@ -167,11 +153,10 @@ void OptimizationWrapper::fitModel_(Model* model) {
   
   model->computeAic();
 
-  std::cout << "\n\nAIC = " << std::setprecision(6) << model->getAic() << std::endl;
+  std::cout << "\n\nAIC = " << std::setprecision(6) << model->aic() << std::endl;
 
-  bpp::ParameterList optimParams(model->getParameters());
   std::cout << "\nOptimized parameters:\n";
-  optimParams.printParameters(std::cout);
+  model->getParameters().printParameters(std::cout);
 }
 
 

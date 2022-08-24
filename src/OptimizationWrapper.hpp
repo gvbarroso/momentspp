@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 29/07/2022
+ * Last modified: 24/08/2022
  *
  */
 
@@ -50,16 +50,12 @@ public:
   
 public:
     
-  bpp::ParameterList& getBestParameters()
-  {
-    return bestParameters_;
-  }
   const bpp::ParameterList& getBestParameters() const
   {
     return bestParameters_;
   }
     
-  std::vector<std::shared_ptr <Model>>& getListOfModels()
+  std::vector<std::shared_ptr<Model>>& getListOfModels()
   {
     return listOfModels_;
   }
@@ -75,22 +71,18 @@ public:
   }
   
   std::shared_ptr<Model> selectBestModel();
-
-  void stepwiseExpectationMaximization();
   
-  void optimizeParameters();
+  void optimize();
   
-  //to resume optimisation after a problem:
+  //to resume optimisation after a crash:
   void optimizeParameters(const bpp::ParameterList& backupParams);
   
-  void writeEstimatesToFile(const bpp::ParameterList& params, double AIC);
-
-  void writeDemographyToFile();
+  void writeEstimatesToFile(std::shared_ptr<Model> model);
 
 private:
   void fireUpdateBestValues_(Model* bestModel, const bpp::ParameterList& params);
   
-  void createAndFitSplinesModels_(bpp::ParameterList& nonSplinesParams);
+  void createAndFitModels_(bpp::ParameterList& nonSplinesParams);
     
   void fitModel_(Model* model);
   
