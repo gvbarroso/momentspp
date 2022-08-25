@@ -52,7 +52,7 @@ public:
     return dataPath_;
   }
 
-  const std::string& getOptimizer() const
+  const std::string& getOptimMethod() const
   {
     return numericalOptimizer_;
   }

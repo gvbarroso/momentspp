@@ -37,7 +37,7 @@ private:
   // row and column order of matrices follow lexicographical order of stats_'s names
   std::map<std::string, double> stats_;  // name -> value ("observed" Y vector)
 
-  // the Eigen representation of the vector of summary statistics
+  // the Eigen representation of the vector of observed summary statistics
   Eigen::Matrix<double, Dynamic, 1> y_;
 
 public:

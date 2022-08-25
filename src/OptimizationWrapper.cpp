@@ -39,15 +39,7 @@ void OptimizationWrapper::optimize()
   params.matchParametersValues(mmsmc_->getParameters());
   params.matchParametersValues(mmsmc_->getLambdaVector());
 
-  for(size_t i = 0; i < mmsmc_->getParameterScalings().size(); ++i) {
-    params.matchParametersValues(mmsmc_->getParameterScalings()[i]->getIndependentParameters());
-  }
-  
-  for(size_t i = 0; i < mmsmc_->getParameterTransitions().size(); ++i) {
-    params.matchParametersValues(mmsmc_->getParameterTransitions()[i]->getParameters());
-  }
-  
-  fireUpdateBestValues_(bestSplines.get(), params);
+  fireUpdateBestValues_(bestModel.get(), params);
 }
 
 void OptimizationWrapper::writeEstimatesToFile(std::shared_ptr<Model> model) {
@@ -69,7 +61,7 @@ void OptimizationWrapper::fireUpdateBestValues_(Model* model) {
   if(model->aic() < bestAic_)
   {
     bestAic_ = model->aic();
-    bestParameters_ = model->getParameters();
+    bestParameters_ = model->getParamet ers();
     
     writeEstimatesToFile(model);
   }
@@ -110,7 +102,7 @@ void OptimizationWrapper::fitModel_(Model* model) {
   messenger.reset(new StlOutputStream(new std::ofstream(optimMsgs, std::ios::out)));
   chosenOptimizer.setMessageHandler(messenger.get());
     
-  if(options_.getOptimizer() == "Powell")
+  if(options_.getOptimMethod() == "Powell")
   {
     bpp::ReparametrizationFunctionWrapper rfw(model, model->getIndependentParameters());
 
@@ -118,7 +110,7 @@ void OptimizationWrapper::fitModel_(Model* model) {
     chosenOptimizer.init(rfw.getParameters());
   }
 
-  else if(options_.getOptimizer() == "NewtonRhapson")
+  else if(options_.getOptimMethod() == "NewtonRhapson")
   {
     bpp::ThreePointsNumericalDerivative tpnd(model);
 
@@ -132,8 +124,8 @@ void OptimizationWrapper::fitModel_(Model* model) {
     chosenOptimizer.init(model->fetchModelParameters());
   }
   
-  bpp::FunctionStopCondition stopCond;
-  stopCond.reset(new bpp::FunctionStopCondition(chosenOptimizer.get(), options_.getFunctionTolerance()));
+  bpp::FunctionStopCondition* stopCond =
+  stopCond.reset(new bpp::FunctionStopCondition(&chosenOptimizer, options_.getFunctionTolerance()));
   
   chosenOptimizer.setStopCondition(*stopCond);
   

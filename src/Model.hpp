@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 24/08/2022
+ * Last modified: 25/08/2022
  *
  */
 
@@ -19,6 +19,7 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 #include <Bpp/Numeric/Constraints.h>
@@ -39,50 +40,23 @@ class Model:
 {
 
 private:
-  // The fundamental operators derive from base class Operator
-  // Each contains matrices of type Eigen::SparseMatrix<double>
-  Drift* drift_;
-  Migration* migration_;
-  Recombination* recombination_;
-  Mutation* mutation_;
-  //Selection* selection_;
-  //Admixture admixture_;
-
-  Eigen::Matrix<double, Dynamic, Dynamic> combinedOperator_; // dense combination of the operators
-  Eigen::Matrix<double, Dynamic, 1> expectedY_; // expected sum stats for given parameters
+  // each operator contains parameters and matrices of type Eigen::SparseMatrix<double>
+  std::vector<Operator*> operators_;
 
   SumStatsLibrary sslib_;
 
+  DataType data_;
+
   // if discrete time, the number of generations spent inside each epoch
   std::vector<size_t> epochGenBoundaries_;
-
   bool continuousTime_;
 
   double logLikelihood_;
   double aic_;
 
 public:
-  Model(const SumStatsLibrary& sslib):
-  drift_(sslib),
-  migration_(sslib),
-  recombination_(sslib),
-  mutation_(sslib),
-  //selection_(sslib),
-  combinedOperator_(),
-  expectedY_(),
-  sslib_(sslib),
-  epochGenBoundaries_(0),
-  continuousTime_(false),
-  logLikelihood_(-1.),
-  aic_(-1.)
-  { }
-
-  Model(const bpp::ParameterList& params, const SumStatsLibrary& sslib):
-  drift_(params, sslib),
-  migration_(params, sslib),
-  recombination_(params, sslib),
-  mutation_(params, sslib),
-  //selection_(params, sslib),
+  Model(const std::vector<Operator*>& operators, const bpp::ParameterList& params, const SumStatsLibrary& sslib):
+  operators_(operators),
   combinedOperator_(),
   expectedY_(),
   sslib_(sslib),
@@ -105,12 +79,8 @@ public:
   {
     AbstractParameterAliasable::setParametersValues(params);
 
-    drift_->fireParametersChanged(params);
-    migration_->fireParametersChanged(params);
-    recombination_->fireParametersChanged(params);
-    mutation_->fireParametersChanged(params);
-    selection_->fireParametersChanged(params);
-    admixture_->fireParametersChanged(params);
+    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
+      (*it)->fireParametersChanged(params);
   }
 
   double getValue() const
@@ -133,29 +103,9 @@ public:
     return aic_;
   }
 
-  Drift* getDriftOperator()
+  const std::vector<Operator*>& getOperators()
   {
-    return drift_;
-  }
-
-  Migration* getMigrationOperator()
-  {
-    return migration_;
-  }
-
-  Recombination* getRecombinationOperator()
-  {
-    return recombination_;
-  }
-
-  Mutation* getMutationOperator()
-  {
-    return mutation_;
-  }
-
-  Selection* getSelectionOperator()
-  {
-    return selection_;
+    return operators_;
   }
 
   Eigen::Matrix<double, Dynamic, Dynamic> getCombinedOperator()
@@ -168,12 +118,17 @@ public:
     return expectedY_;
   }
 
+  void freezeParameter(const std::string& paramName)
+  {
+    // TODO
+  }
+
 private:
-  void integrateOperators_();
+  Eigen::Matrix<double, Dynamic, Dynamic> integrateOperators_();
 
   void updateOperators_(const bpp::ParameterList& params);
 
-  void computeExpectedSumStats_(const SomeAbstractType& data);
+  void computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix);
 
   void computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed);
 

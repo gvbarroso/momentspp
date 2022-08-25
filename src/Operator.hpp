@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created:29/07/2022
- * Last modified: 24/08/2022
+ * Last modified: 25/08/2022
  *
  */
 
@@ -33,7 +33,7 @@ private:
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally combined into combinedMatrix_ through addition
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
-  std::vector<Eigen::SparseMatrix<double>> matrices_;
+  std::vector<Eigen::SparseMatrix<double>> matrices_; // NOTE make this a vector of vectors, where each matrix is further divided into epochs?!
   Eigen::SparseMatrix<double> combinedMatrix_;
 
   bpp::ParameterList prevParams_; // parameters values in immediately previous iteration of optimization
@@ -59,8 +59,8 @@ public:
 
   void Operator::fireParameterChanged(const bpp::ParameterList& params)
   {
-    matchParametersValues(params);
-    updateMatrices_();
+    if(matchParametersValues(params))
+      updateMatrices_();
   }
 
   const std::vector<Eigen::SparseMatrix<double>>& getMatrices()
