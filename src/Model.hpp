@@ -40,13 +40,13 @@ class Model:
 {
 
 private:
+  std::string name_; // model id
   // each operator contains parameters and matrices of type Eigen::SparseMatrix<double>
   std::vector<Operator*> operators_;
-
   SumStatsLibrary sslib_;
-
   DataType data_;
 
+  std::vector<std::string> frozenParams_;
   // if discrete time, the number of generations spent inside each epoch
   std::vector<size_t> epochGenBoundaries_;
   bool continuousTime_;
@@ -55,11 +55,12 @@ private:
   double aic_;
 
 public:
-  Model(const std::vector<Operator*>& operators, const bpp::ParameterList& params, const SumStatsLibrary& sslib):
+  Model(const std::string& name, const std::vector<Operator*>& operators, const bpp::ParameterList& params, const SumStatsLibrary& sslib):
+  name_(name)
   operators_(operators),
-  combinedOperator_(),
-  expectedY_(),
   sslib_(sslib),
+  data_(),
+  frozenParams_(0),
   epochGenBoundaries_(0),
   continuousTime_(false),
   logLikelihood_(-1.),
@@ -103,6 +104,11 @@ public:
     return aic_;
   }
 
+  const std::string& getName()
+  {
+    return name_;
+  }
+
   const std::vector<Operator*>& getOperators()
   {
     return operators_;
@@ -113,14 +119,28 @@ public:
     return combinedOperator_;
   }
 
-  const Eigen::Matrix<double, Dynamic, 1>& getExpectedSumStats() const
-  {
-    return expectedY_;
-  }
-
   void freezeParameter(const std::string& paramName)
   {
-    // TODO
+    if(hasParameter(paramName))
+      frozenParams_push_back(paramName);
+
+    else
+      throw bpp::Exception("Model::Attempted to freeze non-existing parameter " + paramName);
+  }
+
+  const bpp::ParameterList& getUnfrozenParameters()
+  {
+    if(frozenParameters.size() == 0)
+      return getIndependentParameters();
+
+    else
+    {
+      bpp::ParameterList unfrozen = getIndependentParameters();
+      for(auto it = std::begin(frozenParameters_); it != std::end(frozenParameters); ++it)
+        unfrozen.deleteParameter(*it);
+
+      return unfrozen;
+    }
   }
 
 private:

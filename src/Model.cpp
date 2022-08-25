@@ -43,7 +43,7 @@ Eigen::Matrix<double, Dynamic, Dynamic> Model::integrateOperators_()
 
 void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed, const Eigen::Matrix<double, Dynamic, 1>& expected)
 {
-  // observed - expected
+  // logLikelihood_ = f(observed, expected) for different windows or something
 }
 
 Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix)
