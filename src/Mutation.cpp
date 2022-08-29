@@ -23,7 +23,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 
     std::string p1, p2, p3, p4 = "";
 
-    size_t row = sslib.indexLookup(mom); // row index
+    size_t row = it - std::begin(sslib->getStats()); // row index
     size_t col = 0; // column index
 
     if(splitMom[0] == "H")

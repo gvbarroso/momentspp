@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 24/08/2022
+ * Last modified: 29/08/2022
  *
  */
 
@@ -39,7 +39,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
           std::string p1, p2, p3, p4 = ""; // inits reference strings for population IDs
 
           size_t parentPopIdCount = sslib.countInstances(splitMom[1], parentPopId); // count of i in moment's name
-          size_t row = sslib.indexLookup(mom); // row index
+          size_t row = it - std::begin(sslib->getStats()); // row index
           size_t col = 0; // column index
 
           if(splitMom[0] == "DD")

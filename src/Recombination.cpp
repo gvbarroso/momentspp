@@ -21,7 +21,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     std::string mom = *it->first; // full name of moment
     std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
-    size_t row = sslib.indexLookup(mom); // recombination matrix only has entries in main diagonal
+    size_t row = it - std::begin(sslib->getStats()); // recombination matrix only has entries in main diagonal
     size_t orderD = static_cast<int>(sslib.countInstances(mon, "D"));
 
     coefficients.push_back(Eigen::Triplet<double>(row, row, -orderD));
