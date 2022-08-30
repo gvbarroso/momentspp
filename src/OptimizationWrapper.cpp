@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 25/08/2022
+ * Last modified: 30/08/2022
  *
  */
 
@@ -54,23 +54,18 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
   }
 }
 
-void OptimizationWrapper::fitModel_(Model* model) {
-  
+void OptimizationWrapper::fitModel_(Model* model)
+{
   std::cout << "\nOptimizing model with the following parameters:\n";
-
   model->getUnfrozenParameters().printParameters(std::cout);
 
   bpp::Optimizer chosenOptimizer;
-
   bpp::StlOutputStream profiler;
   bpp::StlOutputStream messenger;
 
-  std::string optimProfile = "profile.txt";
-  profiler.reset(new bpp::StlOutputStream(new std::ofstream(optimProfile, std::ios::out)));
+  profiler.reset(new bpp::StlOutputStream(new std::ofstream("profile.txt", std::ios::out)));
+  messenger.reset(new StlOutputStream(new std::ofstream("messages.txt", std::ios::out)));
   chosenOptimizer.setProfiler(&profiler);
-  
-  std::string optimMsgs = "messages.txt";
-  messenger.reset(new StlOutputStream(new std::ofstream(optimMsgs, std::ios::out)));
   chosenOptimizer.setMessageHandler(&messenger);
     
   if(options_.getOptimMethod() == "Powell")
@@ -92,30 +87,40 @@ void OptimizationWrapper::fitModel_(Model* model) {
 
     chosenOptimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
     chosenOptimizer.setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
-    chosenOptimizer.init(model->fetchModelParameters());
+    chosenOptimizer.init(model->getUnfrozenParameters());
   }
-  
+
+  else if(options_.getOptimMethod() == "BFGS")
+  {
+    bpp::ThreePointsNumericalDerivative tpnd(model);
+
+    tpnd.setParametersToDerivate(model->getUnfrozenParameters().getParameterNames());
+    tpnd.enableFirstOrderDerivatives(true);
+    tpnd.enableSecondOrderDerivatives(false);
+    tpnd.enableSecondOrderCrossDerivatives(false);
+
+    chosenOptimizer.reset(new bpp::BfgsMultiDimensions(&tpnd));
+    chosenOptimizer.setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO); // WARNING
+    chosenOptimizer.init(model->getUnfrozenParameters());
+  }
+
   else
-    throw bpp::Excepetion("OptimizationWrapper::Mis-specified numerical optimizer");
+    throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer!");
 
   bpp::FunctionStopCondition* stopCond = stopCond.reset(new bpp::FunctionStopCondition(&chosenOptimizer, options_.getFunctionTolerance()));
   chosenOptimizer.setStopCondition(*stopCond);
+
+  BackupListenerOv blo("backup_params.txt");
+  chosenOptimizer.addOptimizationListener(&blo);
   
   try
-  {
-    BackupListenerOv blo("backup_params.txt");
-    chosenOptimizer.addOptimizationListener(&blo);
     chosenOptimizer.optimize();
-  }
 
   catch(bpp::Exception& e)
-  {
-    std::cout << "\nWarning!! Error during optimization, convergence might not be reached.\n";
-    std::cout << "moments++ will proceed, but check log files.\n";
-  }
+    std::cout << "\nError during optimization, convergence might not be reached!\nmoments++ will proceed, but check log files.\n";
 }
 
-void OptimizationWrapper::computeCI()
+void OptimizationWrapper::computeCI() // TODO use Godambe Information Matrix
 {
   // Matrix operations with BPP tools (instead of Eigen) to make our lives easier w.r.t. compatibility
   std::cout << std::endl << "Computing 95% confidence intervals of parameter estimates..." << std::endl;

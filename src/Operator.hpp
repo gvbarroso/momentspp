@@ -14,7 +14,6 @@
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
-#include <Eigen/Dense>
 
 #include <Bpp/Numeric/Function/Functions.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>

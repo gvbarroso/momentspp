@@ -15,7 +15,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
   combineMatrices_();
 }
 
-void Mutation::updateMatrices()
+void Selection::updateMatrices()
 {
   std::string paramName = "";
 

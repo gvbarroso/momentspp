@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 25/08/2022
+ * Last modified: 30/08/2022
  *
  */
 
@@ -41,8 +41,9 @@ class Model:
 
 private:
   std::string name_; // model id
-  // each operator contains parameters and matrices of type Eigen::SparseMatrix<double>
-  std::vector<Operator*> operators_;
+
+  // each operator contains bpp parameters and Eigen (sparse) matrices
+  std::vector<Operator*> operators_; // NOTE: make this a vector of Epochs?!
   SumStatsLibrary sslib_;
   DataType data_;
 
@@ -51,7 +52,7 @@ private:
   std::vector<size_t> epochGenBoundaries_;
   bool continuousTime_;
 
-  double logLikelihood_;
+  double compLogLikelihood_;
   double aic_;
 
 public:
@@ -63,7 +64,7 @@ public:
   frozenParams_(0),
   epochGenBoundaries_(0),
   continuousTime_(false),
-  logLikelihood_(-1.),
+  compLogLikelihood_(-1.),
   aic_(-1.)
   {
     includeParameters_(params);
@@ -86,7 +87,7 @@ public:
 
   double getValue() const
   {
-    return -logLikelihood_;
+    return -compLogLikelihood_;
   }
 
   bool continuousTime()
@@ -94,9 +95,9 @@ public:
     return continuousTime_;
   }
   
-  double logLikelihood()
+  double comLogLikelihood()
   {
-    return logLikelihood_;
+    return compLogLikelihood_;
   }
 
   double aic()
@@ -122,7 +123,7 @@ public:
   void freezeParameter(const std::string& paramName)
   {
     if(hasParameter(paramName))
-      frozenParams_push_back(paramName);
+      frozenParams_.push_back(paramName);
 
     else
       throw bpp::Exception("Model::Attempted to freeze non-existing parameter " + paramName);
@@ -154,7 +155,7 @@ private:
 
   void computeAic_()
   {
-    aic_ = 2. * getNumberOfIndependentParameters() - 2. * logLikelihood_;
+    aic_ = 2. * getNumberOfIndependentParameters() - 2. * compLogLikelihood_;
   }
 
 };

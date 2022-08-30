@@ -34,7 +34,7 @@ Eigen::Matrix<double, Dynamic, Dynamic> Model::integrateOperators_()
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       matrix += (*it)->getCombinedMatrix();
 
-  else // we combine operators by matrix multiplication WARNING we must be careful with the order
+  else // we combine operators by matrix multiplication WARNING we must be careful with the order of operations
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       matrix *= (*it)->getCombinedMatrix();
 
@@ -48,7 +48,7 @@ void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 
 
 Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix)
 {
-  Eigen::EigenSolver es(matrix); // NOTE put one es inside each operator?
+  Eigen::EigenSolver es(matrix); // NOTE put one es inside each epoch/operator?
 
   // we want to do something like this:
   Eigen::Matrix<double, Dynamic, 1> expected = (es.eigenvectors() * es.eigenvalues() ^ t * es.eigenvectors().inverse()) * data_;
