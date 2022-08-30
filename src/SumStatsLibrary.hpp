@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 24/08/2022
+ * Last modified: 29/08/2022
  *
  */
 
@@ -47,49 +47,31 @@ public:
   compressed_(false),
   stats_(),
   y_()
-  {
-    includeStats();
-  }
+  { }
 
-  SumStatsLibrary(size_t numPops):
-  numPops_(numPops),
-  order_(2),
-  compressed_(false),
-  stats_(),
-  y_()
-  {
-    includeStats();
-  }
-
-  SumStatsLibrary(size_t order):
-  numPops_(1),
-  order_(order),
-  compressed_(false),
-  stats_(),
-  y_()
-  {
-    includeStats();
-  }
-
-  SumStatsLibrary(size_t numPops, size_t order):
+  SumStatsLibrary(size_t numPops = 1, size_t order = 2):
   numPops_(numPops),
   order_(order),
   compressed_(false),
   stats_(),
   y_()
-  {
-    includeStats();
-  }
+  { }
+
+  SumStatsLibrary(size_t numPops = 1, size_t order = 2, const Eigen::Matrix<double, Dynamic, 1>& y):
+  numPops_(numPops),
+  order_(order),
+  compressed_(false),
+  stats_(),
+  y_(y)
+  { }
 
   SumStatsLibrary(const OptionsContainer& opt):
-  numPops_(opt->getNumberOfPopulations()),
-  order_(opt->getOrder()),
+  numPops_(opt.getNumberOfPopulations()),
+  order_(opt.getOrder()),
   compressed_(false),
   stats_(),
   y_()
-  {
-    includeStats();
-  }
+  { }
 
   size_t getNumPops()
   {
@@ -193,8 +175,10 @@ public:
       return pos - std::begin(stats_);
   }
 
-  void includeStats()
+  void init(size_t numPops, size_t order = 2)
   {
+    order_ = order;
+
     includeHetStats_();
     includeLdStats_();
   }

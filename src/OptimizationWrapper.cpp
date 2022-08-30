@@ -98,9 +98,7 @@ void OptimizationWrapper::fitModel_(Model* model) {
   else
     throw bpp::Excepetion("OptimizationWrapper::Mis-specified numerical optimizer");
 
-  bpp::FunctionStopCondition* stopCond =
-  stopCond.reset(new bpp::FunctionStopCondition(&chosenOptimizer, options_.getFunctionTolerance()));
-  
+  bpp::FunctionStopCondition* stopCond = stopCond.reset(new bpp::FunctionStopCondition(&chosenOptimizer, options_.getFunctionTolerance()));
   chosenOptimizer.setStopCondition(*stopCond);
   
   try
@@ -114,6 +112,76 @@ void OptimizationWrapper::fitModel_(Model* model) {
   {
     std::cout << "\nWarning!! Error during optimization, convergence might not be reached.\n";
     std::cout << "moments++ will proceed, but check log files.\n";
+  }
+}
+
+void OptimizationWrapper::computeCI()
+{
+  // Matrix operations with BPP tools (instead of Eigen) to make our lives easier w.r.t. compatibility
+  std::cout << std::endl << "Computing 95% confidence intervals of parameter estimates..." << std::endl;
+
+  bpp::ParameterList optimParams = model -> fetchModelParameters();
+  std::vector<std::string> paramNames = optimParams.getParameterNames();
+
+  bpp::ThreePointsNumericalDerivative* tpnd = new ThreePointsNumericalDerivative(optimizedSplines);
+  tpnd -> enableFirstOrderDerivatives(true);
+  tpnd -> enableSecondOrderDerivatives(true);
+  tpnd -> enableSecondOrderCrossDerivatives(true);
+
+  for(size_t i = 0; i < paramNames.size(); ++i)
+  {
+    bpp::Constraint paramConstraint = optimParams.getParameter(paramNames[i]).getConstraint();
+
+    // see lines 203 / 204 of ThreePointsNumericalDerivative.cpp
+    double h = (1. + abs(optimParams.getParameterValue(paramNames[i]))) * tpnd -> getInterval();
+    double lowerPointDerivative = optimParams.getParameterValue(paramNames[i]) - h - tpnd -> getInterval() / 2.; //conservative
+    double upperPointDerivative = optimParams.getParameterValue(paramNames[i]) + h + tpnd -> getInterval() / 2.; //conservative
+
+    if(!paramConstraint -> includes(lowerPointDerivative, upperPointDerivative))
+    {
+      optimParams.deleteParameter(paramNames[i]);
+      std::cout << "   Numerical derivative can't be computed for " << paramNames[i] << "! Estimate is too close to boundary." << std::endl;
+    }
+
+    //updates
+    paramNames = optimParams.getParameterNames();
+    tpnd -> setParametersToDerivate(paramNames);
+
+    bpp::RowMatrix< double > varCovarMatrix;
+    bpp::RowMatrix< double >* hessian = bpp::NumTools::computeHessianMatrix(*tpnd, optimParams);
+    bpp::MatrixTools::inv(*hessian, varCovarMatrix);
+
+    //prints covariance matrix
+    std::ofstream outMatrix("varCovar.txt", std::ios::out);
+    outMatrix << paramNames[0];
+
+    for(size_t j = 1; j < paramNames.size(); j++)
+      outMatrix << " " << paramNames[j];
+
+    outMatrix << std::endl;
+
+    for(size_t i = 0; i < paramNames.size(); i++)
+    {
+      outMatrix << paramNames[i];
+
+      for(size_t j = 0; j < paramNames.size(); j++)
+        outMatrix << " " << varCovarMatrix(i, j);
+
+      outMatrix << std::endl;
+      outMatrix.close();
+    }
+
+    //print 95% CI's
+    std::ofstream outCI("CI.txt", std::ios::out);
+
+    for(size_t i = 0; i < optimParams.size(); ++i)
+    {
+      double upper = optimParams.getParameterValue(paramNames[i]) + 1.96 * pow(varCovarMatrix(i, i), 0.5);
+      double lower = optimParams.getParameterValue(paramNames[i]) - 1.96 * pow(varCovarMatrix(i, i), 0.5);
+      outCI << paramNames[i] << " " << lower << " - " << upper << std::endl;
+    }
+
+    outCI.close();
   }
 }
 

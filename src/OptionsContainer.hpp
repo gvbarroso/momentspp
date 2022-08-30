@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 05/08/2022
+ * Last modified: 29/08/2022
  *
  */
 
@@ -26,6 +26,8 @@ private:
 
   double tolerance_; // for numerical optimization
 
+  bool computeCI_;
+
   size_t order_; // of summary statistics
   size_t numberOfPopulations_;
   size_t minNumberOfEpochs_;
@@ -33,10 +35,11 @@ private:
   size_t numberOfThreads_;
   
 public:
-  OptionsContainer(std::map<std::string, std::string> options):
+  OptionsContainer(const std::map<std::string, std::string>& options):
   dataPath_(bpp::ApplicationTools::getAFilePath("data_path", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
+  computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
   order_(bpp::ApplicationTools::getParameter<size_t>("order", options, "none")),
   numberOfPopulations_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, "none")),
   minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, "none")),

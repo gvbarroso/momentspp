@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 25/08/2022
+ * Last modified: 29/08/2022
  *
  */
 
@@ -36,6 +36,10 @@ private:
   
 public:
   OptimizationWrapper(const OptionsContainer& options):
+  options_(options),
+  { }
+
+  OptimizationWrapper(const std::map<std::string, std::string>& options):
   options_(options),
   { }
   
