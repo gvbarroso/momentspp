@@ -1,12 +1,13 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 30/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
 
 #include <iostream>
+#include <memory>
 
 #include "SumStatsLibrary.hpp"
 #include "OptimizationWrapper.hpp"
@@ -15,14 +16,12 @@
 
 void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 {
-  std::string name = "";
-
   unsigned int minNumEpochs = options_.getMinNumberOfEpochs();
   unsigned int maxNumEpochs = options_.getMaxNumberOfEpochs();
 
   for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i)
   {
-    name = "moments++" + "_model_" + bpp::ToString(i);
+    std::string name = "moments++" + "_model_" + bpp::ToString(i);
 
     // build parameter list with constraints
     bpp::ParameterList params;
@@ -59,21 +58,14 @@ void OptimizationWrapper::fitModel_(Model* model)
   std::cout << "\nOptimizing model with the following parameters:\n";
   model->getUnfrozenParameters().printParameters(std::cout);
 
-  bpp::Optimizer chosenOptimizer;
-  bpp::StlOutputStream profiler;
-  bpp::StlOutputStream messenger;
+  std::unique_ptr<bpp::Optimizer> optimizer;
 
-  profiler.reset(new bpp::StlOutputStream(new std::ofstream("profile.txt", std::ios::out)));
-  messenger.reset(new StlOutputStream(new std::ofstream("messages.txt", std::ios::out)));
-  chosenOptimizer.setProfiler(&profiler);
-  chosenOptimizer.setMessageHandler(&messenger);
-    
   if(options_.getOptimMethod() == "Powell")
   {
     bpp::ReparametrizationFunctionWrapper rfw(model, model->getUnfrozenParameters());
 
-    chosenOptimizer.reset(new PowellMultiDimensions(&rfw));
-    chosenOptimizer.init(rfw.getParameters());
+    optimizer.reset(new PowellMultiDimensions(&rfw));
+    optimizer->init(rfw.getParameters());
   }
 
   else if(options_.getOptimMethod() == "NewtonRhapson")
@@ -85,9 +77,9 @@ void OptimizationWrapper::fitModel_(Model* model)
     tpnd.enableSecondOrderDerivatives(true);
     tpnd.enableSecondOrderCrossDerivatives(false); // Pseudo-Newton
 
-    chosenOptimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
-    chosenOptimizer.setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
-    chosenOptimizer.init(model->getUnfrozenParameters());
+    optimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
+    optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
+    optimizer->init(model->getUnfrozenParameters());
   }
 
   else if(options_.getOptimMethod() == "BFGS")
@@ -99,22 +91,31 @@ void OptimizationWrapper::fitModel_(Model* model)
     tpnd.enableSecondOrderDerivatives(false);
     tpnd.enableSecondOrderCrossDerivatives(false);
 
-    chosenOptimizer.reset(new bpp::BfgsMultiDimensions(&tpnd));
-    chosenOptimizer.setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO); // WARNING
-    chosenOptimizer.init(model->getUnfrozenParameters());
+    optimizer.reset(new bpp::BfgsMultiDimensions(&tpnd));
+    optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO); // WARNING
+    optimizer->init(model->getUnfrozenParameters());
   }
 
   else
-    throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer!");
+    throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer " + options_.getOptimMethod());
 
-  bpp::FunctionStopCondition* stopCond = stopCond.reset(new bpp::FunctionStopCondition(&chosenOptimizer, options_.getFunctionTolerance()));
-  chosenOptimizer.setStopCondition(*stopCond);
+  bpp::FunctionStopCondition stopCond(&optimizer, options_.getFunctionTolerance());
+  optimizer->setStopCondition(&stopCond);
 
   BackupListenerOv blo("backup_params.txt");
-  chosenOptimizer.addOptimizationListener(&blo);
+  optimizer->addOptimizationListener(&blo);
+
+  bpp::StlOutputStream profiler;
+  bpp::StlOutputStream messenger;
+
+  profiler.reset(new bpp::StlOutputStream(new std::ofstream("profile.txt", std::ios::out)));
+  messenger.reset(new bpp::StlOutputStream(new std::ofstream("messages.txt", std::ios::out)));
+
+  optimizer->setProfiler(&profiler);
+  optimizer->setMessageHandler(&messenger);
   
   try
-    chosenOptimizer.optimize();
+    optimizer->optimize();
 
   catch(bpp::Exception& e)
     std::cout << "\nError during optimization, convergence might not be reached!\nmoments++ will proceed, but check log files.\n";

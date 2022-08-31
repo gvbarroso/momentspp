@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 29/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -14,7 +14,9 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
 
-  matrices_.reserve(numPops); // reserves memory for the vector of matrices
+  matrices_.reserve(numPops);
+  solvers_.reserve(numPops);
+
   std::vector<Eigen::Triplet<double>> coefficients(0);
   coefficients.reserve(sslib.getNumStats());
 
@@ -106,25 +108,26 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
     mat.makeCompressed();
     matrices_.emplace_back(mat); // at the i-th position of vector, where i index the population
-  }
 
-  combineMatrices_();
+    Eigen::EigenSolver es(mat);
+    solvers_.emplace_back(es); // TODO check if it's more efficient to store eigenvectors, eigenvalues, and eigenvectors ^ (-1)
+  }
 }
 
 void Drift::updateMatrices_()
 {
   std::string paramName = "";
 
-  for(size_t i = 0; i < matrices_.size(); ++i)
+  for(size_t i = 0; i < solvers_.size(); ++i)
   {
-    paramName = "N_" + bpp::Textools::toString(i); // TODO check what to do to icorporate variable pop sizes
+    paramName = "N_" + bpp::Textools::toString(i); // one per population
 
-    double prevVal = prevParams_.getParameterValue(paramName);
-    double newVal = getParameterValue(paramName); // from within itself
+    double prevVal = prevParams_.getParameterValue(paramName); // old
+    double newVal = getParameterValue(paramName); // new
 
-    matrices_[i] *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
+    // we want something like this:
+    solvers_[i].eigenvalues() *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
   }
 
   prevParams_.matchParametersValues(getParameters());
-  combineMatrices_();
 }

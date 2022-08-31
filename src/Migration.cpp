@@ -12,7 +12,9 @@
 void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
-  matrices_.reserve(numPops * (numPops - 1) / 2); // 1 matrix per population pair
+
+  matrices_.reserve(numPops * (numPops - 1) / 2);
+  solvers_.reserve(numPops * (numPops - 1) / 2);
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -293,11 +295,12 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
         mat.makeCompressed();
         matrices_.emplace_back(mat);
+
+        Eigen::EigenSolver es(mat); // is it a problem that mat has zero-columns?
+        solvers_.emplace_back(es); // TODO check if it's more efficient to store eigenvectors, eigenvalues, and eigenvectors ^ (-1)
       } // ends if(i != j)
     }
   }
-
-  combineMatrices_();
 }
 
 void Migration::updateMatrices_()
@@ -329,7 +332,7 @@ void Migration::updateMatrices_()
         double prevVal = prevParams_.getParameterValue(paramName);
         double newVal = getParameterValue(paramName); // from within itself
 
-        matrices_[index] *= (newVal / prevVal);
+        solvers_[index].eigenvalues() *= (newVal / prevVal);
 
         ++index;
       }
@@ -337,6 +340,5 @@ void Migration::updateMatrices_()
   }
 
   prevParams_.matchParametersValues(getParameters());
-  combineMatrices_();
 }
 

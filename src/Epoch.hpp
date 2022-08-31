@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 30/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -10,6 +10,11 @@
 #define _EPOCH_H_
 
 #include <vector>
+
+#include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
@@ -23,15 +28,16 @@ private:
   // each operator contains bpp parameters and Eigen (sparse) matrices
   std::vector<Operator*> operators_;
 
-  size_t startGen_;
+  size_t startGen_; // we let the deepest point in relevant time be generation "0"
   size_t endGen_;
 
 public:
-  Epoch(const std::vector<Operator*>& operators_, const bpp::ParameterList& params, size_t start, size_t end):
+  Epoch(const std::vector<Operator*>& operators_, const bpp::ParameterList& params, size_t start, size_t end, const std::string& name):
   operators_(operators),
   startGen_(sslib),
   endGen_()
   {
+    AbstractParameterAliasable::setNamespace(name); // e_0, e_1, e_1 ...
     includeParameters_(params);
   }
 
@@ -60,10 +66,17 @@ public:
     return endGen_;
   }
 
-  size_t length()
+  size_t duration()
   {
     return endGen_ - startGen_;
   }
+
+  void computeExpectedSumStats(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix, Eigen::Matrix<double, Dynamic, 1>& y);
+
+private:
+  void updateOperators_(const bpp::ParameterList& params);
+
+  Eigen::Matrix<double, Dynamic, Dynamic> integrateOperators_();
 
 };
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 22/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -12,10 +12,9 @@
 void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // TODO
-  combineMatrices_();
 }
 
-void Selection::updateMatrices()
+void Selection::updateMatrices_()
 {
   std::string paramName = "";
 
@@ -26,9 +25,7 @@ void Selection::updateMatrices()
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName); // from within itself
 
-    matrices_[i] *= (newVal / prevVal);
+    solvers_[i].eigenvalues() *= (newVal / prevVal);
     prevParams_.setParameterValue(paramName, newVal);
   }
-
-  combineMatrices_();
 }

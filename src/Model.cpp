@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 25/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -11,34 +11,18 @@
 void Model::fireParameterChanged(const bpp::ParameterList& params)
 {
   matchParametersValues(params);
-  updateOperators_(params);
+  updateEpochs_(params);
 
-  auto combinedOperator = integrateOperators_();
-  auto expectedStats = computeExpectedSumStats_(combinedOperator);
+  auto expectedStats = computeExpectedSumStats_();
 
   computeCompositeLogLikelihood_(sslib_->getYvec(), expectedStats);
   computeAic_();
 }
 
-void Model::updateOperators_(const bpp::ParameterList& params)
+void Model::updateEpochs_(const bpp::ParameterList& params)
 {
-  for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
+  for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
     (*it)->fireParametersChanged(params);
-}
-
-Eigen::Matrix<double, Dynamic, Dynamic> Model::integrateOperators_()
-{
-  Eigen::Matrix<double, Dynamic, Dynamic> matrix(sslib_.getNumStats(), sslib_.getNumStats());
-
-  if(continuousTime_) // we combine operators by matrix addition
-    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      matrix += (*it)->getCombinedMatrix();
-
-  else // we combine operators by matrix multiplication WARNING we must be careful with the order of operations
-    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      matrix *= (*it)->getCombinedMatrix();
-
-  return matrix;
 }
 
 void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed, const Eigen::Matrix<double, Dynamic, 1>& expected)
@@ -48,11 +32,12 @@ void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 
 
 Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix)
 {
-  Eigen::EigenSolver es(matrix); // NOTE put one es inside each epoch/operator?
+  Eigen::Matrix<double, Dynamic, 1> y;
+  // how to init y? (NOTE mind lexicographic order in SumStatsLibrary)
 
-  // we want to do something like this:
-  Eigen::Matrix<double, Dynamic, 1> expected = (es.eigenvectors() * es.eigenvalues() ^ t * es.eigenvectors().inverse()) * data_;
+  for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it) // epochs must be sorted from past to present
+    it->computeExpectedSumStats(y);
 
-  return expected;
+  return y;
 }
 

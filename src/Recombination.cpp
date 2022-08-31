@@ -31,7 +31,9 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   mat.setFromTriplets(coefficients);
   mat.makeCompressed();
   matrices_.emplace_back(mat);
-  combineMatrices_();
+
+  Eigen::EigenSolver es(mat); // is it a problem that mat has zero-columns?
+  solvers_.emplace_back(es); // TODO check if it's more efficient to store eigenvectors, eigenvalues, and eigenvectors ^ (-1)
 }
 
 void Recombination::updateMatrices_()
@@ -45,9 +47,8 @@ void Recombination::updateMatrices_()
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName); // from within itself
 
-    matrices_[i] *= (newVal / prevVal);
+    solvers_[i].eigenvalues() *= (newVal / prevVal);
   }
 
   prevParams_.matchParametersValues(getParameters());
-  combineMatrices_();
 }

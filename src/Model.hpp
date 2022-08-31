@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 30/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -26,12 +26,7 @@
 #include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/Numeric/Function/Functions.h>
 
-#include "Drift.hpp"
-#include "Migration.hpp"
-#include "Mutation.hpp"
-#include "Recombination.hpp"
-//#include "Selection.hpp"
-//#include "Admixture.hpp"
+#include "Epoch.h"
 #include "SumStatsLibrary.hpp"
 
 class Model:
@@ -41,24 +36,22 @@ class Model:
 
 private:
   std::string name_; // model id
-
-  // each operator contains bpp parameters and Eigen (sparse) matrices
-  std::vector<Operator*> operators_; // NOTE: make this a vector of Epochs?!
+  std::vector<Epoch*> epochs_; // each epoch contains its own parameters and operators
   SumStatsLibrary sslib_;
   DataType data_;
 
   std::vector<std::string> frozenParams_;
+
   // if discrete time, the number of generations spent inside each epoch
-  std::vector<size_t> epochGenBoundaries_;
   bool continuousTime_;
 
   double compLogLikelihood_;
   double aic_;
 
 public:
-  Model(const std::string& name, const std::vector<Operator*>& operators, const bpp::ParameterList& params, const SumStatsLibrary& sslib):
-  name_(name)
-  operators_(operators),
+  Model(const std::string& name, const std::vector<Epoch*>& epochs, const bpp::ParameterList& params, const SumStatsLibrary& sslib):
+  name_(name),
+  epochs_(epochs),
   sslib_(sslib),
   data_(),
   frozenParams_(0),
@@ -81,7 +74,7 @@ public:
   {
     AbstractParameterAliasable::setParametersValues(params);
 
-    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
+    for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
       (*it)->fireParametersChanged(params);
   }
 
@@ -110,9 +103,9 @@ public:
     return name_;
   }
 
-  const std::vector<Operator*>& getOperators()
+  const std::vector<Epoch*>& getEpochs()
   {
-    return operators_;
+    return epochs_;
   }
 
   Eigen::Matrix<double, Dynamic, Dynamic> getCombinedOperator()
@@ -147,7 +140,7 @@ public:
 private:
   Eigen::Matrix<double, Dynamic, Dynamic> integrateOperators_();
 
-  void updateOperators_(const bpp::ParameterList& params);
+  void updateEpochs_(const bpp::ParameterList& params);
 
   void computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix);
 

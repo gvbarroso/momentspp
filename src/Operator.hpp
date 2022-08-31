@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
- * Created:29/07/2022
- * Last modified: 25/08/2022
+ * Created: 29/07/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -14,6 +14,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
+#include <Eigen/Eigenvalues>
 
 #include <Bpp/Numeric/Function/Functions.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
@@ -30,10 +31,10 @@ class Operator:
 private:
   // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
-  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally combined into combinedMatrix_ through addition
+  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
-  std::vector<Eigen::SparseMatrix<double>> matrices_; // NOTE make this a vector of vectors, where each matrix is further divided into epochs?!
-  Eigen::SparseMatrix<double> combinedMatrix_;
+  std::vector<Eigen::SparseMatrix<double>> matrices_; // NOTE do we want to keep these?
+  std::vector<Eigen::EigenSolver> solvers_;
 
   bpp::ParameterList prevParams_; // parameters values in immediately previous iteration of optimization
 
@@ -41,7 +42,7 @@ public:
   Operator():
   AbstractParameterAliasable(""),
   matrices_(0),
-  combinedMatrix_(),
+  solvers_(0),
   prevParams_(0)
   { }
 
@@ -67,15 +68,27 @@ public:
     return matrices_;
   }
 
+  const std::vector<Eigen::EigenSolver<double>>& getEigenSolvers()
+  {
+    return solvers_;
+  }
+
   const Eigen::SparseMatrix<double>& getMatrix(size_t index)
   {
     // population index for Drift; population-pair index for Migration etc
     return matrices_[index];
   }
 
-  const Eigen::SparseMatrix<double>& getCombinedMatrix()
+  Eigen::SparseMatrix<double> fetchCombinedMatrix(size_t exponent)
   {
-    return combinedMatrix_;
+    // we want something like this: (TODO check if the EigenSolver returns const refs to these objects or computes them on the fly)
+    Eigen::SparseMatrix<double> mat = solvers_[0].eigenvectors() * solvers_[0].eigenvalues() ^ exponent * solvers_[0].eigenvectors().inverse());
+
+    if(matrices_.size() > 1)
+      for(size_t i = 1; i < matrices_.size(); ++i)
+        mat += solvers_[i].eigenvectors() * (solvers_[i].eigenvalues() ^ exponent).asDiagonal() * solvers_[i].eigenvectors().inverse())
+
+    return mat;
   }
 
 private:
@@ -91,23 +104,6 @@ private:
     else
       for(size_t i = 0; i < matrices_.size(); ++i)
         matrices_[i].makeCompressed();
-  }
-
-  void combineMatrices_()
-  {
-    if(matrices_.size() == 0)
-      throw bpp::Exception("Operator::tried to combine non-existing matrices!");
-
-    else
-    {
-      combinedMatrix_ = matrices_[0];
-
-      if(matrices_.size() > 1)
-      {
-        for(size_t i = 1; i < matrices_.size(); ++i)
-          combinedMatrix_ += matrices_[i];
-      }
-    }
   }
 
 };
