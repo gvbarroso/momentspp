@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 29/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -27,6 +27,7 @@ private:
   double tolerance_; // for numerical optimization
 
   bool computeCI_;
+  bool resume_;
 
   size_t order_; // of summary statistics
   size_t numberOfPopulations_;
@@ -40,6 +41,7 @@ public:
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
+  resume_(bpp::ApplicationTools::getParameter<bool>("resume", options, false)),
   order_(bpp::ApplicationTools::getParameter<size_t>("order", options, "none")),
   numberOfPopulations_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, "none")),
   minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, "none")),
@@ -63,6 +65,16 @@ public:
   double getTolerance()
   {
     return tolerance_;
+  }
+
+  bool computeCI()
+  {
+    return computeCI_;
+  }
+
+  bool resume()
+  {
+    return resume_;
   }
 
   size_t getOrder()

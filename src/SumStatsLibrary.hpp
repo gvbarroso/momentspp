@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 29/08/2022
+ * Last modified: 31/08/2022
  *
  */
 
@@ -22,7 +22,7 @@
 #include <Bpp/Text/TextTools.h>
 
 #include "OptionsContainer.hpp"
-
+#include "PolymorphismData.hpp"
 
 class SumStatsLibrary
 {
@@ -31,6 +31,7 @@ private:
   size_t numPops_;
   size_t order_; // of the moment; number of tracked lineages
 
+  bool initialized_;
   bool compressed_; // indicates whether symmetrical statistics have been pulled together
 
   // NOTE make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
@@ -44,6 +45,7 @@ public:
   SumStatsLibrary():
   numPops_(1),
   order_(2),
+  initialized_(false),
   compressed_(false),
   stats_(),
   y_()
@@ -52,45 +54,57 @@ public:
   SumStatsLibrary(size_t numPops = 1, size_t order = 2):
   numPops_(numPops),
   order_(order),
+  initialized_(false),
   compressed_(false),
   stats_(),
   y_()
   { }
 
-  SumStatsLibrary(size_t numPops = 1, size_t order = 2, const Eigen::Matrix<double, Dynamic, 1>& y):
-  numPops_(numPops),
-  order_(order),
+  SumStatsLibrary(const PolymorphismData& dataset):
+  numPops_(0),
+  order_(0),
+  initialized_(false),
   compressed_(false),
   stats_(),
   y_(y)
-  { }
+  {
+    init(dataset);
+  }
 
   SumStatsLibrary(const OptionsContainer& opt):
   numPops_(opt.getNumberOfPopulations()),
   order_(opt.getOrder()),
+  initialized_(false),
   compressed_(false),
   stats_(),
   y_()
-  { }
+  {
+    PolymorphismData dataset;
+    dataset.parse(options.getDataPath());
+    dataset.computeSumStats();
+
+    init(dataset);
+  }
 
   size_t getNumPops()
   {
     return numPops;
   }
 
-  void setNumPops(const OptionsContainer& opt)
-  {
-    numPops_ = opt->getNumberOfPopulations();
-  }
 
   size_t getOrder()
   {
     return order_;
   }
 
-  void setOrder(const OptionsContainer& opt)
+  bool initialized()
   {
-    order_ = opt->getOrder();
+    return initialized_;
+  }
+
+  bool compressed()
+  {
+    return compressed_;
   }
 
   size_t getNumStats()

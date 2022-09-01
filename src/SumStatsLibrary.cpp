@@ -8,12 +8,21 @@
 #include "SumStatsLibrary.hpp"
 
 
-void SumStatsLibrary::init(size_t numPops)
+void SumStatsLibrary::init(const PolymorphismData& dataset)
 {
-  setNumPops(numPops);
+  if(initialized_)
+    throw bpp::Exception("SumStatsLibrary::attempted to re-initialized library!");
 
-  includeHetStats_();
-  includeLdStats_();
+  else
+  {
+    setNumPops(dataset.getNumPops());
+    setOrder(dataset.getOrder());
+
+    includeHetStats_();
+    includeLdStats_();
+
+    initialized_ = true;
+  }
 }
 
 void SumStatsLibrary::includeHetStats_()

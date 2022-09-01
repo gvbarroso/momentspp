@@ -36,7 +36,7 @@ Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_(const Eigen::M
   // how to init y? (NOTE mind lexicographic order in SumStatsLibrary)
 
   for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it) // epochs must be sorted from past to present
-    it->computeExpectedSumStats(y);
+    it->computeExpectedSumStats(y); // trickling sum stats vector down the epochs
 
   return y;
 }

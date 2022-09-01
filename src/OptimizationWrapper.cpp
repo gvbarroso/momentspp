@@ -16,8 +16,8 @@
 
 void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 {
-  unsigned int minNumEpochs = options_.getMinNumberOfEpochs();
-  unsigned int maxNumEpochs = options_.getMaxNumberOfEpochs();
+  size_t minNumEpochs = options_.getMinNumberOfEpochs();
+  size_t maxNumEpochs = options_.getMaxNumberOfEpochs();
 
   for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i)
   {
@@ -39,7 +39,7 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
      * decides whether to freeze parameters
      */
 
-    fitModel_(model.get());
+    fitModel_(model);
     writeEstimatesToFile_(model);
 
     // clean-up
@@ -92,7 +92,7 @@ void OptimizationWrapper::fitModel_(Model* model)
     tpnd.enableSecondOrderCrossDerivatives(false);
 
     optimizer.reset(new bpp::BfgsMultiDimensions(&tpnd));
-    optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO); // WARNING
+    optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO); // WARNING check
     optimizer->init(model->getUnfrozenParameters());
   }
 
@@ -105,11 +105,11 @@ void OptimizationWrapper::fitModel_(Model* model)
   BackupListenerOv blo("backup_params.txt");
   optimizer->addOptimizationListener(&blo);
 
-  bpp::StlOutputStream profiler;
-  bpp::StlOutputStream messenger;
+  std::ofstream prof("profile.txt", std::ios::out);
+  std::ofstream mess("messages.txt", std::ios::out);
 
-  profiler.reset(new bpp::StlOutputStream(new std::ofstream("profile.txt", std::ios::out)));
-  messenger.reset(new bpp::StlOutputStream(new std::ofstream("messages.txt", std::ios::out)));
+  bpp::StlOutputStream profiler(&prof);
+  bpp::StlOutputStream messenger(&mess);
 
   optimizer->setProfiler(&profiler);
   optimizer->setMessageHandler(&messenger);

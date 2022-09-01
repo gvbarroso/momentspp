@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 29/08/2022
+ * Last modified: 31/08/2022
  * Source code for moments++
  *
  */
@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
-  std::cout << "*                moments++, version 0.0.1                        *" << std::endl;
+  std::cout << "*                moments++  version 0.0.1                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*            Recombination                                       *" << std::endl;
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Endless ancestors                                   *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 29/Aug/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 31/Aug/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
@@ -54,7 +54,8 @@ int main(int argc, char *argv[]) {
     std::cout << "Processing input data..."; std::cout.flus();
 
     PolymorphismData data; // input data, format = ?
-    data.init(options.getDataPath());
+    data.parse(options.getDataPath());
+    data.computeSumStats();
 
     SumStatsLibrary ssl;
     ssl.init(data);
@@ -62,7 +63,12 @@ int main(int argc, char *argv[]) {
     std::cout << "done." << std::endl;
 
     OptimizationWrapper optimizer(options);
-    optimizer.optimize();
+
+    if(options.resume()) // if resume optimization, read "backup_params.txt" from current dir
+      optimizer.resumeOptim(ssl);
+
+    else
+      optimizer.optimize(ssl); // else optimize from scratch, backing up to "backup_params.txt"
   }
 
   catch(std::exception& e)
