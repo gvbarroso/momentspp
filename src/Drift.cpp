@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 31/08/2022
+ * Last modified: 01/09/2022
  *
  */
 
@@ -28,7 +28,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     // for each stat in vector Y (going by rows of matrices_)
     for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
     {
-      std::string mom = *it->first; // full name of moment
+      std::string mom = (*it)->first; // full name of moment
       std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
       size_t popIdCount = sslib.countInstances(splitMom[1], popId); // count of i in moment's name

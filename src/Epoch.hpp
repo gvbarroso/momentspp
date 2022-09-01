@@ -32,13 +32,19 @@ private:
   size_t endGen_;
 
 public:
-  Epoch(const std::vector<Operator*>& operators_, const bpp::ParameterList& params, size_t start, size_t end, const std::string& name):
+  Epoch(const std::vector<Operator*>& operators, size_t start, size_t end, const std::string& name):
   operators_(operators),
   startGen_(sslib),
   endGen_()
   {
     AbstractParameterAliasable::setNamespace(name); // e_0, e_1, e_1 ...
-    includeParameters_(params);
+    for(auto it = std::begin(operators); it != std::end(operators); ++it)
+      includeParameters_((*it)->getParameters());
+  }
+
+  ~Epoch()
+  {
+    delete ptrs
   }
 
   Epoch* clone() const

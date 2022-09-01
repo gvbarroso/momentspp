@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -47,6 +48,12 @@ public:
   { }
 
 public:
+  ~Operator()
+  {
+    std::cout << "Destruction of Operator with parameters:\n";
+    printParameters(std::cout);
+  }
+
   Operator* clone() const
   {
     return new Operator(*this);

@@ -12,32 +12,63 @@
 #include "SumStatsLibrary.hpp"
 #include "OptimizationWrapper.hpp"
 #include "BackupListenerOv.hpp"
+#include "Epoch.hpp"
+#include "Model.hpp"
 
 
 void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 {
+  size_t numPops = sslib.getNumPops();
   size_t minNumEpochs = options_.getMinNumberOfEpochs();
   size_t maxNumEpochs = options_.getMaxNumberOfEpochs();
 
-  for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i)
+  for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i) // one model per count of epochs
   {
-    std::string name = "moments++" + "_model_" + bpp::ToString(i);
+    std::string name = "moments++" + "_model_" + bpp::ToString(i) + "_epochs_";
 
-    // build parameter list with constraints
-    bpp::ParameterList params;
+    bpp::ParameterList mu;
+    bpp::ParameterList rec;
 
-    /*
-     *
-     */
+    mut.addParameter(new bpp::Parameter("r_0", 1e-8, std::shared_ptr<bpp::Constraint>(new bpp::IntervalConstraint(0., 1e-6, true, true))));
+    rec.addParameter(new bpp::Parameter("mu_0", 1e-8, std::shared_ptr<bpp::Constraint>(new bpp::IntervalConstraint(0., 1e-6, true, true))));
 
-    // build operators NOTE mind correct order for multiplying matrices into combined operator
-    std::vector<Operator*> operators(0);
+    Recombination* recOp = new Recombination(rec, sslib);
+    Mutation* mutOp = new Mutation(mut, sslib);
 
-    // e.g.
-    Drift* driftOperator = new Drift(params, sslib);
-    operators.push_back(driftOperator);
+    for(size_t j = 0; j < i; ++j) // for each epoch, from past to present
+    {
+      std::string id = "e_" + bpp::ToString(j); // for setting the namespace for params within each epoch
+      std::vector<Operator*> operators(4);
 
-    Model* model = new Model(name, operators, params, sslib);
+      bpp::ParameterList drift;
+      bpp::ParameterList mig;
+
+      for(size_t k = 0; k < numPops; ++k)
+      {
+        drift.addParameter(new bpp::Parameter("N_" + bpp::TextTools::ToString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
+
+        for(size_t l = 0; l < numPops; ++l)
+          mig.addParameter(new bpp::Parameter("m_" + bpp::TextTools::ToString(k) + bpp::TextTools::ToString(l), 1e-8,
+                                              std::shared_ptr<bpp::Constraint>(new bpp::IntervalConstraint(0., 1e-6, true, true))));
+      }
+
+      Drift* driftOp = new Drift(drift, sslib);
+      Migration* migOp = new Migration(mig, sslib);
+
+      // include operators in the correct order for matrix operations
+      operators[0] = migOp;
+      operators[1] = driftOp;
+      operators[2] = recOp;
+      operators[3] = mutOp;
+
+      // define start and end of epochs as quantiles of the exp dist?
+      size_t start = j * (totalNumberOfGenerations / i);// in units of generations
+      size_t end = (j + 1) * (totalNumberOfGenerations / i); // in units of generations
+
+      Epoch* epoch = new Epoch(operators, params, start, end, id)
+    }
+
+    Model* model = new Model(name, epochs, params, sslib);
 
     /*
      * decides whether to freeze parameters

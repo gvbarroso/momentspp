@@ -43,14 +43,20 @@ private:
   double compLogLikelihood_;
 
 public:
-  Model(const std::string& name, const std::vector<Epoch*>& epochs, const bpp::ParameterList& params, const SumStatsLibrary& sslib):
+  Model(const std::string& name, const std::vector<Epoch*>& epochs, const SumStatsLibrary& sslib):
   name_(name),
   epochs_(epochs),
   sslib_(sslib),
   frozenParams_(0),
   compLogLikelihood_(-1.)
   {
-    includeParameters_(params);
+    for(auto it = std::begin(epochs); it != std::end(epoch); ++it)
+      includeParameters_((*it)->getParameters());
+  }
+
+  ~Model()
+  {
+    delete ptrs
   }
 
   Model* clone() const

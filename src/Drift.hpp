@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 23/08/2022
+ * Last modified: 01/09/2022
  *
  */
 
@@ -19,25 +19,10 @@ class Drift:
 {
 
 public:
-  Drift(const SumStatsLibrary& ssl):
-  Operator()
-  {
-    // TODO check what to do to icorporate variable pop sizes
-    for(size_t i = 0; i < ssl->getNumPops(); ++i)
-      bpp::addParameter_(new bpp::Parameter("N_" + bpp::toString(i), 1., Parameter::R_PLUS_STAR));
-
-    prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(ssl);
-  }
-
   Drift(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
   Operator()
   {
-    // TODO check what to do to icorporate variable pop sizes
-    for(size_t i = 0; i < ssl->getNumPops(); ++i)
-      bpp::addParameter_(new bpp::Parameter("N_" + bpp::toString(i), 1., Parameter::R_PLUS_STAR));
-
-    matchParametersValues(params);
+    includeParameters_(params);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);
   }
