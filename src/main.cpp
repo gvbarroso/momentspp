@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Endless ancestors                                   *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 31/Aug/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 01/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;

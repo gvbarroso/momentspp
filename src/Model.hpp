@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/08/2022
+ * Last modified: 01/09/2022
  *
  */
 
@@ -37,28 +37,18 @@ class Model:
 private:
   std::string name_; // model id
   std::vector<Epoch*> epochs_; // each epoch contains its own parameters and operators
-  SumStatsLibrary sslib_;
-  DataType data_;
-
+  SumStatsLibrary sslib_; // "Utils" class
   std::vector<std::string> frozenParams_;
 
-  // if discrete time, the number of generations spent inside each epoch
-  bool continuousTime_;
-
   double compLogLikelihood_;
-  double aic_;
 
 public:
   Model(const std::string& name, const std::vector<Epoch*>& epochs, const bpp::ParameterList& params, const SumStatsLibrary& sslib):
   name_(name),
   epochs_(epochs),
   sslib_(sslib),
-  data_(),
   frozenParams_(0),
-  epochGenBoundaries_(0),
-  continuousTime_(false),
-  compLogLikelihood_(-1.),
-  aic_(-1.)
+  compLogLikelihood_(-1.)
   {
     includeParameters_(params);
   }
@@ -82,20 +72,10 @@ public:
   {
     return -compLogLikelihood_;
   }
-
-  bool continuousTime()
-  {
-    return continuousTime_;
-  }
   
   double comLogLikelihood()
   {
     return compLogLikelihood_;
-  }
-
-  double aic()
-  {
-    return aic_;
   }
 
   const std::string& getName()
@@ -145,11 +125,6 @@ private:
   void computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix);
 
   void computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed);
-
-  void computeAic_()
-  {
-    aic_ = 2. * getNumberOfIndependentParameters() - 2. * compLogLikelihood_;
-  }
 
 };
 

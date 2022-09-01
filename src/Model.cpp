@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/08/2022
+ * Last modified: 01/09/2022
  *
  */
 
@@ -16,7 +16,6 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   auto expectedStats = computeExpectedSumStats_();
 
   computeCompositeLogLikelihood_(sslib_->getYvec(), expectedStats);
-  computeAic_();
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -27,12 +26,12 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed, const Eigen::Matrix<double, Dynamic, 1>& expected)
 {
-  // logLikelihood_ = f(observed, expected) for different windows or something
+  // compLogLikelihood_ = f(observed, expected) for different windows or something
 }
 
-Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix)
+Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_()
 {
-  Eigen::Matrix<double, Dynamic, 1> y;
+  Eigen::Matrix<double, Dynamic, 1> y = sslib_.getSomeInitY();
   // how to init y? (NOTE mind lexicographic order in SumStatsLibrary)
 
   for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it) // epochs must be sorted from past to present

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/08/2022
+ * Last modified: 01/09/2022
  *
  */
 
@@ -25,6 +25,10 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 
     // build parameter list with constraints
     bpp::ParameterList params;
+
+    /*
+     *
+     */
 
     // build operators NOTE mind correct order for multiplying matrices into combined operator
     std::vector<Operator*> operators(0);
@@ -196,7 +200,7 @@ void OptimizationWrapper::writeEstimatesToFile_(Model* model)
   std::ofstream file;
   file.open(model->getName() + "_estimates.txt");
 
-  file << "AIC = " << model->aic() << std::endl << std::endl;
+  file << "CLL = " << model->comLogLikelihood() << std::endl << std::endl;
   model->getParameterList().printParameters(file);
 
   file.close();

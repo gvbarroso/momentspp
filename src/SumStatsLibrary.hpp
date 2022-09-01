@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 31/08/2022
+ * Last modified: 01/09/2022
  *
  */
 
@@ -37,9 +37,7 @@ private:
   // NOTE make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
   // row and column order of matrices follow lexicographical order of stats_'s names
   std::map<std::string, double> stats_;  // name -> value ("observed" Y vector)
-
-  // the Eigen representation of the vector of observed summary statistics
-  Eigen::Matrix<double, Dynamic, 1> y_;
+  Eigen::Matrix<double, Dynamic, 1> y_; // the Eigen representation
 
 public:
   SumStatsLibrary():
@@ -129,36 +127,6 @@ public:
 
   void init();
 
-  size_t getNumLdStats()
-  {
-    return getNumDDStats() + getNumDzStats();
-  }
-
-  size_t getNumDDStats()
-  {
-    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2) TODO change according to whether stats are compressed or not
-  }
-
-  size_t getNumDzStats()
-  {
-    return numPops_ * numPops_ * numPops_;
-  }
-
-  size_t getNumHetStats()
-  {
-    return numPops_ + (numPops_ * (numPops_ - 1) / 2); // P + (P choose 2)
-  }
-
-  size_t getNumPiTwoStats()
-  {
-    return (numPops_ + (numPops_ * (numPops_ - 1) / 2)) * (numPops_ + (numPops_ * (numPops_ - 1) / 2));
-  }
-
-  size_t getNumDiversityStats()
-  {
-    return getNumHetStats() + getNumPiTwoStats();
-  }
-
   std::vector<std::string> splitString(const std::string& target, const std::string& query)
   {
     std::vector<std::string> ret(0);
@@ -182,11 +150,11 @@ public:
   {
     auto pos = stats_.find(moment);
 
-    if(pos == std::end(stats_)
+    if(pos == std::end(stats_))
       throw bpp::Exception("Moments++::SumStatsLibrary::Could not find index of moment " + moment);
 
     else
-      return pos - std::begin(stats_);
+      return static_cast<size_t>(pos - std::begin(stats_));
   }
 
   void init(size_t numPops, size_t order = 2)
