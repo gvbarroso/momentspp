@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 29/08/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -64,7 +64,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if(splitMom[0] == "Dz")
           {
-            coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(parentPopIdCount))); // main diagonal
+            coefficients.push_back(Eigen::Triplet<double>(row, row, 1. -static_cast<double>(parentPopIdCount))); // main diagonal
 
             p1 = splitMom[1][0]; // D pop
             p2 = splitMom[1][1]; // first z pop
@@ -199,7 +199,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if(splitMom[0] == "pi2")
           {
-            std::vector<std::string> splitPops = sslib.splitString(mom, ";"); // splits name by semi-colon
+            std::vector<std::string> splitPops = sslib.splitString(splitMom[1], ";"); // splits name by semi-colon
 
             size_t countLeft = sslib.countInstances(splitPops[0], parentPopId); // count of j before ';'
             size_t countRight = sslib.countInstances(splitPops[1], parentPopId); // count of j after ';'

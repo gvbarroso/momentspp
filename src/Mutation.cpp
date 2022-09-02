@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 31/08/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -29,14 +29,16 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     size_t col = 0; // column index
 
     if(splitMom[0] == "H")
-      coefficients.push_back(Eigen::Triplet<double>(row, row, 2.)); // main diagonal, introducing one-locus diversity
+      coefficients.push_back(Eigen::Triplet<double>(row, row, 1. + 2.)); // main diagonal, introducing one-locus diversity
 
     else if(splitMom[0] == "pi2")
     {
-      p1 = splitMom[1][0]; // i pop
-      p2 = splitMom[1][1]; // j pop
-      p3 = splitMom[1][2]; // k pop
-      p4 = splitMom[1][3]; // l pop
+      std::vector<std::string> splitPops = sslib.splitString(splitMom[1], ";"); // splits name by semi-colon
+
+      p1 = splitPops[0][0]; // i pop
+      p2 = splitPops[0][1]; // j pop
+      p3 = splitPops[1][0]; // k pop
+      p4 = splitPops[1][1]; // l pop
 
       col = sslib.indexLookup("H_" + p1 + p2);
       coefficients.push_back(Eigen::Triplet<double>(row, col, 2.));
@@ -44,6 +46,9 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       col = sslib.indexLookup("H_" + p3 + p4);
       coefficients.push_back(Eigen::Triplet<double>(row, col, 2.));
     }
+
+    else
+      coefficients.push_back(Eigen::Triplet<double>(row, row, 1.)); // main diagonal, unnaffected terms
   }
 
   Eigen::SparseMatrix<double> mat;

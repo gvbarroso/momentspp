@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 31/08/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -20,6 +20,12 @@ void SumStatsLibrary::init(const PolymorphismData& dataset)
 
     includeHetStats_();
     includeLdStats_();
+
+    y_.resize(stats_.size());
+    size_t index = 0;
+
+    for(auto it = std::begin(stats_); it != std::end(stats_); ++it)
+      y_(index, 0) = (*it)->second;
 
     initialized_ = true;
   }
