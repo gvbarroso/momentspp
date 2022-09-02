@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/08/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -37,7 +37,7 @@ private:
   std::vector<Eigen::SparseMatrix<double>> matrices_; // NOTE do we want to keep these?
   std::vector<Eigen::EigenSolver> solvers_;
 
-  bpp::ParameterList prevParams_; // parameters values in immediately previous iteration of optimization
+  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
 
 public:
   Operator():
@@ -99,7 +99,7 @@ public:
   }
 
 private:
-  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients WARNING if row has all zeros, set main diagonal entry to 1
 
   virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
 

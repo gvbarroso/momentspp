@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/09/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -36,14 +36,14 @@ class Model:
 
 private:
   std::string name_; // model id
-  std::vector<Epoch*> epochs_; // each epoch contains its own parameters and operators
+  std::vector<std::shared_ptr<Epoch>> epochs_; // each epoch contains its own parameters and operators
   SumStatsLibrary sslib_; // "Utils" class
   std::vector<std::string> frozenParams_;
 
   double compLogLikelihood_;
 
 public:
-  Model(const std::string& name, const std::vector<Epoch*>& epochs, const SumStatsLibrary& sslib):
+  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, const SumStatsLibrary& sslib):
   name_(name),
   epochs_(epochs),
   sslib_(sslib),
@@ -55,9 +55,7 @@ public:
   }
 
   ~Model()
-  {
-    delete ptrs
-  }
+  { }
 
   Model* clone() const
   {
@@ -99,13 +97,13 @@ public:
     return combinedOperator_;
   }
 
-  void freezeParameter(const std::string& paramName)
+  void freezeParameter(const std::string& name)
   {
-    if(hasParameter(paramName))
-      frozenParams_.push_back(paramName);
+    if(hasParameter(name))
+      frozenParams_.push_back(name);
 
     else
-      throw bpp::Exception("Model::Attempted to freeze non-existing parameter " + paramName);
+      throw bpp::Exception("Model::Attempted to freeze non-existing parameter " + name);
   }
 
   const bpp::ParameterList& getUnfrozenParameters()

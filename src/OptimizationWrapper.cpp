@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/09/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -24,36 +24,41 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 
   for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i) // one model per count of epochs
   {
-    std::string name = "moments++" + "_model_" + bpp::ToString(i) + "_epochs_";
+    std::string name = bpp::ToString(i) + "_epochs_model";
 
-    bpp::ParameterList mu;
-    bpp::ParameterList rec;
+    std::vector<std::shared_ptr<Epoch>> epochs(i);
 
-    mut.addParameter(new bpp::Parameter("r_0", 1e-8, std::shared_ptr<bpp::Constraint>(new bpp::IntervalConstraint(0., 1e-6, true, true))));
-    rec.addParameter(new bpp::Parameter("mu_0", 1e-8, std::shared_ptr<bpp::Constraint>(new bpp::IntervalConstraint(0., 1e-6, true, true))));
+    bpp::ParameterList mutPl;
+    bpp::ParameterList recPl;
 
-    Recombination* recOp = new Recombination(rec, sslib);
-    Mutation* mutOp = new Mutation(mut, sslib);
+    // the range of values that our "small" rates are allowed to take in
+    std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-5, true, true);
+
+    mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
+    recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
+
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(rec, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mut, sslib);
 
     for(size_t j = 0; j < i; ++j) // for each epoch, from past to present
     {
       std::string id = "e_" + bpp::ToString(j); // for setting the namespace for params within each epoch
-      std::vector<Operator*> operators(4);
 
-      bpp::ParameterList drift;
-      bpp::ParameterList mig;
+      bpp::ParameterList driftPl;
+      bpp::ParameterList migPl;
 
-      for(size_t k = 0; k < numPops; ++k)
+      for(size_t k = 0; k < numPops; ++k) // NOTE could be numPops[j]...
       {
-        drift.addParameter(new bpp::Parameter("N_" + bpp::TextTools::ToString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
+        driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::ToString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
 
         for(size_t l = 0; l < numPops; ++l)
-          mig.addParameter(new bpp::Parameter("m_" + bpp::TextTools::ToString(k) + bpp::TextTools::ToString(l), 1e-8,
-                                              std::shared_ptr<bpp::Constraint>(new bpp::IntervalConstraint(0., 1e-6, true, true))));
+          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::ToString(k) + bpp::TextTools::ToString(l), 1e-8, ic));
       }
 
-      Drift* driftOp = new Drift(drift, sslib);
-      Migration* migOp = new Migration(mig, sslib);
+      std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib);
+      std::shared_ptr<Migration> migOp = std::shared_ptr<Migration>(migPl, sslib);
+
+      std::vector<std::shared_ptr<Operator>> operators(4);
 
       // include operators in the correct order for matrix operations
       operators[0] = migOp;
@@ -65,26 +70,20 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
       size_t start = j * (totalNumberOfGenerations / i);// in units of generations
       size_t end = (j + 1) * (totalNumberOfGenerations / i); // in units of generations
 
-      Epoch* epoch = new Epoch(operators, params, start, end, id)
+      epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
     }
 
-    Model* model = new Model(name, epochs, params, sslib);
+    Model* model = new Model(name, epochs, sslib);
 
     /*
      * decides whether to freeze parameters
+     * eg, model->freezeParamter("r_0")
      */
 
     fitModel_(model);
     writeEstimatesToFile_(model);
 
-    // clean-up
     delete model;
-
-    for(auto it = std::begin(operators); it != std::end(operators); ++it)
-    {
-      delete *it;
-      it = operators.erase(it);
-    }
   }
 }
 
@@ -113,7 +112,7 @@ void OptimizationWrapper::fitModel_(Model* model)
     tpnd.enableSecondOrderCrossDerivatives(false); // Pseudo-Newton
 
     optimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
-    optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO);
+    optimizer->setConstraintPolicy(bpp::AutoParameter::CONSTRAINTS_AUTO);
     optimizer->init(model->getUnfrozenParameters());
   }
 
@@ -127,14 +126,14 @@ void OptimizationWrapper::fitModel_(Model* model)
     tpnd.enableSecondOrderCrossDerivatives(false);
 
     optimizer.reset(new bpp::BfgsMultiDimensions(&tpnd));
-    optimizer->setConstraintPolicy(AutoParameter::CONSTRAINTS_AUTO); // WARNING check
+    optimizer->setConstraintPolicy(bpp::AutoParameter::CONSTRAINTS_AUTO);
     optimizer->init(model->getUnfrozenParameters());
   }
 
   else
     throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer " + options_.getOptimMethod());
 
-  bpp::FunctionStopCondition stopCond(&optimizer, options_.getFunctionTolerance());
+  bpp::FunctionStopCondition stopCond(optimizer.get(), options_.getFunctionTolerance());
   optimizer->setStopCondition(&stopCond);
 
   BackupListenerOv blo("backup_params.txt");
