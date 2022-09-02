@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 31/08/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -20,22 +20,19 @@ void Epoch::updateOperators_(const bpp::ParameterList& params)
     (*it)->fireParametersChanged(params);
 }
 
-Eigen::Matrix<double, Dynamic, Dynamic> Epoch::integrateOperators_()
+Eigen::Matrix<double, Dynamic, Dynamic> Epoch::combineOperators_()
 {
-  Eigen::Matrix<double, Dynamic, Dynamic> matrix(sslib_.getNumStats(), sslib_.getNumStats());
+  Eigen::Matrix<double, Dynamic, Dynamic> mat(sslib_.getNumStats(), sslib_.getNumStats());
+  mat.setIdentity();
 
-  if(continuousTime_) // we combine operators by matrix addition
-    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      matrix += (*it)->fetchCombinedMatrix(duration());
+  // NOTE we must be careful with the order of operations
+  for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
+    mat *= (*it)->fetchCombinedMatrix(duration());
 
-  else // we combine operators by matrix multiplication WARNING we must be careful with the order of operations
-    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      matrix *= (*it)->fetchCombinedMatrix(duration());
-
-  return matrix;
+  return mat;
 }
 
 void Epoch::computeExpectedSumStats(Eigen::Matrix<double, Dynamic, 1>& y)
 {
-  integrateOperators_() * y;
+  combineOperators_() * y;
 }

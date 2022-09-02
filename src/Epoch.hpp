@@ -82,7 +82,7 @@ public:
 private:
   void updateOperators_(const bpp::ParameterList& params);
 
-  Eigen::Matrix<double, Dynamic, Dynamic> integrateOperators_();
+  Eigen::Matrix<double, Dynamic, Dynamic> combineOperators_();
 
 };
 

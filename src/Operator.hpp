@@ -64,7 +64,7 @@ public:
     AbstractParameterAliasable::setParametersValues(params);
   }
 
-  void Operator::fireParameterChanged(const bpp::ParameterList& params)
+  void fireParameterChanged(const bpp::ParameterList& params)
   {
     if(matchParametersValues(params))
       updateMatrices_();
@@ -89,11 +89,23 @@ public:
   Eigen::SparseMatrix<double> fetchCombinedMatrix(size_t exponent)
   {
     // we want something like this: (TODO check if the EigenSolver returns const refs to these objects or computes them on the fly)
-    Eigen::SparseMatrix<double> mat = solvers_[0].eigenvectors() * solvers_[0].eigenvalues() ^ exponent * solvers_[0].eigenvectors().inverse());
+    Eigen::SparseMatrix<double> mat = solvers_[0].eigenvectors() * (solvers_[0].eigenvalues() ^ exponent).asDiagonal() * solvers_[0].eigenvectors().inverse();
+
+    // adding Identity to convert from "delta" to "transition" matrix
+    for(size_t j = 0; j < mat.cols(); ++j)
+      mat(j, j) += 1.;
 
     if(matrices_.size() > 1)
+    {
       for(size_t i = 1; i < matrices_.size(); ++i)
-        mat += solvers_[i].eigenvectors() * (solvers_[i].eigenvalues() ^ exponent).asDiagonal() * solvers_[i].eigenvectors().inverse())
+      {
+        mat += solvers_[i].eigenvectors() * (solvers_[i].eigenvalues() ^ exponent).asDiagonal() * solvers_[i].eigenvectors().inverse();
+
+        // adding Identity to convert from "delta" to "transition" matrix
+        for(size_t j = 0; i < mat.cols(); ++j)
+          mat(j, j) += 1.;
+      }
+    }
 
     return mat;
   }

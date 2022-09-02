@@ -122,8 +122,6 @@ public:
   }
 
 private:
-  Eigen::Matrix<double, Dynamic, Dynamic> integrateOperators_();
-
   void updateEpochs_(const bpp::ParameterList& params);
 
   void computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix);

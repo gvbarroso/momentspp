@@ -44,6 +44,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
           size_t row = it - std::begin(sslib->getStats()); // row index
           size_t col = 0; // column index
 
+          // main diagonal initialization, this entry must exist in a Sparse matrix even if it remains zero because
+          // it is important when converting from "delta" to "transition" matrix (see Operator::fetchCombinedMatrix()
+          coefficients.push_back(Eigen::Triplet<double>(row, row, 0.);
+
           if(splitMom[0] == "DD")
           {
             coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(parentPopIdCount))); // main diagonal
@@ -64,7 +68,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if(splitMom[0] == "Dz")
           {
-            coefficients.push_back(Eigen::Triplet<double>(row, row, 1. -static_cast<double>(parentPopIdCount))); // main diagonal
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(parentPopIdCount))); // main diagonal
 
             p1 = splitMom[1][0]; // D pop
             p2 = splitMom[1][1]; // first z pop
@@ -294,6 +298,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         Eigen::SparseMatrix<double> mat;
         mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
         mat.makeCompressed();
+        mat *= getParameterValue("m_" + bpp::Textools::toString(i) + bpp::Textools::toString(j)); // inits to first (arbitrary) param because of updateMatrices_()
         matrices_.emplace_back(mat);
 
         Eigen::EigenSolver es(mat); // is it a problem that mat has zero-columns?
@@ -319,7 +324,7 @@ void Migration::updateMatrices_()
   }
 
   size_t index = 0;
-  std::string paramName = "";
+  std::string name = "";
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -327,10 +332,10 @@ void Migration::updateMatrices_()
     {
       if(i != j)
       {
-        paramName = "m_" + bpp::Textools::toString(i) + bpp::Textools::toString(j);
+        name = "m_" + bpp::Textools::toString(i) + bpp::Textools::toString(j);
 
-        double prevVal = prevParams_.getParameterValue(paramName);
-        double newVal = getParameterValue(paramName); // from within itself
+        double prevVal = prevParams_.getParameterValue(name);
+        double newVal = getParameterValue(name); // from within itself
 
         solvers_[index].eigenvalues() *= (newVal / prevVal);
 

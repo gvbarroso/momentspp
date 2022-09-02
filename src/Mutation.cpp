@@ -29,7 +29,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     size_t col = 0; // column index
 
     if(splitMom[0] == "H")
-      coefficients.push_back(Eigen::Triplet<double>(row, row, 1. + 2.)); // main diagonal, introducing one-locus diversity
+      coefficients.push_back(Eigen::Triplet<double>(row, row, 2.)); // main diagonal, introducing one-locus diversity
 
     else if(splitMom[0] == "pi2")
     {

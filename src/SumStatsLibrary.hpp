@@ -151,7 +151,7 @@ public:
     auto pos = stats_.find(moment);
 
     if(pos == std::end(stats_))
-      throw bpp::Exception("Moments++::SumStatsLibrary::Could not find index of moment " + moment);
+      throw bpp::Exception("SumStatsLibrary::Could not find index of moment " + moment);
 
     else
       return static_cast<size_t>(pos - std::begin(stats_));
