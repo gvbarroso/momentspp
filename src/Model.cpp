@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/09/2022
+ * Last modified: 02/09/2022
  *
  */
 
@@ -31,12 +31,18 @@ void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 
 
 Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_()
 {
-  Eigen::Matrix<double, Dynamic, 1> y = sslib_.getSomeInitY();
-  // how to init y? (NOTE mind lexicographic order in SumStatsLibrary)
+  // NOTE mind lexicographic order in SumStatsLibrary
+  Eigen::Matrix<double, Dynamic, 1> y = fetchSteadyState();
 
   for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it) // epochs must be sorted from past to present
     it->computeExpectedSumStats(y); // trickling sum stats vector down the epochs
 
   return y;
 }
+
+Eigen::Matrix<double, Dynamic, 1> Model::fetchSteadyState()
+{
+    // find eigenvector associated with lambda == 1
+}
+
 

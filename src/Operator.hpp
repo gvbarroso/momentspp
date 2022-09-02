@@ -59,7 +59,7 @@ public:
     return new Operator(*this);
   }
 
-  void setParameters(const bpp::ParameterList& params)
+  void bpp::setParameters(const bpp::ParameterList& params)
   {
     AbstractParameterAliasable::setParametersValues(params);
   }
@@ -89,7 +89,7 @@ public:
   Eigen::SparseMatrix<double> fetchCombinedMatrix(size_t exponent)
   {
     // we want something like this: (TODO check if the EigenSolver returns const refs to these objects or computes them on the fly)
-    Eigen::SparseMatrix<double> mat = solvers_[0].eigenvectors() * (solvers_[0].eigenvalues() ^ exponent).asDiagonal() * solvers_[0].eigenvectors().inverse();
+    Eigen::SparseMatrix<double> mat = solvers_[0].eigenvectors() * (solvers_[0].eigenvalues().pow(exponent)).asDiagonal() * solvers_[0].eigenvectors().inverse();
 
     // adding Identity to convert from "delta" to "transition" matrix
     for(size_t j = 0; j < mat.cols(); ++j)
@@ -99,7 +99,7 @@ public:
     {
       for(size_t i = 1; i < matrices_.size(); ++i)
       {
-        mat += solvers_[i].eigenvectors() * (solvers_[i].eigenvalues() ^ exponent).asDiagonal() * solvers_[i].eigenvectors().inverse();
+        mat += solvers_[i].eigenvectors() * (solvers_[i].eigenvalues().pow(exponent)).asDiagonal() * solvers_[i].eigenvectors().inverse();
 
         // adding Identity to convert from "delta" to "transition" matrix
         for(size_t j = 0; i < mat.cols(); ++j)

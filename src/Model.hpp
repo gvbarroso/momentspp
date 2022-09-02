@@ -121,10 +121,12 @@ public:
     }
   }
 
+  Eigen::Matrix<double, Dynamic, 1> fetchSteadyState();
+
 private:
   void updateEpochs_(const bpp::ParameterList& params);
 
-  void computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix);
+  void computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, 1>& matrix);
 
   void computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed);
 
