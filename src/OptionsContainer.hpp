@@ -62,42 +62,42 @@ public:
     return numericalOptimizer_;
   }
 
-  const double getTolerance() const
+  double getTolerance() const
   {
     return tolerance_;
   }
 
-  const bool computeCI() const
+  bool computeCI() const
   {
     return computeCI_;
   }
 
-  const bool resume() const
+  bool resume() const
   {
     return resume_;
   }
 
-  const size_t getOrder() const
+  size_t getOrder() const
   {
     return order_;
   }
 
-  const size_t getNumberOfPopulations() const
+  size_t getNumberOfPopulations() const
   {
     return numberOfPopulations_;
   }
 
-  const size_t getMinNumberOfEpochs() const
+  size_t getMinNumberOfEpochs() const
   {
     return minNumberOfEpochs_;
   }
   
-  const size_t getMaxNumberOfEpochs() const
+  size_t getMaxNumberOfEpochs() const
   {
     return maxNumberOfEpochs_;
   }
 
-  const size_t getNumberOfThreads() const
+  size_t getNumberOfThreads() const
   {
     return numberOfThreads_;
   }

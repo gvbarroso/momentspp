@@ -38,7 +38,7 @@ public:
   startGen_(sslib),
   endGen_()
   {
-    AbstractParameterAliasable::setNamespace(name); // e_0, e_1, e_1 ...
+    bpp::AbstractParameterAliasable::setNamespace(name); // e_0, e_1, e_1 ...
 
     for(auto it = std::begin(operators); it != std::end(operators); ++it)
       includeParameters_((*it)->getParameters());
@@ -56,7 +56,7 @@ public:
 
   void setParameters(const bpp::ParameterList& params)
   {
-    AbstractParameterAliasable::setParametersValues(params);
+    bpp::AbstractParameterAliasable::setParametersValues(params);
 
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       (*it)->fireParameterChanged(params);

@@ -38,7 +38,7 @@ private:
   // NOTE make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
   // row and column order of matrices follow lexicographical order of stats_'s names
   std::map<std::string, double> stats_;  // name -> value ("observed" Y vector)
-  Eigen::Matrix<double, Eigen::Dynamic, 1> y_; // the Eigen representation
+  Eigen::Matrix<double, Eigen::Dynamic, 1> y_; // the Eigen representation of the observed vector
 
 public:
   SumStatsLibrary():

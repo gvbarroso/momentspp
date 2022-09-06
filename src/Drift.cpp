@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 01/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -118,15 +118,14 @@ void Drift::updateMatrices_()
 {
   std::string paramName = "";
 
-  for(size_t i = 0; i < solvers_.size(); ++i)
+  for(size_t i = 0; i < eigenDec_.size(); ++i) // one matrix / eigensolver per population
   {
-    paramName = "N_" + bpp::Textools::toString(i); // one per population
-
+    paramName = "N_" + bpp::Textools::toString(i);
     double prevVal = prevParams_.getParameterValue(paramName); // old
     double newVal = getParameterValue(paramName); // new
 
     // we want something like this:
-    solvers_[i].eigenvalues() *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
+    eigenDec_[i].eigenvalues() *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
   }
 
   prevParams_.matchParametersValues(getParameters());

@@ -155,7 +155,7 @@ void OptimizationWrapper::fitModel_(Model* model)
     std::cout << "\nError during optimization, convergence might not be reached!\nmoments++ will proceed, but check log files.\n";
 }
 
-void OptimizationWrapper::computeCI() // TODO use Godambe Information Matrix
+/*void OptimizationWrapper::computeCI() // TODO use Godambe Information Matrix
 {
   // Matrix operations with BPP tools (instead of Eigen) to make our lives easier w.r.t. compatibility
   std::cout << std::endl << "Computing 95% confidence intervals of parameter estimates..." << std::endl;
@@ -223,7 +223,7 @@ void OptimizationWrapper::computeCI() // TODO use Godambe Information Matrix
 
     outCI.close();
   }
-}
+}*/
 
 void OptimizationWrapper::writeEstimatesToFile_(Model* model)
 {
