@@ -20,7 +20,7 @@ void Epoch::updateOperators_(const bpp::ParameterList& params)
     (*it)->fireParametersChanged(params);
 }
 
-Eigen::Matrix<double, Dynamic, Dynamic> Epoch::combineOperators_()
+Eigen::Matrix<double, Dynamic, Dynamic> Epoch::fetchCombinedOperators()
 {
   Eigen::Matrix<double, Dynamic, Dynamic> mat(sslib_.getNumStats(), sslib_.getNumStats());
   mat.setIdentity();
@@ -34,5 +34,5 @@ Eigen::Matrix<double, Dynamic, Dynamic> Epoch::combineOperators_()
 
 void Epoch::computeExpectedSumStats(Eigen::Matrix<double, Dynamic, 1>& y)
 {
-  combineOperators_() * y;
+  combineOperators() * y;
 }

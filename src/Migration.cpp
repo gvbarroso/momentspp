@@ -287,7 +287,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.indexLookup("H_" + childPopId + parentPopId); // H_ij
               coefficients.push_back(Eigen::Triplet<double>(row, col, -static_cast<double>(parentPopIdCount))); // -1 before compression
 
-              /* H_ji -- before compression
+             /* H_ji -- before compression
               * col = sslib.indexLookup("H_" + parentPopId + childPopId);
               * coefficients.push_back(Eigen::Triplet<double>(row, col) -= 1. * static_cast<double>(parentPopIdCount);
               */

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 02/09/2022
+ * Last modified: 05/09/2022
  *
  */
 
@@ -77,12 +77,12 @@ public:
     return endGen_ - startGen_;
   }
 
+  Eigen::Matrix<double, Dynamic, Dynamic> fetchCombinedOperators();
+
   void computeExpectedSumStats(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix, Eigen::Matrix<double, Dynamic, 1>& y);
 
 private:
   void updateOperators_(const bpp::ParameterList& params);
-
-  Eigen::Matrix<double, Dynamic, Dynamic> combineOperators_();
 
 };
 

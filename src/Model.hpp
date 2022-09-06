@@ -40,6 +40,8 @@ private:
   SumStatsLibrary sslib_; // "Utils" class
   std::vector<std::string> frozenParams_;
 
+  Eigen::Matrix<double, Dynamic, 1> steadYstate_;
+
   double compLogLikelihood_;
 
 public:
@@ -48,6 +50,7 @@ public:
   epochs_(epochs),
   sslib_(sslib),
   frozenParams_(0),
+  steadYstate_(),
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epoch); ++it)
@@ -92,9 +95,9 @@ public:
     return epochs_;
   }
 
-  Eigen::Matrix<double, Dynamic, Dynamic> getCombinedOperator()
+  Eigen::Matrix<double, Dynamic, 1> getSteadyState()
   {
-    return combinedOperator_;
+    return steadYstate_;
   }
 
   void freezeParameter(const std::string& name)
@@ -121,7 +124,7 @@ public:
     }
   }
 
-  Eigen::Matrix<double, Dynamic, 1> fetchSteadyState();
+  void computeSteadyState();
 
 private:
   void updateEpochs_(const bpp::ParameterList& params);
