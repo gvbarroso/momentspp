@@ -112,13 +112,13 @@ public:
 
   const bpp::ParameterList& getUnfrozenParameters()
   {
-    if(frozenParameters.size() == 0)
+    if(frozenParams_.size() == 0)
       return getIndependentParameters();
 
     else
     {
       bpp::ParameterList unfrozen = getIndependentParameters();
-      for(auto it = std::begin(frozenParameters_); it != std::end(frozenParameters); ++it)
+      for(auto it = std::begin(frozenParams_); it != std::end(frozenParams_); ++it)
         unfrozen.deleteParameter(*it);
 
       return unfrozen;

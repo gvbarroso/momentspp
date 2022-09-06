@@ -85,6 +85,7 @@ public:
     init(dataset);
   }
 
+public:
   size_t getNumPops()
   {
     return numPops_;

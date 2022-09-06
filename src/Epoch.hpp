@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 05/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -34,11 +34,12 @@ private:
 
 public:
   Epoch(const std::vector<std::shared_ptr<Operator>>& operators, size_t start, size_t end, const std::string& name):
+  bpp::AbstractParameterAliasable(""),
   operators_(operators),
-  startGen_(sslib),
-  endGen_()
+  startGen_(start),
+  endGen_(end)
   {
-    AbstractParameterAliasable::setNamespace(name); // e_0, e_1, e_1 ...
+    bpp::AbstractParameterAliasable::setNamespace(name); // e_0, e_1, e_1 ...
 
     for(auto it = std::begin(operators); it != std::end(operators); ++it)
       includeParameters_((*it)->getParameters());
@@ -56,7 +57,7 @@ public:
 
   void setParameters(const bpp::ParameterList& params)
   {
-    AbstractParameterAliasable::setParametersValues(params);
+    bpp::AbstractParameterAliasable::setParametersValues(params);
 
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       (*it)->fireParameterChanged(params);

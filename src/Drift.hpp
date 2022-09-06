@@ -1,15 +1,13 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 01/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
 
 #ifndef _DRIFT_H_
 #define _DRIFT_H_
-
-#include
 
 #include "Operator.hpp"
 #include "SumStatsLibrary.hpp"

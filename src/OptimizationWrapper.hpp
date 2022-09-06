@@ -36,11 +36,11 @@ private:
   
 public:
   OptimizationWrapper(const OptionsContainer& options):
-  options_(options),
+  options_(options)
   { }
 
   OptimizationWrapper(const std::map<std::string, std::string>& options):
-  options_(options),
+  options_(options)
   { }
   
 public:

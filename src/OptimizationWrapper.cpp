@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 02/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -12,6 +12,10 @@
 #include "SumStatsLibrary.hpp"
 #include "OptimizationWrapper.hpp"
 #include "BackupListenerOv.hpp"
+#include "Drift.hpp"
+#include "Mutation.hpp"
+#include "Recombination.hpp"
+#include "Migration.hpp"
 #include "Epoch.hpp"
 #include "Model.hpp"
 

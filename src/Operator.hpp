@@ -41,10 +41,10 @@ private:
 
 public:
   Operator():
-  AbstractParameterAliasable(""),
+  bpp::AbstractParameterAliasable(""),
   matrices_(0),
   solvers_(0),
-  prevParams_(0)
+  prevParams_()
   { }
 
 public:
@@ -61,7 +61,7 @@ public:
 
   void bpp::setParameters(const bpp::ParameterList& params)
   {
-    AbstractParameterAliasable::setParametersValues(params);
+    bpp::AbstractParameterAliasable::setParametersValues(params);
   }
 
   void fireParameterChanged(const bpp::ParameterList& params)
@@ -114,16 +114,6 @@ private:
   virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients WARNING if row has all zeros, set main diagonal entry to 1
 
   virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
-
-  void compressSparseMatrices_() // from Eigen3 perspective, NOT w.r.t moments with the same expectation
-  {
-    if(matrices_.size() == 0)
-      throw bpp::Exception("Operator::tried to compress non-existing matrices!");
-
-    else
-      for(size_t i = 0; i < matrices_.size(); ++i)
-        matrices_[i].makeCompressed();
-  }
 
 };
 
