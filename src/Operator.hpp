@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 02/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -35,7 +35,7 @@ private:
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
   std::vector<Eigen::SparseMatrix<double>> matrices_; // NOTE do we want to keep these?
-  std::vector<Eigen::EigenSolver> solvers_;
+  std::vector<Eigen::EigenSolver> solvers_; // TODO std::vector<EigenDecompositon> eigen_;
 
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
 
