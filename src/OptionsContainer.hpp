@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/08/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -42,13 +42,13 @@ public:
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
   resume_(bpp::ApplicationTools::getParameter<bool>("resume", options, false)),
-  order_(bpp::ApplicationTools::getParameter<size_t>("order", options, "none")),
-  numberOfPopulations_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, "none")),
-  minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, "none")),
-  maxNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("max_epochs", options, "none")),
+  order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2)),
+  numberOfPopulations_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, 1)),
+  minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, 1)),
+  maxNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("max_epochs", options, 1)),
   numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options,
                                                                std::thread::hardware_concurrency(),
-                                                               "", true, 4)),
+                                                               "", true, 4))
   { }
   
 public:
@@ -62,42 +62,42 @@ public:
     return numericalOptimizer_;
   }
 
-  double getTolerance()
+  const double getTolerance() const
   {
     return tolerance_;
   }
 
-  bool computeCI()
+  const bool computeCI() const
   {
     return computeCI_;
   }
 
-  bool resume()
+  const bool resume() const
   {
     return resume_;
   }
 
-  size_t getOrder()
+  const size_t getOrder() const
   {
     return order_;
   }
 
-  size_t getNumberOfPopulations()
+  const size_t getNumberOfPopulations() const
   {
     return numberOfPopulations_;
   }
 
-  size_t getMinNumberOfEpochs()
+  const size_t getMinNumberOfEpochs() const
   {
     return minNumberOfEpochs_;
   }
   
-  size_t getMaxNumberOfEpochs()
+  const size_t getMaxNumberOfEpochs() const
   {
     return maxNumberOfEpochs_;
   }
 
-  size_t getNumberOfThreads()
+  const size_t getNumberOfThreads() const
   {
     return numberOfThreads_;
   }

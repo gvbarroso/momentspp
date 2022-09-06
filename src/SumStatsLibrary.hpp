@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 01/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -13,6 +13,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <cstring>
 
 #include <boost/algorithm/string.hpp>
 
@@ -37,7 +38,7 @@ private:
   // NOTE make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
   // row and column order of matrices follow lexicographical order of stats_'s names
   std::map<std::string, double> stats_;  // name -> value ("observed" Y vector)
-  Eigen::Matrix<double, Dynamic, 1> y_; // the Eigen representation
+  Eigen::Matrix<double, Eigen::Dynamic, 1> y_; // the Eigen representation
 
 public:
   SumStatsLibrary():
@@ -64,7 +65,7 @@ public:
   initialized_(false),
   compressed_(false),
   stats_(),
-  y_(y)
+  y_()
   {
     init(dataset);
   }
@@ -78,7 +79,7 @@ public:
   y_()
   {
     PolymorphismData dataset;
-    dataset.parse(options.getDataPath());
+    dataset.parse(opt.getDataPath());
     dataset.computeSumStats();
 
     init(dataset);
@@ -86,7 +87,7 @@ public:
 
   size_t getNumPops()
   {
-    return numPops;
+    return numPops_;
   }
 
 
@@ -120,7 +121,7 @@ public:
     return stats_.at(name);
   }
 
-  const Eigen::Matrix<double, Dynamic, 1>& getYvec()
+  const Eigen::Matrix<double, Eigen::Dynamic, 1>& getYvec()
   {
     return y_;
   }
@@ -142,28 +143,16 @@ public:
 
   size_t countInstances(const std::string& target, const std::string& query)
   {
-    std::string::difference_type count = std::count(std::begin(target), std::end(target), query);
+    std::string::difference_type count = std::count(std::begin(target), std::end(target), *query.c_str());
     return static_cast<size_t>(count);
   }
 
   size_t indexLookup(const std::string& moment)
   {
-    auto pos = stats_.find(moment);
-
-    if(pos == std::end(stats_))
-      throw bpp::Exception("SumStatsLibrary::Could not find index of moment " + moment);
-
-    else
-      return static_cast<size_t>(pos - std::begin(stats_));
+    return std::distance(std::begin(stats_), stats_.find(moment));
   }
 
-  void init(size_t numPops, size_t order = 2)
-  {
-    order_ = order;
-
-    includeHetStats_();
-    includeLdStats_();
-  }
+  void init(const PolymorphismData& dataset);
 
 private:
   void includeHetStats_();
@@ -174,5 +163,5 @@ private:
 
 };
 
-
+#endif
 

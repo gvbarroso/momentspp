@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 02/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -20,9 +20,9 @@ void Epoch::updateOperators_(const bpp::ParameterList& params)
     (*it)->fireParametersChanged(params);
 }
 
-Eigen::Matrix<double, Dynamic, Dynamic> Epoch::fetchCombinedOperators()
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> Epoch::fetchCombinedOperators()
 {
-  Eigen::Matrix<double, Dynamic, Dynamic> mat(sslib_.getNumStats(), sslib_.getNumStats());
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> mat(sslib_.getNumStats(), sslib_.getNumStats());
   mat.setIdentity();
 
   // NOTE we must be careful with the order of operations
@@ -32,7 +32,7 @@ Eigen::Matrix<double, Dynamic, Dynamic> Epoch::fetchCombinedOperators()
   return mat;
 }
 
-void Epoch::computeExpectedSumStats(Eigen::Matrix<double, Dynamic, 1>& y)
+void Epoch::computeExpectedSumStats(Eigen::Matrix<double, Eigen::Dynamic, 1>& y)
 {
   combineOperators() * y;
 }

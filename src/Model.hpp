@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 02/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -26,7 +26,7 @@
 #include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/Numeric/Function/Functions.h>
 
-#include "Epoch.h"
+#include "Epoch.hpp"
 #include "SumStatsLibrary.hpp"
 
 class Model:
@@ -40,12 +40,13 @@ private:
   SumStatsLibrary sslib_; // "Utils" class
   std::vector<std::string> frozenParams_;
 
-  Eigen::Matrix<double, Dynamic, 1> steadYstate_;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> steadYstate_;
 
   double compLogLikelihood_;
 
 public:
   Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, const SumStatsLibrary& sslib):
+  AbstractParameterAliasable(""),
   name_(name),
   epochs_(epochs),
   sslib_(sslib),
@@ -53,7 +54,7 @@ public:
   steadYstate_(),
   compLogLikelihood_(-1.)
   {
-    for(auto it = std::begin(epochs); it != std::end(epoch); ++it)
+    for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       includeParameters_((*it)->getParameters());
   }
 
@@ -72,7 +73,7 @@ public:
     AbstractParameterAliasable::setParametersValues(params);
 
     for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
-      (*it)->fireParametersChanged(params);
+      (*it)->fireParameterChanged(params);
   }
 
   double getValue() const
@@ -90,12 +91,12 @@ public:
     return name_;
   }
 
-  const std::vector<Epoch*>& getEpochs()
+  const std::vector<shared_ptr<Epoch>>& getEpochs()
   {
     return epochs_;
   }
 
-  Eigen::Matrix<double, Dynamic, 1> getSteadyState()
+  Eigen::Matrix<double, Eigen::Dynamic, 1> getSteadyState()
   {
     return steadYstate_;
   }
@@ -129,9 +130,9 @@ public:
 private:
   void updateEpochs_(const bpp::ParameterList& params);
 
-  void computeExpectedSumStats_(const Eigen::Matrix<double, Dynamic, 1>& matrix);
+  void computeExpectedSumStats_(const Eigen::Matrix<double, Eigen::Dynamic, 1>& matrix);
 
-  void computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed);
+  void computeCompositeLogLikelihood_(const Eigen::Matrix<double, Eigen::Dynamic, 1>& observed);
 
 };
 

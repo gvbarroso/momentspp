@@ -59,7 +59,7 @@ public:
     AbstractParameterAliasable::setParametersValues(params);
 
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      (*it)->fireParametersChanged(params);
+      (*it)->fireParameterChanged(params);
   }
 
   size_t start()
@@ -77,9 +77,9 @@ public:
     return endGen_ - startGen_;
   }
 
-  Eigen::Matrix<double, Dynamic, Dynamic> fetchCombinedOperators();
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> fetchCombinedOperators();
 
-  void computeExpectedSumStats(const Eigen::Matrix<double, Dynamic, Dynamic>& matrix, Eigen::Matrix<double, Dynamic, 1>& y);
+  void computeExpectedSumStats(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& matrix, Eigen::Matrix<double, Eigen::Dynamic, 1>& y);
 
 private:
   void updateOperators_(const bpp::ParameterList& params);
