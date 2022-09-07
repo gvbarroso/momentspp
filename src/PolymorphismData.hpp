@@ -36,15 +36,22 @@ private:
   size_t numPops_;
   size_t order_;
 
+  std::map<std::string, double> expectations_;
+  std::map<std::string, double> variances_; // bootstrapped
+
 public:
   PolymorphismData():
   numPops_(1),
-  order_(2)
+  order_(2),
+  expectations_(),
+  variances_()
   { }
 
   PolymorphismData(const OptionsContainer& opt):
   numPops_(opt.getNumberOfPopulations()),
-  order_(opt.getOrder())
+  order_(opt.getOrder()),
+  expectations_(),
+  variances_()
   { }
 
 public:

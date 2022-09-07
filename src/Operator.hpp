@@ -24,7 +24,8 @@
 #include <Bpp/Numeric/ParameterList.h>
 
 #include "SumStatsLibrary.hpp"
-
+#include "EigenDecomposition.hpp"
+e
 class Operator:
   public bpp::AbstractParameterAliasable
 {
@@ -35,16 +36,15 @@ private:
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
   std::vector<Eigen::SparseMatrix<double>> matrices_; // NOTE do we want to keep these?
-  std::vector<Eigen::EigenSolver> solvers_; // TODO std::vector<EigenDecompositon> eigen_;
-
+  std::vector<EigenDecompositon> eigenDec_;
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
 
 public:
   Operator():
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
-  solvers_(0),
-  prevParams_()
+  eigenDec_(0),
+  prevParams_(0)
   { }
 
 public:
@@ -75,9 +75,9 @@ public:
     return matrices_;
   }
 
-  const std::vector<Eigen::EigenSolver<double>>& getEigenSolvers()
+  const std::vector<EigenDecompositon>& getEigenDecompositions()
   {
-    return solvers_;
+    return eigenDec_;
   }
 
   const Eigen::SparseMatrix<double>& getMatrix(size_t index)
@@ -88,18 +88,18 @@ public:
 
   Eigen::SparseMatrix<double> fetchCombinedMatrix(size_t exponent)
   {
-    // we want something like this: (TODO check if the EigenSolver returns const refs to these objects or computes them on the fly)
-    Eigen::SparseMatrix<double> mat = solvers_[0].eigenvectors() * (solvers_[0].eigenvalues().pow(exponent)).asDiagonal() * solvers_[0].eigenvectors().inverse();
+    // we want something like this
+    Eigen::SparseMatrix<double> mat = eigenDec_[0].matrix() * eigenDec_[0].lambdaMat(exponent) * eigenDec_[0].matrixInverse();
 
     // adding Identity to convert from "delta" to "transition" matrix
     for(size_t j = 0; j < mat.cols(); ++j)
       mat(j, j) += 1.;
 
-    if(matrices_.size() > 1)
+    if(eigenDec_.size() > 1)
     {
-      for(size_t i = 1; i < matrices_.size(); ++i)
+      for(size_t i = 1; i < eigenDec_.size(); ++i)
       {
-        mat += solvers_[i].eigenvectors() * (solvers_[i].eigenvalues().pow(exponent)).asDiagonal() * solvers_[i].eigenvectors().inverse();
+        mat += eigenDec_[i].matrix() * eigenDec_[i].lambda(exponent) * eigenDec_[i].matrixInverse();
 
         // adding Identity to convert from "delta" to "transition" matrix
         for(size_t j = 0; i < mat.cols(); ++j)
@@ -111,7 +111,7 @@ public:
   }
 
 private:
-  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients WARNING if row has all zeros, set main diagonal entry to 1
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
 
   virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
 

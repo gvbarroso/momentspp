@@ -310,13 +310,13 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
 void Migration::updateMatrices_()
 {
-  // this is a weird-looking but fun way to get the number of populations P from the raw value of P choose 2 ( == matrices_.size())
+  // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
   int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
-  int binCoeff = static_cast<int>(matrices_.size()); // raw value of P choose 2
+  int n = static_cast<int>(matrices_.size()); // raw value of P^2 - P
 
-  for(int i = 2; i < binCoeff; ++i)
+  for(int i = 2; i < n; ++i)
   {
-    if(i * (1 - i) == -2 * binCoeff)  // guaranteed to find if matrices_.size() was built correctly
+    if(i * (1 - i) == -n)  // guaranteed to find if matrices_.size() was built correctly
     {
       numPops = i;
       break;
@@ -337,7 +337,7 @@ void Migration::updateMatrices_()
         double prevVal = prevParams_.getParameterValue(name);
         double newVal = getParameterValue(name); // from within itself
 
-        solvers_[index].eigenvalues() *= (newVal / prevVal);
+        eigenDec_[i].setLambda(eigenDec_[i].lambda() * (newVal / prevVal));
 
         ++index;
       }

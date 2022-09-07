@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 05/09/2022
+ * Last modified: 06/09/2022
  *
  */
 
@@ -15,7 +15,7 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
 
   auto expectedStats = computeExpectedSumStats_();
 
-  computeCompositeLogLikelihood_(sslib_->getYvec(), expectedStats);
+  computeCompositeLogLikelihood_(expectedStats, sslib_->getYvec(), sslib_->getCovarMatrix()); // for each rec. bin
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -24,9 +24,18 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
     (*it)->fireParametersChanged(params);
 }
 
-void Model::computeCompositeLogLikelihood_(const Eigen::Matrix<double, Dynamic, 1>& observed, const Eigen::Matrix<double, Dynamic, 1>& expected)
+void Model::computeCompositeLogLikelihood_(const std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>>& expected,
+                                           const std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>>& means,
+                                           const std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>& covarMat)
 {
-  // compLogLikelihood_ = f(observed, expected) for different windows or something
+  double cll = 0.;
+
+  for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
+  {
+    cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected - means).transpose() * covarMat^(-1)*(expected - means);
+  }
+
+  compLogLikelihood_ = cll;
 }
 
 Eigen::Matrix<double, Dynamic, 1> Model::computeExpectedSumStats_()
@@ -48,7 +57,4 @@ void Model::computeSteadyState()
     steadYstate_ = es.eigenvectors().col(0);
 
     std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "; associated eigenvalues: " << steadYstate_ << std::endl;
-
 }
-
-

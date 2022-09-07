@@ -77,7 +77,7 @@ public:
     return resume_;
   }
 
-   size_t getOrder() const
+  size_t getOrder() const
   {
     return order_;
   }

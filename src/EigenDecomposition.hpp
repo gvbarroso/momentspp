@@ -16,45 +16,57 @@
 #include <Eigen/Eigenvalues>
 
 
-class EigenDecomposition:
+class EigenDecomposition
 {
 
 private:
-  Eigen::EigenSolver<MatrixType>::eigenvectors mat_;
-  Eigen::EigenSolver<MatrixType_>::eigenvalues lambda_;
-  Eigen::EigenSolver<MatrixType>::eigenvectors matInverse_;
+  Eigen::EigenSolver<Eigen::MatrixXd> mat_;
+  Eigen::EigenSolver<Eigen::MatrixXd> lambda_;
+  Eigen::EigenSolver<Eigen::MatrixXd> matInverse_;
 
 public:
-  EigenDecomposition(const Eigen::EigenSolver& es):
+  EigenDecomposition(const Eigen::EigenSolver<Eigen::MatrixXd>& es):
   mat_(es.eigenvectors()),
   lambda_(es.eigenvalues()),
   matInverse_(es.eigenvectors().inverse())
   { }
 
-  EigenDecomposition(const Eigen::SparseMatrix<double> mat& mat):
+  EigenDecomposition(const Eigen::MatrixXd& mat):
   mat_(),
   lambda_(),
   matInverse_()
   {
-    Eigen::EigenSolver es(mat);
+    Eigen::EigenSolver<Eigen::MatrixXd> es(mat);
     mat_ = es.eigenvectors();
     lambda_ = es.eigenvalues();
     matInverse_ = es.eigenvectors().inverse();
   }
 
-  const Eigen::Matrix& matrix()
+  const Eigen::Matrix<Eigen::MatrixXd>& matrix()
   {
     return mat_;
   }
 
-  const Eigen::Matrix& matrixInverse()
+  const Eigen::Matrix<Eigen::MatrixXd>& matrixInverse()
   {
     return matInverse_;
   }
 
-  const Eigen::Matrix& lambda()
+  const Eigen::Matrix<Eigen::MatrixXd>& lambda()
   {
-    return lambda_.asDiagonal();
+    return lambda_;
+  }
+
+  Eigen::Matrix<Eigen::MatrixXd> lambdaMat(size_t exponent = 1)
+  {
+    return (lambda_.pow(exponent)).asDiagonal();
+  }
+
+  void setLambda(const Eigen::EigenSolver<Eigen::MatrixXd>& newLambda)
+  {
+    lambda_ = newLambda;
   }
 
 };
+
+#endif
