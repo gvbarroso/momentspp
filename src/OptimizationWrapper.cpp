@@ -1,13 +1,15 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 06/09/2022
+ * Last modified: 07/09/2022
  *
  */
 
 
 #include <iostream>
 #include <memory>
+
+#include <Bpp/Text/TextTools.h>
 
 #include "SumStatsLibrary.hpp"
 #include "OptimizationWrapper.hpp"
@@ -28,9 +30,10 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 
   for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i) // one model per count of epochs
   {
-    std::string name = bpp::ToString(i) + "_epochs_model";
+    std::string name = bpp::TextTools::toString(i) + "_epochs_model";
 
-    std::vector<std::shared_ptr<Epoch>> epochs(i);
+    std::vector<std::shared_ptr<Epoch>> epochs(0);
+    epochs.reserve(i);
 
     bpp::ParameterList mutPl;
     bpp::ParameterList recPl;
@@ -41,26 +44,26 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
     mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
     recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
 
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(rec, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mut, sslib);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib);
 
     for(size_t j = 0; j < i; ++j) // for each epoch, from past to present
     {
-      std::string id = "e_" + bpp::ToString(j); // for setting the namespace for params within each epoch
+      std::string id = "e_" + bpp::TextTools::toString(j); // for setting the namespace for params within each epoch
 
       bpp::ParameterList driftPl;
       bpp::ParameterList migPl;
 
       for(size_t k = 0; k < numPops; ++k) // NOTE could be numPops[j]...
       {
-        driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::ToString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
+        driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
 
         for(size_t l = 0; l < numPops; ++l)
-          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::ToString(k) + bpp::TextTools::ToString(l), 1e-8, ic));
+          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l), 1e-8, ic));
       }
 
       std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib);
-      std::shared_ptr<Migration> migOp = std::shared_ptr<Migration>(migPl, sslib);
+      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib);
 
       std::vector<std::shared_ptr<Operator>> operators(4);
 
@@ -71,8 +74,8 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
       operators[3] = mutOp;
 
       // define start and end of epochs as quantiles of the exp dist?
-      size_t start = j * (totalNumberOfGenerations / i);// in units of generations
-      size_t end = (j + 1) * (totalNumberOfGenerations / i); // in units of generations
+      size_t start = j * (options_.getTotalNumberOfGenerations() / i);// in units of generations
+      size_t end = (j + 1) * (options_.getTotalNumberOfGenerations() / i); // in units of generations
 
       epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
     }
@@ -102,7 +105,7 @@ void OptimizationWrapper::fitModel_(Model* model)
   {
     bpp::ReparametrizationFunctionWrapper rfw(model, model->getUnfrozenParameters());
 
-    optimizer.reset(new PowellMultiDimensions(&rfw));
+    optimizer.reset(new bpp::PowellMultiDimensions(&rfw));
     optimizer->init(rfw.getParameters());
   }
 
@@ -137,8 +140,8 @@ void OptimizationWrapper::fitModel_(Model* model)
   else
     throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer " + options_.getOptimMethod());
 
-  bpp::FunctionStopCondition stopCond(optimizer.get(), options_.getFunctionTolerance());
-  optimizer->setStopCondition(&stopCond);
+  std::unique_ptr<bpp::FunctionStopCondition> stopCond = std::make_unique<bpp::FunctionStopCondition>(optimizer.get(), options_.getTolerance());
+  optimizer->setStopCondition(*stopCond);
 
   BackupListenerOv blo("backup_params.txt");
   optimizer->addOptimizationListener(&blo);
@@ -153,10 +156,14 @@ void OptimizationWrapper::fitModel_(Model* model)
   optimizer->setMessageHandler(&messenger);
   
   try
+  {
     optimizer->optimize();
+  }
 
   catch(bpp::Exception& e)
+  {
     std::cout << "\nError during optimization, convergence might not be reached!\nmoments++ will proceed, but check log files.\n";
+  }
 }
 
 /*void OptimizationWrapper::computeCI() // TODO use Godambe Information Matrix
@@ -235,7 +242,7 @@ void OptimizationWrapper::writeEstimatesToFile_(Model* model)
   file.open(model->getName() + "_estimates.txt");
 
   file << "CLL = " << model->comLogLikelihood() << std::endl << std::endl;
-  model->getParameterList().printParameters(file);
+  model->getParameters().printParameters(file);
 
   file.close();
 }

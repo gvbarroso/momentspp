@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 06/09/2022
+ * Last modified: 07/09/2022
  *
  */
 
@@ -33,6 +33,7 @@ private:
   size_t numberOfPopulations_;
   size_t minNumberOfEpochs_;
   size_t maxNumberOfEpochs_;
+  size_t totalNumberOfGenerations_;
   size_t numberOfThreads_;
   
 public:
@@ -46,6 +47,7 @@ public:
   numberOfPopulations_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, 1)),
   minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, 1)),
   maxNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("max_epochs", options, 1)),
+  totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("tot_gen", options, 1)),
   numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options,
                                                                std::thread::hardware_concurrency(),
                                                                "", true, 4))
@@ -95,6 +97,11 @@ public:
   size_t getMaxNumberOfEpochs() const
   {
     return maxNumberOfEpochs_;
+  }
+
+  size_t getTotalNumberOfGenerations() const
+  {
+    return totalNumberOfGenerations_;
   }
 
   size_t getNumberOfThreads() const

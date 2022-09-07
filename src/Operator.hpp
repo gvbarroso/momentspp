@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 06/09/2022
+ * Last modified: 07//09/2022
  *
  */
 
@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/Eigenvalues>
 
@@ -25,18 +26,18 @@
 
 #include "SumStatsLibrary.hpp"
 #include "EigenDecomposition.hpp"
-e
+
 class Operator:
   public bpp::AbstractParameterAliasable
 {
 
-private:
+protected:
   // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
-  std::vector<Eigen::SparseMatrix<double>> matrices_; // NOTE do we want to keep these?
-  std::vector<EigenDecompositon> eigenDec_;
+  std::vector<Eigen::MatrixXd> matrices_; // NOTE do we want to keep these?
+  std::vector<EigenDecomposition> eigenDec_;
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
 
 public:
@@ -44,14 +45,14 @@ public:
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   eigenDec_(0),
-  prevParams_(0)
+  prevParams_()
   { }
 
 public:
   ~Operator()
   {
     std::cout << "Destruction of Operator with parameters:\n";
-    printParameters(std::cout);
+    getParameters().printParameters(std::cout);
   }
 
   Operator* clone() const
@@ -59,7 +60,7 @@ public:
     return new Operator(*this);
   }
 
-  void bpp::setParameters(const bpp::ParameterList& params)
+  void setParameters(const bpp::ParameterList& params)
   {
     bpp::AbstractParameterAliasable::setParametersValues(params);
   }
@@ -70,26 +71,26 @@ public:
       updateMatrices_();
   }
 
-  const std::vector<Eigen::SparseMatrix<double>>& getMatrices()
+  const std::vector<Eigen::MatrixXd>& getMatrices()
   {
     return matrices_;
   }
 
-  const std::vector<EigenDecompositon>& getEigenDecompositions()
+  const std::vector<EigenDecomposition>& getEigenDecompositions()
   {
     return eigenDec_;
   }
 
-  const Eigen::SparseMatrix<double>& getMatrix(size_t index)
+  const Eigen::MatrixXd& getMatrix(size_t index)
   {
     // population index for Drift; population-pair index for Migration etc
     return matrices_[index];
   }
 
-  Eigen::SparseMatrix<double> fetchCombinedMatrix(size_t exponent)
+  Eigen::MatrixXd fetchCombinedMatrix(size_t exponent)
   {
     // we want something like this
-    Eigen::SparseMatrix<double> mat = eigenDec_[0].matrix() * eigenDec_[0].lambdaMat(exponent) * eigenDec_[0].matrixInverse();
+    Eigen::MatrixXd mat = eigenDec_[0].matrix() * eigenDec_[0].lambdaMat(exponent) * eigenDec_[0].matrixInverse();
 
     // adding Identity to convert from "delta" to "transition" matrix
     for(size_t j = 0; j < mat.cols(); ++j)
@@ -99,7 +100,7 @@ public:
     {
       for(size_t i = 1; i < eigenDec_.size(); ++i)
       {
-        mat += eigenDec_[i].matrix() * eigenDec_[i].lambda(exponent) * eigenDec_[i].matrixInverse();
+        mat += eigenDec_[i].matrix() * eigenDec_[i].lambdaMat(exponent) * eigenDec_[i].matrixInverse();
 
         // adding Identity to convert from "delta" to "transition" matrix
         for(size_t j = 0; i < mat.cols(); ++j)
@@ -110,7 +111,7 @@ public:
     return mat;
   }
 
-private:
+protected:
   virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
 
   virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 06/09/2022
+ * Last modified: 07/09/2022
  *
  */
 
@@ -26,7 +26,7 @@ class Epoch:
 {
 
 private:
-  // each operator contains bpp parameters and Eigen (sparse) matrices
+  // each operator contains bpp parameters and Eigen matrices
   std::vector<std::shared_ptr<Operator>> operators_;
 
   size_t startGen_; // we let the deepest point in relevant time be generation "0"
@@ -34,13 +34,11 @@ private:
 
 public:
   Epoch(const std::vector<std::shared_ptr<Operator>>& operators, size_t start, size_t end, const std::string& name):
-  bpp::AbstractParameterAliasable(""),
+  bpp::AbstractParameterAliasable(name),
   operators_(operators),
   startGen_(start),
   endGen_(end)
   {
-    bpp::AbstractParameterAliasable::setNamespace(name); // e_0, e_1, e_1 ...
-
     for(auto it = std::begin(operators); it != std::end(operators); ++it)
       includeParameters_((*it)->getParameters());
   }
@@ -78,9 +76,9 @@ public:
     return endGen_ - startGen_;
   }
 
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> fetchCombinedOperators();
+  Eigen::MatrixXd fetchCombinedOperators();
 
-  void computeExpectedSumStats(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& matrix, Eigen::Matrix<double, Eigen::Dynamic, 1>& y);
+  void computeExpectedSumStats(const Eigen::MatrixXd& matrix, Eigen::VectorXd& y);
 
 private:
   void updateOperators_(const bpp::ParameterList& params);

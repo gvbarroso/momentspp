@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 06/09/2022
+ * Last modified: 07/09/2022
  *
  */
 
@@ -38,7 +38,7 @@ private:
   // NOTE make this a std::map<std::string, std::pair<size_t, double>> stats_; where the size_t represents the redundancy factor of each statistic (>= 1)?
   // row and column order of matrices follow lexicographical order of stats_'s names
   std::map<std::string, double> stats_;  // name -> value ("observed" Y vector)
-  Eigen::Matrix<double, Eigen::Dynamic, 1> y_; // the Eigen representation of the observed vector
+  Eigen::VectorXd y_; // the Eigen representation of the observed vector
 
 public:
   SumStatsLibrary():
@@ -91,8 +91,17 @@ public:
     return numPops_;
   }
 
+  size_t getNumPops() const
+  {
+    return numPops_;
+  }
 
   size_t getOrder()
+  {
+    return order_;
+  }
+
+  size_t getOrder() const
   {
     return order_;
   }

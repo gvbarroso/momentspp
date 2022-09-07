@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 24/08/2022
+ * Last modified: 07/09/2022
  *
  */
 
@@ -12,9 +12,10 @@
 void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // for now, this method assumes equal recombination rates across pops.
-  matrices_.reserve(1);
-  std::vector<Eigen::Triplet<double>> coefficients(0);
-  coefficients.reserve(sslib.getNumStats());
+  matrices_.resize(1);
+  eigenDec_.reserve(1);
+
+  matrices_[0] = Eigen::MatrixXd::Zero(sslib.getStats(), sslib.getStats()); // inits to 0 matrix
 
   for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
   {
@@ -24,16 +25,11 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     size_t row = it - std::begin(sslib->getStats()); // recombination matrix only has entries in main diagonal
     size_t orderD = static_cast<int>(sslib.countInstances(mon, "D"));
 
-    coefficients.push_back(Eigen::Triplet<double>(row, row, -orderD));
+    matrices_[i](row, row) = -orderD;
   }
 
-  Eigen::SparseMatrix<double> mat;
-  mat.setFromTriplets(coefficients);
-  mat.makeCompressed();
-  matrices_.emplace_back(mat);
-
-  Eigen::EigenSolver es(mat); // is it a problem that mat has zero-columns?
-  solvers_.emplace_back(es); // TODO check if it's more efficient to store eigenvectors, eigenvalues, and eigenvectors ^ (-1)
+  Eigen::EigenSolver es(matrices_[0]); // is it a problem that mat has zero-columns?
+  eigenDec_.emplace_back(es);
 }
 
 void Recombination::updateMatrices_()
@@ -47,7 +43,7 @@ void Recombination::updateMatrices_()
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName); // from within itself
 
-    solvers_[i].eigenvalues() *= (newVal / prevVal);
+    eigenDec_[i].setLambda(eigenDec_[i].lambda() * (newVal / prevVal));
   }
 
   prevParams_.matchParametersValues(getParameters());
