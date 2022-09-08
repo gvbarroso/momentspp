@@ -9,11 +9,11 @@
 #include "Mutation.hpp"
 
 
-void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
+void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // for now, this method assumes both the infinite sites model as well as equal mutation rates across pops.
   matrices_.resize(1);
-  solvers_.reserve(1);
+  eigenDec_.reserve(1);
 
   matrices_[0] = Eigen::MatrixXd::Zero(sslib.getStats(), sslib.getStats()); // inits to 0 matrix
 
@@ -52,11 +52,11 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
 
   matrices_[0] *= getParameterValue("mu_0");
 
-  EigenDecomposition ed(matrices_[0], exponent); // is it a problem that mat has zero-columns?
+  EigenDecomposition ed(matrices_[0]); // is it a problem that mat has zero-columns?
   eigenDec_.emplace_back(ed);
 }
 
-void Mutation::updateMatrices_(size_t exponent)
+void Mutation::updateMatrices_()
 {
   std::string paramName = "";
 
@@ -66,7 +66,7 @@ void Mutation::updateMatrices_(size_t exponent)
 
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName);
-    double factor = std::pow(newVal / prevVal, exponent);
+    double factor = std::pow(newVal / prevVal, exponent_);
 
     eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
   }

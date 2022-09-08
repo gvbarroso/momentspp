@@ -39,13 +39,15 @@ protected:
   std::vector<Eigen::MatrixXd> matrices_; // NOTE do we want to keep these?
   std::vector<EigenDecomposition> eigenDec_;
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
+  size_t exponent_; // for matrix exponentiation
 
 public:
   Operator():
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   eigenDec_(0),
-  prevParams_()
+  prevParams_(),
+  exponent_(1)
   { }
 
 public:
@@ -65,10 +67,10 @@ public:
     bpp::AbstractParameterAliasable::setParametersValues(params);
   }
 
-  void fireParameterChanged(const bpp::ParameterList& params, size_t exponent)
+  void fireParameterChanged(const bpp::ParameterList& params)
   {
     if(matchParametersValues(params))
-      updateMatrices_(exponent);
+      updateMatrices_();
   }
 
   const std::vector<Eigen::MatrixXd>& getMatrices()
@@ -79,6 +81,16 @@ public:
   const std::vector<EigenDecomposition>& getEigenDecompositions()
   {
     return eigenDec_;
+  }
+
+  size_t getExponent()
+  {
+    return exponent_;
+  }
+
+  void setExponent(size_t exponent)
+  {
+    exponent_ = exponent;
   }
 
   const Eigen::MatrixXd& getMatrix(size_t index)
@@ -107,9 +119,9 @@ public:
   }
 
 protected:
-  virtual void setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent);  // called only once in order to set the coefficients
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
 
-  virtual void updateMatrices_(size_t exponent); // scales coefficients by (new) parameters during optimization
+  virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
 
 };
 

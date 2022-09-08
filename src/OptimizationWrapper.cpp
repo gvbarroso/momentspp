@@ -68,13 +68,14 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
       std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib, duration);
       std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib, duration);
 
-      std::vector<std::shared_ptr<Operator>> operators(4);
+      std::vector<std::shared_ptr<Operator>> operators(0);
+      operators.reserve(4);
 
       // include operators in the correct order for matrix operations
-      operators[0] = migOp;
-      operators[1] = driftOp;
-      operators[2] = recOp;
-      operators[3] = mutOp;
+      operators.emplace_back(migOp);
+      operators.emplace_back(driftOp);
+      operators.emplace_back(recOp);
+      operators.emplace_back(mutOp);
 
       epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
     }

@@ -23,7 +23,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 void Epoch::updateOperators_(const bpp::ParameterList& params)
 {
   for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-    (*it)->fireParameterChanged(params, duration());
+    (*it)->fireParameterChanged(params);
 }
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 07/09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -10,7 +10,7 @@
 #include "Drift.hpp"
 
 
-void Drift::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
+void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
 
@@ -106,12 +106,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
     // scale matrix by associated parameter value so that it
     matrices_[i] *= getParameterValue("N_" + bpp::TextTools::toString(i));
 
-    EigenDecomposition ed(matrices_[i], exponent);
+    EigenDecomposition ed(matrices_[i], exponent_);
     eigenDec_.emplace_back(ed);
   }
 }
 
-void Drift::updateMatrices_(size_t exponent)
+void Drift::updateMatrices_()
 {
   std::string paramName = "";
 
@@ -121,7 +121,7 @@ void Drift::updateMatrices_(size_t exponent)
 
     double prevVal = prevParams_.getParameterValue(paramName); // old
     double newVal = getParameterValue(paramName); // new
-    double factor = std::pow(prevVal / newVal, exponent); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
+    double factor = std::pow(prevVal / newVal, exponent_); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
 
     eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
   }

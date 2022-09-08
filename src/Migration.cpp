@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 07/09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -9,7 +9,7 @@
 #include "Migration.hpp"
 
 
-void Migration::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
+void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = sslib.getNumPops();
   size_t index = 0; // matrix index, referring to the coefficients of the parameter m_ij, i != j
@@ -305,7 +305,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
   }
 }
 
-void Migration::updateMatrices_(size_t exponent)
+void Migration::updateMatrices_()
 {
   // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
   int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
@@ -333,7 +333,7 @@ void Migration::updateMatrices_(size_t exponent)
 
         double prevVal = prevParams_.getParameterValue(name);
         double newVal = getParameterValue(name);
-        double factor = std::pow(newVal / prevVal, exponent);
+        double factor = std::pow(newVal / prevVal, exponent_);
 
         eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
 

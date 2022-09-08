@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 07/09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -9,7 +9,7 @@
 #include "Recombination.hpp"
 
 
-void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
+void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // for now, this method assumes equal recombination rates across pops.
   matrices_.resize(1);
@@ -30,11 +30,11 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent
 
   matrices_[i] *= getParameterValue("r_0");
 
-  EigenDecomposition ed(matrices_[0], exponent); // is it a problem that mat has zero-columns?
+  EigenDecomposition ed(matrices_[0], exponent_); // is it a problem that mat has zero-columns?
   eigenDec_.emplace_back(ed);
 }
 
-void Recombination::updateMatrices_(size_t exponent)
+void Recombination::updateMatrices_()
 {
   std::string paramName = "";
 
@@ -44,7 +44,7 @@ void Recombination::updateMatrices_(size_t exponent)
 
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName);
-    double factor = std::pow(newVal / prevVal, exponent);
+    double factor = std::pow(newVal / prevVal, exponent_);
 
     eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
   }

@@ -23,12 +23,13 @@ public:
     // of the matrix (m_ij's) sum to 1, with main diagonal entries = 1 - sum of values < 1e=5
     includeParameters_(params);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(ssl, exponent);
+    setUpMatrices_(ssl);
+    setExponent(exponent);
   }
 
-  void setUpMatrices_(const SumStatsLibrary& ssl, size_t exponent);
+  void setUpMatrices_(const SumStatsLibrary& ssl);
 
-  void updateMatrices_(size_t exponent);
+  void updateMatrices_();
 
 };
 
