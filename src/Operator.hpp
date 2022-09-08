@@ -66,10 +66,10 @@ public:
     bpp::AbstractParameterAliasable::setParametersValues(params);
   }
 
-  void fireParameterChanged(const bpp::ParameterList& params)
+  void fireParameterChanged(const bpp::ParameterList& params, size_t exponent)
   {
     if(matchParametersValues(params))
-      updateMatrices_();
+      updateMatrices_(exponent);
   }
 
   const std::vector<Eigen::MatrixXd>& getMatrices()

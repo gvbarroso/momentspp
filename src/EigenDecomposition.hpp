@@ -25,6 +25,12 @@ private:
   Eigen::MatrixXd mat_;
 
 public:
+  EigenDecomposition():
+  mat_(),
+  lambda_(),
+  matInverse_()
+  { }
+
   EigenDecomposition(const Eigen::MatrixXd& mat, size_t exponent):
   mat_(),
   lambda_(),

@@ -44,9 +44,6 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
     mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
     recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
 
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib);
-
     for(size_t j = 0; j < i; ++j) // for each epoch, from past to present
     {
       std::string id = "e_" + bpp::TextTools::toString(j); // for setting the namespace for params within each epoch
@@ -54,6 +51,7 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
       // define start and end of epochs as quantiles of the exp dist?
       size_t start = j * (options_.getTotalNumberOfGenerations() / i);// in units of generations
       size_t end = (j + 1) * (options_.getTotalNumberOfGenerations() / i); // in units of generations
+      size_t duration = end - start;
 
       bpp::ParameterList driftPl;
       bpp::ParameterList migPl;
@@ -66,8 +64,10 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
           migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l), 1e-8, ic));
       }
 
-      std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib);
-      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib);
+      std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib, duration);
+      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib, duration);
+      std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib, duration);
+      std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib, duration);
 
       std::vector<std::shared_ptr<Operator>> operators(4);
 

@@ -8,7 +8,7 @@
 
 #include "Epoch.hpp"
 
-void Epoch::fireParameterChanged(const bpp::ParameterList& params, Eigen::VectorXd& y)
+void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
   if(matchParametersValues(params))
     updateOperators_(params);
@@ -17,7 +17,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params, Eigen::Vector
 void Epoch::updateOperators_(const bpp::ParameterList& params)
 {
   for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-    (*it)->fireParametersChanged(params);
+    (*it)->fireParametersChanged(params, duration());
 }
 
 Eigen::MatrixXd Epoch::fetchCombinedOperators()
