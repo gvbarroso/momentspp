@@ -9,7 +9,7 @@
 #include "Migration.hpp"
 
 
-void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
+void Migration::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
 {
   size_t numPops = sslib.getNumPops();
   size_t index = 0; // matrix index, referring to the coefficients of the parameter m_ij, i != j
@@ -294,8 +294,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
           }
         }
 
-        Eigen::EigenSolver es(matrices_[index]); // is it a problem that mat has zero-columns?
-        eigenDec_.emplace_back(es);
+        matrices_[index] *= getParameterValue("m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j));
+
+        EigenDecomposition ed(matrices_[index], exponent);
+        eigenDec_.emplace_back(ed);
 
         ++index;
       } // ends if(i != j)
@@ -303,7 +305,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
   }
 }
 
-void Migration::updateMatrices_()
+void Migration::updateMatrices_(size_t exponent)
 {
   // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
   int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
@@ -330,9 +332,10 @@ void Migration::updateMatrices_()
         name = "m_" + bpp::Textools::toString(i) + bpp::Textools::toString(j);
 
         double prevVal = prevParams_.getParameterValue(name);
-        double newVal = getParameterValue(name); // from within itself
+        double newVal = getParameterValue(name);
+        double factor = std::pow(newVal / prevVal, exponent);
 
-        eigenDec_[index].setLambda(eigenDec_[i].lambda() * (newVal / prevVal));
+        eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
 
         ++index;
       }

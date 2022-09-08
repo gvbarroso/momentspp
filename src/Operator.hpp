@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -87,34 +88,29 @@ public:
     return matrices_[index];
   }
 
-  Eigen::MatrixXd fetchCombinedMatrix(size_t exponent)
+  // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
+  Eigen::MatrixXd fetchCombinedMatrix()
   {
-    // we want something like this
-    Eigen::MatrixXd mat = eigenDec_[0].matrix() * eigenDec_[0].lambdaMat(exponent) * eigenDec_[0].matrixInverse();
+    // NOTE that matrix exponentiation is built-in the Eigen Decomposition by construction of setUpMatrices_() and updateMatrices_()
+    Eigen::MatrixXd mat = eigenDec_[0].matrixInverse() * eigenDec_[0].lambda().asDiagonal() * eigenDec_[0].matrix();
+
+    if(eigenDec_.size() > 1)
+    {
+      for(size_t i = 1; i < eigenDec_.size(); ++i)
+        mat += eigenDec_[i].matrixInverse() * eigenDec_[i].lambda().asDiagonal() * eigenDec_[i].matrix();
+    }
 
     // adding Identity to convert from "delta" to "transition" matrix
     for(size_t j = 0; j < mat.cols(); ++j)
       mat(j, j) += 1.;
 
-    if(eigenDec_.size() > 1)
-    {
-      for(size_t i = 1; i < eigenDec_.size(); ++i)
-      {
-        mat += eigenDec_[i].matrix() * eigenDec_[i].lambdaMat(exponent) * eigenDec_[i].matrixInverse();
-
-        // adding Identity to convert from "delta" to "transition" matrix
-        for(size_t j = 0; i < mat.cols(); ++j)
-          mat(j, j) += 1.;
-      }
-    }
-
     return mat;
   }
 
 protected:
-  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent);  // called only once in order to set the coefficients
 
-  virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
+  virtual void updateMatrices_(size_t exponent); // scales coefficients by (new) parameters during optimization
 
 };
 

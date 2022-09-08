@@ -16,14 +16,14 @@ class Migration:
 {
 
 public:
-  Migration(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
+  Migration(const bpp::ParameterList& params, const SumStatsLibrary& ssl, size_t exponent):
   Operator()
   {
     // NOTE the constraint that individual migration rates are "small" guaranteed that the rows
     // of the matrix (m_ij's) sum to 1, with main diagonal entries = 1 - sum of values < 1e=5
     includeParameters_(params);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(ssl);
+    setUpMatrices_(ssl, exponent);
   }
 
 };

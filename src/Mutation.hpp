@@ -16,12 +16,12 @@ class Mutation:
 {
 
 public:
-  Mutation(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
+  Mutation(const bpp::ParameterList& params, const SumStatsLibrary& ssl, size_t exponent):
   Operator()
   {
     includeParameters_(params);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(ssl);
+    setUpMatrices_(ssl, exponent);
   }
 
 };

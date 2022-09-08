@@ -9,7 +9,7 @@
 #include "Recombination.hpp"
 
 
-void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
+void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
 {
   // for now, this method assumes equal recombination rates across pops.
   matrices_.resize(1);
@@ -28,11 +28,13 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     matrices_[i](row, row) = -orderD;
   }
 
-  Eigen::EigenSolver es(matrices_[0]); // is it a problem that mat has zero-columns?
-  eigenDec_.emplace_back(es);
+  matrices_[i] *= getParameterValue("r_0");
+
+  EigenDecomposition ed(matrices_[0], exponent); // is it a problem that mat has zero-columns?
+  eigenDec_.emplace_back(ed);
 }
 
-void Recombination::updateMatrices_()
+void Recombination::updateMatrices_(size_t exponent)
 {
   std::string paramName = "";
 
@@ -41,9 +43,10 @@ void Recombination::updateMatrices_()
     paramName = "r_" + bpp::TexTools::toString(i);
 
     double prevVal = prevParams_.getParameterValue(paramName);
-    double newVal = getParameterValue(paramName); // from within itself
+    double newVal = getParameterValue(paramName);
+    double factor = std::pow(newVal / prevVal, exponent);
 
-    eigenDec_[i].setLambda(eigenDec_[i].lambda() * (newVal / prevVal));
+    eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
   }
 
   prevParams_.matchParametersValues(getParameters());

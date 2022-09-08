@@ -20,26 +20,21 @@ class EigenDecomposition
 {
 
 private:
-  Eigen::MatrixXd mat_;
-  Eigen::MatrixXd lambda_;
   Eigen::MatrixXd matInverse_;
+  Eigen::MatrixXd lambda_;
+  Eigen::MatrixXd mat_;
 
 public:
-  EigenDecomposition(const Eigen::EigenSolver<Eigen::MatrixXd>& es):
-  mat_(es.eigenvectors()),
-  lambda_(es.eigenvalues()),
-  matInverse_(es.eigenvectors().inverse())
-  { }
-
-  EigenDecomposition(const Eigen::MatrixXd& mat):
+  EigenDecomposition(const Eigen::MatrixXd& mat, size_t exponent):
   mat_(),
   lambda_(),
   matInverse_()
   {
     Eigen::EigenSolver<Eigen::MatrixXd> es(mat);
-    mat_ = es.eigenvectors();
-    lambda_ = es.eigenvalues();
+
     matInverse_ = es.eigenvectors().inverse();
+    lambda_ = es.eigenvalues().pow(exponent); // NOTE
+    mat_ = es.eigenvectors();
   }
 
   const Eigen::MatrixXd& matrix()
@@ -55,11 +50,6 @@ public:
   const Eigen::MatrixXd& lambda()
   {
     return lambda_;
-  }
-
-  Eigen::MatrixXd lambdaMat(size_t exponent = 1)
-  {
-    return (lambda_.pow(exponent)).asDiagonal();
   }
 
   void setLambda(const Eigen::MatrixXd& newLambda)

@@ -9,7 +9,7 @@
 #include "Mutation.hpp"
 
 
-void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
+void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
 {
   // for now, this method assumes both the infinite sites model as well as equal mutation rates across pops.
   matrices_.resize(1);
@@ -50,11 +50,13 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       matrices_[0](row, row) = 1.; // main diagonal, unnaffected terms
   }
 
-  Eigen::EigenSolver es(matrices_[0]); // is it a problem that mat has zero-columns?
-  eigenDec_.emplace_back(es);
+  matrices_[0] *= getParameterValue("mu_0");
+
+  EigenDecomposition ed(matrices_[0], exponent); // is it a problem that mat has zero-columns?
+  eigenDec_.emplace_back(ed);
 }
 
-void Mutation::updateMatrices_()
+void Mutation::updateMatrices_(size_t exponent)
 {
   std::string paramName = "";
 
@@ -63,9 +65,10 @@ void Mutation::updateMatrices_()
     paramName = "mu_" + bpp::TexTools::toString(i);
 
     double prevVal = prevParams_.getParameterValue(paramName);
-    double newVal = getParameterValue(paramName); // from within itself
+    double newVal = getParameterValue(paramName);
+    double factor = std::pow(newVal / prevVal, exponent);
 
-    eigenDec_[i].setLambda(eigenDec_[i].lambda() * (newVal / prevVal));
+    eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
   }
 
   prevParams_.matchParametersValues(getParameters());

@@ -51,6 +51,10 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
     {
       std::string id = "e_" + bpp::TextTools::toString(j); // for setting the namespace for params within each epoch
 
+      // define start and end of epochs as quantiles of the exp dist?
+      size_t start = j * (options_.getTotalNumberOfGenerations() / i);// in units of generations
+      size_t end = (j + 1) * (options_.getTotalNumberOfGenerations() / i); // in units of generations
+
       bpp::ParameterList driftPl;
       bpp::ParameterList migPl;
 
@@ -72,10 +76,6 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
       operators[1] = driftOp;
       operators[2] = recOp;
       operators[3] = mutOp;
-
-      // define start and end of epochs as quantiles of the exp dist?
-      size_t start = j * (options_.getTotalNumberOfGenerations() / i);// in units of generations
-      size_t end = (j + 1) * (options_.getTotalNumberOfGenerations() / i); // in units of generations
 
       epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
     }

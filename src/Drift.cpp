@@ -10,7 +10,7 @@
 #include "Drift.hpp"
 
 
-void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
+void Drift::setUpMatrices_(const SumStatsLibrary& sslib, size_t exponent)
 {
   size_t numPops = sslib.getNumPops();
 
@@ -103,23 +103,27 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         matrices_[i](row, row) = -1.;
     }
 
-    Eigen::EigenSolver es(matrices_[i];
-    eigenDec_.emplace_back(es);
+    // scale matrix by associated parameter value so that it
+    matrices_[i] *= getParameterValue("N_" + bpp::TextTools::toString(i));
+
+    EigenDecomposition ed(matrices_[i], exponent);
+    eigenDec_.emplace_back(ed);
   }
 }
 
-void Drift::updateMatrices_()
+void Drift::updateMatrices_(size_t exponent)
 {
   std::string paramName = "";
 
   for(size_t i = 0; i < eigenDec_.size(); ++i) // one matrix / eigensolver per population (within each Epoch)
   {
     paramName = "N_" + bpp::Textools::toString(i);
+
     double prevVal = prevParams_.getParameterValue(paramName); // old
     double newVal = getParameterValue(paramName); // new
+    double factor = std::pow(prevVal / newVal, exponent); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
 
-    // we want something like this -- for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
-    eigenDec_[i].setLambda(eigenDec_[i].lambda() * (prevVal / newVal));
+    eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
   }
 
   prevParams_.matchParametersValues(getParameters());
