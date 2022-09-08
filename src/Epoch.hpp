@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 07/09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -13,7 +13,6 @@
 #include <memory>
 
 #include <Eigen/Core>
-#include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 
@@ -28,6 +27,7 @@ class Epoch:
 private:
   // each operator contains bpp parameters and Eigen matrices
   std::vector<std::shared_ptr<Operator>> operators_;
+  Eigen::MatrixXd transitionMatrix_;
 
   size_t startGen_; // we let the deepest point in relevant time be generation "0"
   size_t endGen_;
@@ -36,6 +36,7 @@ public:
   Epoch(const std::vector<std::shared_ptr<Operator>>& operators, size_t start, size_t end, const std::string& name):
   bpp::AbstractParameterAliasable(name),
   operators_(operators),
+  transitionMatrix_(),
   startGen_(start),
   endGen_(end)
   {
@@ -76,9 +77,12 @@ public:
     return endGen_ - startGen_;
   }
 
-  Eigen::MatrixXd fetchCombinedOperators();
+  const Eigen::MatrixXd& getTransitionMatrix()
+  {
+    return transitionMatrix_;
+  }
 
-  void computeExpectedSumStats(const Eigen::MatrixXd& matrix, Eigen::VectorXd& y);
+  void computeExpectedSumStats(Eigen::VectorXd& y);
 
 private:
   void updateOperators_(const bpp::ParameterList& params);

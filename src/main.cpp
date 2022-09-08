@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 31/08/2022
+ * Last modified: 08/09/2022
  * Source code for moments++
  *
  */
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Endless ancestors                                   *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 01/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 08/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
 
   catch(std::exception& e)
   {
-    std::cout << "moments++ terminated because of an error." << std::endl;
+    std::cout << "moments++ terminated because of an error!" << std::endl;
     std::cout << e.what() << std::endl;
     return 1;
   }

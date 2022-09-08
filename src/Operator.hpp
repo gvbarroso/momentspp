@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 07//09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -16,7 +16,6 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <Eigen/Sparse>
 #include <Eigen/Eigenvalues>
 
 #include <Bpp/Numeric/Function/Functions.h>
@@ -92,16 +91,16 @@ public:
   Eigen::MatrixXd fetchCombinedMatrix()
   {
     // NOTE that matrix exponentiation is built-in the Eigen Decomposition by construction of setUpMatrices_() and updateMatrices_()
-    Eigen::MatrixXd mat = eigenDec_[0].matrixInverse() * eigenDec_[0].lambda().asDiagonal() * eigenDec_[0].matrix();
+    Eigen::MatrixXd mat = eigenDec_[0].matrixInverse() * eigenDec_[0].lambdaReal() * eigenDec_[0].matrix();
 
     if(eigenDec_.size() > 1)
     {
       for(size_t i = 1; i < eigenDec_.size(); ++i)
-        mat += eigenDec_[i].matrixInverse() * eigenDec_[i].lambda().asDiagonal() * eigenDec_[i].matrix();
+        mat += eigenDec_[i].matrixInverse() * eigenDec_[i].lambdaReal() * eigenDec_[i].matrix();
     }
 
-    // adding Identity to convert from "delta" to "transition" matrix
-    for(size_t j = 0; j < mat.cols(); ++j)
+    // adding Identity to convert from "delta" to "transition" matrix WARNING
+    for(long int j = 0; j < mat.cols(); ++j)
       mat(j, j) += 1.;
 
     return mat;

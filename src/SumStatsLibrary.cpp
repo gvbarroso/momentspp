@@ -15,8 +15,8 @@ void SumStatsLibrary::init(const PolymorphismData& dataset)
 
   else
   {
-    setNumPops(dataset.getNumPops());
-    setOrder(dataset.getOrder());
+    numPops_ = dataset.getNumPops();
+    order_ = dataset.getOrder();
 
     includeHetStats_();
     includeLdStats_();
@@ -27,7 +27,7 @@ void SumStatsLibrary::init(const PolymorphismData& dataset)
     // inits y_ from stats_ so that they're in same order (we also init matrices from stats_, see Operator::setUpMatrices_)
     for(auto it = std::begin(stats_); it != std::end(stats_); ++it)
     {
-      y_(index, 0) = (*it)->second;
+      y_(index, 0) = (*it).second;
       ++index;
     }
 

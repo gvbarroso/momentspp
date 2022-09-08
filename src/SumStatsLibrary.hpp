@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 07/09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -39,6 +39,7 @@ private:
   // row and column order of matrices follow lexicographical order of stats_'s names
   std::map<std::string, double> stats_;  // name -> value ("observed" Y vector)
   Eigen::VectorXd y_; // the Eigen representation of the observed vector
+  Eigen::MatrixXd covar_; // covariance matrix of observed sum stats
 
 public:
   SumStatsLibrary():
@@ -47,7 +48,8 @@ public:
   initialized_(false),
   compressed_(false),
   stats_(),
-  y_()
+  y_(),
+  covar_()
   { }
 
   SumStatsLibrary(size_t numPops = 1, size_t order = 2):
@@ -56,7 +58,8 @@ public:
   initialized_(false),
   compressed_(false),
   stats_(),
-  y_()
+  y_(),
+  covar_()
   { }
 
   SumStatsLibrary(const PolymorphismData& dataset):
@@ -65,7 +68,8 @@ public:
   initialized_(false),
   compressed_(false),
   stats_(),
-  y_()
+  y_(),
+  covar_()
   {
     init(dataset);
   }
@@ -76,7 +80,8 @@ public:
   initialized_(false),
   compressed_(false),
   stats_(),
-  y_()
+  y_(),
+  covar_()
   {
     PolymorphismData dataset;
     dataset.parse(opt.getDataPath());
@@ -131,9 +136,14 @@ public:
     return stats_.at(name);
   }
 
-  const Eigen::Matrix<double, Eigen::Dynamic, 1>& getYvec()
+  const Eigen::VectorXd& getYvec()
   {
     return y_;
+  }
+
+  const Eigen::MatrixXd getCovarMatrix()
+  {
+    return covar_;
   }
 
   void init();

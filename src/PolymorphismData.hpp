@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 06/09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -60,7 +60,17 @@ public:
     return numPops_;
   }
 
+  size_t getNumPops() const
+  {
+    return numPops_;
+  }
+
   size_t getOrder()
+  {
+    return order_;
+  }
+
+  size_t getOrder() const
   {
     return order_;
   }

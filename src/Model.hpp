@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 06/09/2022
+ * Last modified: 08/09/2022
  *
  */
 
@@ -15,6 +15,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include <memory>
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -41,6 +42,7 @@ private:
   std::vector<std::string> frozenParams_;
 
   Eigen::Matrix<double, Eigen::Dynamic, 1> steadYstate_;
+  Eigen::Matrix<double, Eigen::Dynamic, 1> expected_;
 
   double compLogLikelihood_;
 
@@ -52,6 +54,7 @@ public:
   sslib_(sslib),
   frozenParams_(0),
   steadYstate_(),
+  expected_(),
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
@@ -91,14 +94,19 @@ public:
     return name_;
   }
 
-  const std::vector<shared_ptr<Epoch>>& getEpochs()
+  const std::vector<std::shared_ptr<Epoch>>& getEpochs()
   {
     return epochs_;
   }
 
-  Eigen::Matrix<double, Eigen::Dynamic, 1> getSteadyState()
+  const Eigen::Matrix<double, Eigen::Dynamic, 1>& getSteadyState()
   {
     return steadYstate_;
+  }
+
+  const Eigen::Matrix<double, Eigen::Dynamic, 1>& getExpectedStats()
+  {
+    return expected_;
   }
 
   void freezeParameter(const std::string& name)
@@ -110,19 +118,16 @@ public:
       throw bpp::Exception("Model::Attempted to freeze non-existing parameter " + name);
   }
 
-  const bpp::ParameterList& getUnfrozenParameters()
+  bpp::ParameterList getUnfrozenParameters()
   {
-    if(frozenParams_.size() == 0)
-      return getIndependentParameters();
-
-    else
+    bpp::ParameterList unfrozen = getIndependentParameters();
+    if(frozenParams_.size() > 0)
     {
-      bpp::ParameterList unfrozen = getIndependentParameters();
       for(auto it = std::begin(frozenParams_); it != std::end(frozenParams_); ++it)
         unfrozen.deleteParameter(*it);
-
-      return unfrozen;
     }
+
+    return unfrozen;
   }
 
   void computeSteadyState();
@@ -130,9 +135,9 @@ public:
 private:
   void updateEpochs_(const bpp::ParameterList& params);
 
-  void computeExpectedSumStats_(const Eigen::Matrix<double, Eigen::Dynamic, 1>& matrix);
+  void computeExpectedSumStats_();
 
-  void computeCompositeLogLikelihood_(const Eigen::Matrix<double, Eigen::Dynamic, 1>& observed);
+  void computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat);
 
 };
 
