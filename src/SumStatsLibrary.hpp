@@ -121,12 +121,12 @@ public:
     return compressed_;
   }
 
-  size_t getNumStats()
+  size_t getNumStats() const
   {
     return stats_.size();
   }
 
-  const std::map<std::string, double>& getStats()
+  const std::map<std::string, double>& getStats() const
   {
     return stats_;
   }
@@ -148,7 +148,7 @@ public:
 
   void init();
 
-  std::vector<std::string> splitString(const std::string& target, const std::string& query)
+  std::vector<std::string> splitString(const std::string& target, const std::string& query) const
   {
     std::vector<std::string> ret(0);
     boost::split(ret, target, boost::is_any_of(query));
@@ -156,18 +156,13 @@ public:
     return ret;
   }
 
-  std::string asString(size_t i)
-  {
-    return bpp::TextTools::toString(i);
-  }
-
-  size_t countInstances(const std::string& target, const std::string& query)
+  size_t countInstances(const std::string& target, const std::string& query) const
   {
     std::string::difference_type count = std::count(std::begin(target), std::end(target), *query.c_str());
     return static_cast<size_t>(count);
   }
 
-  size_t indexLookup(const std::string& moment)
+  size_t indexLookup(const std::string& moment) const
   {
     return std::distance(std::begin(stats_), stats_.find(moment));
   }

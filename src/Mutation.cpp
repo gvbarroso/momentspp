@@ -68,7 +68,7 @@ void Mutation::updateMatrices_()
     double newVal = getParameterValue(paramName);
     double factor = std::pow(newVal / prevVal, exponent_);
 
-    eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
+    eigenDec_[i].setLambda(eigenDec_[i].lambdaReal() * factor);
   }
 
   prevParams_.matchParametersValues(getParameters());

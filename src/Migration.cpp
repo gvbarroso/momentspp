@@ -19,14 +19,14 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
   for(size_t i = 0; i < numPops; ++i)
   {
-    std::string childPopId = sslib.asString(i); // i in m_ij
+    std::string childPopId = bpp::TextTools::toString(i); // i in m_ij
 
     for(size_t j = 0; j < numPops; ++j)
     {
       if(i != j) // for each pair of populations (parameters m_ij, i != j)
       {
         matrices_[index] = Eigen::MatrixXd::Zero(sslib.getStats(), sslib.getStats()); // inits to 0 matrix
-        std::string parentPopId = sslib.asString(j); // j in m_ij
+        std::string parentPopId = bpp::TextTools::toString(j); // j in m_ij
 
         // NOTE even though we deal with order_ >= 4 and have pi2(i,j;k,l) in stats,
         // we only need to loop over pops twice because the loop over stats takes care of the other pops (k,l)
@@ -335,7 +335,7 @@ void Migration::updateMatrices_()
         double newVal = getParameterValue(name);
         double factor = std::pow(newVal / prevVal, exponent_);
 
-        eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
+        eigenDec_[i].setLambda(eigenDec_[i].lambdaReal() * factor);
 
         ++index;
       }

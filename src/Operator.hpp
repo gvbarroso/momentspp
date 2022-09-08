@@ -23,6 +23,7 @@
 #include <Bpp/Numeric/Constraints.h>
 #include <Bpp/Numeric/Parameter.h>
 #include <Bpp/Numeric/ParameterList.h>
+#include <Bpp/Text/TextTools.h>
 
 #include "SumStatsLibrary.hpp"
 #include "EigenDecomposition.hpp"

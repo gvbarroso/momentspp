@@ -20,18 +20,18 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   // for each population (making this the outer loop seems to be the way to go)
   for(size_t i = 0; i < numPops; ++i)
   {
-    std::string popId = sslib.asString(i);
+    std::string popId = bpp::TextTools::toString(i);
 
-    matrices_[i] = Eigen::MatrixXd::Zero(sslib.getStats(), sslib.getStats()); // inits to 0 matrix
+    matrices_[i] = Eigen::MatrixXd::Zero(sslib.getNumStats(), sslib.getNumStats()); // inits to 0 matrix
 
     // for each stat in vector Y (going by rows of matrices_)
     for(auto it = std::begin(sslib.getStats()); it != std::end(sslib.getStats()); ++it)
     {
-      std::string mom = (*it)->first; // full name of moment
+      std::string mom = (*it).first; // full name of moment
       std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
       size_t popIdCount = sslib.countInstances(splitMom[1], popId); // count of i in moment's name
-      size_t row = it - std::begin(sslib.getStats()); // row index
+      size_t row = std::distance(std::begin(sslib.getStats()), it); // row index
       size_t col = 0; // column index
 
       if(splitMom[0] == "DD")
@@ -41,7 +41,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           matrices_[i](row, row) = -3.;
 
           col = sslib.indexLookup("Dz_" + popId + popId + popId);
-          matrices_[i](row, col,) = 1.;
+          matrices_[i](row, col) = 1.;
 
           col = sslib.indexLookup("pi2_" + popId + popId + ";" + popId + popId);
           matrices_[i](row, col) = 1.;
@@ -91,7 +91,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           matrices_[i](row, row) = -2.;
 
-          col = sslib.indexLookup("Dz_" + popId + popId + popIds);
+          col = sslib.indexLookup("Dz_" + popId + popId + popId);
           matrices_[i](row, col) = 1.;
         }
 
@@ -117,13 +117,13 @@ void Drift::updateMatrices_()
 
   for(size_t i = 0; i < eigenDec_.size(); ++i) // one matrix / eigensolver per population (within each Epoch)
   {
-    paramName = "N_" + bpp::Textools::toString(i);
+    paramName = "N_" + bpp::TextTools::toString(i);
 
     double prevVal = prevParams_.getParameterValue(paramName); // old
     double newVal = getParameterValue(paramName); // new
     double factor = std::pow(prevVal / newVal, exponent_); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
 
-    eigenDec_[i].setLambda(eigenDec_[i].lambda() * factor);
+    eigenDec_[i].setLambda(eigenDec_[i].lambdaReal() * factor);
   }
 
   prevParams_.matchParametersValues(getParameters());
