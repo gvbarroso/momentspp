@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/09/2022
+ * Last modified: 09/09/2022
  *
  */
 
@@ -99,12 +99,12 @@ public:
     return epochs_;
   }
 
-  const VectorXd& getSteadyState()
+  const Eigen::VectorXd& getSteadyState()
   {
     return steadYstate_;
   }
 
-  const VectorXd& getExpectedStats()
+  const Eigen::VectorXd& getExpectedStats()
   {
     return expected_;
   }
