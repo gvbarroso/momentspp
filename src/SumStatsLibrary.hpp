@@ -169,6 +169,11 @@ public:
 
   void init(const PolymorphismData& dataset);
 
+  void copyStats(const std::string& epoch, size_t pop1, size_t pop2, size_t pop3)
+  {
+    // the goal of this function is to copy summary statistics from pop1 and pop2 into pop3 in the y vector, at the start of "epoch"
+  }
+
 private:
   void includeHetStats_();
 
