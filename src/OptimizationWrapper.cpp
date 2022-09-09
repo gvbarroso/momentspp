@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 07/09/2022
+ * Last modified: 09/09/2022
  *
  */
 
@@ -23,7 +23,7 @@
 
 void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 {
-  size_t numPops = sslib.getNumPops();
+  std::vector<size_t> numPops = options_.getNumPops(); // one per epoch bc of population splits / merges
   size_t minNumEpochs = options_.getMinNumberOfEpochs();
   size_t maxNumEpochs = options_.getMaxNumberOfEpochs();
 
@@ -55,12 +55,15 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
       bpp::ParameterList driftPl;
       bpp::ParameterList migPl;
 
-      for(size_t k = 0; k < numPops; ++k) // NOTE could be numPops[j]...
+      for(size_t k = 0; k < numPops[j]; ++k)
       {
         driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
 
-        for(size_t l = 0; l < numPops; ++l)
-          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l), 1e-8, ic));
+        for(size_t l = 0; l < numPops[j]; ++l)
+        {
+          if(l != k)
+            migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l), 1e-8, ic));
+        }
       }
 
       std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib, duration);

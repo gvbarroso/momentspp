@@ -36,6 +36,11 @@ int main(int argc, char *argv[]) {
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
 
+  /* TODO make pop split
+  * output epoch start - end
+  *
+  */
+
   if(argc == 1)
   {
     std::cout << "To use moments++, please fill in the params file and simply call it from the command line: moments++ params=[params_file].bpp" << std::endl;

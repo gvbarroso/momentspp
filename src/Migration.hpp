@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 08/09/2022
+ * Last modified: 09/09/2022
  *
  */
 
@@ -30,6 +30,24 @@ public:
   void setUpMatrices_(const SumStatsLibrary& ssl);
 
   void updateMatrices_();
+
+  // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
+  size_t fetchNumPops()
+  {
+    int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
+    int n = static_cast<int>(matrices_.size()); // raw value of P^2 - P
+
+    for(int i = 2; i < n; ++i)
+    {
+      if(i * (1 - i) == -n)  // guaranteed to find if matrices_.size() was built correctly
+      {
+        numPops = i;
+        break;
+      }
+    }
+
+    return static_cast<size_t>(numPops);
+  }
 
 };
 

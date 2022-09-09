@@ -12,7 +12,7 @@
 
 void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-  size_t numPops = sslib.getNumPops();
+  size_t numPops = getParameters.size();
 
   matrices_.resize(numPops);
   eigenDec_.reserve(numPops);

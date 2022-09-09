@@ -11,7 +11,7 @@
 
 void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-  size_t numPops = sslib.getNumPops();
+  size_t numPops = fetchNumPops();
   size_t index = 0; // matrix index, referring to the coefficients of the parameter m_ij, i != j
 
   matrices_.resize(numPops * (numPops - 1));
@@ -307,18 +307,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
 void Migration::updateMatrices_()
 {
-  // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
-  int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
-  int n = static_cast<int>(matrices_.size()); // raw value of P^2 - P
-
-  for(int i = 2; i < n; ++i)
-  {
-    if(i * (1 - i) == -n)  // guaranteed to find if matrices_.size() was built correctly
-    {
-      numPops = i;
-      break;
-    }
-  }
+  size_t numPops = fetchNumPops();
 
   size_t index = 0;
   std::string name = "";

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 07/09/2022
+ * Last modified: 09/09/2022
  *
  */
 
@@ -21,6 +21,8 @@ class OptionsContainer
 {
 
 private:
+  std::vector<size_t> numbersOfPopulations_; // one value per epoch
+
   std::string dataPath_;
   std::string numericalOptimizer_;
 
@@ -30,21 +32,20 @@ private:
   bool resume_;
 
   size_t order_; // of summary statistics
-  size_t numberOfPopulations_;
   size_t minNumberOfEpochs_;
   size_t maxNumberOfEpochs_;
   size_t totalNumberOfGenerations_;
   size_t numberOfThreads_;
-  
+
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
+  numbersOfPopulations_(bpp::ApplicationTools::getVectorParameter<size_t>("num_pops", options, 1)),
   dataPath_(bpp::ApplicationTools::getAFilePath("data_path", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
   resume_(bpp::ApplicationTools::getParameter<bool>("resume", options, false)),
   order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2)),
-  numberOfPopulations_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, 1)),
   minNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("min_epochs", options, 1)),
   maxNumberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("max_epochs", options, 1)),
   totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("tot_gen", options, 1)),

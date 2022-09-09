@@ -41,8 +41,8 @@ private:
   SumStatsLibrary sslib_; // "Utils" class
   std::vector<std::string> frozenParams_;
 
-  Eigen::Matrix<double, Eigen::Dynamic, 1> steadYstate_;
-  Eigen::Matrix<double, Eigen::Dynamic, 1> expected_;
+  Eigen::VectorXd steadYstate_;
+  Eigen::VectorXd expected_;
 
   double compLogLikelihood_;
 
@@ -99,12 +99,12 @@ public:
     return epochs_;
   }
 
-  const Eigen::Matrix<double, Eigen::Dynamic, 1>& getSteadyState()
+  const VectorXd& getSteadyState()
   {
     return steadYstate_;
   }
 
-  const Eigen::Matrix<double, Eigen::Dynamic, 1>& getExpectedStats()
+  const VectorXd& getExpectedStats()
   {
     return expected_;
   }
