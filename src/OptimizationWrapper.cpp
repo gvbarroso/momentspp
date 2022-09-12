@@ -23,78 +23,74 @@
 
 void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
 {
-  std::vector<size_t> numPops = options_.getNumPops(); // one per epoch bc of population splits / merges
-  size_t minNumEpochs = options_.getMinNumberOfEpochs();
-  size_t maxNumEpochs = options_.getMaxNumberOfEpochs();
+  std::vector<size_t> numPops = options_.getNumbersOfPopulations(); // one per epoch bc of population splits / merges
+  size_t numEpochs = options_.getNumberOfEpochs();
 
-  for(size_t i = minNumEpochs; i <= maxNumEpochs; ++i) // one model per count of epochs
+  std::string name = bpp::TextTools::toString(numEpochs) + "_epochs_model";
+
+  std::vector<std::shared_ptr<Epoch>> epochs(0);
+  epochs.reserve(numEpochs);
+
+  bpp::ParameterList mutPl;
+  bpp::ParameterList recPl;
+
+  // the range of values that our "small" rates are allowed to take in
+  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-5, true, true);
+
+  mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
+  recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
+
+  for(size_t j = 0; j < numEpochs; ++j) // for each epoch, from past to present
   {
-    std::string name = bpp::TextTools::toString(i) + "_epochs_model";
+    std::string id = "e_" + bpp::TextTools::toString(j); // for setting the namespace for params within each epoch
 
-    std::vector<std::shared_ptr<Epoch>> epochs(0);
-    epochs.reserve(i);
+    // define start and end of epochs as quantiles of the exp dist?
+    size_t start = j * (options_.getTotalNumberOfGenerations() / numEpochs);// in units of generations
+    size_t end = (j + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
+    size_t duration = end - start;
 
-    bpp::ParameterList mutPl;
-    bpp::ParameterList recPl;
+    bpp::ParameterList driftPl;
+    bpp::ParameterList migPl;
 
-    // the range of values that our "small" rates are allowed to take in
-    std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-5, true, true);
-
-    mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
-    recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
-
-    for(size_t j = 0; j < i; ++j) // for each epoch, from past to present
+    for(size_t k = 0; k < numPops[j]; ++k)
     {
-      std::string id = "e_" + bpp::TextTools::toString(j); // for setting the namespace for params within each epoch
+      driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
 
-      // define start and end of epochs as quantiles of the exp dist?
-      size_t start = j * (options_.getTotalNumberOfGenerations() / i);// in units of generations
-      size_t end = (j + 1) * (options_.getTotalNumberOfGenerations() / i); // in units of generations
-      size_t duration = end - start;
-
-      bpp::ParameterList driftPl;
-      bpp::ParameterList migPl;
-
-      for(size_t k = 0; k < numPops[j]; ++k)
+      for(size_t l = 0; l < numPops[j]; ++l)
       {
-        driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
-
-        for(size_t l = 0; l < numPops[j]; ++l)
-        {
-          if(l != k)
-            migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l), 1e-8, ic));
-        }
+        if(l != k)
+          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l), 1e-8, ic));
       }
-
-      std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib, duration);
-      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib, duration);
-      std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib, duration);
-      std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib, duration);
-
-      std::vector<std::shared_ptr<Operator>> operators(0);
-      operators.reserve(4);
-
-      // include operators in the correct order for matrix operations
-      operators.emplace_back(migOp);
-      operators.emplace_back(driftOp);
-      operators.emplace_back(recOp);
-      operators.emplace_back(mutOp);
-
-      epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
     }
 
-    Model* model = new Model(name, epochs, sslib);
+    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib, duration);
+    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib, duration);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib, duration);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib, duration);
 
-    /*
-     * decides whether to freeze parameters
-     * eg, model->freezeParamter("r_0")
-     */
+    std::vector<std::shared_ptr<Operator>> operators(0);
+    operators.reserve(4);
 
-    fitModel_(model);
-    writeEstimatesToFile_(model);
+    // include operators in the correct order for matrix operations
+    operators.emplace_back(migOp);
+    operators.emplace_back(driftOp);
+    operators.emplace_back(recOp);
+    operators.emplace_back(mutOp);
 
-    delete model;
+    epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
   }
+
+  Model* model = new Model(name, epochs, sslib);
+
+  /*
+   * decides whether to freeze parameters
+   * eg, model->freezeParamter("r_0")
+   */
+
+  fitModel_(model);
+  writeEstimatesToFile_(model);
+
+  delete model;
 }
 
 void OptimizationWrapper::fitModel_(Model* model)

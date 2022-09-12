@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 08/09/2022
+ * Last modified: 11/09/2022
  *
  */
 
@@ -29,7 +29,7 @@ class SumStatsLibrary
 {
 
 private:
-  size_t numPops_;
+  std::vector<size_t> numPops_;
   size_t order_; // of the moment; number of tracked lineages
 
   bool initialized_;
@@ -43,7 +43,7 @@ private:
 
 public:
   SumStatsLibrary():
-  numPops_(1),
+  numPops_(0),
   order_(2),
   initialized_(false),
   compressed_(false),
@@ -52,7 +52,7 @@ public:
   covar_()
   { }
 
-  SumStatsLibrary(size_t numPops = 1, size_t order = 2):
+  SumStatsLibrary(const std::vector<size_t>& numPops, size_t order = 2):
   numPops_(numPops),
   order_(order),
   initialized_(false),
@@ -75,7 +75,7 @@ public:
   }
 
   SumStatsLibrary(const OptionsContainer& opt):
-  numPops_(opt.getNumberOfPopulations()),
+  numPops_(opt.getNumbersOfPopulations()),
   order_(opt.getOrder()),
   initialized_(false),
   compressed_(false),
@@ -91,12 +91,7 @@ public:
   }
 
 public:
-  size_t getNumPops()
-  {
-    return numPops_;
-  }
-
-  size_t getNumPops() const
+  const std::vector<size_t> getNumPops() const
   {
     return numPops_;
   }

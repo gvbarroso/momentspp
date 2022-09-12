@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/09/2022
+ * Last modified: 09/09/2022
  *
  */
 
@@ -16,12 +16,11 @@ class Recombination:
 {
 
 public:
-  Recombination(const bpp::ParameterList& params, const SumStatsLibrary& ssl, size_t exponent):
+  Recombination(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
   Operator()
   {
     includeParameters_(params);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setExponent(exponent);
     setUpMatrices_(ssl);
   }
 

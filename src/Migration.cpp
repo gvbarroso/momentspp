@@ -1,32 +1,31 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 08/09/2022
+ * Last modified: 09/09/2022
  *
  */
 
 
 #include "Migration.hpp"
 
-
 void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-  size_t numPops = fetchNumPops();
-  size_t index = 0; // matrix index, referring to the coefficients of the parameter m_ij, i != j
+  size_t numPops = getParameters.size();
 
-  matrices_.resize(numPops * (numPops - 1));
-  eigenDec_.reserve(numPops * (numPops - 1));
+  matrices_.reserve(numPops * (numPops - 1) / 2);
 
   for(size_t i = 0; i < numPops; ++i)
   {
-    std::string childPopId = bpp::TextTools::toString(i); // i in m_ij
+    std::string childPopId = sslib.asString(i); // i in m_ij
 
     for(size_t j = 0; j < numPops; ++j)
     {
       if(i != j) // for each pair of populations (parameters m_ij, i != j)
       {
-        matrices_[index] = Eigen::MatrixXd::Zero(sslib.getStats(), sslib.getStats()); // inits to 0 matrix
-        std::string parentPopId = bpp::TextTools::toString(j); // j in m_ij
+        std::vector<Eigen::Triplet<double>> coefficients(0); // init sparse matrix coefficients
+        coefficients.reserve(3 * sslib.getNumStats());
+
+        std::string parentPopId = sslib.asString(j); // j in m_ij
 
         // NOTE even though we deal with order_ >= 4 and have pi2(i,j;k,l) in stats,
         // we only need to loop over pops twice because the loop over stats takes care of the other pops (k,l)
@@ -45,29 +44,29 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           // main diagonal initialization, this entry must exist in a Sparse matrix even if it remains zero because
           // it is important when converting from "delta" to "transition" matrix (see Operator::fetchCombinedMatrix()
-          matrices_[index](row, row) = 0.;
+          coefficients.push_back(Eigen::Triplet<double>(row, row, 0.);
 
           if(splitMom[0] == "DD")
           {
-            matrices_[index](row, row) = -static_cast<double>(parentPopIdCount); // main diagonal
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(parentPopIdCount))); // main diagonal
 
             if(parentPopIdCount == 1)
             {
               col = sslib.indexLookup("DD_" + p1 + p2);
-              matrices_[index](row, col) = parentPopIdCount;
+              coefficients.push_back(Eigen::Triplet<double>(row, col, parentPopIdCount));
             }
 
             else if(parentPopIdCount == 2)
             {
               p2 = parentPopId;
               col = sslib.indexLookup("DD_" + p1 + p2);
-              matrices_[index](row, col) = parentPopIdCount;
+              coefficients.push_back(Eigen::Triplet<double>(row, col, parentPopIdCount));
             }
           }
 
           else if(splitMom[0] == "Dz")
           {
-            matrices_[index](row, row) = -static_cast<double>(parentPopIdCount))); // main diagonal
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(parentPopIdCount))); // main diagonal
 
             p1 = splitMom[1][0]; // D pop
             p2 = splitMom[1][1]; // first z pop
@@ -81,7 +80,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 p2, p3 = childPopId;
 
                 col = sslib.indexLookup("Dz_" + p1 + p2 + p3);
-                matrices_[index](row, col) = parentPopIdCount;
+                coefficients.push_back(Eigen::Triplet<double>(row, col, parentPopIdCount));
               }
 
               // if they both represent parent population
@@ -89,11 +88,11 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               {
                 // z_ij
                 col = sslib.indexLookup("Dz_" + p1 + childPopId + parentPopId);
-                matrices_[index](row, col) = 1.;
+                coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                 // z_ji
                 col = sslib.indexLookup("Dz_" + p1 + parentPopId + childPopId);
-                matrices_[index](row, col) = 1.;
+                coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
 
@@ -106,43 +105,43 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 {
                   // the Dz cols
                   col = sslib.indexLookup("Dz_" + childPopId + childPopId + childPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // the pi2 cols
                   col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + childPopId); // append childPopId to left of p2 and p3
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + parentPopId); // switch right to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + childPopId); // switch left to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // switch both
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
                 }
 
                 else if(p3 == parentPopId) // D_j_z_ij
                 {
                   // the Dz cols
                   col = sslib.indexLookup("Dz_" + parentPopId + childPopId + childPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.indexLookup("Dz_" + childPopId + parentPopId + childPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // the pi2 cols
                   col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + childPopId + parentPopId); // append childPopId to left of p2 and p3
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + childPopId + ";" + parentPopId + parentPopId); // switch right to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // switch left to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + parentPopId + parentPopId); // switch both
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
                 }
               }
 
@@ -152,49 +151,49 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 {
                   // the Dz cols
                   col = sslib.indexLookup("Dz_" + childPopId + parentPopId + childPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.indexLookup("Dz_" + parentPopId + childPopId + childPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // the pi2 cols
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + childPopId); // append childPopId to left of p2 and p3
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // switch right to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + childPopId); // switch left to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + parentPopId); // switch both
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
                 }
 
                 else if(p3 == parentPopId) // D_j_z_jj
                 {
                   // the Dz cols
                   col = sslib.indexLookup("Dz_" + childPopId + parentPopId + parentPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.indexLookup("Dz_" + parentPopId + childPopId + parentPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.indexLookup("Dz_" + parentPopId + parentPopId + childPopId);
-                  matrices_[index](row, col) = 1.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // the pi2 cols
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + childPopId + parentPopId); // append childPopId to left of p2 and p3
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
 
                   col = sslib.indexLookup("pi2_" + childPopId + parentPopId + ";" + parentPopId + parentPopId); // switch right to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + childPopId + parentPopId); // switch left to parentPopId
-                  matrices_[index](row, col) = -4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, -4.));
 
                   col = sslib.indexLookup("pi2_" + parentPopId + parentPopId + ";" + parentPopId + parentPopId); // switch both
-                  matrices_[index](row, col) = 4.;
+                  coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
                 }
               }
             }
@@ -208,9 +207,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             size_t countRight = sslib.countInstances(splitPops[1], parentPopId); // count of j after ';'
 
             // main diagonal init based on left pair
-            matrices_[index](row, row) = -static_cast<double>(countLeft)));
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(countLeft)));
             // updates based on right pair (duplicated elements are summed up by the Eigen method setFromTriplets)
-            matrices_[index](row, row) = -static_cast<double>(countRight)));
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(countRight)));
 
             p1, p2, p3, p4 = childPopId; // resets reference strings
 
@@ -236,7 +235,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
 
             col = sslib.indexLookup("pi2_" + p1 + p2 + ";" + p3 + p4);
-            matrices_[index](row, col) = countLeft;
+            coefficients.push_back(Eigen::Triplet<double>(row, col, countLeft));
 
             p1, p2, p3, p4 = childPopId; // resets reference strings
 
@@ -262,12 +261,12 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
 
             col = sslib.indexLookup("pi2_" + p1 + p2 + ";" + p3 + p4);
-            matrices_[index](row, col) = countRight;
+            coefficients.push_back(Eigen::Triplet<double>(row, col, countRight));
           }
 
           else if(splitMom[0] == "H")
           {
-            matrices_[index](row, row) = -static_cast<double>(parentPopIdCount); // main diagonal
+            coefficients.push_back(Eigen::Triplet<double>(row, row, -static_cast<double>(parentPopIdCount))); // main diagonal
 
             p1 = splitMom[1][0];
             p2 = splitMom[1][1];
@@ -277,29 +276,28 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               if(p1 == childPopId || p2 == childPopId) // H_ij or H_ji
               {
                 col = sslib.indexLookup("H_" + childPopId + childPopId);
-                matrices_[index](row, col) = -static_cast<double>(parentPopIdCount);
+                coefficients.push_back(Eigen::Triplet<double>(row, col, -static_cast<double>(parentPopIdCount)));
               }
             }
 
             else if(parentPopIdCount == 2)
             {
               col = sslib.indexLookup("H_" + childPopId + parentPopId); // H_ij
-              matrices_[index](row, col) = -static_cast<double>(parentPopIdCount); // -1 before compression
+              coefficients.push_back(Eigen::Triplet<double>(row, col, -static_cast<double>(parentPopIdCount))); // -1 before compression
 
              /* H_ji -- before compression
               * col = sslib.indexLookup("H_" + parentPopId + childPopId);
-              * matrices_[index](row, col) -= 1. * static_cast<double>(parentPopIdCount);
+              * coefficients.push_back(Eigen::Triplet<double>(row, col) -= 1. * static_cast<double>(parentPopIdCount);
               */
             }
           }
         }
 
-        matrices_[index] *= getParameterValue("m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j));
-
-        EigenDecomposition ed(matrices_[index], exponent);
-        eigenDec_.emplace_back(ed);
-
-        ++index;
+        Eigen::SparseMatrix<double> mat;
+        mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
+        mat.makeCompressed();
+        mat *= getParameterValue("m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j)); // scales because of updateMatrices_()
+        matrices_.emplace_back(mat);
       } // ends if(i != j)
     }
   }
@@ -318,7 +316,7 @@ void Migration::updateMatrices_()
     {
       if(i != j)
       {
-        name = "m_" + bpp::Textools::toString(i) + bpp::Textools::toString(j);
+        name = "m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j);
 
         double prevVal = prevParams_.getParameterValue(name);
         double newVal = getParameterValue(name);

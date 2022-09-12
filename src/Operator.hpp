@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/09/2022
+ * Last modified: 11/09/2022
  *
  */
 
@@ -16,7 +16,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
+#include <Eigen/Sparse>
 
 #include <Bpp/Numeric/Function/Functions.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
@@ -37,18 +37,14 @@ protected:
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
-  std::vector<Eigen::MatrixXd> matrices_; // NOTE do we want to keep these?
-  std::vector<EigenDecomposition> eigenDec_;
+  std::vector<Eigen::SparseMatrix<double>> matrices_;
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
-  size_t exponent_; // for matrix exponentiation
 
 public:
   Operator():
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
-  eigenDec_(0),
-  prevParams_(),
-  exponent_(1)
+  prevParams_()
   { }
 
 public:
@@ -74,24 +70,9 @@ public:
       updateMatrices_();
   }
 
-  const std::vector<Eigen::MatrixXd>& getMatrices()
+  const std::vector<Eigen::SparseMatrix<double>>& getMatrices()
   {
     return matrices_;
-  }
-
-  const std::vector<EigenDecomposition>& getEigenDecompositions()
-  {
-    return eigenDec_;
-  }
-
-  size_t getExponent()
-  {
-    return exponent_;
-  }
-
-  void setExponent(size_t exponent)
-  {
-    exponent_ = exponent;
   }
 
   const Eigen::MatrixXd& getMatrix(size_t index)
@@ -101,22 +82,20 @@ public:
   }
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
-  Eigen::MatrixXd fetchCombinedMatrix()
+  Eigen::SparseMatrix<double> fetchCombinedMatrix()
   {
-    // NOTE that matrix exponentiation is built-in the Eigen Decomposition by construction of setUpMatrices_() and updateMatrices_()
-    Eigen::MatrixXd mat = eigenDec_[0].matrixInverse() * eigenDec_[0].lambdaReal() * eigenDec_[0].matrix();
+    Eigen::SparseMatrix<double> A = matrices_[0];
 
-    if(eigenDec_.size() > 1)
+    if(matrices_.size() > 1)
     {
-      for(size_t i = 1; i < eigenDec_.size(); ++i)
-        mat += eigenDec_[i].matrixInverse() * eigenDec_[i].lambdaReal() * eigenDec_[i].matrix();
+      for(size_t i = 1; i < matrices_.size(); ++i)
+        A += matrices_[i];
     }
 
-    // adding Identity to convert from "delta" to "transition" matrix WARNING
-    for(long int j = 0; j < mat.cols(); ++j)
-      mat(j, j) += 1.;
+    Eigen::SparseMatrix<double> B = Eigen::SparseMatrix<double>::Identity(); // converts from delta to transition matrix
+    B += A;
 
-    return mat;
+    return B;
   }
 
 protected:

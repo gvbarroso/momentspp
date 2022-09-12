@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 08/09/2022
+ * Last modified: 11/09/2022
  *
  */
 
@@ -33,7 +33,7 @@
 
 class PolymorphismData {
 private:
-  size_t numPops_;
+  std::vector<size_t> numPops_;
   size_t order_;
 
   std::map<std::string, double> expectations_;
@@ -48,19 +48,14 @@ public:
   { }
 
   PolymorphismData(const OptionsContainer& opt):
-  numPops_(opt.getNumberOfPopulations()),
+  numPops_(opt.getNumbersOfPopulations()),
   order_(opt.getOrder()),
   expectations_(),
   variances_()
   { }
 
 public:
-  size_t getNumPops()
-  {
-    return numPops_;
-  }
-
-  size_t getNumPops() const
+  std::vector<size_t> getNumPops()
   {
     return numPops_;
   }

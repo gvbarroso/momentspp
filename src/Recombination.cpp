@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/09/2022
+ * Last modified: 09/09/2022
  *
  */
 
@@ -12,10 +12,9 @@
 void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // for now, this method assumes equal recombination rates across pops.
-  matrices_.resize(1);
-  eigenDec_.reserve(1);
-
-  matrices_[0] = Eigen::MatrixXd::Zero(sslib.getStats(), sslib.getStats()); // inits to 0 matrix
+  matrices_.reserve(1);
+  std::vector<Eigen::Triplet<double>> coefficients(0);
+  coefficients.reserve(sslib.getNumStats());
 
   for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
   {
@@ -25,13 +24,14 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     size_t row = it - std::begin(sslib->getStats()); // recombination matrix only has entries in main diagonal
     size_t orderD = static_cast<int>(sslib.countInstances(mon, "D"));
 
-    matrices_[i](row, row) = -orderD;
+    coefficients.push_back(Eigen::Triplet<double>(row, row, -orderD));
   }
 
-  matrices_[i] *= getParameterValue("r_0");
-
-  EigenDecomposition ed(matrices_[0], exponent_); // is it a problem that mat has zero-columns?
-  eigenDec_.emplace_back(ed);
+  Eigen::SparseMatrix<double> mat;
+  mat.setFromTriplets(coefficients);
+  mat.makeCompressed();
+  mat *= getParameterValue("r_0");
+  matrices_.emplace_back(mat);
 }
 
 void Recombination::updateMatrices_()
@@ -40,7 +40,7 @@ void Recombination::updateMatrices_()
 
   for(size_t i = 0; i < matrices_.size(); ++i)
   {
-    paramName = "r_" + bpp::TexTools::toString(i);
+    paramName = "r_" + bpp::TextTools::toString(i);
 
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName);

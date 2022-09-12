@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 08/09/2022
+ * Last modified: 11/09/2022
  *
  */
 
@@ -20,27 +20,26 @@ class EigenDecomposition
 {
 
 private:
+  Eigen::EigenSolver<Eigen::MatrixXd> es_;
   Eigen::MatrixXd matInverse_;
   Eigen::MatrixXd lambda_;
   Eigen::MatrixXd mat_;
 
 public:
   EigenDecomposition():
+  es_(),
   matInverse_(),
   lambda_(),
   mat_()
   { }
 
-  EigenDecomposition(const Eigen::MatrixXd& mat, size_t exponent):
-  matInverse_(),
-  lambda_(),
-  mat_()
+  void solve(const Eigen::MatrixXd& mat, size_t exponent)
   {
-    Eigen::EigenSolver<Eigen::MatrixXd> es(mat);
+    es_.compute(mat);
 
-    matInverse_ = es.eigenvectors().real().inverse();
-    lambda_ = es.eigenvalues().real().array().pow(exponent).matrix().asDiagonal(); // NOTE
-    mat_ = es.eigenvectors().real();
+    matInverse_ = es_.eigenvectors().real().inverse();
+    lambda_ = es_.eigenvalues().real().array().pow(exponent).matrix().asDiagonal(); // NOTE
+    mat_ = es_.eigenvectors().real();
   }
 
   const Eigen::MatrixXd& matrix()
@@ -61,6 +60,11 @@ public:
   void setLambda(const Eigen::MatrixXd& newLambda)
   {
     lambda_ = newLambda;
+  }
+
+  Eigen::MatrixXd fetchMatrix()
+  {
+    return matInverse_ * lambda_ * mat_;
   }
 
 };

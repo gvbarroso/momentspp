@@ -16,7 +16,7 @@ class Migration:
 {
 
 public:
-  Migration(const bpp::ParameterList& params, const SumStatsLibrary& ssl, size_t exponent):
+  Migration(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
   Operator()
   {
     // NOTE the constraint that individual migration rates are "small" guaranteed that the rows
@@ -24,7 +24,6 @@ public:
     includeParameters_(params);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);
-    setExponent(exponent);
   }
 
   void setUpMatrices_(const SumStatsLibrary& ssl);

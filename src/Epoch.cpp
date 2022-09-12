@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 08/09/2022
+ * Last modified: 11/09/2022
  *
  */
 
@@ -18,15 +18,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   // NOTE we must be careful with the order of operations
   for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
     transitionMatrix_ *= (*it)->fetchCombinedMatrix();
-}
 
-void Epoch::updateOperators_(const bpp::ParameterList& params)
-{
-  for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-    (*it)->fireParameterChanged(params);
-}
-
-void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
-{
-  transitionMatrix_ * y;
+  eigenDec_.solve(transitionMatrix_, duration());
+  transitionMatrix_ = eigenDec_.fetchMatrix();
 }
