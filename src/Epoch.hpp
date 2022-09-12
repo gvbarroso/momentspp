@@ -61,9 +61,6 @@ public:
   void setParameters(const bpp::ParameterList& params)
   {
     bpp::AbstractParameterAliasable::setParametersValues(params);
-
-    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      (*it)->fireParameterChanged(params);
   }
 
   size_t start()

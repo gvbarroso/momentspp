@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 09/09/2022
+ * Last modified: 12/09/2022
  *
  */
 
@@ -79,7 +79,9 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
     epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
   }
 
+  // TODO read a recipe of how populations split and admix at epoch boundaries
   Model* model = new Model(name, epochs, sslib);
+  model->computeSteadyState();
 
   /*
    * decides whether to freeze parameters

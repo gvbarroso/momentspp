@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 09/09/2022
+ * Last modified: 12/09/2022
  *
  */
 
@@ -74,9 +74,6 @@ public:
   void setParameters(const bpp::ParameterList& params)
   {
     AbstractParameterAliasable::setParametersValues(params);
-
-    for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
-      (*it)->fireParameterChanged(params);
   }
 
   double getValue() const
@@ -133,6 +130,10 @@ public:
   void computeSteadyState();
 
 private:
+  void popSplit_();
+
+  void popAdmix_();
+
   void updateEpochs_(const bpp::ParameterList& params);
 
   void computeExpectedSumStats_();

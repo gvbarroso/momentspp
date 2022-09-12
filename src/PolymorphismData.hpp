@@ -24,10 +24,10 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 
-#include <Bpp/Seq/Io/Fasta.h>
+/*#include <Bpp/Seq/Io/Fasta.h>
 #include <Bpp/Seq/Container/VectorSiteContainer.h>
 #include <Bpp/Seq/Alphabet/AlphabetTools.h>
-#include <Bpp/Seq/SiteTools.h>
+#include <Bpp/Seq/SiteTools.h>*/
 
 #include "OptionsContainer.hpp"
 
