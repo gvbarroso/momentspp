@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 09/09/2022
+ * Last modified: 12/09/2022
  *
  */
 
@@ -13,11 +13,12 @@
 void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters.size();
+  size_t numStats = sslib.getNumStats();
 
   matrices_.resize(numPops);
 
   std::vector<Eigen::Triplet<double>> coefficients(0);
-  coefficients.reserve(sslib.getNumStats());
+  coefficients.reserve(numStats);
 
   // for each population (making this the outer loop seems to be the way to go)
   for(size_t i = 0; i < numPops; ++i)
@@ -25,30 +26,30 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     std::string popId = sslib.asString(i);
 
     // for each stat in vector Y (going by rows of matrices_)
-    for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
+    for(auto it = std::begin(sslib.getStats()); it != std::end(sslib.getStats()); ++it)
     {
       std::string mom = (*it)->first; // full name of moment
       std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
 
       size_t popIdCount = sslib.countInstances(splitMom[1], popId); // count of i in moment's name
-      size_t row = it - std::begin(sslib->getStats()); // row index
+      size_t row = it - std::begin(sslib.getStats()); // row index
       size_t col = 0; // column index
 
       if(splitMom[0] == "DD")
       {
         if(popIdCount == 2)
         {
-          coefficients.push_back(Eigen::Triplet<double>(row, row -3.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, row -3.));
 
           col = sslib.indexLookup("Dz_" + popId + popId + popId);
-          coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
           col = sslib.indexLookup("pi2_" + popId + popId + ";" + popId + popId);
-          coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
         else if(popIdCount == 1)
-          coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
       else if(splitMom[0] == "Dz")
@@ -57,17 +58,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 3)
           {
-            coefficients.push_back(Eigen::Triplet<double>(row, row, -5.));
+            coefficients.emplace_back(Eigen::Triplet<double>(row, row, -5.));
 
             col = sslib.indexLookup("DD_" + popId + popId);
-            coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
+            coefficients.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
 
           else if(popIdCount == 2)
-            coefficients.push_back(Eigen::Triplet<double>(row, row, -3.));
+            coefficients.emplace_back(Eigen::Triplet<double>(row, row, -3.));
 
           else if(popIdCount == 1) // if D_i_z_xx where x != i
-            coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
+            coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
         }
 
         else // if D_x_z_** where x != i
@@ -75,7 +76,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(popIdCount == 2)  // if D_x_z_ii where x != i
           {
             col = sslib.indexLookup("DD_" + popId + splitMom[1][0]);
-            coefficients.push_back(Eigen::Triplet<double>(row, col, 4.));
+            coefficients.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
         }
       }
@@ -89,21 +90,21 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         if((countLeft + countRight) == 4)
         {
-          coefficients.push_back(Eigen::Triplet<double>(row, row, -2.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
           col = sslib.indexLookup("Dz_" + popId + popId + popIds);
-          coefficients.push_back(Eigen::Triplet<double>(row, col, 1.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
         else if((countLeft == 2) || (countLeft == 2))
-          coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
       else if(splitMom[0] == "H")
-        coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
+        coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
     }
 
-    Eigen::SparseMatrix<double> mat;
+    Eigen::SparseMatrix<double> mat(numStats, numStats);
     mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
     mat.makeCompressed();
     mat *= getParameterValue("N_" + bpp::TextTools::toString(i)); // scales because of updateMatrices_()
@@ -115,15 +116,14 @@ void Drift::updateMatrices_()
 {
   std::string paramName = "";
 
-  for(size_t i = 0; i < eigenDec_.size(); ++i) // one matrix / eigensolver per population (within each Epoch)
+  for(size_t i = 0; i < matrices_.size(); ++i) // one matrix / eigensolver per population (within each Epoch)
   {
     paramName = "N_" + bpp::TextTools::toString(i);
 
     double prevVal = prevParams_.getParameterValue(paramName); // old
     double newVal = getParameterValue(paramName); // new
-    double factor = std::pow(prevVal / newVal, exponent_); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
 
-    eigenDec_[i].setLambda(eigenDec_[i].lambdaReal() * factor);
+    matrices_[i] *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
   }
 
   prevParams_.matchParametersValues(getParameters());

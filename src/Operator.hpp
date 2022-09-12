@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 11/09/2022
+ * Last modified: 12/09/2022
  *
  */
 
@@ -38,6 +38,8 @@ protected:
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
   std::vector<Eigen::SparseMatrix<double>> matrices_;
+  Eigen::SparseMatrix<double> identity_; // helper matrix to convert from delta to transition
+
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
 
 public:
@@ -75,7 +77,7 @@ public:
     return matrices_;
   }
 
-  const Eigen::MatrixXd& getMatrix(size_t index)
+  const Eigen::SparseMatrix<double>& getMatrix(size_t index)
   {
     // population index for Drift; population-pair index for Migration etc
     return matrices_[index];
@@ -84,24 +86,40 @@ public:
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
   Eigen::SparseMatrix<double> fetchCombinedMatrix()
   {
-    Eigen::SparseMatrix<double> A = matrices_[0];
+    Eigen::SparseMatrix<double> mat = matrices_[0];
 
     if(matrices_.size() > 1)
     {
       for(size_t i = 1; i < matrices_.size(); ++i)
-        A += matrices_[i];
+        mat += matrices_[i];
     }
 
-    Eigen::SparseMatrix<double> B = Eigen::SparseMatrix<double>::Identity(); // converts from delta to transition matrix
-    B += A;
+    // adds Identity to convert from delta to transition matrix
+    mat += identity_;
 
-    return B;
+    return mat;
   }
 
 protected:
   virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
 
   virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
+
+  void setIdentity_(size_t dim)
+  {
+    Eigen::SparseMatrix<double> id(dim, dim);
+
+    std::vector<Eigen::Triplet<double>> md(0);
+    md.reserve(dim);
+
+    for(size_t i = 0; i < dim; ++i)
+      md.emplace_back(Eigen::Triplet<double>(i, i, 1.));
+
+    id.setFromTriplets(std::begin(md), std::end(md));
+    id.makeCompressed();
+
+    identity_ = id;
+  }
 
 };
 

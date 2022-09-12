@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 11/09/2022
+ * Last modified: 12/09/2022
  *
  */
 
@@ -13,6 +13,7 @@
 #include <memory>
 
 #include <Eigen/Core>
+#include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 

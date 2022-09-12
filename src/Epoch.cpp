@@ -13,12 +13,16 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   if(matchParametersValues(params))
     updateOperators_(params);
 
-  transitionMatrix_.setIdentity();
+  Eigen::SparseMatrix<double> mat(operators_[0]->getMatrix()[0].rows(), operators_[0]->getMatrix()[0].cols());
+  for(size_t i = 0; i < mat.cols(); ++i) // mat is square
+    mat(i, i) += 1.;
 
   // NOTE we must be careful with the order of operations
   for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-    transitionMatrix_ *= (*it)->fetchCombinedMatrix();
+    mat *= (*it)->fetchCombinedMatrix();
 
-  eigenDec_.solve(transitionMatrix_, duration());
-  transitionMatrix_ = eigenDec_.fetchMatrix();
+  transitionMatrix_.setIdentity();
+  transitionMatrix_ *= mat;
+
+  eigenDec_.exponentiate(transitionMatrix_, duration());
 }

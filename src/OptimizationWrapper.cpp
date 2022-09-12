@@ -40,33 +40,32 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
   mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
   recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
 
-  for(size_t j = 0; j < numEpochs; ++j) // for each epoch, from past to present
+  for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
-    std::string id = "e_" + bpp::TextTools::toString(j); // for setting the namespace for params within each epoch
+    std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
 
     // define start and end of epochs as quantiles of the exp dist?
-    size_t start = j * (options_.getTotalNumberOfGenerations() / numEpochs);// in units of generations
-    size_t end = (j + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
-    size_t duration = end - start;
+    size_t start = i * (options_.getTotalNumberOfGenerations() / numEpochs);// in units of generations
+    size_t end = (i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
     bpp::ParameterList driftPl;
     bpp::ParameterList migPl;
 
-    for(size_t k = 0; k < numPops[j]; ++k)
+    for(size_t j = 0; j < numPops[i]; ++j) // for each population modeled in epoch i
     {
-      driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString(k), 1e+4, bpp::Parameter::R_PLUS_STAR));
+      driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString(j), 1e+4, bpp::Parameter::R_PLUS_STAR));
 
-      for(size_t l = 0; l < numPops[j]; ++l)
+      for(size_t k = 0; k < numPops[i]; ++k)
       {
-        if(l != k)
-          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l), 1e-8, ic));
+        if(k != j)
+          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(j) + bpp::TextTools::toString(k), 1e-8, ic));
       }
     }
 
-    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib, duration);
-    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib, duration);
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib, duration);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib, duration);
+    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib);
+    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib);
 
     std::vector<std::shared_ptr<Operator>> operators(0);
     operators.reserve(4);

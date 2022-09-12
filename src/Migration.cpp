@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 09/09/2022
+ * Last modified: 12/09/2022
  *
  */
 
@@ -11,8 +11,9 @@
 void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters.size();
+  size_t numStats = sslib.getNumStats();
 
-  matrices_.reserve(numPops * (numPops - 1) / 2);
+  matrices_.reserve(numPops * (numPops - 1));
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -23,7 +24,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
       if(i != j) // for each pair of populations (parameters m_ij, i != j)
       {
         std::vector<Eigen::Triplet<double>> coefficients(0); // init sparse matrix coefficients
-        coefficients.reserve(3 * sslib.getNumStats());
+        coefficients.reserve(3 * numStats);
 
         std::string parentPopId = sslib.asString(j); // j in m_ij
 
@@ -31,7 +32,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         // we only need to loop over pops twice because the loop over stats takes care of the other pops (k,l)
 
         // for each stat in vector Y (rows of matrices_[index])
-        for(auto it = std::begin(sslib->getStats()); it != std::end(sslib->getStats()); ++it)
+        for(auto it = std::begin(sslib.getStats()); it != std::end(sslib.getStats()); ++it)
         {
           std::string mom = *it->first; // full name of moment
           std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // (see SumStatsLibrary::init)
@@ -39,12 +40,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
           std::string p1, p2, p3, p4 = ""; // inits reference strings for population IDs
 
           size_t parentPopIdCount = sslib.countInstances(splitMom[1], parentPopId); // count of i in moment's name
-          size_t row = it - std::begin(sslib->getStats()); // row index
+          size_t row = it - std::begin(sslib.getStats()); // row index
           size_t col = 0; // column index
-
-          // main diagonal initialization, this entry must exist in a Sparse matrix even if it remains zero because
-          // it is important when converting from "delta" to "transition" matrix (see Operator::fetchCombinedMatrix()
-          coefficients.push_back(Eigen::Triplet<double>(row, row, 0.);
 
           if(splitMom[0] == "DD")
           {
@@ -293,7 +290,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
           }
         }
 
-        Eigen::SparseMatrix<double> mat;
+        Eigen::SparseMatrix<double> mat(numStats, numStats);
         mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
         mat.makeCompressed();
         mat *= getParameterValue("m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j)); // scales because of updateMatrices_()
@@ -308,7 +305,7 @@ void Migration::updateMatrices_()
   size_t numPops = fetchNumPops();
 
   size_t index = 0;
-  std::string name = "";
+  std::string paramName = "";
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -316,13 +313,12 @@ void Migration::updateMatrices_()
     {
       if(i != j)
       {
-        name = "m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j);
+        paramName = "m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j);
 
-        double prevVal = prevParams_.getParameterValue(name);
-        double newVal = getParameterValue(name);
-        double factor = std::pow(newVal / prevVal, exponent_);
+        double prevVal = prevParams_.getParameterValue(paramName);
+        double newVal = getParameterValue(paramName);
 
-        eigenDec_[i].setLambda(eigenDec_[i].lambdaReal() * factor);
+        matrices_[index] *= (newVal / prevVal);
 
         ++index;
       }
