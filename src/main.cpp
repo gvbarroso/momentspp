@@ -31,13 +31,12 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Endless ancestors                                   *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 08/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 13/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
 
-  /* TODO make pop split
-  * output epoch start - end
+  /* TODO
   *
   */
 

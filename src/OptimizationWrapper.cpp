@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/09/2022
+ * Last modified: 13/09/2022
  *
  */
 
@@ -21,7 +21,7 @@
 #include "Model.hpp"
 
 
-void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
+void OptimizationWrapper::optimize()
 {
   std::vector<size_t> numPops = options_.getNumbersOfPopulations(); // one per epoch bc of population splits / merges
   size_t numEpochs = options_.getNumberOfEpochs();
@@ -45,8 +45,8 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
     std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
 
     // define start and end of epochs as quantiles of the exp dist?
-    size_t start = i * (options_.getTotalNumberOfGenerations() / numEpochs);// in units of generations
-    size_t end = (i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
+    size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
+    size_t end = (numEpochs - i - 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
     bpp::ParameterList driftPl;
     bpp::ParameterList migPl;
@@ -62,6 +62,10 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
       }
     }
 
+    std::map<size_t, std::pair<size_t, size_t>> popMap; // TODO read table from file, check if there's standard format in demes
+    SumStatsLibrary sslib;
+    sslib.initStatsVector(popMap);
+
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib);
     std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib);
@@ -76,10 +80,9 @@ void OptimizationWrapper::optimize(const SumStatsLibrary& sslib)
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(operators, start, end, id));
+    epochs.emplace_back(std::make_shared<Epoch>(operators, popMap, start, end, id));
   }
 
-  // TODO read a recipe of how populations split and admix at epoch boundaries
   Model* model = new Model(name, epochs, sslib);
   model->computeSteadyState();
 
@@ -242,7 +245,23 @@ void OptimizationWrapper::writeEstimatesToFile_(Model* model)
   file.open(model->getName() + "_estimates.txt");
 
   file << "CLL = " << model->comLogLikelihood() << std::endl << std::endl;
-  model->getParameters().printParameters(file);
+
+  for(size_t i = 0; i < model->getEpochs().size(); ++i)
+  {
+    std::shared_patr<Epoch> epoch = model->getEpochs()[i];
+    file << epoch->getPrefix() << "\t" << epoch->start() << "\t" << epoch->end() << "\t";
+
+    for(size_t j = 0; j < epoch->getParameters().size(); ++j)
+    {
+      file << epoch->getParameters()[i].getParameterName() << "=" << epoch->getParameters()[i].getParameterValue();
+
+      if(i < epoch->getParameters().size() - 1)
+        file << "\t";
+
+      else
+        file << "\n";
+    }
+  }
 
   file.close();
 }

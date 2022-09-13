@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/09/2022
+ * Last modified: 13/09/2022
  *
  */
 
@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <utility>
+#include <map>
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -28,7 +30,7 @@
 #include <Bpp/Numeric/Function/Functions.h>
 
 #include "Epoch.hpp"
-#include "SumStatsLibrary.hpp"
+#include "PolymorphismData.hpp"
 
 class Model:
   public bpp::AbstractParameterAliasable,
@@ -38,27 +40,30 @@ class Model:
 private:
   std::string name_; // model id
   std::vector<std::shared_ptr<Epoch>> epochs_; // each epoch contains its own parameters and operators
-  SumStatsLibrary sslib_; // "Utils" class
   std::vector<std::string> frozenParams_;
 
-  Eigen::VectorXd steadYstate_;
+  PolymorphismData data_;
+
+  Eigen::VectorXd steadYstate_; // relative to populations and parameters in epoch 0
   Eigen::VectorXd expected_;
 
   double compLogLikelihood_;
 
 public:
-  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, const SumStatsLibrary& sslib):
+  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, const PolymorphismData& data):
   AbstractParameterAliasable(""),
   name_(name),
   epochs_(epochs),
-  sslib_(sslib),
   frozenParams_(0),
+  data_(data),
   steadYstate_(),
   expected_(),
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       includeParameters_((*it)->getParameters());
+
+    computeSteadyState_();
   }
 
   ~Model()
@@ -115,6 +120,23 @@ public:
       throw bpp::Exception("Model::Attempted to freeze non-existing parameter " + name);
   }
 
+  void unfreezeParameter(const std::string& name)
+  {
+    if(hasParameter(name))
+    {
+      auto it = std::find(std::begin(frozenParams_), std::end(frozenParams_), name);
+
+      if(it != std::end(frozenParams_))
+        it = frozenParams_.erase(it);
+
+      else
+        throw bpp::Exception("Model::Attempted to unfreeze unfrozen parameter " + name);
+    }
+
+    else
+      throw bpp::Exception("Model::Attempted to unfreeze non-existing parameter " + name);
+  }
+
   bpp::ParameterList getUnfrozenParameters()
   {
     bpp::ParameterList unfrozen = getIndependentParameters();
@@ -127,14 +149,14 @@ public:
     return unfrozen;
   }
 
-  void computeSteadyState();
-
 private:
-  void popSplit_();
+  void popSplit_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio);
 
-  void popAdmix_();
+  void popAdmix_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio);
 
   void updateEpochs_(const bpp::ParameterList& params);
+
+  void computeSteadyState_();
 
   void computeExpectedSumStats_();
 

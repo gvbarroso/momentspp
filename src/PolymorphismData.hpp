@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 11/09/2022
+ * Last modified: 13/09/2022
  *
  */
 
@@ -16,6 +16,9 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
@@ -33,29 +36,36 @@
 
 class PolymorphismData {
 private:
-  std::vector<size_t> numPops_;
+  size_t numPops_; // number of sampled populations (not counting eg ghosts)
   size_t order_;
 
   std::map<std::string, double> expectations_;
   std::map<std::string, double> variances_; // bootstrapped
+
+  Eigen::VectorXd y_; // the Eigen representation of the observed vector of summary statistics (from sampled populations)
+  Eigen::MatrixXd covar_; // covariance matrix of observed sum stats (from sampled populations)
 
 public:
   PolymorphismData():
   numPops_(1),
   order_(2),
   expectations_(),
-  variances_()
+  variances_(),
+  y_(),
+  covar_()
   { }
 
   PolymorphismData(const OptionsContainer& opt):
   numPops_(opt.getNumbersOfPopulations()),
   order_(opt.getOrder()),
   expectations_(),
-  variances_()
+  variances_(),
+  y_(),
+  covar_()
   { }
 
 public:
-  std::vector<size_t> getNumPops()
+  size_t getNumPops()
   {
     return numPops_;
   }
@@ -70,9 +80,19 @@ public:
     return order_;
   }
 
+  const Eigen::VectorXd& getYvec()
+  {
+    return y_;
+  }
+
+  const Eigen::MatrixXd& getCovarMatrix()
+  {
+    return covar_;
+  }
+
   void parse(const std::string& file);
 
-  void computeSumStats();
+  void computeSumStats(); // from sampled populations
 
 };
 

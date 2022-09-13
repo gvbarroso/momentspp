@@ -1,61 +1,44 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 02/09/2022
+ * Last modified: 13/09/2022
  *
  */
 
 #include "SumStatsLibrary.hpp"
 
 
-void SumStatsLibrary::init(const PolymorphismData& dataset)
+void SumStatsLibrary::initStatsVector(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap) // for a given epoch
 {
-  if(initialized_)
-    throw bpp::Exception("SumStatsLibrary::attempted to re-initialized library!");
+  // map keys are populantion indices (vals are parents in previous epochs)
+  order_ = 2;
+  numPops_ = popMap.size();
 
-  else
-  {
-    numPops_ = dataset.getNumPops();
-    order_ = dataset.getOrder();
-
-    includeHetStats_();
-    includeLdStats_();
-
-    y_.resize(stats_.size());
-    size_t index = 0;
-
-    // inits y_ from stats_ so that they're in same order (we also init matrices from stats_, see Operator::setUpMatrices_)
-    for(auto it = std::begin(stats_); it != std::end(stats_); ++it)
-    {
-      y_(index, 0) = (*it).second;
-      ++index;
-    }
-
-    initialized_ = true;
-  }
+  includeHetStats_(popMap);
+  includeLdStats_(popMap);
 }
 
-void SumStatsLibrary::includeHetStats_()
+void SumStatsLibrary::includeHetStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap)
 {
-  for(size_t i = 0; i < numPops_; ++i)
-    for(size_t j = 0; j < numPops_; ++j)
-      stats_.try_emplace("H_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j), 0.);
+  for(auto itI = std::begin(popMap); itI != std::end(popMap); ++itI)
+    for(auto itJ = std::begin(popMap); itJ != std::end(popMap); ++itJ)
+      stats_.try_emplace("H_" + bpp::TextTools::toString(itI->first) + bpp::TextTools::toString(itJ->first), 0.);
 }
 
-void SumStatsLibrary::includeLdStats_()
+void SumStatsLibrary::includeLdStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap)
 {
-  for(size_t i = 0; i < numPops_; ++i)
-    for(size_t j = 0; j < numPops_; ++j)
-      stats_.try_emplace("DD_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j), 0.);
+  for(auto itI = std::begin(popMap); itI != std::end(popMap); ++itI)
+    for(auto itJ = std::begin(popMap); itJ != std::end(popMap); ++itJ)
+      stats_.try_emplace("DD_" + bpp::TextTools::toString(itI->first) + bpp::TextTools::toString(itJ->first), 0.);
 
-  for(size_t i = 0; i < numPops_; ++i)
-    for(size_t j = 0; j < numPops_; ++j)
-      for(size_t k = 0; k < numPops_; ++k)
-        stats_.try_emplace("Dz_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j) + bpp::TextTools::toString(k), 0.);
+  for(auto itI = std::begin(popMap); itI != std::end(popMap); ++itI)
+    for(auto itJ = std::begin(popMap); itJ != std::end(popMap); ++itJ)
+      for(auto itK = std::begin(popMap); itK != std::end(popMap); ++itK)
+        stats_.try_emplace("Dz_" + bpp::TextTools::toString(itI->first) + bpp::TextTools::toString(itJ->first) + bpp::TextTools::toString(itK->first), 0.);
 
-  for(size_t i = 0; i < numPops_; ++i)
-    for(size_t j = 0; j < numPops_; ++j)
-      for(size_t k = 0; k < numPops_; ++k)
-        for(size_t l = 0; l < numPops_; ++l)
-          stats_.try_emplace("pi2_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j) + ";" + bpp::TextTools::toString(k) + bpp::TextTools::toString(l));
+  for(auto itI = std::begin(popMap); itI != std::end(popMap); ++itI)
+    for(auto itJ = std::begin(popMap); itJ != std::end(popMap); ++itJ)
+      for(auto itK = std::begin(popMap); itK != std::end(popMap); ++itK)
+        for(auto itL = std::begin(popMap); itL != std::end(popMap); ++itL)
+          stats_.try_emplace("pi2_" + bpp::TextTools::toString(itI->first) + bpp::TextTools::toString(itJ->first) + ";" + bpp::TextTools::toString(itK->first) + bpp::TextTools::toString(itL->first), 0.);
 }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 12/09/2022
+ * Last modified: 13/09/2022
  *
  */
 
@@ -11,6 +11,9 @@
 
 #include <vector>
 #include <memory>
+#include <utility>
+#include <algorithm>
+#include <map>
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
@@ -26,6 +29,9 @@ class Epoch:
 {
 
 private:
+  // indices of populations present in epoch -> indices of parental pops in previous epoch
+  std::map<size_t, std::pair<size_t, size_t>> pops_;
+
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<Operator>> operators_;
 
@@ -36,15 +42,17 @@ private:
   size_t endGen_;
 
 public:
-  Epoch(const std::vector<std::shared_ptr<Operator>>& operators, size_t start, size_t end, const std::string& name):
-  bpp::AbstractParameterAliasable(name),
-  operators_(operators),
+  Epoch(const std::map<size_t, std::pair<size_t, size_t>> pops, const std::vector<std::shared_ptr<Operator>>& ops,
+        size_t start, size_t end, const std::string& name):
+  bpp::AbstractParameterAliasable(name), // set namespace
+  pops_(pops),
+  operators_(ops),
   eigenDec_(),
   transitionMatrix_(),
   startGen_(start),
   endGen_(end)
   {
-    for(auto it = std::begin(operators); it != std::end(operators); ++it)
+    for(auto it = std::begin(ops); it != std::end(ops); ++it)
       includeParameters_((*it)->getParameters());
   }
 
@@ -91,6 +99,11 @@ public:
   void computeExpectedSumStats(Eigen::VectorXd& y)
   {
     transitionMatrix_ * y;
+  }
+
+  const std::map<size_t, std::pair<size_t, size_t>>& getPops() const
+  {
+    return pops_;
   }
 
 private:

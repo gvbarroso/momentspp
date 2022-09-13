@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/09/2022
+ * Last modified: 13/09/2022
  *
  */
 
@@ -14,7 +14,7 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
 
   computeExpectedSumStats_();
-  computeCompositeLogLikelihood_(sslib_.getYvec(), sslib_.getCovarMatrix()); // for each rec. bin
+  computeCompositeLogLikelihood_(data_.getYvec(), data_.getCovarMatrix()); // for each rec. bin
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -29,12 +29,15 @@ void Model::computeExpectedSumStats_()
 
   // TODO use recipe of pop splits and admixs to change vector of sum stats between each epoch
   for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it) // epochs must be sorted from past to present
+  {
+    // compare population indices between adjacent epochs
     (*it)->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
+  }
 }
 
-void Model::computeSteadyState()
+void Model::computeSteadyState_()
 {
-  // we find the eigenvector associated with lambda == 1 in the (arbitrary) transition matrix from epoch 0
+  // we find the eigenvector associated with eigenvalue == 1 in the transition matrix from epoch 0
   Eigen::EigenSolver<Eigen::MatrixXd> es(epochs_[0]->getTransitionMatrix());
   steadYstate_ = es.eigenvectors().real().col(0);
 
@@ -51,4 +54,15 @@ void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, cons
   }*/
 
   compLogLikelihood_ = cll;
+}
+
+void Model::popSplit_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio)
+{
+
+}
+
+// admixes p2 and p3 (from second)
+void Model::popAdmix_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio)
+{
+  double f = getParamterValue("f_p2_p3");
 }

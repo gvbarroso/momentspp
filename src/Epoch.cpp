@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 11/09/2022
+ * Last modified: 12/09/2022
  *
  */
 
@@ -20,5 +20,5 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
     mat *= operators_[i]->fetchCombinedMatrix();
 
   transitionMatrix_ = mat; // converts to dense format
-  eigenDec_.exponentiate(transitionMatrix_, duration());
+  eigenDec_.exponentiate(transitionMatrix_, duration()); // matrix passed as non-const ref
 }
