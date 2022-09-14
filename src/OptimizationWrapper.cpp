@@ -23,7 +23,8 @@
 
 void OptimizationWrapper::optimize()
 {
-  std::vector<size_t> numPops = options_.getNumbersOfPopulations(); // one per epoch bc of population splits / merges
+  // population index -> index of 2 parental populations in immediately previous epoch (can be the same, eg (3, (1,1)))
+  std::map<size_t, std::pair<size_t, size_t>> popMap; // TODO read table from file, check if there's standard format in demes
   size_t numEpochs = options_.getNumberOfEpochs();
 
   std::string name = bpp::TextTools::toString(numEpochs) + "_epochs_model";
@@ -37,8 +38,8 @@ void OptimizationWrapper::optimize()
   // the range of values that our "small" rates are allowed to take in
   std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-5, true, true);
 
-  mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
   recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
+  mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
 
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
@@ -51,21 +52,21 @@ void OptimizationWrapper::optimize()
     bpp::ParameterList driftPl;
     bpp::ParameterList migPl;
 
-    for(size_t j = 0; j < numPops[i]; ++j) // for each population modeled in epoch i
+    for(auto itI = std::begin(popMap); itI != std::end(popMap); ++itI) // for each population modeled in epoch i
     {
-      driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString(j), 1e+4, bpp::Parameter::R_PLUS_STAR));
+      driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString((*itI).first), 1e+4, bpp::Parameter::R_PLUS_STAR));
 
-      for(size_t k = 0; k < numPops[i]; ++k)
+      for(auto itJ = std::begin(popMap); itJ != std::end(popMap); ++itJ)
       {
-        if(k != j)
-          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString(j) + bpp::TextTools::toString(k), 1e-8, ic));
+        if((*itI).first != (*itJ).first)
+          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI).first) + bpp::TextTools::toString((*itJ).first), 1e-8, ic));
       }
     }
 
-    std::map<size_t, std::pair<size_t, size_t>> popMap; // TODO read table from file, check if there's standard format in demes
     SumStatsLibrary sslib;
     sslib.initStatsVector(popMap);
 
+    // Epoch-specific (w.r.t populations present, hence parameters) operators
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib);
     std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib);
@@ -84,7 +85,6 @@ void OptimizationWrapper::optimize()
   }
 
   Model* model = new Model(name, epochs, sslib);
-  model->computeSteadyState();
 
   /*
    * decides whether to freeze parameters

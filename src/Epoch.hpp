@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 13/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -36,9 +36,9 @@ private:
   std::vector<std::shared_ptr<Operator>> operators_;
 
   EigenDecomposition eigenDec_;
-  Eigen::MatrixXd transitionMatrix_;
-  Eigen::VectorXd steadYstate_;
 
+  Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
+  Eigen::VectorXd steadYstate_; // based on the parameters of this epoch, in practice only the one from deepest epoch will be used as seed
 
   size_t startGen_; // we let the deepest point in relevant time be generation "0"
   size_t endGen_;

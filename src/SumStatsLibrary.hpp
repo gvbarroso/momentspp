@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 13/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -20,10 +20,8 @@
 
 #include <Bpp/Text/TextTools.h>
 
-//#include "OptionsContainer.hpp"
-//#include "PolymorphismData.hpp"
 
-// itent is to have one instance of SumStatsLibrary per Epoch
+// intent is to have one instance of SumStatsLibrary per Epoch
 class SumStatsLibrary
 {
 
@@ -68,6 +66,10 @@ public:
     return stats_;
   }
 
+  void initStatsVector(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap);
+
+  // some utility methods:
+
   std::vector<std::string> splitString(const std::string& target, const std::string& query) const
   {
     std::vector<std::string> ret(0);
@@ -86,8 +88,6 @@ public:
   {
     return std::distance(std::begin(stats_), stats_.find(moment));
   }
-
-  void initStatsVector(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap);
 
 private:
   void includeHetStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);

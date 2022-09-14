@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -38,9 +38,9 @@ protected:
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
   std::vector<Eigen::SparseMatrix<double>> matrices_;
-  Eigen::SparseMatrix<double> identity_; // helper matrix to convert from delta to transition
+  Eigen::SparseMatrix<double> identity_; // helper matrix to convert from "delta" to "transition" matrix
 
-  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization
+  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast updates)
 
 public:
   Operator():
@@ -79,8 +79,7 @@ public:
 
   const Eigen::SparseMatrix<double>& getMatrix(size_t index)
   {
-    // population index for Drift; population-pair index for Migration etc
-    return matrices_[index];
+    return matrices_[index]; // population index for Drift; population-pair index for Migration etc
   }
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
@@ -94,16 +93,17 @@ public:
         mat += matrices_[i];
     }
 
-    // adds Identity to convert from delta to transition matrix
+    // adds Identity to convert from "delta" to "transition" matrix
     mat += identity_;
 
     return mat;
   }
 
 protected:
+  // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator
   virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
 
-  virtual void updateMatrices_(); // scales coefficients by (new) parameters during optimization
+  virtual void updateMatrices_(); // scales coefficients of "delta" matrices by (new) parameters during optimization
 
   void setIdentity_(size_t dim)
   {

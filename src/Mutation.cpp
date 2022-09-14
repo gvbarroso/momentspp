@@ -47,7 +47,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     }
 
     else
-      coefficients.emplace_back(Eigen::Triplet<double>(row, row, 1.)); // main diagonal, unnaffected terms WARNING 0?
+      coefficients.emplace_back(Eigen::Triplet<double>(row, row, 0.)); // main diagonal, unnaffected terms
   }
 
   Eigen::SparseMatrix<double> mat(numStats, numStats);

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 13/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -35,9 +35,9 @@ void Epoch::computeSteadyState_()
 
   transitionMatrix_ = mat; // converts to dense format
 
-  // we find the eigenvector associated with eigenvalue == 1 in the transition matrix from epoch 0
+  // we find the eigenvector associated with (leading) eigenvalue == 1 in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
   steadYstate_ = es.eigenvectors().real().col(0);
 
-  std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "; associated eigenvalues: " << steadYstate_ << std::endl;
+  std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "; associated eigenvector: " << steadYstate_ << std::endl;
 }
