@@ -60,7 +60,7 @@ public:
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
-      includeParameters_((*it)->getParameters());
+      includeParameters_((*it)->getParameters()); // NOTE shareParameters
   }
 
   ~Model()

@@ -30,7 +30,7 @@ class Epoch:
 
 private:
   // indices of populations present in epoch -> indices of parental pops in previous epoch
-  std::map<size_t, std::pair<size_t, size_t>> pops_;
+  std::map<size_t, std::pair<size_t, size_t>> popMap_;
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<Operator>> operators_;
@@ -44,10 +44,9 @@ private:
   size_t endGen_;
 
 public:
-  Epoch(const std::map<size_t, std::pair<size_t, size_t>> pops, const std::vector<std::shared_ptr<Operator>>& ops,
-        size_t start, size_t end, const std::string& name):
+  Epoch(const std::map<size_t, std::pair<size_t, size_t>> pops, const std::vector<std::shared_ptr<Operator>>& ops, size_t start, size_t end, const std::string& name):
   bpp::AbstractParameterAliasable(name), // set namespace
-  pops_(pops),
+  popMap_(pops),
   operators_(ops),
   eigenDec_(),
   transitionMatrix_(),
@@ -55,7 +54,7 @@ public:
   endGen_(end)
   {
     for(auto it = std::begin(ops); it != std::end(ops); ++it)
-      includeParameters_((*it)->getParameters());
+      includeParameters_((*it)->getParameters()); // NOTE shareParameters
 
     computeSteadyState_();
   }

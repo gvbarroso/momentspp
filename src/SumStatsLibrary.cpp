@@ -8,19 +8,24 @@
 #include "SumStatsLibrary.hpp"
 
 
-void SumStatsLibrary::initStatsVector(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap) // for a given epoch
+void SumStatsLibrary::initStatsVector(const std::map<size_t, std::pair<size_t, size_t>>& popMap) // for a given epoch
 {
   // map keys are populantion indices (vals are parents in previous epochs)
-  order_ = order;
-  numPops_ = popMap.size();
-
-  std::vector<size_t> popIndices(0);
-  popIndices.reserve(popMap.size());
-  for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
-    popIndices.emplace_back(it->first);
+  std::vector<size_t> popIndices = fetchPopIndices();
 
   includeHetStats_(popIndices);
   includeLdStats_(popIndices);
+}
+
+std::vector<size_t> SumStatsLibrary::fetchPopIndices()
+{
+  std::vector<size_t> popIndices(0);
+  popIndices.reserve(popMap_.size());
+
+  for(auto it = std::begin(popMap_); it != std::end(popMap_); ++it)
+    popIndices.emplace_back(it->first);
+
+  return popIndices;
 }
 
 void SumStatsLibrary::includeHetStats_(const std::vector<size_t>& popIndices)

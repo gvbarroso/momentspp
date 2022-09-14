@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 13/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -32,15 +32,10 @@ void OptimizationWrapper::optimize()
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  bpp::ParameterList mutPl;
-  bpp::ParameterList recPl;
-
   // the range of values that our "small" rates are allowed to take in
   std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-5, true, true);
 
-  recPl.addParameter(new bpp::Parameter("u_0", 1e-8, ic));
-  mutPl.addParameter(new bpp::Parameter("r_0", 1e-8, ic));
-
+  // for now, all epochs share recombination and mutation parameters
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
     std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
@@ -49,42 +44,28 @@ void OptimizationWrapper::optimize()
     size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
     size_t end = (numEpochs - i - 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
-    bpp::ParameterList driftPl;
-    bpp::ParameterList migPl;
-
-    for(auto itI = std::begin(popMap); itI != std::end(popMap); ++itI) // for each population modeled in epoch i
-    {
-      driftPl.addParameter(new bpp::Parameter("N_" + bpp::TextTools::toString((*itI).first), 1e+4, bpp::Parameter::R_PLUS_STAR));
-
-      for(auto itJ = std::begin(popMap); itJ != std::end(popMap); ++itJ)
-      {
-        if((*itI).first != (*itJ).first)
-          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI).first) + bpp::TextTools::toString((*itJ).first), 1e-8, ic));
-      }
-    }
-
-    SumStatsLibrary sslib;
-    sslib.initStatsVector(popMap);
+    SumStatsLibrary sslib(popMap);
 
     // Epoch-specific (w.r.t populations present, hence parameters) operators
-    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(driftPl, sslib);
-    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(migPl, sslib);
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(recPl, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(mutPl, sslib);
+    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(sslib);
+    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(ic, sslib);
+    // must have epoch-specific recombination and mutation operators because they depend on population indices, even though we prob. want single r and mu params in Model
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(ic, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(ic, sslib);
 
+     // include operators in the correct order for matrix operations
     std::vector<std::shared_ptr<Operator>> operators(0);
     operators.reserve(4);
-
-    // include operators in the correct order for matrix operations
     operators.emplace_back(migOp);
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(operators, popMap, start, end, id));
+    epochs.emplace_back(std::make_shared<Epoch>(popMap, operators, start, end, id));
   }
 
   Model* model = new Model(name, epochs, sslib);
+  // TODO alias r and mu among epochs
 
   /*
    * decides whether to freeze parameters
@@ -145,9 +126,6 @@ void OptimizationWrapper::fitModel_(Model* model)
 
   std::unique_ptr<bpp::FunctionStopCondition> stopCond = std::make_unique<bpp::FunctionStopCondition>(optimizer.get(), options_.getTolerance());
   optimizer->setStopCondition(*stopCond);
-
-  BackupListenerOv blo("backup_params.txt");
-  optimizer->addOptimizationListener(&blo);
 
   std::ofstream prof("profile.txt", std::ios::out);
   std::ofstream mess("messages.txt", std::ios::out);

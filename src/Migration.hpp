@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 09/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -16,12 +16,22 @@ class Migration:
 {
 
 public:
-  Migration(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
+  Migration(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
   Operator()
   {
+    double initValue = 1e-8;
+
     // NOTE the constraint that individual migration rates are "small" guaranteed that the rows
     // of the matrix (m_ij's) sum to 1, with main diagonal entries = 1 - sum of values < 1e=5
-    includeParameters_(params);
+    for(auto itI = std::begin(ssl.getPopMap()); itI != std::end(ssl.getPopMap()); ++itI) // for each population modeled in epoch i
+    {
+      for(auto itJ = std::begin(ssl.getPopMap()); itJ != std::end(ssl.getPopMap()); ++itJ)
+      {
+        if((*itI).first != (*itJ).first) // if population indices are different
+          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI).first) + bpp::TextTools::toString((*itJ).first), initValue, ic));
+      }
+    }
+
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);
   }

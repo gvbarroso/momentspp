@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/08/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -44,9 +44,9 @@ public:
   { }
   
 public:
-  void optimize(const SumStatsLibrary& sslib); // optimze from scratch
+  void optimize(); // optimze from scratch
   
-  void resumeOptim(const SumStatsLibrary& sslib, const bpp::ParameterList& backupParams); // after a crash
+  void resumeOptim(const bpp::ParameterList& backupParams); // after a crash
   
 private:
   void fitModel_(Model* model);

@@ -30,17 +30,22 @@ private:
   size_t numPops_;
   size_t order_;
 
+  std::map<size_t, std::pair<size_t, size_t>>& popMap_;
   std::map<std::string, double>& stats_;
 
 public:
-  SumStatsLibrary():
+  SumStatsLibrary(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap):
   compressed_(false),
-  numPops_(1),
-  order_(2),
+  numPops_(popMap.size()),
+  order_(order),
+  popMap_(popMap),
   stats_()
-  { }
+  {
+    initStatsVector(popMap);
+  }
 
 public:
+
   bool compressed()
   {
     return compressed_;
@@ -65,6 +70,8 @@ public:
   {
     return stats_;
   }
+
+  std::vector<size_t> fetchPopIndices();
 
   void initStatsVector(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap);
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 09/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -16,10 +16,11 @@ class Recombination:
 {
 
 public:
-  Recombination(const bpp::ParameterList& params, const SumStatsLibrary& ssl):
+  Recombination(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
   Operator()
   {
-    includeParameters_(params);
+    addParameter(new bpp::Parameter("r_0", 1e-8, ic));
+
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);
   }
