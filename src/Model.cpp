@@ -25,23 +25,17 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats_()
 {
-  expected_ = steadYstate_; // resets "to the deep past"
+  expected_ = epochs_[0]->getSteadyState(); // resets stats to "the deep past"
 
-  // TODO use recipe of pop splits and admixs to change vector of sum stats between each epoch
+  // we use recipe of pop splits and admixs to change vector of sum stats between each epoch
   for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it) // epochs must be sorted from past to present
   {
+    auto from = it->getPops();
+    auto to = (--it)->getPops();
+
     // compare population indices between adjacent epochs
     (*it)->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
   }
-}
-
-void Model::computeSteadyState_()
-{
-  // we find the eigenvector associated with eigenvalue == 1 in the transition matrix from epoch 0
-  Eigen::EigenSolver<Eigen::MatrixXd> es(epochs_[0]->getTransitionMatrix());
-  steadYstate_ = es.eigenvectors().real().col(0);
-
-  std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "; associated eigenvalues: " << steadYstate_ << std::endl;
 }
 
 void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)

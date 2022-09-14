@@ -37,6 +37,8 @@ private:
 
   EigenDecomposition eigenDec_;
   Eigen::MatrixXd transitionMatrix_;
+  Eigen::VectorXd steadYstate_;
+
 
   size_t startGen_; // we let the deepest point in relevant time be generation "0"
   size_t endGen_;
@@ -54,6 +56,8 @@ public:
   {
     for(auto it = std::begin(ops); it != std::end(ops); ++it)
       includeParameters_((*it)->getParameters());
+
+    computeSteadyState_();
   }
 
   ~Epoch()
@@ -86,6 +90,11 @@ public:
     return endGen_ - startGen_;
   }
 
+  const Eigen::VectorXd& getSteadyState()
+  {
+    return steadYstate_;
+  }
+
   const Eigen::MatrixXd& getTransitionMatrix()
   {
     return transitionMatrix_;
@@ -107,6 +116,8 @@ public:
   }
 
 private:
+  void computeSteadyState_();
+
   void updateOperators_(const bpp::ParameterList& params)
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)

@@ -44,7 +44,6 @@ private:
 
   PolymorphismData data_;
 
-  Eigen::VectorXd steadYstate_; // relative to populations and parameters in epoch 0
   Eigen::VectorXd expected_;
 
   double compLogLikelihood_;
@@ -62,8 +61,6 @@ public:
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       includeParameters_((*it)->getParameters());
-
-    computeSteadyState_();
   }
 
   ~Model()
@@ -99,11 +96,6 @@ public:
   const std::vector<std::shared_ptr<Epoch>>& getEpochs()
   {
     return epochs_;
-  }
-
-  const Eigen::VectorXd& getSteadyState()
-  {
-    return steadYstate_;
   }
 
   const Eigen::VectorXd& getExpectedStats()
@@ -155,8 +147,6 @@ private:
   void popAdmix_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio);
 
   void updateEpochs_(const bpp::ParameterList& params);
-
-  void computeSteadyState_();
 
   void computeExpectedSumStats_();
 
