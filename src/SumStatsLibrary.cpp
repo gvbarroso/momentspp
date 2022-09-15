@@ -1,32 +1,32 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
 #include "SumStatsLibrary.hpp"
 
 
+std::vector<size_t> SumStatsLibrary::fetchPopIndices()
+{
+  std::vector<size_t> popIndices(0);
+  popIndices.reserve(popsMap_.size());
+
+  for(auto it = std::begin(popsMap_); it != std::end(popsMap_); ++it)
+    popIndices.emplace_back(it->first);
+
+  return popIndices;
+}
+
 // NOTE this method crucially determines the order of stats in rows of Y and rows/cols of transition matrices
-void SumStatsLibrary::initStatsVector(const std::map<size_t, std::pair<size_t, size_t>>& popMap) // for a given epoch
+void SumStatsLibrary::initStatsVector_()
 {
   // map keys are populantion indices (vals are parents in previous epochs)
   std::vector<size_t> popIndices = fetchPopIndices();
 
   includeHetStats_(popIndices);
   includeLdStats_(popIndices);
-}
-
-std::vector<size_t> SumStatsLibrary::fetchPopIndices()
-{
-  std::vector<size_t> popIndices(0);
-  popIndices.reserve(popMap_.size());
-
-  for(auto it = std::begin(popMap_); it != std::end(popMap_); ++it)
-    popIndices.emplace_back(it->first);
-
-  return popIndices;
 }
 
 void SumStatsLibrary::includeHetStats_(const std::vector<size_t>& popIndices)

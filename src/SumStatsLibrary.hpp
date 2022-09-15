@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -27,25 +27,22 @@ class SumStatsLibrary
 
 private:
   bool compressed_; // indicates whether symmetrical statistics have been pulled together
-  size_t numPops_;
   size_t order_;
 
-  std::map<size_t, std::pair<size_t, size_t>>& popMap_;
+  std::map<size_t, std::pair<size_t, size_t>>& popsMap_;
   std::map<std::string, double>& stats_;
 
 public:
   SumStatsLibrary(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap):
   compressed_(false),
-  numPops_(popMap.size()),
   order_(order),
-  popMap_(popMap),
+  popsMap_(popMap),
   stats_()
   {
-    initStatsVector(popMap);
+    initStatsVector_();
   }
 
 public:
-
   bool compressed()
   {
     return compressed_;
@@ -53,7 +50,7 @@ public:
 
   size_t getNumPops()
   {
-    return numPops_;
+    return popsMap_.size();
   }
 
   size_t getOrder()
@@ -66,16 +63,17 @@ public:
     return stats_.size();
   }
 
+  const std::map<size_t, std::pair<size_t, size_t>>& getPopsMap() const
+  {
+    return popsMap_;
+  }
+
   const std::map<std::string, double>& getStats() const
   {
     return stats_;
   }
 
   std::vector<size_t> fetchPopIndices();
-
-  void initStatsVector(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap);
-
-  // some utility methods:
 
   std::vector<std::string> splitString(const std::string& target, const std::string& query) const
   {
@@ -97,11 +95,13 @@ public:
   }
 
 private:
+  void initStatsVector_();
+
   void includeHetStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);
 
   void includeLdStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);
 
-  void compress_(); // exploits symmetry among statistics to reduce dimension
+  void compress_(); // exploits symmetry among statistics to reduce dimension of stats_
 
 };
 

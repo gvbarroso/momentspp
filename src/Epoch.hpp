@@ -22,7 +22,7 @@
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
-#include "Operator.hpp"
+#include "AbstractOperator.hpp"
 
 class Epoch:
   public bpp::AbstractParameterAliasable
@@ -30,10 +30,10 @@ class Epoch:
 
 private:
   // indices of populations present in epoch -> indices of parental pops in previous epoch
-  std::map<size_t, std::pair<size_t, size_t>> popMap_;
+  SumStatsLibrary ssl_;
 
   // each operator contains Eigen matrices and a subset of the parameters
-  std::vector<std::shared_ptr<Operator>> operators_;
+  std::vector<std::shared_ptr<AbstractOperator>> operators_;
 
   EigenDecomposition eigenDec_;
 
@@ -44,9 +44,9 @@ private:
   size_t endGen_;
 
 public:
-  Epoch(const std::map<size_t, std::pair<size_t, size_t>> pops, const std::vector<std::shared_ptr<Operator>>& ops, size_t start, size_t end, const std::string& name):
+  Epoch(const SumStatsLibrary& ssl, const std::vector<std::shared_ptr<AbstractOperator>>& ops, size_t start, size_t end, const std::string& name):
   bpp::AbstractParameterAliasable(name), // set namespace
-  popMap_(pops),
+  ssl_(ssl),
   operators_(ops),
   eigenDec_(),
   transitionMatrix_(),
@@ -109,9 +109,14 @@ public:
     transitionMatrix_ * y;
   }
 
-  const std::map<size_t, std::pair<size_t, size_t>>& getPops() const
+  const SumStatsLibrary& getSslib() const
   {
-    return pops_;
+    return ssl_;
+  }
+
+  const std::map<size_t, std::pair<size_t, size_t>>& getPopsMap() const
+  {
+    return ssl_.getPopsMap();
   }
 
 private:

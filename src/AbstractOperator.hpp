@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -28,7 +28,7 @@
 #include "SumStatsLibrary.hpp"
 #include "EigenDecomposition.hpp"
 
-class Operator:
+class AbstractOperator:
   public bpp::AbstractParameterAliasable
 {
 
@@ -43,14 +43,14 @@ protected:
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast updates)
 
 public:
-  Operator():
+  AbstractOperator():
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   prevParams_()
   { }
 
 public:
-  ~Operator()
+  ~AbstractOperator()
   {
     std::cout << "Destruction of Operator with parameters:\n";
     getParameters().printParameters(std::cout);
@@ -58,9 +58,9 @@ public:
     deleteParameters(getParameterNames()); // NOTE does this free memory?
   }
 
-  Operator* clone() const
+  AbstractOperator* clone() const
   {
-    return new Operator(*this);
+    return new AbstractOperator(*this);
   }
 
   void setParameters(const bpp::ParameterList& params)
@@ -95,8 +95,7 @@ public:
         mat += matrices_[i];
     }
 
-    // adds Identity to convert from "delta" to "transition" matrix
-    mat += identity_;
+    mat += identity_; // adds Identity to convert from "delta" to "transition" matrix
 
     return mat;
   }

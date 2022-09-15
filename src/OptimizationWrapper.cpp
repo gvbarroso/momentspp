@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -12,7 +12,6 @@
 
 #include "SumStatsLibrary.hpp"
 #include "OptimizationWrapper.hpp"
-#include "BackupListenerOv.hpp"
 #include "Drift.hpp"
 #include "Mutation.hpp"
 #include "Recombination.hpp"
@@ -47,19 +46,20 @@ void OptimizationWrapper::optimize()
     // Epoch-specific (w.r.t populations present, hence parameters) operators
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(sslib);
     std::shared_ptr<Migration> migOp = std::make_shared<Migration>(ic, sslib);
-    // must have epoch-specific recombination and mutation operators because they depend on population indices, even though we prob. want single r and mu params in Model
+    // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
+    // even though we prob. want single r and mu params in Model
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(ic, sslib);
 
      // include operators in the correct order for matrix operations
-    std::vector<std::shared_ptr<Operator>> operators(0);
+    std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
     operators.emplace_back(migOp);
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(popMaps[i], operators, start, end, id));
+    epochs.emplace_back(std::make_shared<Epoch>(sslib, operators, start, end, id));
   }
 
   Model* model = new Model(name, epochs, sslib);
@@ -146,8 +146,9 @@ void OptimizationWrapper::fitModel_(Model* model)
   }
 }
 
-/*void OptimizationWrapper::computeCI() // TODO use Godambe Information Matrix
+/*void OptimizationWrapper::computeCI()
 {
+  // TODO use Godambe Information Matrix
   // Matrix operations with BPP tools (instead of Eigen) to make our lives easier w.r.t. compatibility
   std::cout << std::endl << "Computing 95% confidence intervals of parameter estimates..." << std::endl;
 

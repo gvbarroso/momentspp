@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -9,15 +9,15 @@
 #ifndef _RECOMBINATION_H_
 #define _RECOMBINATION_H_
 
-#include "Operator.hpp"
+#include "AbstractOperator.hpp"
 
 class Recombination:
-  public Operator
+  public AbstractOperator
 {
 
 public:
   Recombination(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
-  Operator()
+  AbstractOperator()
   {
     addParameter(new bpp::Parameter("r_0", 1e-8, ic));
 

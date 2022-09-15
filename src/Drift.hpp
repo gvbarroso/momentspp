@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -9,16 +9,16 @@
 #ifndef _DRIFT_H_
 #define _DRIFT_H_
 
-#include "Operator.hpp"
+#include "AbstractOperator.hpp"
 #include "SumStatsLibrary.hpp"
 
 class Drift:
-  public Operator
+  public AbstractOperator
 {
 
 public:
   Drift(const SumStatsLibrary& ssl):
-  Operator()
+  AbstractOperator()
   {
     // for each population modeled in the epoch this operator belongs to, add Ne parameter
     for(auto itI = std::begin(ssl.getPopMap()); itI != std::end(ssl.getPopMap()); ++itI)

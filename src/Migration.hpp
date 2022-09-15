@@ -9,15 +9,15 @@
 #ifndef _MIGRATION_H_
 #define _MIGRATION_H_
 
-#include "Operator.hpp"
+#include "AbstractOperator.hpp"
 
 class Migration:
-  public Operator
+  public AbstractOperator
 {
 
 public:
   Migration(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
-  Operator()
+  AbstractOperator()
   {
     double initValue = 1e-8;
 

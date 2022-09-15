@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -38,8 +38,7 @@ void Model::computeExpectedSumStats_()
     auto to = (it)->getPops();
   }
 
-  // final epoch
-  epochs_.back()->computeExpectedSumStats(expected_);
+  epochs_.back()->computeExpectedSumStats(expected_); // final epoch
 }
 
 void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)

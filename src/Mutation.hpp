@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -9,15 +9,15 @@
 #ifndef _MUTATION_H_
 #define _MUTATION_H_
 
-#include "Operator.hpp"
+#include "AbstractOperator.hpp"
 
 class Mutation:
-  public Operator
+  public AbstractOperator
 {
 
 public:
   Mutation(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
-  Operator()
+  AbstractOperator()
   {
     addParameter(new bpp::Parameter("u_0", 1e-8, ic));
 

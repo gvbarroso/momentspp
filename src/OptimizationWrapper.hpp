@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/09/2022
+ * Last modified: 15/09/2022
  *
  */
 
@@ -33,7 +33,7 @@ class OptimizationWrapper
     
 private:
   // population index -> index of 2 parental populations in immediately previous epoch (can be the same, eg (3, (1,1)))
-  std::vector<std::map<size_t, std::pair<size_t, size_t>>> popMaps_
+  std::vector<std::map<size_t, std::pair<size_t, size_t>>> popMaps_;
   OptionsContainer options_;
   
 public:
