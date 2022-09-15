@@ -27,15 +27,37 @@ void Model::computeExpectedSumStats_()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets stats to the "deep past"
 
-  // we use map of pop (splits and admixtures) to change vector of sum stats between each epoch
+  // we use pops map (of splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1)
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
     epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
+    epochs_[i]->copyStatsToMap(expected_); // NOTE can be replaced later by simply finding the indices and copying stats directly into Y
 
-    // compare population indices between adjacent epochs
+    // WARNING expected_ potentially changes size between epochs
 
-    auto from = it->getPops();
-    auto to = (it)->getPops();
+    // for each population in next epoch i + 1
+    for(auto it = std::begin(epochs_[i + 1]->getPopsMap()); it != std::end(epochs_[i + 1]->getPopsMap()); ++it)
+    {
+      size_t idx = (*it).first; // pop index in next epoch
+      size_t p1 = (*it).second.first; // parent pop in current epoch
+      size_t p2 = (*it).second.second; // parent pop in current epoch
+
+      if(p1 == p2) // parents are the same
+      {
+        if(idx == p1) // stays the same pop between epochs
+        {
+          epochs_[i]->getStatsMap();
+        }
+
+        else // population split, also dealt with by copying sum stats
+        {
+
+        }
+      }
+
+      else // parents are different, admixture scenario
+        popAdmix_();
+    }
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch

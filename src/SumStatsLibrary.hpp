@@ -27,10 +27,10 @@ class SumStatsLibrary
 
 private:
   bool compressed_; // indicates whether symmetrical statistics have been pulled together
-  size_t order_;
+  size_t order_; // of moments
 
-  std::map<size_t, std::pair<size_t, size_t>>& popsMap_;
-  std::map<std::string, double>& stats_;
+  std::map<size_t, std::pair<size_t, size_t>> popsMap_; // pop index -> pair of parents in prev epoch
+  std::map<std::string, double> stats_; // stat name -> value
 
 public:
   SumStatsLibrary(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap):
@@ -73,7 +73,14 @@ public:
     return stats_;
   }
 
+  std::map<std::string, double>& getStats()
+  {
+    return stats_;
+  }
+
   std::vector<size_t> fetchPopIndices();
+
+  void copyStats(Eigen::VectorXd& y);
 
   std::vector<std::string> splitString(const std::string& target, const std::string& query) const
   {

@@ -142,8 +142,6 @@ public:
   }
 
 private:
-  void popSplit_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio);
-
   void popAdmix_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio);
 
   void updateEpochs_(const bpp::ParameterList& params);

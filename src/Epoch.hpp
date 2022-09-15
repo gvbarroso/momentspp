@@ -114,6 +114,11 @@ public:
     return ssl_;
   }
 
+  const std::map<std::string, double>& getStatsMap() const
+  {
+    return ssl_.getStats();
+  }
+
   const std::map<size_t, std::pair<size_t, size_t>>& getPopsMap() const
   {
     return ssl_.getPopsMap();

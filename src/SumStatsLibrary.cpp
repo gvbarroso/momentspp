@@ -19,6 +19,26 @@ std::vector<size_t> SumStatsLibrary::fetchPopIndices()
   return popIndices;
 }
 
+void SumStatsLibrary::copyStatsToY(Eigen::VectorXd& y)
+{
+  if(y.size() != stats_.size())
+    throw bpp::Exception("SUM_STATS_LIBRARY::Attempted to copy from vector of different size!");
+
+  else
+    for(size_t i = 0; i < stats_.size(); ++i)
+      y(0, i) = stats_[i].second;
+}
+
+void SumStatsLibrary::copyStatsToMap(const Eigen::VectorXd& y)
+{
+  if(y.size() != stats_.size())
+    throw bpp::Exception("SUM_STATS_LIBRARY::Attempted to copy from vector of different size!");
+
+  else
+    for(size_t i = 0; i < stats_.size(); ++i)
+      stats_[i].second = y(0, i);
+}
+
 // NOTE this method crucially determines the order of stats in rows of Y and rows/cols of transition matrices
 void SumStatsLibrary::initStatsVector_()
 {
