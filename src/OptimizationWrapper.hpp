@@ -32,22 +32,26 @@ class OptimizationWrapper
 {
     
 private:
+  // population index -> index of 2 parental populations in immediately previous epoch (can be the same, eg (3, (1,1)))
+  std::vector<std::map<size_t, std::pair<size_t, size_t>>> popMaps_
   OptionsContainer options_;
   
 public:
   OptimizationWrapper(const OptionsContainer& options):
+  popMaps_(),
   options_(options)
   { }
 
   OptimizationWrapper(const std::map<std::string, std::string>& options):
+  popMaps_(),
   options_(options)
   { }
   
 public:
   void optimize(); // optimze from scratch
-  
-  void resumeOptim(const bpp::ParameterList& backupParams); // after a crash
-  
+
+  void parsePopsFile(const std::string& name);
+
 private:
   void fitModel_(Model* model);
 

@@ -20,7 +20,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   std::vector<Eigen::Triplet<double>> coefficients(0);
   coefficients.reserve(numStats);
 
-  // for each population (making this the outer loop seems to be the way to go)
+  // for each population
   for(size_t i = 0; i < numPops; ++i)
   {
     std::string popId = sslib.asString(i);

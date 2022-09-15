@@ -8,6 +8,7 @@
 #include "SumStatsLibrary.hpp"
 
 
+// NOTE this method crucially determines the order of stats in rows of Y and rows/cols of transition matrices
 void SumStatsLibrary::initStatsVector(const std::map<size_t, std::pair<size_t, size_t>>& popMap) // for a given epoch
 {
   // map keys are populantion indices (vals are parents in previous epochs)

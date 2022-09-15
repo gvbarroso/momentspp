@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 13/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -25,17 +25,21 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats_()
 {
-  expected_ = epochs_[0]->getSteadyState(); // resets stats to "the deep past"
+  expected_ = epochs_[0]->getSteadyState(); // resets stats to the "deep past"
 
-  // we use recipe of pop splits and admixs to change vector of sum stats between each epoch
-  for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it) // epochs must be sorted from past to present
+  // we use map of pop (splits and admixtures) to change vector of sum stats between each epoch
+  for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
-    auto from = it->getPops();
-    auto to = (--it)->getPops();
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
 
     // compare population indices between adjacent epochs
-    (*it)->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
+
+    auto from = it->getPops();
+    auto to = (it)->getPops();
   }
+
+  // final epoch
+  epochs_.back()->computeExpectedSumStats(expected_);
 }
 
 void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)

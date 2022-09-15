@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 11/09/2022
+ * Last modified: 14/09/2022
  *
  */
 
@@ -22,31 +22,26 @@ class OptionsContainer
 {
 
 private:
-  std::vector<size_t> numbersOfPopulations_; // one value per epoch
-
-  std::string dataPath_;
+  std::string popsFilePath_;
+  std::string dataFilePath_;
   std::string numericalOptimizer_;
 
   double tolerance_; // for numerical optimization
 
   bool computeCI_;
-  bool resume_;
 
   size_t order_; // of summary statistics
-  size_t numberOfEpochs_;
   size_t totalNumberOfGenerations_;
   size_t numberOfThreads_;
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
-  numbersOfPopulations_(bpp::ApplicationTools::getVectorParameter<size_t>("num_pops", options, ',', "1", "", true, 0)),
-  dataPath_(bpp::ApplicationTools::getAFilePath("data_path", options, "none")),
+  popsFilePath_(bpp::ApplicationTools::getAFilePath("pop_file", options, "none")),
+  dataFilePath_(bpp::ApplicationTools::getAFilePath("data_file", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
-  resume_(bpp::ApplicationTools::getParameter<bool>("resume", options, false)),
   order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2)),
-  numberOfEpochs_(bpp::ApplicationTools::getParameter<size_t>("num_epochs", options, 1)),
   totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("tot_gen", options, 1)),
   numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options,
                                                                std::thread::hardware_concurrency(),
@@ -54,9 +49,14 @@ public:
   { }
   
 public:
-  const std::string& getDataPath() const
+  const std::string& getPopsFilePath() const
   {
-    return dataPath_;
+    return popsFilePath_;
+  }
+
+  const std::string& getDataFilePath() const
+  {
+    return dataFilePath_;
   }
 
   const std::string& getOptimMethod() const
@@ -74,24 +74,9 @@ public:
     return computeCI_;
   }
 
-  bool resume() const
-  {
-    return resume_;
-  }
-
   size_t getOrder() const
   {
     return order_;
-  }
-
-  const std::vector<size_t> getNumbersOfPopulations() const
-  {
-    return numbersOfPopulations_;
-  }
-
-  size_t getNumberOfEpochs() const
-  {
-    return numberOfEpochs_;
   }
 
   size_t getTotalNumberOfGenerations() const

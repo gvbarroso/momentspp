@@ -23,9 +23,7 @@
 
 void OptimizationWrapper::optimize()
 {
-  // population index -> index of 2 parental populations in immediately previous epoch (can be the same, eg (3, (1,1)))
-  std::map<size_t, std::pair<size_t, size_t>> popMap; // TODO read table from file, check if there's standard format in demes
-  size_t numEpochs = options_.getNumberOfEpochs();
+  size_t numEpochs = popMaps_.size();
 
   std::string name = bpp::TextTools::toString(numEpochs) + "_epochs_model";
 
@@ -44,7 +42,7 @@ void OptimizationWrapper::optimize()
     size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
     size_t end = (numEpochs - i - 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
-    SumStatsLibrary sslib(popMap);
+    SumStatsLibrary sslib(popMaps[i]);
 
     // Epoch-specific (w.r.t populations present, hence parameters) operators
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(sslib);
@@ -61,21 +59,22 @@ void OptimizationWrapper::optimize()
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(popMap, operators, start, end, id));
+    epochs.emplace_back(std::make_shared<Epoch>(popMaps[i], operators, start, end, id));
   }
 
   Model* model = new Model(name, epochs, sslib);
   // TODO alias r and mu among epochs
 
-  /*
-   * decides whether to freeze parameters
-   * eg, model->freezeParamter("r_0")
-   */
-
   fitModel_(model);
   writeEstimatesToFile_(model);
 
   delete model;
+}
+
+void parsePopsFile(const std::string& name)
+{
+  // TODO read table from file, check if there's standard format in demes
+  // popMaps_ =
 }
 
 void OptimizationWrapper::fitModel_(Model* model)

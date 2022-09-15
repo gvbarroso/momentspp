@@ -8,6 +8,7 @@
 
 #include "Epoch.hpp"
 
+// NOTE this method is where the heavier linear algebra is
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
   if(matchParametersValues(params))
