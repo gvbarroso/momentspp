@@ -19,14 +19,14 @@ std::vector<size_t> SumStatsLibrary::fetchPopIndices()
   return popIndices;
 }
 
-void SumStatsLibrary::copyStatsToY(Eigen::VectorXd& y)
+Eigen::VectorXd SumStatsLibrary::fetchYvec()
 {
-  if(y.size() != stats_.size())
-    throw bpp::Exception("SUM_STATS_LIBRARY::Attempted to copy from vector of different size!");
+  Eigen::VectorXd& y(stats_.size());
 
-  else
-    for(size_t i = 0; i < stats_.size(); ++i)
-      y(0, i) = stats_[i].second;
+  for(size_t i = 0; i < stats_.size(); ++i)
+    y(0, i) = stats_[i].second;
+
+  return y;
 }
 
 void SumStatsLibrary::copyStatsToMap(const Eigen::VectorXd& y)

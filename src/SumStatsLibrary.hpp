@@ -80,7 +80,14 @@ public:
 
   std::vector<size_t> fetchPopIndices();
 
-  void copyStats(Eigen::VectorXd& y);
+  Eigen::VectorXd fetchYvec();
+
+  void copyStatsToMap(Eigen::VectorXd& y);
+
+  bool hasPopIndex(const std::string& target, const std::string& query)
+  {
+    return countInstances(target, query) > 0;
+  }
 
   std::vector<std::string> splitString(const std::string& target, const std::string& query) const
   {

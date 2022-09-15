@@ -27,37 +27,53 @@ void Model::computeExpectedSumStats_()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets stats to the "deep past"
 
-  // we use pops map (of splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1)
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
     epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
-    epochs_[i]->copyStatsToMap(expected_); // NOTE can be replaced later by simply finding the indices and copying stats directly into Y
+    epochs_[i]->copyStatsToMap(expected_); // helper for bookkeeping, might do something better later
 
-    // WARNING expected_ potentially changes size between epochs
-
-    // for each population in next epoch i + 1
-    for(auto it = std::begin(epochs_[i + 1]->getPopsMap()); it != std::end(epochs_[i + 1]->getPopsMap()); ++it)
+    // we use pops map (with info w.r.t splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1 following pop indices)
+    for(auto itP = std::begin(epochs_[i + 1]->getPopsMap()); itP != std::end(epochs_[i + 1]->getPopsMap()); ++itP) // for each population in next epoch i + 1
     {
-      size_t idx = (*it).first; // pop index in next epoch
-      size_t p1 = (*it).second.first; // parent pop in current epoch
-      size_t p2 = (*it).second.second; // parent pop in current epoch
+      auto tmp = epochs_[i]->getStatsMap(); // lazy copy, do first, do better later
 
-      if(p1 == p2) // parents are the same
+      size_t idx = itP->first; // pop index in next epoch
+      size_t p1 = itP->second.first; // parent pop in current epoch
+      size_t p2 = itP->second.second; // parent pop in current epoch
+
+      if(p1 == p2)
       {
-        if(idx == p1) // stays the same pop between epochs
+        if(idx == p1) // pop simply carries over to the next epoch
         {
-          epochs_[i]->getStatsMap();
+          // searches for stats contaning 'p1' index in epoch_[i], copy their values to stats containing idx in epoch_[i + 1]
+          for(auto itS = std::begin(epochs_[i]->getStatsMap()); itS != std::end(epochs_[i]->getStatsMap()); ++itS)
+          {
+            std::string mom = (*itS).first;
+            if(epochs_[i]->getSslib().hasPopIndex(mom, bpp::TextTools::toString(p1))) // if moment has p1 in any pop index
+              epochs_[i + 1]->getSslib().setMomValue(mom, (*itS).second); // moment names are identical between epochs in case idx == p1
+          }
         }
 
-        else // population split, also dealt with by copying sum stats
+        else // happens when there is a pop split, eg, (1,(1,1)) ; (2,(1,1)) , meaning p1 == p2 will be visited twice
         {
-
+          // searches for stats contaning 'p1' index in epoch_[i], copy their values to stats containing idx in epoch_[i + 1]
+          for(auto itS = std::begin(epochs_[i]->getStatsMap()); itS != std::end(epochs_[i]->getStatsMap()); ++itS)
+          {
+            std::string mom = (*itS).first;
+            if(epochs_[i]->getSslib().hasPopIndex(mom, bpp::TextTools::toString(p1))) // if moment has p1 in any pop index
+            {
+              std::string momNext = ; // TODO build moment with same name except idx instead of p1
+              epochs_[i + 1]->getSslib().setMomValue(mom, (*itS).second); // moment names are identical between epochs in case idx == p1
+            }
+          }
         }
       }
 
       else // parents are different, admixture scenario
-        popAdmix_();
+        popAdmix_(idx, p1, p2, i); // i (or something else) so we can track the epoch down to popAdmix_() method
     }
+
+    expected_ = epochs_[i + 1]->fetchYvec();
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch
