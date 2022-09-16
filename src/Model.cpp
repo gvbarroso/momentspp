@@ -56,18 +56,6 @@ void Model::computeExpectedSumStats_()
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
 }
 
-void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)
-{
-  double cll = 0.;
-
-  /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
-  {
-    cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected_ - means).transpose() * covarMat^(-1)*(expected_ - means);
-  }*/
-
-  compLogLikelihood_ = cll;
-}
-
 void Model::popSplit_(std::shard_ptr<Epoch> epochFrom, std::shard_ptr<Epoch> epochTo, size_t popIdFrom, size_t popIdTo)
 {
   std::vector<size_t> indicesFrom(0);
@@ -121,4 +109,16 @@ void Model::popSplit_(std::shard_ptr<Epoch> epochFrom, std::shard_ptr<Epoch> epo
 void Model::popAdmix_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio)
 {
   double f = getParamterValue("f_p2_p3");
+}
+
+void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)
+{
+  double cll = 0.;
+
+  /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
+  {
+    cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected_ - means).transpose() * covarMat^(-1)*(expected_ - means);
+  }*/
+
+  compLogLikelihood_ = cll;
 }

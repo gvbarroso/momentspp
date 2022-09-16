@@ -26,36 +26,56 @@ class SumStatsLibrary
 {
 
 private:
-  bool compressed_; // indicates whether symmetrical statistics have been pulled together
   size_t order_; // of moments
+  size_t numPops_;
+  size_t numDDStats_;
+  size_t numDzStats_;
+  size_t numHetStats_;
+  size_t numPi2Stats_;
 
-  std::map<size_t, std::pair<size_t, size_t>> popsMap_; // pop index -> pair of parents in prev epoch
+  std::vector<size_t> popIndices_; // independent object from popsMap_ for faster bookkeeping
+  std::map<size_t, std::pair<size_t, size_t>> popsMap_; // pop-index -> pair of parents in prev epoch
   std::map<std::string, double> stats_; // stat name -> value
+
+  // pop-index -> 4 vectors, each with indices of here pop-index appears in DD, Dz, Het and Pi2 stats, respectively
+  // this object exists for fast access of this information when copying summary statistics (see Model::computeExpectedSumStats_()
+  std::map<size_t, std::array<std::vector<size_t>, 4>> popStatsMap_;
 
 public:
   SumStatsLibrary(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap):
-  compressed_(false),
   order_(order),
+  numPops_(popMap.size()),
+  numDDStats_(0),
+  numDDStats_(0),
+  numDDStats_(0),
+  numDDStats_(0),
+  popIndices_(0),
   popsMap_(popMap),
-  stats_()
+  stats_(),
+  popStatsMap_()
   {
+    numDDStats_ = numPops_ * numPops_;
+    numDzStats_ = numPops_ * numPops_ * numPops_;
+    numHetStats_ = numPops_ * numPops_;
+    numPi2Stats_ = numPops_ * numPops_ * numPops_ * numPops_;
+
     initStatsVector_();
   }
 
 public:
-  bool compressed()
-  {
-    return compressed_;
-  }
-
   size_t getNumPops()
   {
-    return popsMap_.size();
+    return numPops_;
   }
 
   size_t getOrder()
   {
     return order_;
+  }
+
+  const std::vector<size_t>& getPopIndices() const
+  {
+    return popIndices_;
   }
 
   size_t getNumStats() const
@@ -77,8 +97,6 @@ public:
   {
     return stats_;
   }
-
-  std::vector<size_t> fetchPopIndices();
 
   Eigen::VectorXd fetchYvec();
 
@@ -112,6 +130,8 @@ public:
 
 
 private:
+  void selectPopIndices_();
+
   void initStatsVector_();
 
   void includeHetStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);

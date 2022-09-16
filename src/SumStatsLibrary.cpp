@@ -5,19 +5,9 @@
  *
  */
 
+
 #include "SumStatsLibrary.hpp"
 
-
-std::vector<size_t> SumStatsLibrary::fetchPopIndices()
-{
-  std::vector<size_t> popIndices(0);
-  popIndices.reserve(popsMap_.size());
-
-  for(auto it = std::begin(popsMap_); it != std::end(popsMap_); ++it)
-    popIndices.emplace_back(it->first);
-
-  return popIndices;
-}
 
 Eigen::VectorXd SumStatsLibrary::fetchYvec()
 {
@@ -39,22 +29,40 @@ void SumStatsLibrary::copyStatsToMap(const Eigen::VectorXd& y)
       stats_[i].second = y(0, i);
 }
 
-// returns indices of all stats concerting index idx
-std::vector<size_t> findStatIndices(size_t idx)
+// TODO use the next 4 methods to fill in popStatsMap_
+void fillDDStatsIndices_()
 {
-  std::vector indices(0);
-
-  // relative position of idx within popIndices_ in stats_ (concerning given epoch)
-  size_t popRank = std::binary_search(std::begin(popIndices_), std::end(popIndices_), idx;
-  size_t numPops = getNumPops();
-
-  size_t numDD = (numPops * num_Pops);
-  size_t numDz = (numPops * num_Pops * numPops);
-  size_t numH = (numPops * num_Pops);
-  size_t numPi2 = (numPops * num_Pops * numPops * numPops);
+  size_t numPopIdDDStats = numDDstats_ - ((numPops_ - 1) * (numPops_ - 1)); // or just numPops + numPops - 1?
 
 
+}
 
+void fillDzStatsIndices_()
+{
+  size_t numPopIdDzStats = numDzStats_ - ((numPops_ - 1) * (numPops_ - 1) * (numPops_ - 1));
+
+}
+
+// returns indices of Het stats concerning index popId
+void fillHetStatsIndices_()
+{
+  size_t numPopIdHetStats = numHetStats_ - ((numPops_ - 1) * (numPops_ - 1));
+
+}
+
+// returns indices of Pi2 stats concerning index popId
+void fillPi2StatsIndices_()
+{
+  size_t numPopIdPi2Stats = numPi2Stats_ - ((numPops_ - 1) * (numPops_ - 1) * (numPops_ - 1) * (numPops_ - 1));
+
+}
+
+void SumStatsLibrary::selectPopIndices_()
+{
+  popIndices_.reserve(popsMap_.size());
+
+  for(auto it = std::begin(popsMap_); it != std::end(popsMap_); ++it)
+    popIndices_.emplace_back(it->first);
 }
 
 // NOTE this method crucially determines the order of stats in rows of Y and rows/cols of transition matrices
