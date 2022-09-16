@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 15/09/2022
+ * Last modified: 16/09/2022
  *
  */
 
@@ -107,6 +107,9 @@ public:
   {
     return std::distance(std::begin(stats_), stats_.find(moment));
   }
+
+  size_t findStatIndex(const std::string& mom); // fast version
+
 
 private:
   void initStatsVector_();

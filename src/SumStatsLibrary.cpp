@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 15/09/2022
+ * Last modified: 16/09/2022
  *
  */
 
@@ -37,6 +37,24 @@ void SumStatsLibrary::copyStatsToMap(const Eigen::VectorXd& y)
   else
     for(size_t i = 0; i < stats_.size(); ++i)
       stats_[i].second = y(0, i);
+}
+
+// returns indices of all stats concerting index idx
+std::vector<size_t> findStatIndices(size_t idx)
+{
+  std::vector indices(0);
+
+  // relative position of idx within popIndices_ in stats_ (concerning given epoch)
+  size_t popRank = std::binary_search(std::begin(popIndices_), std::end(popIndices_), idx;
+  size_t numPops = getNumPops();
+
+  size_t numDD = (numPops * num_Pops);
+  size_t numDz = (numPops * num_Pops * numPops);
+  size_t numH = (numPops * num_Pops);
+  size_t numPi2 = (numPops * num_Pops * numPops * numPops);
+
+
+
 }
 
 // NOTE this method crucially determines the order of stats in rows of Y and rows/cols of transition matrices

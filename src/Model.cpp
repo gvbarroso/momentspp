@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2022
+ * Last modified: 16/09/2022
  *
  */
 
@@ -30,53 +30,30 @@ void Model::computeExpectedSumStats_()
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
     epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
-    epochs_[i]->copyStatsToMap(expected_); // helper for bookkeeping, might do something better later
+    Eigen::VectorXd tmp = epochs_[i + 1]->fetchYvec(); // expected and tmp may have different sizes
 
-    // we use pops map (with info w.r.t splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1 following pop indices)
+    // we use pops map (which has info w.r.t splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1 following pop indices path)
     for(auto itP = std::begin(epochs_[i + 1]->getPopsMap()); itP != std::end(epochs_[i + 1]->getPopsMap()); ++itP) // for each population in next epoch i + 1
     {
-      auto tmp = epochs_[i]->getStatsMap(); // lazy copy, do first, do better later
-
-      size_t idx = itP->first; // pop index in next epoch
+      size_t id = itP->first; // pop index in next epoch
       size_t p1 = itP->second.first; // parent pop in current epoch
       size_t p2 = itP->second.second; // parent pop in current epoch
 
-      if(p1 == p2)
+      if(p1 == p2) // pop split / carry-over
       {
-        if(idx == p1) // pop simply carries over to the next epoch
-        {
-          // searches for stats contaning 'p1' index in epoch_[i], copy their values to stats containing idx in epoch_[i + 1]
-          for(auto itS = std::begin(epochs_[i]->getStatsMap()); itS != std::end(epochs_[i]->getStatsMap()); ++itS)
-          {
-            std::string mom = (*itS).first;
-            if(epochs_[i]->getSslib().hasPopIndex(mom, bpp::TextTools::toString(p1))) // if moment has p1 in any pop index
-              epochs_[i + 1]->getSslib().setMomValue(mom, (*itS).second); // moment names are identical between epochs in case idx == p1
-          }
-        }
+        popSplit_(epochs_[i], epochs_[i + 1], p1, id);
 
-        else // happens when there is a pop split, eg, (1,(1,1)) ; (2,(1,1)) , meaning p1 == p2 will be visited twice
-        {
-          // searches for stats contaning 'p1' index in epoch_[i], copy their values to stats containing idx in epoch_[i + 1]
-          for(auto itS = std::begin(epochs_[i]->getStatsMap()); itS != std::end(epochs_[i]->getStatsMap()); ++itS)
-          {
-            std::string mom = (*itS).first;
-            if(epochs_[i]->getSslib().hasPopIndex(mom, bpp::TextTools::toString(p1))) // if moment has p1 in any pop index
-            {
-              std::string momNext = ; // TODO build moment with same name except idx instead of p1
-              epochs_[i + 1]->getSslib().setMomValue(mom, (*itS).second); // moment names are identical between epochs in case idx == p1
-            }
-          }
-        }
+        expected_ = tmp; // swap
       }
 
-      else // parents are different, admixture scenario
+      else // admixture event
         popAdmix_(idx, p1, p2, i); // i (or something else) so we can track the epoch down to popAdmix_() method
     }
 
     expected_ = epochs_[i + 1]->fetchYvec();
   }
 
-  epochs_.back()->computeExpectedSumStats(expected_); // final epoch
+  epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
 }
 
 void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)
@@ -91,8 +68,52 @@ void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, cons
   compLogLikelihood_ = cll;
 }
 
-void Model::popSplit_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio)
+void Model::popSplit_(std::shard_ptr<Epoch> epochFrom, std::shard_ptr<Epoch> epochTo, size_t popIdFrom, size_t popIdTo)
 {
+  std::vector<size_t> indicesFrom(0);
+  std::vector<size_t> indicesTo(0);
+
+  // TODO pass vectors as non-const ref to find*StatIndices() methods
+
+  // searches for positions of Het stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
+  indicesFrom = epochFrom->getSslib().findHetStatIndices(popIdFrom);
+  indicesTo = epochTo->getSslib().findHetStatIndices(popIdTo);
+
+  // copy their values to Het stats containing '
+  for(size_t j = 0; j < indicesFrom.size(); ++j)
+  {
+    double value = expected_(0, indicesFrom[j]);
+  }
+
+  // searches for positions of Pi2 stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
+  indicesFrom = epochFrom->getSslib().findPi2StatIndices(popIdFrom);
+  indicesTo = epochTo->getSslib().findPi2StatIndices(popIdTo);
+
+  // copy their values to Pi2 stats containing '
+  for(size_t j = 0; j < indicesFrom.size(); ++j)
+  {
+    double value = expected_(0, indicesFrom[j]);
+  }
+
+  // searches for positions of DD stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
+  indicesFrom = epochFrom->getSslib().findDDStatIndices(popIdFrom);
+  indicesTo = epochTo->getSslib().findDDStatIndices(popIdTo);
+
+  // copy their values to DD stats containing '
+  for(size_t j = 0; j < indicesFrom.size(); ++j)
+  {
+    double value = expected_(0, indicesFrom[j]);
+  }
+
+  // searches for positions of Dz stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
+  indicesFrom = epochFrom->getSslib().findDzStatIndices(popIdFrom);
+  indicesTo = epochTo->getSslib().findDzStatIndices(popIdTo);
+
+  // copy their values to Dz stats containing '
+  for(size_t j = 0; j < indicesFrom.size(); ++j)
+  {
+    double value = expected_(0, indicesFrom[j]);
+  }
 
 }
 
