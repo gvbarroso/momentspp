@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 14/09/2022
+ * Last modified: 19/09/2022
  *
  */
 
@@ -60,7 +60,12 @@ public:
   }
 
   ~Epoch()
-  { }
+  {
+    std::cout << "Destruction of Operator with parameters:\n";
+    getParameters().printParameters(std::cout);
+
+    deleteParameters(getParameterNames()); // NOTE does this free memory?
+  }
 
   Epoch* clone() const
   {
