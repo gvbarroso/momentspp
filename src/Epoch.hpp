@@ -34,9 +34,9 @@ private:
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
+  std::map<size_t, std::shared_ptr<Population>> pops_; // population id -> class object (containing that id)
 
   EigenDecomposition eigenDec_;
-
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::VectorXd steadYstate_; // based on the parameters of this epoch, in practice only the one from deepest epoch will be used as seed
 
@@ -44,10 +44,14 @@ private:
   size_t endGen_;
 
 public:
-  Epoch(const SumStatsLibrary& ssl, const std::vector<std::shared_ptr<AbstractOperator>>& ops, size_t start, size_t end, const std::string& name):
+  Epoch(const SumStatsLibrary& ssl,
+        const std::vector<std::shared_ptr<AbstractOperator>>& ops,
+        const std::map<size_t, std::shared_ptr<Population>>& pops,
+        size_t start, size_t end, const std::string& name):
   bpp::AbstractParameterAliasable(name), // set namespace
   ssl_(ssl),
   operators_(ops),
+  pops_(pops),
   eigenDec_(),
   transitionMatrix_(),
   startGen_(start),
