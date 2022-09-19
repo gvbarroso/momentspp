@@ -34,11 +34,11 @@ private:
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
-  std::map<size_t, std::shared_ptr<Population>> pops_; // population id -> class object (containing that id)
+  std::map<size_t, std::shared_ptr<Population>> pops_; // population id -> class object (containing that same id as a member)
 
   EigenDecomposition eigenDec_;
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
-  Eigen::VectorXd steadYstate_; // based on the parameters of this epoch, in practice only the one from deepest epoch will be used as seed
+  Eigen::VectorXd steadYstate_; // based on the parameters of this epoch, in practice only the one from deepest epoch will be used as model seed
 
   size_t startGen_; // we let the deepest point in relevant time be generation "0"
   size_t endGen_;
@@ -65,7 +65,7 @@ public:
 
   ~Epoch()
   {
-    std::cout << "Destruction of Operator with parameters:\n";
+    std::cout << "Destruction of Epoch with parameters:\n";
     getParameters().printParameters(std::cout);
 
     deleteParameters(getParameterNames()); // NOTE does this free memory?

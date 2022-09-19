@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 16/09/2022
+ * Last modified: 19/09/2022
  *
  */
 
@@ -28,18 +28,14 @@ class SumStatsLibrary
 private:
   size_t order_; // of moments
   size_t numPops_;
-  size_t numDDStats_;
-  size_t numDzStats_;
-  size_t numHetStats_;
-  size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // independent object from popsMap_ for faster bookkeeping
   std::map<size_t, std::pair<size_t, size_t>> popsMap_; // pop-index -> pair of parents in prev epoch
-  std::map<std::string, double> stats_; // stat name -> value
 
-  // pop-index -> 4 vectors, each with indices of here pop-index appears in DD, Dz, Het and Pi2 stats, respectively
-  // this object exists for fast access of this information when copying summary statistics (see Model::computeExpectedSumStats_()
-  std::map<size_t, std::array<std::vector<size_t>, 4>> popStatsMap_;
+  // WARNING split string on key doesn't work as intended when there are 2-digit population indices
+  std::map<std::string, double> stats_; // stat name -> value NOTE use HashTable here?
+  //https://dev.to/muiz6/string-hashing-in-c-1np3
+  //https://stackoverflow.com/questions/8029121/how-to-hash-stdstring
 
 public:
   SumStatsLibrary(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap):
@@ -54,11 +50,6 @@ public:
   stats_(),
   popStatsMap_()
   {
-    numDDStats_ = numPops_ * numPops_;
-    numDzStats_ = numPops_ * numPops_ * numPops_;
-    numHetStats_ = numPops_ * numPops_;
-    numPi2Stats_ = numPops_ * numPops_ * numPops_ * numPops_;
-
     initStatsVector_();
   }
 
@@ -93,14 +84,12 @@ public:
     return stats_;
   }
 
-  std::map<std::string, double>& getStats()
+  void setStatValue(const std::string& name, double value)
   {
-    return stats_;
+    stats_.at(name) = value;
   }
 
   Eigen::VectorXd fetchYvec();
-
-  void copyStatsToMap(Eigen::VectorXd& y);
 
   bool hasPopIndex(const std::string& target, const std::string& query)
   {
@@ -125,9 +114,6 @@ public:
   {
     return std::distance(std::begin(stats_), stats_.find(moment));
   }
-
-  size_t findStatIndex(const std::string& mom); // fast version
-
 
 private:
   void selectPopIndices_();
