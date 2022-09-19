@@ -29,11 +29,11 @@ void Model::computeExpectedSumStats_()
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs (non-const ref)
     Eigen::VectorXd tmp = epochs_[i + 1]->fetchYvec(); // expected and tmp may have different sizes
 
-    // we use pops map (which has info w.r.t splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1 following pop indices path)
-    for(auto itP = std::begin(epochs_[i + 1]->getPopsMap()); itP != std::end(epochs_[i + 1]->getPopsMap()); ++itP) // for each population in next epoch i + 1
+    // we use pops map (which has info w.r.t splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1 following pops ancestry path)
+    for(auto itP = std::begin(epochs_[i + 1]->getPops()); itP != std::end(epochs_[i + 1]->getPops()); ++itP) // for each population in next epoch i + 1
     {
       size_t id = itP->first; // pop index in next epoch
       size_t p1 = itP->second.first; // parent pop in current epoch
@@ -58,50 +58,6 @@ void Model::computeExpectedSumStats_()
 
 void Model::popSplit_(std::shard_ptr<Epoch> epochFrom, std::shard_ptr<Epoch> epochTo, size_t popIdFrom, size_t popIdTo)
 {
-  std::vector<size_t> indicesFrom(0);
-  std::vector<size_t> indicesTo(0);
-
-  // TODO pass vectors as non-const ref to find*StatIndices() methods
-
-  // searches for positions of Het stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
-  indicesFrom = epochFrom->getSslib().findHetStatIndices(popIdFrom);
-  indicesTo = epochTo->getSslib().findHetStatIndices(popIdTo);
-
-  // copy their values to Het stats containing '
-  for(size_t j = 0; j < indicesFrom.size(); ++j)
-  {
-    double value = expected_(0, indicesFrom[j]);
-  }
-
-  // searches for positions of Pi2 stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
-  indicesFrom = epochFrom->getSslib().findPi2StatIndices(popIdFrom);
-  indicesTo = epochTo->getSslib().findPi2StatIndices(popIdTo);
-
-  // copy their values to Pi2 stats containing '
-  for(size_t j = 0; j < indicesFrom.size(); ++j)
-  {
-    double value = expected_(0, indicesFrom[j]);
-  }
-
-  // searches for positions of DD stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
-  indicesFrom = epochFrom->getSslib().findDDStatIndices(popIdFrom);
-  indicesTo = epochTo->getSslib().findDDStatIndices(popIdTo);
-
-  // copy their values to DD stats containing '
-  for(size_t j = 0; j < indicesFrom.size(); ++j)
-  {
-    double value = expected_(0, indicesFrom[j]);
-  }
-
-  // searches for positions of Dz stats contaning popIdFrom pop-index in epoch_[i] and popIdTo pop-index in epoch_[i + 1]
-  indicesFrom = epochFrom->getSslib().findDzStatIndices(popIdFrom);
-  indicesTo = epochTo->getSslib().findDzStatIndices(popIdTo);
-
-  // copy their values to Dz stats containing '
-  for(size_t j = 0; j < indicesFrom.size(); ++j)
-  {
-    double value = expected_(0, indicesFrom[j]);
-  }
 
 }
 
