@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 19/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstring>
 #include <vector>
+#include <cstdlib>
 
 #include <boost/algorithm/string.hpp>
 
@@ -28,11 +29,25 @@ private:
   double value_;
 
 public:
+  Moment():
+  name_(""),
+  prefix_("")
+  popIndices_(0),
+  value_(0.)
+  { }
+
   Moment(const std::string& name, double value):
   name_(name),
+  prefix_("")
   popIndices_(0),
   value_(value)
   {
+    std::vector<std::string> splitName(0);
+    boost::split(splitName, name, boost::is_any_of("_"));
+
+    prefix_ = splitName[0];
+    for(size_t i = 0; i < splitName[1].size(); ++i)
+      popIndices_.push_back(std::strtoul(splitName[1][i]);
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
   }
@@ -66,6 +81,11 @@ public:
   bool hasPopIndex(size_t index)
   {
     return std::binary_search(std::begin(popIndices_), std::end(popIndices_), index);
+  }
+
+  size_t countInstances(size_t index)
+  {
+    return std::count(std::begin(popIndices_), std::end(popIndices_), index);
   }
 
 };

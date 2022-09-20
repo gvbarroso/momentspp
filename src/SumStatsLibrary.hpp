@@ -34,7 +34,7 @@ private:
   size_t numHetStats_;
   size_t numPi2Stats_;
 
-  std::vector<size_t> popIndices_; // among all Moments, kept for bookkeeping
+  std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
   std::vector<Moment> moments_; // NOTE sorted lexicographically based on name_
 
 public:
@@ -78,7 +78,7 @@ public:
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
 
-    size_t focalMomIndex = rank1 * numPops_ + rank2;
+    size_t focalMomIndex = findDdIndex(rank1, rank2);
 
     moments_[focalMomIndex].setValue(value);
   }
@@ -89,7 +89,7 @@ public:
     size_t rank2 = findPopIndexRank(id2);
     size_t rank3 = findPopIndexRank(id3);
 
-    size_t focalMomIndex =
+    size_t focalMomIndex = findDzIndex(rank1, rank2, rank3);
 
     moments_[focalMomIndex].setValue(value);
   }
@@ -99,21 +99,51 @@ public:
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
 
-    // TODO can we somehow incorporate id1, id2 inside Moment object to avoid the binary search at this point here?
-    size_t focalMomIndex = numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2;
+    size_t focalMomIndex = findHetIndex(rank1, rank2);
 
     moments_[focalMomIndex].setValue(value);
   }
 
   void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value)
   {
-    std::string prefix = "pi2"; // just as a reminder
-    // TODO set this efficiently by jumping over moments_
+     size_t rank1 = findPopIndexRank(id1);
+     size_t rank2 = findPopIndexRank(id2);
+     size_t rank3 = findPopIndexRank(id3);
+     size_t rank4 = findPopIndexRank(id4);
+
+     size_t focalMomIndex = findPi2Index(rank1, rank2, rank3, rank4);
+
+     moments_[focalMomIndex].setValue(value);
   }
 
   size_t findPopIndexRank(size_t index) // among all pop indices
   {
     return std::distance(std::begin(popIndices_), std::binary_search(std::begin(popIndices_), std::end(popIndices_), index));
+  }
+
+  size_t findDdIndex(size_t rank1, size_t rank2)
+  {
+    return rank1 * numPops_ + rank2;
+  }
+
+  size_t findDzIndex(size_t rank1, size_t rank2, size_t rank3)
+  {
+    return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
+  }
+
+  size_t findHetIndex(size_t rank1, size_t rank2)
+  {
+    return numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2;
+  }
+
+  size_t findPi2Index(size_t rank1, size_t rank2, size_t rank3, size_t rank4)
+  {
+    return numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
+  }
+
+  std::string asString(size_t i)
+  {
+    return bpp::TextTools::toString(i);
   }
 
   Eigen::VectorXd fetchYvec();
@@ -132,17 +162,13 @@ public:
     return static_cast<size_t>(count);
   }
 
-  size_t indexLookup(const std::string& moment) const
+  size_t indexLookup(const std::string& name) const
   {
-    return std::distance(std::begin(stats_), stats_.find(moment));
+    return std::distance(std::begin(moments_), moments_.find(name));
   }
 
 private:
-  void initMoments_(const std::vector<size_t>& popIndices);
-
-  void includeHetStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);
-
-  void includeLdStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);
+  void initMoments_();
 
   void compress_(); // exploits symmetry among statistics to reduce dimension of stats_
 

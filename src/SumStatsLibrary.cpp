@@ -19,34 +19,25 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
   return y;
 }
 
-// NOTE this method crucially determines the order of stats in rows of Y and rows/cols of transition matrices
 void SumStatsLibrary::initMoments_()
 {
-  includeHetStats_(popIndices_);
-  includeLdStats_(popIndices_);
-}
-
-void SumStatsLibrary::includeHetStats_()
-{
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
+  {
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
-      moments_.push_back(Moment("H_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ), 0.));
-}
+    {
+      moments_.push_back(Moment("DD_" + asString(*itI) + asString(*itJ), 0.));
+      moments_.push_back(Moment("H_" + asString(*itI) + asString(*itJ), 0.));
 
-void SumStatsLibrary::includeLdStats_()
-{
-  for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
-    for(auto itJ = std::begin(popMap); itJ != std::end(popIndices_); ++itJ)
-      moments_.push_back(Moment("DD_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ), 0.));
-
-  for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
-    for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
-        moments_.push_back(Moment("Dz_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ) + bpp::TextTools::toString(*itK), 0.));
+      {
+        moments_.push_back(Moment("Dz_" + asString(*itI) + asString(*itJ) + asString(*itK), 0.));
 
-  for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
-    for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
-      for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
         for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
-          moments_.push_back(Moment("pi2_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ) + ";" + bpp::TextTools::toString(*itK) + bpp::TextTools::toString(*itL), 0.));
+            moments_.push_back(Moment("pi2_" + asString(*itI) + asString(*itJ) + asString(*itK) + asString(*itL), 0.));
+      }
+    }
+  }
+
+  // NOTE this crucially determines the (lexicographical) order of stats in rows of Y and rows/cols of transition matrices
+  std::sort(std::begin(moments_), std::end(moments_), [&](int a, int b) { a.getName() > b.getName() });
 }
