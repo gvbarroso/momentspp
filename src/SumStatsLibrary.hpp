@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 19/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -29,16 +29,27 @@ class SumStatsLibrary
 private:
   size_t order_; // of moments
   size_t numPops_;
+  size_t numDDStats_;
+  size_t numDzStats_;
+  size_t numHetStats_;
+  size_t numPi2Stats_;
 
-  std::vector<Moment> moments_; // independent object from popsMap_ for faster bookkeeping
+  std::vector<size_t> popIndices_; // among all Moments, kept for bookkeeping
+  std::vector<Moment> moments_; // NOTE sorted lexicographically based on name_
 
 public:
   SumStatsLibrary(size_t order = 2, const std::vector<size_t>& popIndices):
   order_(order),
   numPops_(popIndices.size()),
+  numDDStats_(numPops_ * numPops_),
+  numDzStats_(numPops_ * numPops_ * numPops_),
+  numHetStats_(numPops_ * numPops_),
+  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
+  popIndices_(popIndices),
   moments_(0)
   {
-    initMoments_(popIndices);
+    std::sort(std::begin(popIndices_), std::end(popIndices_)); // safety
+    initMoments_();
   }
 
 public:
@@ -62,28 +73,47 @@ public:
     return moments_.size();
   }
 
-  void setHetMomentValue(size_t id1, size_t id2, double value)
-  {
-    std::string prefix = "H"; // just as a reminder
-    // TODO set this efficiently by jumping over moments_
-  }
-
   void setDdMomentValue(size_t id1, size_t id2, double value)
   {
-    std::string prefix = "DD"; // just as a reminder
-    // TODO set this efficiently by jumping over moments_
+    size_t rank1 = findPopIndexRank(id1);
+    size_t rank2 = findPopIndexRank(id2);
+
+    size_t focalMomIndex = rank1 * numPops_ + rank2;
+
+    moments_[focalMomIndex].setValue(value);
   }
 
   void setDzMomentValue(size_t id1, size_t id2, size_t id3, double value)
   {
-    std::string prefix = "Dz"; // just as a reminder
-    // TODO set this efficiently by jumping over moments_
+    size_t rank1 = findPopIndexRank(id1);
+    size_t rank2 = findPopIndexRank(id2);
+    size_t rank3 = findPopIndexRank(id3);
+
+    size_t focalMomIndex =
+
+    moments_[focalMomIndex].setValue(value);
+  }
+
+  void setHetMomentValue(size_t id1, size_t id2, double value)
+  {
+    size_t rank1 = findPopIndexRank(id1);
+    size_t rank2 = findPopIndexRank(id2);
+
+    // TODO can we somehow incorporate id1, id2 inside Moment object to avoid the binary search at this point here?
+    size_t focalMomIndex = numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2;
+
+    moments_[focalMomIndex].setValue(value);
   }
 
   void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value)
   {
     std::string prefix = "pi2"; // just as a reminder
     // TODO set this efficiently by jumping over moments_
+  }
+
+  size_t findPopIndexRank(size_t index) // among all pop indices
+  {
+    return std::distance(std::begin(popIndices_), std::binary_search(std::begin(popIndices_), std::end(popIndices_), index));
   }
 
   Eigen::VectorXd fetchYvec();
