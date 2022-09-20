@@ -20,6 +20,7 @@
 
 #include <Bpp/Text/TextTools.h>
 
+# include "Moment.hpp"
 
 // intent is to have one instance of SumStatsLibrary per Epoch
 class SumStatsLibrary
@@ -29,28 +30,15 @@ private:
   size_t order_; // of moments
   size_t numPops_;
 
-  std::vector<size_t> popIndices_; // independent object from popsMap_ for faster bookkeeping
-  std::map<size_t, std::pair<size_t, size_t>> popsMap_; // pop-index -> pair of parents in prev epoch
-
-  // WARNING split string on key doesn't work as intended when there are 2-digit population indices
-  std::map<std::string, double> stats_; // stat name -> value NOTE use HashTable here?
-  //https://dev.to/muiz6/string-hashing-in-c-1np3
-  //https://stackoverflow.com/questions/8029121/how-to-hash-stdstring
+  std::vector<Moment> moments_; // independent object from popsMap_ for faster bookkeeping
 
 public:
-  SumStatsLibrary(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap):
+  SumStatsLibrary(size_t order = 2, const std::vector<size_t>& popIndices):
   order_(order),
-  numPops_(popMap.size()),
-  numDDStats_(0),
-  numDDStats_(0),
-  numDDStats_(0),
-  numDDStats_(0),
-  popIndices_(0),
-  popsMap_(popMap),
-  stats_(),
-  popStatsMap_()
+  numPops_(popIndices.size()),
+  moments_(0)
   {
-    initStatsVector_();
+    initMoments_(popIndices);
   }
 
 public:
@@ -64,37 +52,41 @@ public:
     return order_;
   }
 
-  const std::vector<size_t>& getPopIndices() const
+  const std::vector<Moment>& getMoments() const
   {
-    return popIndices_;
+    return moments_;
   }
 
   size_t getNumStats() const
   {
-    return stats_.size();
+    return moments_.size();
   }
 
-  const std::map<size_t, std::pair<size_t, size_t>>& getPopsMap() const
+  void setHetMomentValue(size_t id1, size_t id2, double value)
   {
-    return popsMap_;
+    std::string prefix = "H"; // just as a reminder
+    // TODO set this efficiently by jumping over moments_
   }
 
-  const std::map<std::string, double>& getStats() const
+  void setDdMomentValue(size_t id1, size_t id2, double value)
   {
-    return stats_;
+    std::string prefix = "DD"; // just as a reminder
+    // TODO set this efficiently by jumping over moments_
   }
 
-  void setStatValue(const std::string& name, double value)
+  void setDzMomentValue(size_t id1, size_t id2, size_t id3, double value)
   {
-    stats_.at(name) = value;
+    std::string prefix = "Dz"; // just as a reminder
+    // TODO set this efficiently by jumping over moments_
+  }
+
+  void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value)
+  {
+    std::string prefix = "pi2"; // just as a reminder
+    // TODO set this efficiently by jumping over moments_
   }
 
   Eigen::VectorXd fetchYvec();
-
-  bool hasPopIndex(const std::string& target, const std::string& query)
-  {
-    return countInstances(target, query) > 0;
-  }
 
   std::vector<std::string> splitString(const std::string& target, const std::string& query) const
   {
@@ -116,9 +108,7 @@ public:
   }
 
 private:
-  void selectPopIndices_();
-
-  void initStatsVector_();
+  void initMoments_(const std::vector<size_t>& popIndices);
 
   void includeHetStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);
 

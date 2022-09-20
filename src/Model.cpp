@@ -25,42 +25,41 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats_()
 {
-  expected_ = epochs_[0]->getSteadyState(); // resets stats to the "deep past"
+  expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs (non-const ref)
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments vector down the epochs (non-const ref)
 
     // for each statistic in next epoch i + 1
-    for(auto itS = std::begin(epochs_[i + 1]->getStatsMap()); itS != std::end(epochs_[i + 1]->getStatsMap()); ++itS)
+    for(auto itMom = std::begin(epochs_[i + 1]->getMoments()); itMom != std::end(epochs_[i + 1]->getMoments()); ++itMom)
     {
-      std::string momTo = (*itS)->first;
-      std::vector<std::string> splitMom = sslib.splitString(momTo, "_");
+      std::string prefix = itMom->getPrefix();
 
-      if(splitMom[0] == "DD")
+      if(prefix == "DD")
       {
 
       }
 
-      else if(splitMom[0] == "Dz")
+      else if(prefix == "Dz")
       {
 
       }
 
-      else if(splitMom[0] == "H")
+      else if(prefix == "H")
       {
-        size_t p1 = splitMom[0][0]; // first population id of epochs_[i + 1] moment
+        size_t p1 = itMom->getPopIndices()[0]; // first population id of epochs_[i + 1] moment
         size_t p1LeftParentId = epochs_[i + 1]->getPops().at(p1)->getLeftParent()->getId();
         size_t p1RightParentId = epochs_[i + 1]->getPops().at(p1)->getRightParent()->getId();
 
-        if(p1LeftParentId == p1RightParentId) // population carry-forward / split between epochs
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
           p1 = p1LeftParentId;
 
-        size_t p2 = splitMom[0][1]; // first population id of epochs_[i + 1] moment
+        size_t p2 = itMom->getPopIndices()[0]; // first population id of epochs_[i + 1] moment
         size_t p2LeftParentId = epochs_[i + 1]->getPops().at(p2)->getLeftParent()->getId();
         size_t p2RightParentId = epochs_[i + 1]->getPops().at(p2)->getRightParent()->getId();
 
-        if(p2LeftParentId == p2RightParentId) // population carry-forward / split between epochs
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
           p2 = p2LeftParentId;
 
         std::string momFrom = "H_" + bpp::TextTools::toString(p1) + bpp::TextTools::toString(p2);
@@ -69,7 +68,7 @@ void Model::computeExpectedSumStats_()
         epochs_[i + 1]->getSslib().setValue(momTo, cpyVal);
       }
 
-      else if(splitMom[0] == "pi2")
+      else if(prefix == "pi2")
       {
 
       }

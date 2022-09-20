@@ -23,13 +23,14 @@
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
 #include "AbstractOperator.hpp"
+#include "Moment.hpp"
+#include "SumStatsLibrary.hpp"
 
 class Epoch:
   public bpp::AbstractParameterAliasable
 {
 
 private:
-  // indices of populations present in epoch -> indices of parental pops in previous epoch
   SumStatsLibrary ssl_;
 
   // each operator contains Eigen matrices and a subset of the parameters
@@ -123,14 +124,9 @@ public:
     return ssl_;
   }
 
-  const std::map<std::string, double>& getStatsMap() const
+  const std::vector<Moment>& getMoments() const
   {
-    return ssl_.getStats();
-  }
-
-  const std::map<size_t, std::pair<size_t, size_t>>& getPopsMap() const
-  {
-    return ssl_.getPopsMap();
+    return ssl_.getMoments();
   }
 
 private:
