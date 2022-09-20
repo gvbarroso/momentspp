@@ -14,7 +14,7 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
 
   computeExpectedSumStats_();
-  computeCompositeLogLikelihood_(data_.getYvec(), data_.getCovarMatrix()); // for each rec. bin
+  computeCompositeLogLikelihood_(data_.getYvec(), data_.getCovarMatrix()); // for each rec. binx
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -25,26 +25,56 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats_()
 {
-  expected_ = epochs_[0]->getSteadyState(); // resets stats to the "deep past"
+  expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling sum stats vector down the epochs (non-const ref)
-    Eigen::VectorXd tmp = epochs_[i + 1]->fetchYvec(); // expected and tmp may have different sizes
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments vector down the epochs (non-const ref)
 
-    // we use pops map (which has info w.r.t splits and admixtures) to change vector of sum stats between each epoch (copy from i to i + 1 following pops ancestry path)
-    for(auto itP = std::begin(epochs_[i + 1]->getPops()); itP != std::end(epochs_[i + 1]->getPops()); ++itP) // for each population in next epoch i + 1
+    // for each statistic in next epoch i + 1
+    for(auto itMom = std::begin(epochs_[i + 1]->getMoments()); itMom != std::end(epochs_[i + 1]->getMoments()); ++itMom)
     {
-      size_t id = itP->first; // pop index in next epoch
-      size_t p1 = itP->second.first; // parent pop in current epoch
-      size_t p2 = itP->second.second; // parent pop in current epoch
+      std::string prefix = itMom->getPrefix();
 
-      if(p1 == p2) // pop split / carry-over
+      if(prefix == "DD")
       {
-        popSplit_(epochs_[i], epochs_[i + 1], p1, id);
+
+      }
+
+      else if(prefix == "Dz")
+      {
+
+      }
+
+      else if(prefix == "H")
+      {
+        size_t p1 = itMom->getPopIndices()[0]; // first population id of epochs_[i + 1] moment
+        size_t p1LeftParentId = epochs_[i + 1]->getPops().at(p1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i + 1]->getPops().at(p1)->getRightParent()->getId();
+
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
+          p1 = p1LeftParentId;
+
+        size_t p2 = itMom->getPopIndices()[0]; // first population id of epochs_[i + 1] moment
+        size_t p2LeftParentId = epochs_[i + 1]->getPops().at(p2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i + 1]->getPops().at(p2)->getRightParent()->getId();
+
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
+          p2 = p2LeftParentId;
+
+        std::string momFrom = "H_" + bpp::TextTools::toString(p1) + bpp::TextTools::toString(p2);
+        double cpyVal = epochs_[i]->getStatsMap().at(momFrom).second;
+
+        epochs_[i + 1]->getSslib().setValue(momTo, cpyVal);
+      }
+
+      else if(prefix == "pi2")
+      {
+
+      }
 
         expected_ = tmp; // swap
-      }
+
 
       else // admixture event
         popAdmix_(idx, p1, p2, i); // i (or something else) so we can track the epoch down to popAdmix_() method

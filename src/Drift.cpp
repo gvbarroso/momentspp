@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 12/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -23,28 +23,23 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   // for each population
   for(size_t i = 0; i < numPops; ++i)
   {
-    std::string popId = sslib.asString(i);
-
     // for each stat in vector Y (going by rows of matrices_)
-    for(auto it = std::begin(sslib.getStats()); it != std::end(sslib.getStats()); ++it)
+    for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
     {
-      std::string mom = (*it)->first; // full name of moment
-      std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
-
-      size_t popIdCount = sslib.countInstances(splitMom[1], popId); // count of i in moment's name
-      size_t row = it - std::begin(sslib.getStats()); // row index
+      size_t row = it - std::begin(sslib.getMoments()); // row index
       size_t col = 0; // column index
+      size_t popIdCount = it->countInstances(i); // count of i in moment's name
 
-      if(splitMom[0] == "DD")
+      if(it->getPrefix() == "DD")
       {
         if(popIdCount == 2)
         {
           coefficients.emplace_back(Eigen::Triplet<double>(row, row -3.));
 
-          col = sslib.indexLookup("Dz_" + popId + popId + popId);
+          col = sslib.findDzIndex(i, i, i);
           coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-          col = sslib.indexLookup("pi2_" + popId + popId + ";" + popId + popId);
+          col = sslib.findPi2Index(i, i, i, i);
           coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -52,15 +47,15 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
-      else if(splitMom[0] == "Dz")
+      else if(it->getPrefix() == "Dz")
       {
-        if(splitMom[0] == popId) // if D_i_z**
+        if(it->getPopIndices()[0] == i) // if D_i_z**
         {
           if(popIdCount == 3)
           {
             coefficients.emplace_back(Eigen::Triplet<double>(row, row, -5.));
 
-            col = sslib.indexLookup("DD_" + popId + popId);
+            col = sslib.findDdIndex(i, i);
             coefficients.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
 
@@ -75,24 +70,35 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 2)  // if D_x_z_ii where x != i
           {
-            col = sslib.indexLookup("DD_" + popId + splitMom[1][0]);
+            col = sslib.findDdIndex(i, it->getPopIndices()[0]);
             coefficients.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
         }
       }
 
-      else if(splitMom[0] == "pi2")
+      else if(it->getPrefix() == "pi2")
       {
-        std::vector<std::string> splitPops = sslib.splitString(splitMom[1], ";"); // gets the 4 pop indices
+        size_t countLeft = 0; // count of i before ';'
+        size_t countRight = 0; // count of i after ';'
 
-        size_t countLeft = sslib.countInstances(splitPops[0], popId); // count of i before ';'
-        size_t countRight = sslib.countInstances(splitPops[1], popId); // count of i after ';'
+        if(it->getPopIndices()[0] == i)
+          ++countLeft;
+
+        if(it->getPopIndices()[1] == i)
+          ++countLeft;
+
+        if(it->getPopIndices()[2] == i)
+          ++countRight;
+
+        if(it->getPopIndices()[3] == i)
+          ++countRight;
+
 
         if((countLeft + countRight) == 4)
         {
           coefficients.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
-          col = sslib.indexLookup("Dz_" + popId + popId + popIds);
+          col = sslib.findDzIndex(i, i, i);
           coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -100,7 +106,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
-      else if(splitMom[0] == "H")
+      else if(it->getPrefix() == "H")
         coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
     }
 

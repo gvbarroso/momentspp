@@ -8,16 +8,17 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "SumStatsLibrary.h"
-#include "Mutation.h"
-#include "Recombination.h"
-#include "Drift.h"
-#include "Selection.h"
-#include "Admixture.h"
-#include "SmcOptimizationWrapper.h"
-#include "OptionsContainer.h"
-#include "Model.h"
-#include "Data.h"
+#include "SumStatsLibrary.hpp"
+#include "Mutation.hpp"
+#include "Recombination.hpp"
+#include "Drift.hpp"
+#include "Migration.hpp"
+//#include "Selection.h"
+//#include "Admixture.h"
+#include "OptimizationWrapper.hpp"
+#include "OptionsContainer.hpp"
+#include "Model.hpp"
+#include "PolymorphismData.hpp"
 
 int main(int argc, char *argv[]) {
 
@@ -31,13 +32,14 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Endless ancestors                                   *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 13/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 20/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
 
   /* TODO
-  *
+  * 1. make it such (and ensure) that in every Epoch populations aren indexed from 0 to numPops - 1 (rendering popIndices_ obsolete)
+  * This way we can avoid the binary search inside SumStatsLibrary setMomentValue methods (using pop id's directly instead)
   */
 
   if(argc == 1)

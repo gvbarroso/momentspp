@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 16/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -20,6 +20,7 @@
 
 #include <Bpp/Text/TextTools.h>
 
+# include "Moment.hpp"
 
 // intent is to have one instance of SumStatsLibrary per Epoch
 class SumStatsLibrary
@@ -33,33 +34,22 @@ private:
   size_t numHetStats_;
   size_t numPi2Stats_;
 
-  std::vector<size_t> popIndices_; // independent object from popsMap_ for faster bookkeeping
-  std::map<size_t, std::pair<size_t, size_t>> popsMap_; // pop-index -> pair of parents in prev epoch
-  std::map<std::string, double> stats_; // stat name -> value
-
-  // pop-index -> 4 vectors, each with indices of here pop-index appears in DD, Dz, Het and Pi2 stats, respectively
-  // this object exists for fast access of this information when copying summary statistics (see Model::computeExpectedSumStats_()
-  std::map<size_t, std::array<std::vector<size_t>, 4>> popStatsMap_;
+  std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
+  std::vector<Moment> moments_; // NOTE sorted lexicographically based on name_
 
 public:
-  SumStatsLibrary(size_t order = 2, const std::map<size_t, std::pair<size_t, size_t>>& popMap):
+  SumStatsLibrary(size_t order = 2, const std::vector<size_t>& popIndices):
   order_(order),
-  numPops_(popMap.size()),
-  numDDStats_(0),
-  numDDStats_(0),
-  numDDStats_(0),
-  numDDStats_(0),
-  popIndices_(0),
-  popsMap_(popMap),
-  stats_(),
-  popStatsMap_()
+  numPops_(popIndices.size()),
+  numDDStats_(numPops_ * numPops_),
+  numDzStats_(numPops_ * numPops_ * numPops_),
+  numHetStats_(numPops_ * numPops_),
+  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
+  popIndices_(popIndices),
+  moments_(0)
   {
-    numDDStats_ = numPops_ * numPops_;
-    numDzStats_ = numPops_ * numPops_ * numPops_;
-    numHetStats_ = numPops_ * numPops_;
-    numPi2Stats_ = numPops_ * numPops_ * numPops_ * numPops_;
-
-    initStatsVector_();
+    std::sort(std::begin(popIndices_), std::end(popIndices_)); // safety
+    initMoments_();
   }
 
 public:
@@ -73,39 +63,90 @@ public:
     return order_;
   }
 
-  const std::vector<size_t>& getPopIndices() const
+  const std::vector<Moment>& getMoments() const
   {
-    return popIndices_;
+    return moments_;
   }
 
   size_t getNumStats() const
   {
-    return stats_.size();
+    return moments_.size();
   }
 
-  const std::map<size_t, std::pair<size_t, size_t>>& getPopsMap() const
+  void setDdMomentValue(size_t id1, size_t id2, double value)
   {
-    return popsMap_;
+    size_t rank1 = findPopIndexRank(id1);
+    size_t rank2 = findPopIndexRank(id2);
+
+    size_t focalMomIndex = findDdIndex(rank1, rank2);
+
+    moments_[focalMomIndex].setValue(value);
   }
 
-  const std::map<std::string, double>& getStats() const
+  void setDzMomentValue(size_t id1, size_t id2, size_t id3, double value)
   {
-    return stats_;
+    size_t rank1 = findPopIndexRank(id1);
+    size_t rank2 = findPopIndexRank(id2);
+    size_t rank3 = findPopIndexRank(id3);
+
+    size_t focalMomIndex = findDzIndex(rank1, rank2, rank3);
+
+    moments_[focalMomIndex].setValue(value);
   }
 
-  std::map<std::string, double>& getStats()
+  void setHetMomentValue(size_t id1, size_t id2, double value)
   {
-    return stats_;
+    size_t rank1 = findPopIndexRank(id1);
+    size_t rank2 = findPopIndexRank(id2);
+
+    size_t focalMomIndex = findHetIndex(rank1, rank2);
+
+    moments_[focalMomIndex].setValue(value);
+  }
+
+  void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value)
+  {
+     size_t rank1 = findPopIndexRank(id1);
+     size_t rank2 = findPopIndexRank(id2);
+     size_t rank3 = findPopIndexRank(id3);
+     size_t rank4 = findPopIndexRank(id4);
+
+     size_t focalMomIndex = findPi2Index(rank1, rank2, rank3, rank4);
+
+     moments_[focalMomIndex].setValue(value);
+  }
+
+  size_t findPopIndexRank(size_t index) // among all pop indices
+  {
+    return std::distance(std::begin(popIndices_), std::binary_search(std::begin(popIndices_), std::end(popIndices_), index));
+  }
+
+  size_t findDdIndex(size_t rank1, size_t rank2)
+  {
+    return rank1 * numPops_ + rank2;
+  }
+
+  size_t findDzIndex(size_t rank1, size_t rank2, size_t rank3)
+  {
+    return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
+  }
+
+  size_t findHetIndex(size_t rank1, size_t rank2)
+  {
+    return numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2;
+  }
+
+  size_t findPi2Index(size_t rank1, size_t rank2, size_t rank3, size_t rank4)
+  {
+    return numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
+  }
+
+  std::string asString(size_t i)
+  {
+    return bpp::TextTools::toString(i);
   }
 
   Eigen::VectorXd fetchYvec();
-
-  void copyStatsToMap(Eigen::VectorXd& y);
-
-  bool hasPopIndex(const std::string& target, const std::string& query)
-  {
-    return countInstances(target, query) > 0;
-  }
 
   std::vector<std::string> splitString(const std::string& target, const std::string& query) const
   {
@@ -121,22 +162,13 @@ public:
     return static_cast<size_t>(count);
   }
 
-  size_t indexLookup(const std::string& moment) const
+  size_t indexLookup(const std::string& name) const
   {
-    return std::distance(std::begin(stats_), stats_.find(moment));
+    return std::distance(std::begin(moments_), moments_.find(name));
   }
 
-  size_t findStatIndex(const std::string& mom); // fast version
-
-
 private:
-  void selectPopIndices_();
-
-  void initStatsVector_();
-
-  void includeHetStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);
-
-  void includeLdStats_(const std::map<size_t, std::pair<size_t, size_t>>& popMap);
+  void initMoments_();
 
   void compress_(); // exploits symmetry among statistics to reduce dimension of stats_
 

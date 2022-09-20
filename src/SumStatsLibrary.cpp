@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 16/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -11,91 +11,33 @@
 
 Eigen::VectorXd SumStatsLibrary::fetchYvec()
 {
-  Eigen::VectorXd& y(stats_.size());
+  Eigen::VectorXd& y(moments_.size());
 
-  for(size_t i = 0; i < stats_.size(); ++i)
-    y(0, i) = stats_[i].second;
+  for(size_t i = 0; i < moments_.size(); ++i)
+    y(0, i) = moments_[i].getValue();
 
   return y;
 }
 
-void SumStatsLibrary::copyStatsToMap(const Eigen::VectorXd& y)
+void SumStatsLibrary::initMoments_()
 {
-  if(y.size() != stats_.size())
-    throw bpp::Exception("SUM_STATS_LIBRARY::Attempted to copy from vector of different size!");
+  for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
+  {
+    for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
+    {
+      moments_.push_back(Moment("DD_" + asString(*itI) + asString(*itJ), 0.));
+      moments_.push_back(Moment("H_" + asString(*itI) + asString(*itJ), 0.));
 
-  else
-    for(size_t i = 0; i < stats_.size(); ++i)
-      stats_[i].second = y(0, i);
-}
+      for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
+      {
+        moments_.push_back(Moment("Dz_" + asString(*itI) + asString(*itJ) + asString(*itK), 0.));
 
-// TODO use the next 4 methods to fill in popStatsMap_
-void fillDDStatsIndices_()
-{
-  size_t numPopIdDDStats = numDDstats_ - ((numPops_ - 1) * (numPops_ - 1)); // or just numPops + numPops - 1?
+        for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
+            moments_.push_back(Moment("pi2_" + asString(*itI) + asString(*itJ) + asString(*itK) + asString(*itL), 0.));
+      }
+    }
+  }
 
-
-}
-
-void fillDzStatsIndices_()
-{
-  size_t numPopIdDzStats = numDzStats_ - ((numPops_ - 1) * (numPops_ - 1) * (numPops_ - 1));
-
-}
-
-// returns indices of Het stats concerning index popId
-void fillHetStatsIndices_()
-{
-  size_t numPopIdHetStats = numHetStats_ - ((numPops_ - 1) * (numPops_ - 1));
-
-}
-
-// returns indices of Pi2 stats concerning index popId
-void fillPi2StatsIndices_()
-{
-  size_t numPopIdPi2Stats = numPi2Stats_ - ((numPops_ - 1) * (numPops_ - 1) * (numPops_ - 1) * (numPops_ - 1));
-
-}
-
-void SumStatsLibrary::selectPopIndices_()
-{
-  popIndices_.reserve(popsMap_.size());
-
-  for(auto it = std::begin(popsMap_); it != std::end(popsMap_); ++it)
-    popIndices_.emplace_back(it->first);
-}
-
-// NOTE this method crucially determines the order of stats in rows of Y and rows/cols of transition matrices
-void SumStatsLibrary::initStatsVector_()
-{
-  // map keys are populantion indices (vals are parents in previous epochs)
-  std::vector<size_t> popIndices = fetchPopIndices();
-
-  includeHetStats_(popIndices);
-  includeLdStats_(popIndices);
-}
-
-void SumStatsLibrary::includeHetStats_(const std::vector<size_t>& popIndices)
-{
-  for(auto itI = std::begin(popIndices); itI != std::end(popIndices); ++itI)
-    for(auto itJ = std::begin(popIndices); itJ != std::end(popIndices); ++itJ)
-      stats_.try_emplace("H_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ), 0.);
-}
-
-void SumStatsLibrary::includeLdStats_(const std::vector<size_t>& popIndices)
-{
-  for(auto itI = std::begin(popIndices); itI != std::end(popIndices); ++itI)
-    for(auto itJ = std::begin(popMap); itJ != std::end(popIndices); ++itJ)
-      stats_.try_emplace("DD_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ), 0.);
-
-  for(auto itI = std::begin(popIndices); itI != std::end(popIndices); ++itI)
-    for(auto itJ = std::begin(popIndices); itJ != std::end(popIndices); ++itJ)
-      for(auto itK = std::begin(popIndices); itK != std::end(popIndices); ++itK)
-        stats_.try_emplace("Dz_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ) + bpp::TextTools::toString(*itK), 0.);
-
-  for(auto itI = std::begin(popIndices); itI != std::end(popIndices); ++itI)
-    for(auto itJ = std::begin(popIndices); itJ != std::end(popIndices); ++itJ)
-      for(auto itK = std::begin(popIndices); itK != std::end(popIndices); ++itK)
-        for(auto itL = std::begin(popIndices); itL != std::end(popIndices); ++itL)
-          stats_.try_emplace("pi2_" + bpp::TextTools::toString(*itI) + bpp::TextTools::toString(*itJ) + ";" + bpp::TextTools::toString(*itK) + bpp::TextTools::toString(*itL), 0.);
+  // NOTE this crucially determines the (lexicographical) order of stats in rows of Y and rows/cols of transition matrices
+  std::sort(std::begin(moments_), std::end(moments_), [&](int a, int b) { a.getName() > b.getName() });
 }

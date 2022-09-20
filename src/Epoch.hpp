@@ -23,22 +23,23 @@
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
 #include "AbstractOperator.hpp"
+#include "Moment.hpp"
+#include "SumStatsLibrary.hpp"
 
 class Epoch:
   public bpp::AbstractParameterAliasable
 {
 
 private:
-  // indices of populations present in epoch -> indices of parental pops in previous epoch
   SumStatsLibrary ssl_;
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
-  std::map<size_t, std::shared_ptr<Population>> pops_; // population id -> class object (containing that id)
+  std::map<size_t, std::shared_ptr<Population>> pops_; // population id -> class object (containing that same id as a member)
 
   EigenDecomposition eigenDec_;
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
-  Eigen::VectorXd steadYstate_; // based on the parameters of this epoch, in practice only the one from deepest epoch will be used as seed
+  Eigen::VectorXd steadYstate_; // based on the parameters of this epoch, in practice only the one from deepest epoch will be used as model seed
 
   size_t startGen_; // we let the deepest point in relevant time be generation "0"
   size_t endGen_;
@@ -64,7 +65,12 @@ public:
   }
 
   ~Epoch()
-  { }
+  {
+    std::cout << "Destruction of Epoch with parameters:\n";
+    getParameters().printParameters(std::cout);
+
+    deleteParameters(getParameterNames()); // NOTE does this free memory?
+  }
 
   Epoch* clone() const
   {
@@ -118,14 +124,9 @@ public:
     return ssl_;
   }
 
-  const std::map<std::string, double>& getStatsMap() const
+  const std::vector<Moment>& getMoments() const
   {
-    return ssl_.getStats();
-  }
-
-  const std::map<size_t, std::pair<size_t, size_t>>& getPopsMap() const
-  {
-    return ssl_.getPopsMap();
+    return ssl_.getMoments();
   }
 
 private:
