@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 08/09/2022
+ * Last modified: 20/09/2022
  * Source code for moments++
  *
  */
@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
   std::cout << "*                moments++  version 0.0.1                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "*            Recombination                                       *" << std::endl;
-  std::cout << "*            A mosaic in the genome                              *" << std::endl;
-  std::cout << "*            Endless ancestors                                   *" << std::endl;
+  std::cout << "*            Two-locus histories                                 *" << std::endl;
+  std::cout << "*            Revealed recursively                                *" << std::endl;
+  std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "* Authors: G. Barroso                    Last Modif. 20/Sep/2022 *" << std::endl;
