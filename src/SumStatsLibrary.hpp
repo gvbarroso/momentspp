@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 20/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -66,48 +66,14 @@ public:
     return order_;
   }
 
+  const std::vector<size_t>& getPopIndices() const
+  {
+    return popIndices_;
+  }
+
   const std::vector<Moment>& getMoments() const
   {
     return moments_;
-  }
-
-  const Moment& getDdMoment(size_t id1, size_t id2) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t focalMomIndex = findDdIndex(rank1, rank2);
-
-    return moments_[focalMomIndex];
-  }
-
-  const Moment& getDzMoment(size_t id1, size_t id2, size_t id3) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t rank3 = findPopIndexRank(id3);
-    size_t focalMomIndex = findDzIndex(rank1, rank2, rank3);
-
-    return moments_[focalMomIndex];
-  }
-
-  const Moment& getHetMoment(size_t id1, size_t id2) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t focalMomIndex = findHetIndex(rank1, rank2);
-
-    return moments_[focalMomIndex];
-  }
-
-  const Moment& getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t rank3 = findPopIndexRank(id3);
-    size_t rank4 = findPopIndexRank(id4);
-    size_t focalMomIndex = findPi2Index(rank1, rank2, rank3, rank4);
-
-    return moments_[focalMomIndex];
   }
 
   size_t getNumStats() const
@@ -115,44 +81,21 @@ public:
     return moments_.size();
   }
 
-  void setDdMomentValue(size_t id1, size_t id2, double value)
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t focalMomIndex = findDdIndex(rank1, rank2);
+  const Moment& getDdMoment(size_t id1, size_t id2); const
 
-    moments_[focalMomIndex].setValue(value);
-  }
+  const Moment& getDzMoment(size_t id1, size_t id2, size_t id3); const
 
-  void setDzMomentValue(size_t id1, size_t id2, size_t id3, double value)
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t rank3 = findPopIndexRank(id3);
-    size_t focalMomIndex = findDzIndex(rank1, rank2, rank3);
+  const Moment& getHetMoment(size_t id1, size_t id2); const
 
-    moments_[focalMomIndex].setValue(value);
-  }
+  const Moment& getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4); const
 
-  void setHetMomentValue(size_t id1, size_t id2, double value)
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t focalMomIndex = findHetIndex(rank1, rank2);
+  void setDdMomentValue(size_t id1, size_t id2, double value);
 
-    moments_[focalMomIndex].setValue(value);
-  }
+  void setDzMomentValue(size_t id1, size_t id2, size_t id3, double value);
 
-  void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value)
-  {
-     size_t rank1 = findPopIndexRank(id1);
-     size_t rank2 = findPopIndexRank(id2);
-     size_t rank3 = findPopIndexRank(id3);
-     size_t rank4 = findPopIndexRank(id4);
-     size_t focalMomIndex = findPi2Index(rank1, rank2, rank3, rank4);
+  void setHetMomentValue(size_t id1, size_t id2, double value);
 
-     moments_[focalMomIndex].setValue(value);
-  }
+  void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value);
 
   size_t findPopIndexRank(size_t index) const // among all pop indices
   {

@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 20/09/2022
+ * Last modified: 21/09/2022
  * Source code for moments++
  *
  */
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 20/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
@@ -64,18 +64,10 @@ int main(int argc, char *argv[]) {
     data.parse(options.getDataPath());
     data.computeSumStats();
 
-    SumStatsLibrary ssl;
-    ssl.init(data);
-
     std::cout << "done." << std::endl;
 
     OptimizationWrapper optimizer(options);
-
-    if(options.resume()) // if resume optimization, read "backup_params.txt" from current dir
-      optimizer.resumeOptim(ssl);
-
-    else
-      optimizer.optimize(ssl); // else optimize from scratch, backing up to "backup_params.txt"
+    optimizer.optimize(data); // else optimize from scratch, backing up to "backup_params.txt"
   }
 
   catch(std::exception& e)

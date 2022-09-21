@@ -69,7 +69,7 @@ public:
     std::cout << "Destruction of Epoch with parameters:\n";
     getParameters().printParameters(std::cout);
 
-    deleteParameters(getParameterNames()); // NOTE does this free memory?
+    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?
   }
 
   Epoch* clone() const
@@ -119,7 +119,17 @@ public:
     transitionMatrix_ * y;
   }
 
+  const std::map<size_t, std::shared_ptr<Population>>& getPops()
+  {
+    return pops_;
+  }
+
   const SumStatsLibrary& getSslib() const
+  {
+    return ssl_;
+  }
+
+  SumStatsLibrary& getSslib()
   {
     return ssl_;
   }

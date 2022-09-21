@@ -55,7 +55,7 @@ public:
     std::cout << "Destruction of Operator with parameters:\n";
     getParameters().printParameters(std::cout);
 
-    deleteParameters(getParameterNames()); // NOTE does this free memory?
+    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?
   }
 
   AbstractOperator* clone() const

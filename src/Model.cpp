@@ -141,10 +141,10 @@ void Model::computeExpectedSumStats_()
           prevP4 = p4LeftParentId;
 
         double cpyVal = epochs_[i]->getSslib().getPi2Moment(prevP1, prevP2, prevP3, prevP4).getValue();
-        epochs_[i + 1]->getSslib().setHetMomentValue(focalP1, focalP2, focalP3, focalP4 cpyVal);
+        epochs_[i + 1]->getSslib().setPi2MomentValue(focalP1, focalP2, focalP3, focalP4, cpyVal);
       }
 
-      expected_ = epochs_[i + 1]->fetchYvec(); // swap
+      expected_ = epochs_[i + 1]->getSslib().fetchYvec(); // swap
     }
   }
 

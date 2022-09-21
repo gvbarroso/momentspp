@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -24,6 +24,7 @@
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Phyl/PseudoNewtonOptimizer.h>
 
+#include "PolymorphismData.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
 
@@ -32,23 +33,22 @@ class OptimizationWrapper
 {
     
 private:
-  // population index -> index of 2 parental populations in immediately previous epoch (can be the same, eg (3, (1,1)))
-  std::vector<std::map<size_t, std::pair<size_t, size_t>>> popMaps_;
+  std::vector<std::vector<size_t>> popList_; // population indices per epoch
   OptionsContainer options_;
   
 public:
   OptimizationWrapper(const OptionsContainer& options):
-  popMaps_(),
+  popList_(),
   options_(options)
   { }
 
   OptimizationWrapper(const std::map<std::string, std::string>& options):
-  popMaps_(),
+  popList_(),
   options_(options)
   { }
   
 public:
-  void optimize(); // optimze from scratch
+  void optimize(const PolymorphismData& data);
 
   void parsePopsFile(const std::string& name);
 

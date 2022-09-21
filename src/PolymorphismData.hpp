@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 20/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -32,12 +32,12 @@
 #include <Bpp/Seq/Alphabet/AlphabetTools.h>
 #include <Bpp/Seq/SiteTools.h>*/
 
-#include Mo
+#include "Moment.hpp"
 #include "OptionsContainer.hpp"
 
 class PolymorphismData {
 private:
-  size_t numPops_; // number of sampled populations in present time, set in parse() method
+  size_t numPops_; // number of sampled populations in present time, set in parse() or computeSumStats() method
   size_t order_;
 
   std::map<std::string, double> expectations_;

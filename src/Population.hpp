@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 20/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -32,8 +32,7 @@ public:
   id_(id),
   name_(name),
   leftParent_(nullptr),
-  rightParent_(nullptr),
-  stats_()
+  rightParent_(nullptr)
   { }
 
 public:

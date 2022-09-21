@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 14/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -21,14 +21,14 @@ public:
   {
     double initValue = 1e-8;
 
-    // NOTE the constraint that individual migration rates are "small" guaranteed that the rows
+    // NOTE the constraint that individual migration rates are "small" (built in ic) guaranteed that the rows
     // of the matrix (m_ij's) sum to 1, with main diagonal entries = 1 - sum of values < 1e=5
-    for(auto itI = std::begin(ssl.getPopMap()); itI != std::end(ssl.getPopMap()); ++itI) // for each population modeled in epoch i
+    for(auto itI = std::begin(ssl.getPopIndices()); itI != std::end(ssl.getPopIndices()); ++itI) // for each population modeled in epoch i
     {
-      for(auto itJ = std::begin(ssl.getPopMap()); itJ != std::end(ssl.getPopMap()); ++itJ)
+      for(auto itJ = std::begin(ssl.getPopIndices()); itJ != std::end(ssl.getPopIndices()); ++itJ)
       {
-        if((*itI).first != (*itJ).first) // if population indices are different
-          migPl.addParameter(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI).first) + bpp::TextTools::toString((*itJ).first), initValue, ic));
+        if((*itI) != (*itJ)) // if population indices are different
+          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValue, ic));
       }
     }
 

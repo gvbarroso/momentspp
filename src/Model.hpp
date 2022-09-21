@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 13/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -55,7 +55,6 @@ public:
   epochs_(epochs),
   frozenParams_(0),
   data_(data),
-  steadYstate_(),
   expected_(),
   compLogLikelihood_(-1.)
   {
@@ -142,7 +141,7 @@ public:
   }
 
 private:
-  void popAdmix_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio);
+  void popAdmix_();
 
   void updateEpochs_(const bpp::ParameterList& params);
 

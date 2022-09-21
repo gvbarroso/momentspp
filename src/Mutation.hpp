@@ -19,7 +19,7 @@ public:
   Mutation(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
   AbstractOperator()
   {
-    addParameter(new bpp::Parameter("u_0", 1e-8, ic));
+    addParameter_(new bpp::Parameter("u_0", 1e-8, ic));
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);

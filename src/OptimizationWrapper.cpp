@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -20,9 +20,10 @@
 #include "Model.hpp"
 
 
-void OptimizationWrapper::optimize()
+void OptimizationWrapper::optimize(const PolymorphismData& data)
 {
-  size_t numEpochs = popMaps_.size();
+  std::vector<size_t> popIndices(0);
+  size_t numEpochs = popList_.size();
 
   std::string name = bpp::TextTools::toString(numEpochs) + "_epochs_model";
 
@@ -41,7 +42,9 @@ void OptimizationWrapper::optimize()
     size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
     size_t end = (numEpochs - i - 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
-    SumStatsLibrary sslib(2, popMaps[i]);
+    // parse populations file
+    std::map<size_t, std::shared_ptr<Population>> pops;
+    SumStatsLibrary sslib(2, popList_[i]);
 
     // Epoch-specific (w.r.t populations present, hence parameters) operators
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(sslib);
@@ -59,10 +62,10 @@ void OptimizationWrapper::optimize()
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(sslib, operators, start, end, id));
+    epochs.emplace_back(std::make_shared<Epoch>(sslib,  start, end, id, operators, pops));
   }
 
-  Model* model = new Model(name, epochs, sslib);
+  Model* model = new Model(name, epochs, data);
   // TODO alias r and mu among epochs
 
   fitModel_(model);
@@ -74,7 +77,7 @@ void OptimizationWrapper::optimize()
 void parsePopsFile(const std::string& name)
 {
   // TODO read table from file, check if there's standard format in demes
-  // popMaps_ =
+  // popList_ =
 }
 
 void OptimizationWrapper::fitModel_(Model* model)
@@ -226,12 +229,12 @@ void OptimizationWrapper::writeEstimatesToFile_(Model* model)
 
   for(size_t i = 0; i < model->getEpochs().size(); ++i)
   {
-    std::shared_patr<Epoch> epoch = model->getEpochs()[i];
-    file << epoch->getPrefix() << "\t" << epoch->start() << "\t" << epoch->end() << "\t";
+    std::shared_ptr<Epoch> epoch = model->getEpochs()[i];
+    file << epoch->getNamespace() << "\t" << epoch->start() << "\t" << epoch->end() << "\t";
 
     for(size_t j = 0; j < epoch->getParameters().size(); ++j)
     {
-      file << epoch->getParameters()[i].getParameterName() << "=" << epoch->getParameters()[i].getParameterValue();
+      file << epoch->getParameters()[i].getName() << "=" << epoch->getParameters()[i].getValue();
 
       if(i < epoch->getParameters().size() - 1)
         file << "\t";

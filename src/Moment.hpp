@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 20/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -48,8 +48,9 @@ public:
     boost::split(splitName, name, boost::is_any_of("_"));
 
     prefix_ = splitName[0];
-    for(size_t i = 0; i < splitName[1].size(); ++i)
-      popIndices_.push_back(std::stoul(splitName[1][i]));
+
+    for(size_t i = 1; i < splitName.size(); ++i)
+      popIndices_.push_back(std::stoul(splitName[i]));
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
   }
@@ -70,7 +71,7 @@ public:
     return popIndices_;
   }
 
-  double getValue()
+  double getValue() const
   {
     return value_;
   }
