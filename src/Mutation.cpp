@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 20/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -19,7 +19,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 
   for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
-    size_t row = it - std::begin(sslib->getMoments()); // row index
+    size_t row = it - std::begin(sslib.getMoments()); // row index
     size_t col = 0; // column index
 
     if(it->getPrefix() == "H")
@@ -41,7 +41,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   }
 
   Eigen::SparseMatrix<double> mat(numStats, numStats);
-  mat.setFromTriplets(coefficients);
+  mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
   mat.makeCompressed();
   mat *= getParameterValue("mu_0");
   matrices_.emplace_back(mat);
@@ -54,7 +54,7 @@ void Mutation::updateMatrices_()
     double prevVal = prevParams_.getParameterValue("mu_0");
     double newVal = getParameterValue("mu_0");
 
-    matrices_[index] *= (newVal / prevVal);
+    matrices_[i] *= (newVal / prevVal);
   }
 
   prevParams_.matchParametersValues(getParameters());

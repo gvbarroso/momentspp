@@ -50,8 +50,6 @@ public:
 public:
   void optimize(const PolymorphismData& data);
 
-  void parsePopsFile(const std::string& name);
-
 private:
   void fitModel_(Model* model);
 

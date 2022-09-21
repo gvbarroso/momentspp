@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 20/09/2022
+ * Last modified: 21/09/2022
  *
  */
 
@@ -137,6 +137,20 @@ public:
   const std::vector<Moment>& getMoments() const
   {
     return ssl_.getMoments();
+  }
+
+  std::vector<Moment>& getMoments()
+  {
+    return ssl_.getMoments();
+  }
+
+  void updateMoments(const Eigen::VectorXd& y)
+  {
+    if(y.size() != ssl_.getMoments().size())
+      throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
+
+    for(size_t i = 0; i < y.size(); ++i)
+      ssl_.getMoments()[i].setValue(y(i));
   }
 
 private:

@@ -8,7 +8,7 @@
 
 #include "SumStatsLibrary.hpp"
 
-const Moment& SumStatsLibrary::getDdMoment(size_t id1, size_t id2) const
+const Moment& SumStatsLibrary::getDdMoment(size_t id1, size_t id2)
 {
   size_t rank1 = findPopIndexRank(id1);
   size_t rank2 = findPopIndexRank(id2);
@@ -17,7 +17,7 @@ const Moment& SumStatsLibrary::getDdMoment(size_t id1, size_t id2) const
   return moments_[focalMomIndex];
 }
 
-const Moment& SumStatsLibrary::getDzMoment(size_t id1, size_t id2, size_t id3) const
+const Moment& SumStatsLibrary::getDzMoment(size_t id1, size_t id2, size_t id3)
 {
   size_t rank1 = findPopIndexRank(id1);
   size_t rank2 = findPopIndexRank(id2);
@@ -27,7 +27,7 @@ const Moment& SumStatsLibrary::getDzMoment(size_t id1, size_t id2, size_t id3) c
   return moments_[focalMomIndex];
 }
 
-const Moment& SumStatsLibrary::getHetMoment(size_t id1, size_t id2) const
+const Moment& SumStatsLibrary::getHetMoment(size_t id1, size_t id2)
 {
   size_t rank1 = findPopIndexRank(id1);
   size_t rank2 = findPopIndexRank(id2);
@@ -36,7 +36,7 @@ const Moment& SumStatsLibrary::getHetMoment(size_t id1, size_t id2) const
   return moments_[focalMomIndex];
 }
 
-const Moment& SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
+const Moment& SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4)
 {
   size_t rank1 = findPopIndexRank(id1);
   size_t rank2 = findPopIndexRank(id2);
@@ -88,10 +88,10 @@ void SumStatsLibrary::setPi2MomentValue(size_t id1, size_t id2, size_t id3, size
 
 Eigen::VectorXd SumStatsLibrary::fetchYvec()
 {
-  Eigen::VectorXd& y(moments_.size());
+  Eigen::VectorXd y(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
-    y(0, i) = moments_[i].getValue();
+    y(i) = moments_[i].getValue();
 
   return y;
 }
@@ -115,6 +115,6 @@ void SumStatsLibrary::initMoments_()
     }
   }
 
-  // NOTE this crucially determines the (lexicographical) order of stats in rows of Y and rows/cols of transition matrices
-  std::sort(std::begin(moments_), std::end(moments_), [&](int a, int b) { a.getName() > b.getName() });
+  // this crucially determines the ascending lexicographical order of stats in rows of Y and transition matrices
+  std::sort(std::begin(moments_), std::end(moments_), [](const Moment& a, const Moment& b) { return a.getName() < b.getName(); } );
 }

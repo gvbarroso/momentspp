@@ -46,6 +46,7 @@ public:
   AbstractOperator():
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
+  identity_(),
   prevParams_()
   { }
 

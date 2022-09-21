@@ -19,7 +19,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 
   for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
-    size_t row = it - std::begin(sslib->getMoments()); // recombination matrix only has entries in main diagonal
+    size_t row = it - std::begin(sslib.getMoments()); // recombination matrix only has entries in main diagonal
 
     if(it->getPrefix() == "DD")
       coefficients.push_back(Eigen::Triplet<double>(row, row, -2.));
@@ -29,7 +29,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   }
 
   Eigen::SparseMatrix<double> mat(numStats, numStats);
-  mat.setFromTriplets(coefficients);
+  mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
   mat.makeCompressed();
   mat *= getParameterValue("r_0");
   matrices_.emplace_back(mat);
@@ -42,7 +42,7 @@ void Recombination::updateMatrices_()
     double prevVal = prevParams_.getParameterValue("r_0");
     double newVal = getParameterValue("r_0");
 
-    matrices_[index] *= (newVal / prevVal);
+    matrices_[i] *= (newVal / prevVal);
   }
 
   prevParams_.matchParametersValues(getParameters());

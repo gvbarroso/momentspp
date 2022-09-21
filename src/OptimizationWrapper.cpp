@@ -62,7 +62,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(sslib,  start, end, id, operators, pops));
+    epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, pops));
   }
 
   Model* model = new Model(name, epochs, data);
@@ -72,12 +72,6 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
   writeEstimatesToFile_(model);
 
   delete model;
-}
-
-void parsePopsFile(const std::string& name)
-{
-  // TODO read table from file, check if there's standard format in demes
-  // popList_ =
 }
 
 void OptimizationWrapper::fitModel_(Model* model)

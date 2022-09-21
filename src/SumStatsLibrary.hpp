@@ -38,7 +38,7 @@ private:
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
-  std::vector<Moment> moments_; // NOTE sorted lexicographically based on name_
+  std::vector<Moment> moments_; // sorted lexicographically based on name_
 
 public:
   SumStatsLibrary(size_t order, const std::vector<size_t>& popIndices):
@@ -51,7 +51,7 @@ public:
   popIndices_(popIndices),
   moments_(0)
   {
-    std::sort(std::begin(popIndices_), std::end(popIndices_)); // safety
+    std::sort(std::begin(popIndices_), std::end(popIndices_)); // just to make sure
     initMoments_();
   }
 
@@ -76,18 +76,23 @@ public:
     return moments_;
   }
 
+  std::vector<Moment>& getMoments()
+  {
+    return moments_;
+  }
+
   size_t getNumStats() const
   {
     return moments_.size();
   }
 
-  const Moment& getDdMoment(size_t id1, size_t id2); const
+  const Moment& getDdMoment(size_t id1, size_t id2);
 
-  const Moment& getDzMoment(size_t id1, size_t id2, size_t id3); const
+  const Moment& getDzMoment(size_t id1, size_t id2, size_t id3);
 
-  const Moment& getHetMoment(size_t id1, size_t id2); const
+  const Moment& getHetMoment(size_t id1, size_t id2);
 
-  const Moment& getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4); const
+  const Moment& getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4);
 
   void setDdMomentValue(size_t id1, size_t id2, double value);
 
@@ -97,7 +102,7 @@ public:
 
   void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value);
 
-  size_t findPopIndexRank(size_t index) const // among all pop indices
+  size_t findPopIndexRank(size_t index) // among all pop indices
   {
     return std::distance(std::begin(popIndices_), std::lower_bound(std::begin(popIndices_), std::end(popIndices_), index));
   }

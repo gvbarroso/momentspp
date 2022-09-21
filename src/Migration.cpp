@@ -66,7 +66,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               // if p2 and p3 represent child and parent populations, in any order
               if((p2 == i && p3 == j) || (p2 == j && p3 == i))
               {
-                p2, p3 = i;
+                p2 = i;
+                p3 = i;
 
                 col = sslib.findDzIndex(p1, p2, p3);
                 coefficients.emplace_back(Eigen::Triplet<double>(row, col, parentPopIdCount));
@@ -210,7 +211,11 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             // updates based on right pair (duplicated elements are summed up by the Eigen method setFromTriplets)
             coefficients.emplace_back(Eigen::Triplet<double>(row, row, -static_cast<double>(countRight)));
 
-            p1, p2, p3, p4 = i; // resets references
+            // resets references
+            p1 = i;
+            p2 = i;
+            p3 = i;
+            p4 = i;
 
             // updates non-diagonal (positive) entries from left perspective
             if(countLeft == 1)
@@ -219,7 +224,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 p4 = j;
 
               else if(countRight == 2)
-                p3, p4 = j;
+              {
+                p3 = j;
+                p4 = j;
+              }
             }
 
             else if(countLeft == 2)
@@ -230,13 +238,20 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 p4 = j;
 
               else if(countRight == 2)
-                p3, p4 = j;
+              {
+                p3 = j;
+                p4 = j;
+              }
             }
 
             col = sslib.findPi2Index(p1, p2, p3, p4);
             coefficients.emplace_back(Eigen::Triplet<double>(row, col, countLeft));
 
-            p1, p2, p3, p4 = i; // resets references
+            // resets references
+            p1 = i;
+            p2 = i;
+            p3 = i;
+            p4 = i;
 
             // updates non-diagonal (positive) entries from right perspective
             if(countRight == 1)
@@ -245,7 +260,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 p2 = j;
 
               else if(countLeft == 2)
-                p1, p2 = j;
+              {
+                p1 = j;
+                p2 = j;
+              }
             }
 
             else if(countRight == 2)
@@ -256,7 +274,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 p2 = j;
 
               else if(countLeft == 2)
-                p1, p2 = j;
+              {
+                p1 = j;
+                p2 = j;
+              }
             }
 
             col = sslib.findPi2Index(p1, p2, p3, p4);

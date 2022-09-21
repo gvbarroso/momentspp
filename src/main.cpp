@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
   std::cout << "*                moments++  version 0.0.1                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "*            Two-locus histories                                 *" << std::endl;
-  std::cout << "*            Revealed recursively                                *" << std::endl;
-  std::cout << "*            Moment by moment                                    *" << std::endl;
+  std::cout << "*            Two-locus moments                                   *" << std::endl;
+  std::cout << "*            Revealing history                                   *" << std::endl;
+  std::cout << "*            Recursively                                         *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "* Authors: G. Barroso                    Last Modif. 21/Sep/2022 *" << std::endl;
@@ -38,9 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
 
   /* TODO
-  * 1. make it such (and ensure) that in every Epoch populations aren indexed from 0 to numPops - 1 (rendering popIndices_ obsolete)
-  * This way we can avoid the binary search inside SumStatsLibrary setMomentValue methods (using pop id's directly instead)\
-  * (also std::map<size_t, std::shared_ptr<Population>> pops_ in Epoch)
+  * Create Derived classes from Moment (DD, Dz, H, Pi2)
   */
 
   if(argc == 1)
@@ -50,18 +48,23 @@ int main(int argc, char *argv[]) {
     return(0);
   }
 
-  BppApplication momentspp(argc, argv, "moments++"); // params file holding users choices (see OptionsContainer class)
+  bpp::BppApplication momentspp(argc, argv, "moments++"); // params file holding users choices (see OptionsContainer class)
   momentspp.startTimer();
   std::map<std::string, std::string> params = momentspp.getParams();
 
   OptionsContainer options(params);
 
+  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
+  // 1. parse options.getPopsFilePath()
+  // 2. create populations
+  // 3. link populations (see Model::linkMoments())
+
   try
   {
-    std::cout << "Processing input data..."; std::cout.flus();
+    std::cout << "Processing input data..."; std::cout.flush();
 
     PolymorphismData data; // input data, format = ?
-    data.parse(options.getDataPath());
+    data.parse(options.getDataFilePath());
     data.computeSumStats();
 
     std::cout << "done." << std::endl;

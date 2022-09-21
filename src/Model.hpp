@@ -43,7 +43,6 @@ private:
   std::vector<std::string> frozenParams_;
 
   PolymorphismData data_;
-
   Eigen::VectorXd expected_;
 
   double compLogLikelihood_;
@@ -60,10 +59,17 @@ public:
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       includeParameters_((*it)->getParameters()); // NOTE shareParameters
+
+    linkMoments_();
   }
 
   ~Model()
-  { }
+  {
+    std::cout << "Destruction of Model with parameters:\n";
+    getParameters().printParameters(std::cout);
+
+    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?
+  }
 
   Model* clone() const
   {
@@ -141,6 +147,8 @@ public:
   }
 
 private:
+  void linkMoments_();
+
   void popAdmix_();
 
   void updateEpochs_(const bpp::ParameterList& params);
