@@ -12,7 +12,6 @@ SET(momentspp_CPP
   Migration.cpp
   Mutation.cpp
   Recombination.cpp
-  BackupListenerOv.cpp
   main.cpp
 )
 

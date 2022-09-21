@@ -41,7 +41,7 @@ void OptimizationWrapper::optimize()
     size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
     size_t end = (numEpochs - i - 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
-    SumStatsLibrary sslib(popMaps[i]);
+    SumStatsLibrary sslib(2, popMaps[i]);
 
     // Epoch-specific (w.r.t populations present, hence parameters) operators
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(sslib);

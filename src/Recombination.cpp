@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 12/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -17,15 +17,15 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   std::vector<Eigen::Triplet<double>> coefficients(0);
   coefficients.reserve(numStats);
 
-  for(auto it = std::begin(sslib.getStats()); it != std::end(sslib.getStats()); ++it)
+  for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
-    std::string mom = *it->first; // full name of moment
-    std::vector<std::string> splitMom = sslib.splitString(mom, "_"); // splits name by underscore
+    size_t row = it - std::begin(sslib->getMoments()); // recombination matrix only has entries in main diagonal
 
-    size_t row = it - std::begin(sslib->getStats()); // recombination matrix only has entries in main diagonal
-    size_t orderD = static_cast<int>(sslib.countInstances(mon, "D"));
+    if(it->getPrefix() == "DD")
+      coefficients.push_back(Eigen::Triplet<double>(row, row, -2.));
 
-    coefficients.push_back(Eigen::Triplet<double>(row, row, -orderD));
+    else if(it->getPrefix() == "Dz")
+      coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
   }
 
   Eigen::SparseMatrix<double> mat(numStats, numStats);
@@ -37,14 +37,10 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 
 void Recombination::updateMatrices_()
 {
-  std::string paramName = "";
-
   for(size_t i = 0; i < matrices_.size(); ++i)
   {
-    paramName = "r_" + bpp::TextTools::toString(i);
-
-    double prevVal = prevParams_.getParameterValue(paramName);
-    double newVal = getParameterValue(paramName);
+    double prevVal = prevParams_.getParameterValue("r_0");
+    double newVal = getParameterValue("r_0");
 
     matrices_[index] *= (newVal / prevVal);
   }

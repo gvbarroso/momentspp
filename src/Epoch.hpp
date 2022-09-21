@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 19/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -23,8 +23,8 @@
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
 #include "AbstractOperator.hpp"
-#include "Moment.hpp"
 #include "SumStatsLibrary.hpp"
+#include "Population.hpp"
 
 class Epoch:
   public bpp::AbstractParameterAliasable
@@ -32,6 +32,9 @@ class Epoch:
 
 private:
   SumStatsLibrary ssl_;
+
+  size_t startGen_; // we let the deepest point in relevant time be generation '0'
+  size_t endGen_;
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
@@ -41,24 +44,21 @@ private:
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::VectorXd steadYstate_; // based on the parameters of this epoch, in practice only the one from deepest epoch will be used as model seed
 
-  size_t startGen_; // we let the deepest point in relevant time be generation "0"
-  size_t endGen_;
-
 public:
-  Epoch(const SumStatsLibrary& ssl,
+  Epoch(const SumStatsLibrary& ssl, size_t start, size_t end, const std::string& name,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
-        const std::map<size_t, std::shared_ptr<Population>>& pops,
-        size_t start, size_t end, const std::string& name):
+        const std::map<size_t, std::shared_ptr<Population>>& pops):
   bpp::AbstractParameterAliasable(name), // set namespace
   ssl_(ssl),
+  startGen_(start),
+  endGen_(end),
   operators_(ops),
   pops_(pops),
   eigenDec_(),
   transitionMatrix_(),
-  startGen_(start),
-  endGen_(end)
+  steadYstate_()
   {
-    for(auto it = std::begin(ops); it != std::end(ops); ++it)
+    for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       includeParameters_((*it)->getParameters()); // NOTE shareParameters
 
     computeSteadyState_();

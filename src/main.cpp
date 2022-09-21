@@ -39,7 +39,8 @@ int main(int argc, char *argv[]) {
 
   /* TODO
   * 1. make it such (and ensure) that in every Epoch populations aren indexed from 0 to numPops - 1 (rendering popIndices_ obsolete)
-  * This way we can avoid the binary search inside SumStatsLibrary setMomentValue methods (using pop id's directly instead)
+  * This way we can avoid the binary search inside SumStatsLibrary setMomentValue methods (using pop id's directly instead)\
+  * (also std::map<size_t, std::shared_ptr<Population>> pops_ in Epoch)
   */
 
   if(argc == 1)

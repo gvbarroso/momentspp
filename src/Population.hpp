@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 19/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -17,7 +17,7 @@
 #include <map>
 
 
-class Population:
+class Population
 {
 private:
   size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
@@ -27,19 +27,14 @@ private:
   std::shared_ptr<Population> leftParent_;
   std::shared_ptr<Population> rightParent_;
 
-  // the positions of stats that contain this population id within Y vector
-  std::vector<double> ddStatsPos_;
-  std::vector<double> dzStatsPos_;
-  std::vector<double> hetStatsPos_;
-  std::vector<double> pi2StatsPos_;
-
 public:
-  Population(size_t id, const std::string& name = "p"):
+  Population(size_t id, const std::string& name):
   id_(id),
   name_(name),
   leftParent_(nullptr),
   rightParent_(nullptr),
   stats_()
+  { }
 
 public:
   size_t getId()

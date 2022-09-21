@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/09/2022
+ * Last modified: 20/09/2022
  *
  */
 
@@ -14,7 +14,7 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
 
   computeExpectedSumStats_();
-  computeCompositeLogLikelihood_(data_.getYvec(), data_.getCovarMatrix()); // for each rec. binx
+  computeCompositeLogLikelihood_(data_.getYvec(), data_.getCovarMatrix()); // e.g. for each rec. binx
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -29,72 +29,131 @@ void Model::computeExpectedSumStats_()
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
   {
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments vector down the epochs (non-const ref)
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments vector down the epochs (passing expected_ by non-const ref)
+    // TODO set values of Moments from epoch i using expected_
 
-    // for each statistic in next epoch i + 1
+    // we want to copy values of Moments in epoch i into corresponding Moments in epoch i + 1 (following population ancestry mapping)
     for(auto itMom = std::begin(epochs_[i + 1]->getMoments()); itMom != std::end(epochs_[i + 1]->getMoments()); ++itMom)
     {
-      std::string prefix = itMom->getPrefix();
-
-      if(prefix == "DD")
+      if(itMom->getPrefix() == "DD")
       {
+        size_t prevP1, prevP2 = 0;
 
-      }
-
-      else if(prefix == "Dz")
-      {
-
-      }
-
-      else if(prefix == "H")
-      {
-        size_t p1 = itMom->getPopIndices()[0]; // first population id of epochs_[i + 1] moment
-        size_t p1LeftParentId = epochs_[i + 1]->getPops().at(p1)->getLeftParent()->getId();
-        size_t p1RightParentId = epochs_[i + 1]->getPops().at(p1)->getRightParent()->getId();
+        size_t focalP1 = itMom->getPopIndices()[0]; // first population id of epochs i+1's H_** moment
+        size_t p1LeftParentId = epochs_[i + 1]->getPops().at(focalP1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i + 1]->getPops().at(focalP1)->getRightParent()->getId();
 
         if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
-          p1 = p1LeftParentId;
+          prevP1 = p1LeftParentId;
 
-        size_t p2 = itMom->getPopIndices()[0]; // first population id of epochs_[i + 1] moment
-        size_t p2LeftParentId = epochs_[i + 1]->getPops().at(p2)->getLeftParent()->getId();
-        size_t p2RightParentId = epochs_[i + 1]->getPops().at(p2)->getRightParent()->getId();
+        size_t focalP2 = itMom->getPopIndices()[1]; // second population id of epochs i+1's H_** moment
+        size_t p2LeftParentId = epochs_[i + 1]->getPops().at(focalP2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i + 1]->getPops().at(focalP2)->getRightParent()->getId();
 
         if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
-          p2 = p2LeftParentId;
+          prevP2 = p2LeftParentId;
 
-        std::string momFrom = "H_" + bpp::TextTools::toString(p1) + bpp::TextTools::toString(p2);
-        double cpyVal = epochs_[i]->getStatsMap().at(momFrom).second;
-
-        epochs_[i + 1]->getSslib().setValue(momTo, cpyVal);
+        double cpyVal = epochs_[i]->getSslib().getDdMoment(prevP1, prevP2).getValue();
+        epochs_[i + 1]->getSslib().setHetMomentValue(focalP1, focalP2, cpyVal);
       }
 
-      else if(prefix == "pi2")
+      else if(itMom->getPrefix() == "Dz")
       {
+        size_t prevP1, prevP2, prevP3 = 0;
 
+        size_t focalP1 = itMom->getPopIndices()[0]; // first population id of epochs i+1's H_** moment
+        size_t p1LeftParentId = epochs_[i + 1]->getPops().at(focalP1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i + 1]->getPops().at(focalP1)->getRightParent()->getId();
+
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
+          prevP1 = p1LeftParentId;
+
+        size_t focalP2 = itMom->getPopIndices()[1]; // second population id of epochs i+1's H_** moment
+        size_t p2LeftParentId = epochs_[i + 1]->getPops().at(focalP2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i + 1]->getPops().at(focalP2)->getRightParent()->getId();
+
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
+          prevP2 = p2LeftParentId;
+
+        size_t focalP3 = itMom->getPopIndices()[2]; // second population id of epochs i+1's H_** moment
+        size_t p3LeftParentId = epochs_[i + 1]->getPops().at(focalP3)->getLeftParent()->getId();
+        size_t p3RightParentId = epochs_[i + 1]->getPops().at(focalP3)->getRightParent()->getId();
+
+        if(p3LeftParentId == p3RightParentId) // population [carry-forward / split] between epochs
+          prevP3 = p3LeftParentId;
+
+        double cpyVal = epochs_[i]->getSslib().getDzMoment(prevP1, prevP2, prevP3).getValue();
+        epochs_[i + 1]->getSslib().setHetMomentValue(focalP1, focalP2, cpyVal);
       }
 
-        expected_ = tmp; // swap
+      else if(itMom->getPrefix() == "H")
+      {
+        size_t prevP1, prevP2 = 0;
 
+        size_t focalP1 = itMom->getPopIndices()[0]; // first population id of epochs i+1's H_** moment
+        size_t p1LeftParentId = epochs_[i + 1]->getPops().at(focalP1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i + 1]->getPops().at(focalP1)->getRightParent()->getId();
 
-      else // admixture event
-        popAdmix_(idx, p1, p2, i); // i (or something else) so we can track the epoch down to popAdmix_() method
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
+          prevP1 = p1LeftParentId;
+
+        size_t focalP2 = itMom->getPopIndices()[1]; // second population id of epochs i+1's H_** moment
+        size_t p2LeftParentId = epochs_[i + 1]->getPops().at(focalP2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i + 1]->getPops().at(focalP2)->getRightParent()->getId();
+
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
+          prevP2 = p2LeftParentId;
+
+        double cpyVal = epochs_[i]->getSslib().getHetMoment(prevP1, prevP2).getValue();
+        epochs_[i + 1]->getSslib().setHetMomentValue(focalP1, focalP2, cpyVal);
+      }
+
+      else if(itMom->getPrefix() == "pi2")
+      {
+        size_t prevP1, prevP2, prevP3, prevP4 = 0;
+
+        size_t focalP1 = itMom->getPopIndices()[0]; // first population id of epochs i+1's H_** moment
+        size_t p1LeftParentId = epochs_[i + 1]->getPops().at(focalP1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i + 1]->getPops().at(focalP1)->getRightParent()->getId();
+
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
+          prevP1 = p1LeftParentId;
+
+        size_t focalP2 = itMom->getPopIndices()[1]; // second population id of epochs i+1's H_** moment
+        size_t p2LeftParentId = epochs_[i + 1]->getPops().at(focalP2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i + 1]->getPops().at(focalP2)->getRightParent()->getId();
+
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
+          prevP2 = p2LeftParentId;
+
+        size_t focalP3 = itMom->getPopIndices()[2]; // second population id of epochs i+1's H_** moment
+        size_t p3LeftParentId = epochs_[i + 1]->getPops().at(focalP3)->getLeftParent()->getId();
+        size_t p3RightParentId = epochs_[i + 1]->getPops().at(focalP3)->getRightParent()->getId();
+
+        if(p3LeftParentId == p3RightParentId) // population [carry-forward / split] between epochs
+          prevP3 = p3LeftParentId;
+
+        size_t focalP4 = itMom->getPopIndices()[3]; // second population id of epochs i+1's H_** moment
+        size_t p4LeftParentId = epochs_[i + 1]->getPops().at(focalP4)->getLeftParent()->getId();
+        size_t p4RightParentId = epochs_[i + 1]->getPops().at(focalP4)->getRightParent()->getId();
+
+        if(p4LeftParentId == p4RightParentId) // population [carry-forward / split] between epochs
+          prevP4 = p4LeftParentId;
+
+        double cpyVal = epochs_[i]->getSslib().getPi2Moment(prevP1, prevP2, prevP3, prevP4).getValue();
+        epochs_[i + 1]->getSslib().setHetMomentValue(focalP1, focalP2, focalP3, focalP4 cpyVal);
+      }
+
+      expected_ = epochs_[i + 1]->fetchYvec(); // swap
     }
-
-    expected_ = epochs_[i + 1]->fetchYvec();
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
 }
 
-void Model::popSplit_(std::shard_ptr<Epoch> epochFrom, std::shard_ptr<Epoch> epochTo, size_t popIdFrom, size_t popIdTo)
+void Model::popAdmix_()
 {
-
-}
-
-// admixes p2 and p3 (from second)
-void Model::popAdmix_(const std::pair<size_t, std::pair<size_t, size_t>>& popTrio)
-{
-  double f = getParamterValue("f_p2_p3");
+  // TODO
 }
 
 void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)

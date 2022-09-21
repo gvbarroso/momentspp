@@ -25,20 +25,22 @@ class Moment
 private:
   std::string name_; // e.g. "Dz_12"
   std::string prefix_; // e.g. "Dz"
-  std::vector<size_t> popIndices_; // sorted, e.g. {1, 2}
+  std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}
   double value_;
+
+  //std::shared_ptr<Moment> parent_; // "equivalent" in previous epoch, due to population ancestry TODO implement for faster copying
 
 public:
   Moment():
   name_(""),
-  prefix_("")
+  prefix_(""),
   popIndices_(0),
   value_(0.)
   { }
 
   Moment(const std::string& name, double value):
   name_(name),
-  prefix_("")
+  prefix_(""),
   popIndices_(0),
   value_(value)
   {
@@ -47,7 +49,7 @@ public:
 
     prefix_ = splitName[0];
     for(size_t i = 0; i < splitName[1].size(); ++i)
-      popIndices_.push_back(std::strtoul(splitName[1][i]);
+      popIndices_.push_back(std::stoul(splitName[1][i]));
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
   }
