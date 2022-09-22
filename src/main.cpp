@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
   std::cout << "*                moments++  version 0.0.1                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "*            Two-locus moments                                   *" << std::endl;
-  std::cout << "*            Revealing history                                   *" << std::endl;
-  std::cout << "*            Recursively                                         *" << std::endl;
+  std::cout << "*            Two-site recursions                                 *" << std::endl;
+  std::cout << "*            Unraveling history                                  *" << std::endl;
+  std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "* Authors: G. Barroso                    Last Modif. 21/Sep/2022 *" << std::endl;
