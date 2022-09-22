@@ -9,7 +9,6 @@
 
 #include "Drift.hpp"
 
-
 void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters().size();

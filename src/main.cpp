@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 22/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;

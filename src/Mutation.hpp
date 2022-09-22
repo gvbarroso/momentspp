@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 15/09/2022
+ * Last modified: 22/09/2022
  *
  */
 
@@ -23,6 +23,11 @@ public:
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);
+  }
+
+  virtual Mutation* clone() const override
+  {
+    return new Mutation(*this);
   }
 
   void setUpMatrices_(const SumStatsLibrary& ssl);

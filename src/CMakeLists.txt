@@ -4,14 +4,15 @@
 # Created: 06/09/2022
 
 SET(momentspp_CPP
-  OptimizationWrapper.cpp
-  Model.cpp
-  Epoch.cpp
+  PolymorphismData.cpp
   SumStatsLibrary.cpp
   Drift.cpp
   Migration.cpp
   Mutation.cpp
   Recombination.cpp
+  Epoch.cpp
+  Model.cpp
+  OptimizationWrapper.cpp
   main.cpp
 )
 

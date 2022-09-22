@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/09/2022
+ * Last modified: 22/09/2022
  *
  */
 
@@ -67,7 +67,9 @@ void Model::linkMoments_()
     {
       if(it->getPrefix() == "DD")
       {
-        size_t prevP1, prevP2 = 0; // indices of populations in parental DD** moment
+        // indices of populations in parental DD** moment
+        size_t prevP1 = 0;
+        size_t prevP2 = 0;
 
         size_t focalP1 = it->getPopIndices()[0]; // i in DD_i_j
         size_t p1LeftParentId = epochs_[i]->getPops().at(focalP1)->getLeftParent()->getId();

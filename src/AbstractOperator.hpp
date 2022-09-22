@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2022
+ * Last modified: 22/09/2022
  *
  */
 
@@ -51,17 +51,12 @@ public:
   { }
 
 public:
-  ~AbstractOperator()
+  virtual ~AbstractOperator()
   {
     std::cout << "Destruction of Operator with parameters:\n";
     getParameters().printParameters(std::cout);
 
-    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?
-  }
-
-  AbstractOperator* clone() const
-  {
-    return new AbstractOperator(*this);
+    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?}
   }
 
   void setParameters(const bpp::ParameterList& params)
@@ -101,11 +96,11 @@ public:
     return mat;
   }
 
-protected:
+public:
   // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator
-  virtual void setUpMatrices_(const SumStatsLibrary& sslib);  // called only once in order to set the coefficients
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib) = 0;  // called only once in order to set the coefficients
 
-  virtual void updateMatrices_(); // scales coefficients of "delta" matrices by (new) parameters during optimization
+  virtual void updateMatrices_() = 0; // scales coefficients of "delta" matrices by (new) parameters during optimization
 
   void setIdentity_(size_t dim)
   {

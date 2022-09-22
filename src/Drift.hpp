@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 21/09/2022
+ * Last modified: 22/09/2022
  *
  */
 
@@ -22,10 +22,15 @@ public:
   {
     // for each population modeled in the epoch this operator belongs to, add Ne parameter
     for(auto itI = std::begin(ssl.getPopIndices()); itI != std::end(ssl.getPopIndices()); ++itI)
-      addParameter_(new bpp::Parameter("N_" + bpp::TextTools::toString((*itI)), 1e+4, bpp::Parameter::R_PLUS_STAR)); // TODO >= 1e+3?
+      addParameter_(new bpp::Parameter("N_" + bpp::TextTools::toString((*itI)), 1e+4, bpp::Parameter::R_PLUS_STAR)); // NOTE >= 1e+3?
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);
+  }
+
+  virtual Drift* clone() const override
+  {
+    return new Drift(*this);
   }
 
   void setUpMatrices_(const SumStatsLibrary& ssl);
