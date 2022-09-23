@@ -1,13 +1,12 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 21/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
 
 #include "Mutation.hpp"
-
 
 void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
@@ -23,9 +22,9 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     size_t col = 0; // column index
 
     if(it->getPrefix() == "H")
-      coefficients.emplace_back(Eigen::Triplet<double>(row, row, 2.)); // main diagonal, introducing one-locus diversity
+      coefficients.emplace_back(Eigen::Triplet<double>(row, row, 2.)); // main diagonal, introducing one-locus diversity WARNING that is a matrix addition
 
-    else if(it->getPrefix() == "pi2")
+    else if(it->getPrefix() == "pi2") // NOTE that is a matrix addition
     {
       size_t p1 = it->getPopIndices()[0]; // i pop
       size_t p2 = it->getPopIndices()[1]; // j pop

@@ -8,7 +8,7 @@
 
 #include "Epoch.hpp"
 
-// NOTE this method is where the heavier Eigen linear algebra takes place
+// this method is where the heavier Eigen linear algebra takes place
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
   if(matchParametersValues(params))
@@ -47,6 +47,7 @@ void Epoch::transferStatistics(Eigen::VectorXd& y)
   Eigen::VectorXd tmp(ssl_.getMoments().size());
   // y and tmp have potentially different sizes
 
+  // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch, from which y derives
   for(size_t i = 0; i < tmp.size(); ++i)
     tmp(i) = y[ssl_.getMoments()[i].getParent()->getPosition()];
 

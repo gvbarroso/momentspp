@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
@@ -44,9 +44,9 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
 
     // parse populations file
     std::map<size_t, std::shared_ptr<Population>> pops;
-    SumStatsLibrary sslib(2, popList_[i]);
+    SumStatsLibrary sslib(2, popList_[i]); // utils class to manage moments from epoch i
 
-    // Epoch-specific (w.r.t populations present, hence parameters) operators
+    // Epoch-specific operators (w.r.t populations present in that epoch, hence parameters)
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(sslib);
     std::shared_ptr<Migration> migOp = std::make_shared<Migration>(ic, sslib);
     // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),

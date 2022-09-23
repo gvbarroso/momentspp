@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 21/09/2022
+ * Last modified: 23/09/2022
  * Source code for moments++
  *
  */
@@ -32,13 +32,16 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 22/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 23/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
 
   /* TODO
-  * Create Derived classes from Moment (DD, Dz, H, Pi2)
+  * Create Derived classes from Moment (DD, Dz, H, Pi2)?
+  * Write Admixture operator as an AbstractOperator that has exponent 1!
+  * Selection operator -> upon rejection, sample a replacement individual from the whole population with probaility proportional to the pop. fitness vector (which maybe can be obtained from allele frequencies?)
+  * Linked selection -> another angle at iSMC's results?
   */
 
   if(argc == 1)
