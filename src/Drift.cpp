@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 20/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
@@ -16,12 +16,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
   matrices_.resize(numPops);
 
-  std::vector<Eigen::Triplet<double>> coefficients(0);
-  coefficients.reserve(numStats);
-
   // for each population
   for(size_t i = 0; i < numPops; ++i)
   {
+    std::vector<Eigen::Triplet<double>> coefficients(0);
+    coefficients.reserve(numStats);
+
     // for each stat in vector Y (going by rows of matrices_)
     for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
     {
@@ -50,7 +50,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       {
         if(it->getPopIndices()[0] == i) // if D_i_z**
         {
-          if(popIdCount == 3)
+          if(popIdCount == 3) // D_i_z_ii
           {
             coefficients.emplace_back(Eigen::Triplet<double>(row, row, -5.));
 
@@ -58,16 +58,16 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             coefficients.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
 
-          else if(popIdCount == 2)
+          else if(popIdCount == 2) // D_i_z_i* or D_i_z_*i
             coefficients.emplace_back(Eigen::Triplet<double>(row, row, -3.));
 
-          else if(popIdCount == 1) // if D_i_z_xx where x != i
+          else if(popIdCount == 1) // if D_i_z_**
             coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
         }
 
-        else // if D_x_z_** where x != i
+        else
         {
-          if(popIdCount == 2)  // if D_x_z_ii where x != i
+          if(popIdCount == 2)  // D_*_z_ii
           {
             col = sslib.findDdIndex(i, it->getPopIndices()[0]);
             coefficients.emplace_back(Eigen::Triplet<double>(row, col, 4.));
@@ -77,8 +77,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
       else if(it->getPrefix() == "pi2")
       {
-        size_t countLeft = 0; // count of i before ';'
-        size_t countRight = 0; // count of i after ';'
+        size_t countLeft = 0; // count of i before ';' character in pi2(**;**)
+        size_t countRight = 0; // count of i after ';' character in pi2(**;**)
 
         if(it->getPopIndices()[0] == i)
           ++countLeft;
@@ -91,7 +91,6 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         if(it->getPopIndices()[3] == i)
           ++countRight;
-
 
         if((countLeft + countRight) == 4)
         {
@@ -106,7 +105,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       }
 
       else if(it->getPrefix() == "H")
-        coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+        if(popIdCount == 2)
+          coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
     }
 
     Eigen::SparseMatrix<double> mat(numStats, numStats);
