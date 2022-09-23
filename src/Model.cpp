@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 22/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
@@ -27,15 +27,10 @@ void Model::computeExpectedSumStats_()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
-  for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs must be sorted from past to present
+  for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs (pass expected_ by ref)
-    epochs_[i]->updateMoments(expected_);
-
-    for(auto it = std::begin(epochs_[i + 1]->getMoments()); it != std::end(epochs_[i + 1]->getMoments()); ++it)
-      it->setValueFromParent();
-
-    expected_ = epochs_[i + 1]->getSslib().fetchYvec(); // so that expected_ carries the same Moments present in next epoch
+    epochs_[i + 1]->transferStatistics(expected_); // copying values according to population ancestry (pass expected_ by ref)
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
@@ -62,7 +57,7 @@ void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    // for each moment in focal epoch, set "parents" in previous epoch unsing Population ancestry
+    // for each moment in focal epoch, set "parents" in previous epoch unsing input population ancestry
     for(auto it = std::begin(epochs_[i]->getMoments()); it != std::end(epochs_[i]->getMoments()); ++it)
     {
       if(it->getPrefix() == "DD")

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 21/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
@@ -144,14 +144,9 @@ public:
     return ssl_.getMoments();
   }
 
-  void updateMoments(const Eigen::VectorXd& y)
-  {
-    if(y.size() != ssl_.getMoments().size())
-      throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
+  void transferStatistics(Eigen::VectorXd& y);
 
-    for(size_t i = 0; i < y.size(); ++i)
-      ssl_.getMoments()[i].setValue(y(i));
-  }
+  void updateMoments(const Eigen::VectorXd& y);
 
 private:
   void computeSteadyState_();

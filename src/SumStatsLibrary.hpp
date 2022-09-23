@@ -17,7 +17,6 @@
 #include <utility>
 
 #include <Eigen/Core>
-//#include <Eigen/Dense>
 
 #include <boost/algorithm/string.hpp>
 
@@ -51,7 +50,7 @@ public:
   popIndices_(popIndices),
   moments_(0)
   {
-    std::sort(std::begin(popIndices_), std::end(popIndices_)); // just to make sure
+    std::sort(std::begin(popIndices_), std::end(popIndices_));
     initMoments_();
   }
 

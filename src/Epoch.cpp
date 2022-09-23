@@ -1,14 +1,14 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 22/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
 
 #include "Epoch.hpp"
 
-// NOTE this method is where the heavier linear algebra is
+// NOTE this method is where the heavier Eigen linear algebra takes place
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
   if(matchParametersValues(params))
@@ -40,4 +40,24 @@ void Epoch::computeSteadyState_()
   steadYstate_ = es.eigenvectors().real().col(0);
 
   std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "; associated eigenvector: " << steadYstate_ << std::endl;
+}
+
+void Epoch::transferStatistics(Eigen::VectorXd& y)
+{
+  Eigen::VectorXd tmp(ssl_.getMoments().size());
+  // y and tmp have potentially different sizes
+
+  for(size_t i = 0; i < tmp.size(); ++i)
+    tmp(i) = y[ssl_.getMoments()[i].getParent()->getPosition()];
+
+  y = tmp; // swap
+}
+
+void Epoch::updateMoments(const Eigen::VectorXd& y)
+{
+  if(y.size() != ssl_.getMoments().size())
+    throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
+
+  for(size_t i = 0; i < y.size(); ++i)
+    ssl_.getMoments()[i].setValue(y(i));
 }

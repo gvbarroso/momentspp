@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 21/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
@@ -26,6 +26,7 @@ private:
   std::string name_; // e.g. "Dz_12"
   std::string prefix_; // e.g. "Dz"
   std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}
+  size_t position_; // in the Y vector
   double value_;
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, due to population ancestry
@@ -35,6 +36,7 @@ public:
   name_(""),
   prefix_(""),
   popIndices_(0),
+  position_(0),
   value_(0.),
   parent_(nullptr)
   { }
@@ -43,12 +45,12 @@ public:
   name_(name),
   prefix_(""),
   popIndices_(0),
+  position_(0),
   value_(value),
   parent_(nullptr)
   {
     std::vector<std::string> splitName(0);
     boost::split(splitName, name, boost::is_any_of("_"));
-
     prefix_ = splitName[0];
 
     for(size_t i = 1; i < splitName.size(); ++i)
@@ -61,6 +63,7 @@ public:
   name_(name),
   prefix_(""),
   popIndices_(0),
+  position_(0),
   value_(value),
   parent_(parent)
   {
@@ -76,11 +79,6 @@ public:
   }
 
 public:
-  void setParent(std::shared_ptr<Moment> mom)
-  {
-    parent_ = mom;
-  }
-
   const std::string& getName() const
   {
     return name_;
@@ -96,9 +94,19 @@ public:
     return popIndices_;
   }
 
+  size_t getPosition()
+  {
+    return position_;
+  }
+
   double getValue() const
   {
     return value_;
+  }
+
+  const std::shared_ptr<Moment> getParent()
+  {
+    return parent_;
   }
 
   void setValueFromParent()
@@ -109,6 +117,16 @@ public:
   void setValue(double value)
   {
     value_ = value;
+  }
+
+  void setParent(std::shared_ptr<Moment> mom)
+  {
+    parent_ = mom;
+  }
+
+  void setPosition(size_t pos)
+  {
+    position_ = pos;
   }
 
   bool hasPopIndex(size_t index)

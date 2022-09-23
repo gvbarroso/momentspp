@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 21/09/2022
+ * Last modified: 23/09/2022
  *
  */
 
@@ -117,4 +117,7 @@ void SumStatsLibrary::initMoments_()
 
   // this crucially determines the ascending lexicographical order of stats in rows of Y and transition matrices
   std::sort(std::begin(moments_), std::end(moments_), [](const Moment& a, const Moment& b) { return a.getName() < b.getName(); } );
+
+  for(size_t i = 0; i < moments_.size(); ++i)
+    moments_[i].setPosition(i);
 }
