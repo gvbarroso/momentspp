@@ -30,7 +30,7 @@ void Model::computeExpectedSumStats_()
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs (pass expected_ by ref)
-    epochs_[i + 1]->transferStatistics(expected_); // copying values according to population ancestry (pass expected_ by ref)
+    epochs_[i + 1]->transferStatistics(expected_); // copying values into epoch i + 1 according to population ancestry (pass expected_ by ref)
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
