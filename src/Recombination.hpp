@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 22/09/2022
+ * Last modified: 26/09/2022
  *
  */
 
@@ -19,7 +19,8 @@ public:
   Recombination(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
   AbstractOperator()
   {
-    addParameter_(new bpp::Parameter("r_0", 1e-8, ic));
+    std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("r_0", 1e-8, ic);
+    addParameter_(param.get());
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);

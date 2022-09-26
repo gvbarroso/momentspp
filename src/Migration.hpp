@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 22/09/2022
+ * Last modified: 26/09/2022
  *
  */
 
@@ -28,7 +28,10 @@ public:
       for(auto itJ = std::begin(ssl.getPopIndices()); itJ != std::end(ssl.getPopIndices()); ++itJ)
       {
         if((*itI) != (*itJ)) // if population indices are different
-          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValue, ic));
+        {
+          std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValue, ic);
+          addParameter_(param.get());
+        }
       }
     }
 

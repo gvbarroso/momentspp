@@ -23,7 +23,8 @@ public:
   AbstractOperator(),
   oneLocusPi_()
   {
-    addParameter_(new bpp::Parameter("u_0", 1e-8, ic));
+    std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("u_0", 1e-8, ic);
+    addParameter_(param.get());
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(ssl);

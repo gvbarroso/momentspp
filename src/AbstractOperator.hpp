@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 22/09/2022
+ * Last modified: 26/09/2022
  *
  */
 
@@ -13,6 +13,7 @@
 #include <string>
 #include <iostream>
 #include <cmath>
+#include <memory>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -55,8 +56,6 @@ public:
   {
     std::cout << "Destruction of Operator with parameters:\n";
     getParameters().printParameters(std::cout);
-
-    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?}
   }
 
   void setParameters(const bpp::ParameterList& params)

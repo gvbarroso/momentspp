@@ -58,7 +58,7 @@ public:
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
-      includeParameters_((*it)->getParameters()); // NOTE shareParameters
+      shareParameters_((*it)->getParameters());
 
     linkMoments_();
   }
@@ -67,8 +67,6 @@ public:
   {
     std::cout << "Destruction of Model with parameters:\n";
     getParameters().printParameters(std::cout);
-
-    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?
   }
 
   Model* clone() const

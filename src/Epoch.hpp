@@ -60,7 +60,7 @@ public:
   steadYstate_()
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      includeParameters_((*it)->getParameters()); // NOTE shareParameters
+      shareParameters_((*it)->getParameters());
 
     computeSteadyState_();
   }
@@ -69,8 +69,6 @@ public:
   {
     std::cout << "Destruction of Epoch with parameters:\n";
     getParameters().printParameters(std::cout);
-
-    //getParameters().deleteParameters(getParameters().getParameterNames()); // NOTE does this free memory?
   }
 
   Epoch* clone() const
