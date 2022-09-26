@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 23/09/2022
+ * Last modified: 26/09/2022
  *
  */
 
@@ -23,6 +23,7 @@
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
 #include "AbstractOperator.hpp"
+#include "Mutation.hpp"
 #include "SumStatsLibrary.hpp"
 #include "Population.hpp"
 
@@ -116,7 +117,8 @@ public:
 
   void computeExpectedSumStats(Eigen::VectorXd& y)
   {
-    transitionMatrix_ * y;
+    std::shared_ptr<Mutation> mut = std::dynamic_pointer_cast<Mutation>(operators_[3]);
+    transitionMatrix_ * y + mut->getOneLocusPi() * duration();
   }
 
   const std::map<size_t, std::shared_ptr<Population>>& getPops()
