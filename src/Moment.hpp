@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 23/09/2022
+ * Last modified: 27/09/2022
  *
  */
 
@@ -53,10 +53,13 @@ public:
     boost::split(splitName, name, boost::is_any_of("_"));
     prefix_ = splitName[0];
 
-    for(size_t i = 1; i < splitName.size(); ++i)
-      popIndices_.push_back(std::stoul(splitName[i]));
+    if(splitName.size() > 1)
+    {
+      for(size_t i = 1; i < splitName.size(); ++i)
+        popIndices_.push_back(std::stoul(splitName[i]));
 
-    std::sort(std::begin(popIndices_), std::end(popIndices_));
+      std::sort(std::begin(popIndices_), std::end(popIndices_));
+    }
   }
 
   Moment(const std::string& name, double value, std::shared_ptr<Moment> parent):
@@ -69,13 +72,15 @@ public:
   {
     std::vector<std::string> splitName(0);
     boost::split(splitName, name, boost::is_any_of("_"));
-
     prefix_ = splitName[0];
 
-    for(size_t i = 1; i < splitName.size(); ++i)
-      popIndices_.push_back(std::stoul(splitName[i]));
+    if(splitName.size() > 1)
+    {
+      for(size_t i = 1; i < splitName.size(); ++i)
+        popIndices_.push_back(std::stoul(splitName[i]));
 
-    std::sort(std::begin(popIndices_), std::end(popIndices_));
+      std::sort(std::begin(popIndices_), std::end(popIndices_));
+    }
   }
 
 public:
@@ -94,7 +99,7 @@ public:
     return popIndices_;
   }
 
-  size_t getPosition()
+  size_t getPosition() const
   {
     return position_;
   }

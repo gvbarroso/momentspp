@@ -1,13 +1,14 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 23/09/2022
+ * Last modified: 27/09/2022
  *
  */
 
 
 #include "SumStatsLibrary.hpp"
 
+// these methods to track down moments' positions inside moments_ vector are used by Model::linkMoments_()
 const Moment& SumStatsLibrary::getDdMoment(size_t id1, size_t id2)
 {
   size_t rank1 = findPopIndexRank(id1);
@@ -44,6 +45,12 @@ const Moment& SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, 
   size_t rank4 = findPopIndexRank(id4);
   size_t focalMomIndex = findPi2Index(rank1, rank2, rank3, rank4);
 
+  return moments_[focalMomIndex];
+}
+
+const Moment& SumStatsLibrary::getDummyMoment() const
+{
+  size_t focalMomIndex = numDDStats_ + numDzStats_ + numHetStats_;
   return moments_[focalMomIndex];
 }
 
@@ -86,7 +93,7 @@ void SumStatsLibrary::setPi2MomentValue(size_t id1, size_t id2, size_t id3, size
   moments_[focalMomIndex].setValue(value);
 }
 
-Eigen::VectorXd SumStatsLibrary::fetchYvec()
+/*Eigen::VectorXd SumStatsLibrary::fetchYvec()
 {
   Eigen::VectorXd y(moments_.size());
 
@@ -94,9 +101,9 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
     y(i) = moments_[i].getValue();
 
   return y;
-}
+}*/
 
-void SumStatsLibrary::initMoments_() // TODO add Dummy moments with value 1 in between H moments (include them in findHetIndex)
+void SumStatsLibrary::initMoments_()
 {
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
@@ -115,7 +122,10 @@ void SumStatsLibrary::initMoments_() // TODO add Dummy moments with value 1 in b
     }
   }
 
-  // this crucially determines the ascending lexicographical order of stats in rows of Y and transition matrices
+  // NOTE adds Dummy Moment lexicographically after H_ stats to transform matrix addition of Mutation into matrix multiplication (see  Mutation::setUpMatrices_())
+  moments_.push_back(Moment("I_", 1.));
+
+  // this crucially determines the ascending lexicographical order of stats in the rows of transition matrices
   std::sort(std::begin(moments_), std::end(moments_), [](const Moment& a, const Moment& b) { return a.getName() < b.getName(); } );
 
   for(size_t i = 0; i < moments_.size(); ++i)

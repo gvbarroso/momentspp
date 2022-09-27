@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 26/09/2022
+ * Last modified: 27/09/2022
  *
  */
 
@@ -44,12 +44,14 @@ protected:
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast updates)
 
 public:
-  AbstractOperator():
+  AbstractOperator(size_t numStats):
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   identity_(),
   prevParams_()
-  { }
+  {
+    setIdentity_(numStats);
+  }
 
 public:
   virtual ~AbstractOperator()
@@ -90,9 +92,7 @@ public:
         mat += matrices_[i];
     }
 
-    mat += identity_; // adds Identity to convert from "delta" to "transition" matrix
-
-    return mat;
+    return mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
   }
 
 public:
@@ -101,14 +101,14 @@ public:
 
   virtual void updateMatrices_() = 0; // scales coefficients of "delta" matrices by (new) parameters during optimization
 
-  void setIdentity_(size_t dim)
+  void setIdentity_(size_t numStats)
   {
-    Eigen::SparseMatrix<double> id(dim, dim);
+    Eigen::SparseMatrix<double> id(numStats, numStats);
 
     std::vector<Eigen::Triplet<double>> md(0);
-    md.reserve(dim);
+    md.reserve(numStats);
 
-    for(size_t i = 0; i < dim; ++i)
+    for(size_t i = 0; i < numStats; ++i)
       md.emplace_back(Eigen::Triplet<double>(i, i, 1.));
 
     id.setFromTriplets(std::begin(md), std::end(md));

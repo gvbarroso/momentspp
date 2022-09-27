@@ -15,19 +15,15 @@ class Mutation:
   public AbstractOperator
 {
 
-protected:
-  Eigen::SparseMatrix<double> oneLocusPi_;
-
 public:
-  Mutation(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& ssl):
-  AbstractOperator(),
-  oneLocusPi_()
+  Mutation(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getNumStats())
   {
     std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("u_0", 1e-8, ic);
     addParameter_(param.get());
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(ssl);
+    setUpMatrices_(sslib);
   }
 
   virtual Mutation* clone() const override
@@ -35,12 +31,7 @@ public:
     return new Mutation(*this);
   }
 
-  const Eigen::SparseMatrix<double>& getOneLocusPi() const
-  {
-    return oneLocusPi_;
-  }
-
-  void setUpMatrices_(const SumStatsLibrary& ssl);
+  void setUpMatrices_(const SumStatsLibrary& sslib);
 
   void updateMatrices_();
 

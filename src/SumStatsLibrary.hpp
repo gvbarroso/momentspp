@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 21/09/2022
+ * Last modified: 27/09/2022
  *
  */
 
@@ -93,6 +93,8 @@ public:
 
   const Moment& getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4);
 
+  const Moment& getDummyMoment() const;
+
   void setDdMomentValue(size_t id1, size_t id2, double value);
 
   void setDzMomentValue(size_t id1, size_t id2, size_t id3, double value);
@@ -123,7 +125,8 @@ public:
 
   size_t findPi2Index(size_t rank1, size_t rank2, size_t rank3, size_t rank4) const
   {
-    return numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
+    // NOTE 1 + because of dummy Moment "I_" after "H_**" to help Mutation operator (see SumStatsLibrary::initMoments_())
+    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
   }
 
   std::string asString(size_t i)

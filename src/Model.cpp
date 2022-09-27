@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 23/09/2022
+ * Last modified: 27/09/2022
  *
  */
 
@@ -25,7 +25,7 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats_()
 {
-  expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
+  expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past" (NOTE Moments' values are initialized here)
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
@@ -53,6 +53,7 @@ void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, cons
   compLogLikelihood_ = cll;
 }
 
+// this method sets the relationships among moments from different epochs dues to population splits
 void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
