@@ -96,7 +96,7 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
   return y;
 }
 
-void SumStatsLibrary::initMoments_()
+void SumStatsLibrary::initMoments_() // TODO add Dummy moments with value 1 in between H moments (include them in findHetIndex)
 {
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
