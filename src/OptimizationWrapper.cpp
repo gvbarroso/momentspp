@@ -22,9 +22,7 @@
 
 void OptimizationWrapper::optimize(const PolymorphismData& data)
 {
-  std::vector<size_t> popIndices(0);
-  size_t numEpochs = popList_.size();
-
+  size_t numEpochs = data.getPopMaps().size();
   std::string name = bpp::TextTools::toString(numEpochs) + "_epochs_model";
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
@@ -42,9 +40,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
     size_t end = (numEpochs - i - 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
-    // parse populations file
-    std::map<size_t, std::shared_ptr<Population>> pops;
-    SumStatsLibrary sslib(2, popList_[i]); // utils class to manage moments from epoch i
+    SumStatsLibrary sslib(options_.getOrder(), data.getPopMaps()[i]); // utils class to manage moments from epoch i
 
     // Epoch-specific operators (w.r.t populations present in that epoch, hence parameters)
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(sslib);
@@ -62,7 +58,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, pops));
+    epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, data.getPopMaps()[i]));
   }
 
   Model* model = new Model(name, epochs, data);

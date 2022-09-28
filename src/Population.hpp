@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 21/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -54,6 +54,16 @@ public:
   std::shared_ptr<Population> getRightParent()
   {
     return rightParent_;
+  }
+
+  void setLeftParent(std::shared_ptr<Population> parent)
+  {
+    leftParent_ = parent;
+  }
+
+  void setRightParent(std::shared_ptr<Population> parent)
+  {
+    rightParent_ = parent;
   }
 
 };

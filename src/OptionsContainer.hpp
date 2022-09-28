@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -42,7 +42,7 @@ public:
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
   order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2)),
-  totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("tot_gen", options, 1)),
+  totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("total_gen", options, 1)),
   numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options,
                                                                std::thread::hardware_concurrency(),
                                                                "", true, 4))

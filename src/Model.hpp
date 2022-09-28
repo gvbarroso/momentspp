@@ -144,14 +144,14 @@ public:
     return unfrozen;
   }
 
+  void computeExpectedSumStats();
+
 private:
   void linkMoments_();
 
   void popAdmix_();
 
   void updateEpochs_(const bpp::ParameterList& params);
-
-  void computeExpectedSumStats_();
 
   void computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat);
 

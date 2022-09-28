@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 27/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -13,7 +13,7 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   matchParametersValues(params);
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
 
-  computeExpectedSumStats_();
+  computeExpectedSumStats();
   computeCompositeLogLikelihood_(data_.getYvec(), data_.getCovarMatrix()); // e.g. for each rec. binx
 }
 
@@ -23,7 +23,7 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
     (*it)->fireParameterChanged(params);
 }
 
-void Model::computeExpectedSumStats_()
+void Model::computeExpectedSumStats()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past" (NOTE Moments' values are initialized here)
 

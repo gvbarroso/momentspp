@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 27/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -23,6 +23,8 @@
 #include <Bpp/Text/TextTools.h>
 
 #include "Moment.hpp"
+#include "Population.hpp"
+
 
 // intent is to have one instance of SumStatsLibrary per Epoch
 class SumStatsLibrary
@@ -40,16 +42,21 @@ private:
   std::vector<Moment> moments_; // sorted lexicographically based on name_
 
 public:
-  SumStatsLibrary(size_t order, const std::vector<size_t>& popIndices):
+  SumStatsLibrary(size_t order, const std::map<size_t, std::shared_ptr<Population>>& popMap):
   order_(order),
-  numPops_(popIndices.size()),
+  numPops_(popMap.size()),
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
   numHetStats_(numPops_ * numPops_),
   numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
-  popIndices_(popIndices),
+  popIndices_(0),
   moments_(0)
   {
+    popIndices_.reserve(popMap.size());
+
+    for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
+      popIndices_.emplace_back(it->first);
+
     std::sort(std::begin(popIndices_), std::end(popIndices_));
     initMoments_();
   }
@@ -125,7 +132,7 @@ public:
 
   size_t findPi2Index(size_t rank1, size_t rank2, size_t rank3, size_t rank4) const
   {
-    // NOTE 1 + because of dummy Moment "I_" after "H_**" to help Mutation operator (see SumStatsLibrary::initMoments_())
+    // NOTE 1 + because of dummy Moment "I_" after "H_**" to convert addition to multiplication in the Mutation operator (see SumStatsLibrary::initMoments_())
     return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
   }
 

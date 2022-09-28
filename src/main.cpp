@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 23/09/2022
+ * Last modified: 28/09/2022
  * Source code for moments++
  *
  */
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 27/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 28/Sep/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
@@ -57,23 +57,47 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
   // 1. parse options.getPopsFilePath()
   // 2. create populations
   // 3. link populations (see Model::linkMoments())
+  size_t numEpochs = 4;
+  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
+  popMaps.reserve(numEpochs);
+
+  for(size_t i = 0; i < numEpochs; ++i)
+  {
+    std::map<size_t, std::shared_ptr<Population>> map;
+
+    std::shared_ptr<Population> bra = std::make_shared<Population>(0, "Brazil");
+    std::shared_ptr<Population> arg = std::make_shared<Population>(1, "Argentina");
+
+    map.try_emplace(0, bra);
+    map.try_emplace(1, arg);
+
+    if(i > 0)
+    {
+      map.at(0)->setLeftParent(popMaps.back().at(0));
+      map.at(0)->setRightParent(popMaps.back().at(0));
+
+      map.at(1)->setLeftParent(popMaps.back().at(1));
+      map.at(1)->setRightParent(popMaps.back().at(1));
+    }
+
+    popMaps.emplace_back(map);
+  }
 
   try
   {
     std::cout << "Processing input data..."; std::cout.flush();
 
-    PolymorphismData data; // input data, format = ?
+    PolymorphismData data(options, popMaps); // input data, format = ?
     data.parse(options.getDataFilePath());
     data.computeSumStats();
 
     std::cout << "done." << std::endl;
 
     OptimizationWrapper optimizer(options);
-    optimizer.optimize(data); // else optimize from scratch, backing up to "backup_params.txt"
+    optimizer.optimize(data);
   }
 
   catch(std::exception& e)
