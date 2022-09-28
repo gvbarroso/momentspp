@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 23/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -14,7 +14,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   size_t numPops = getParameters().size();
   size_t numStats = sslib.getNumStats();
 
-  matrices_.resize(numPops);
+  std::cout << "numPops = " <<  numPops << std::endl;
+  matrices_.reserve(numPops);
 
   // for each population
   for(size_t i = 0; i < numPops; ++i)
@@ -25,15 +26,15 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     // for each stat in vector Y (going by rows of matrices_)
     for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
     {
-      size_t row = it - std::begin(sslib.getMoments()); // row index
-      size_t col = 0; // column index
+      int row = it - std::begin(sslib.getMoments()); // row index
+      int col = 0; // column index
       size_t popIdCount = it->countInstances(i); // count of i in moment's name
 
       if(it->getPrefix() == "DD")
       {
         if(popIdCount == 2)
         {
-          coefficients.emplace_back(Eigen::Triplet<double>(row, row -3.));
+          coefficients.emplace_back(Eigen::Triplet<double>(row, row, -3.));
 
           col = sslib.findDzIndex(i, i, i);
           coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));

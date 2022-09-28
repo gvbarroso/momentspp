@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 27/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -23,8 +23,9 @@ public:
     // for each population modeled in the epoch this operator belongs to, add Ne parameter
     for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI)
     {
-      std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("N_" + bpp::TextTools::toString((*itI)), 1e+4, bpp::Parameter::R_PLUS_STAR);
-      addParameter_(param.get()); // NOTE >= 1e+3?
+      //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("N_" + bpp::TextTools::toString((*itI)), 1e+4, bpp::Parameter::R_PLUS_STAR);
+      //addParameter_(param); // NOTE >= 1e+3?
+      addParameter_(new bpp::Parameter("N_" + bpp::TextTools::toString(*itI), 1e+4, bpp::Parameter::R_PLUS_STAR));
     }
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters

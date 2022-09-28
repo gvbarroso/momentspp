@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 27/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -13,6 +13,7 @@
 #include <cstring>
 #include <vector>
 #include <cstdlib>
+#include <iostream>
 
 #include <boost/algorithm/string.hpp>
 
@@ -57,9 +58,9 @@ public:
     {
       for(size_t i = 1; i < splitName.size(); ++i)
         popIndices_.push_back(std::stoul(splitName[i]));
-
-      std::sort(std::begin(popIndices_), std::end(popIndices_));
     }
+
+    std::sort(std::begin(popIndices_), std::end(popIndices_));
   }
 
   Moment(const std::string& name, double value, std::shared_ptr<Moment> parent):

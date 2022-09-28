@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 27/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -49,7 +49,7 @@ public:
   Epoch(const SumStatsLibrary& ssl, size_t start, size_t end, const std::string& name,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
         const std::map<size_t, std::shared_ptr<Population>>& pops):
-  bpp::AbstractParameterAliasable(name), // set namespace
+  bpp::AbstractParameterAliasable(""), // set namespace TODO use name somehow
   ssl_(ssl),
   startGen_(start),
   endGen_(end),
@@ -66,10 +66,7 @@ public:
   }
 
   ~Epoch()
-  {
-    std::cout << "Destruction of Epoch with parameters:\n";
-    getParameters().printParameters(std::cout);
-  }
+  { }
 
   Epoch* clone() const
   {

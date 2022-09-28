@@ -25,7 +25,8 @@ void Selection::updateMatrices_()
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName); // from within itself
 
-    solvers_[i].eigenvalues() *= (newVal / prevVal);
-    prevParams_.setParameterValue(paramName, newVal);
+    matrices_[i] *= (newVal / prevVal);
   }
+
+  prevParams_.matchParametersValues(getParameters());
 }

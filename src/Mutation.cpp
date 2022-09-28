@@ -19,11 +19,11 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   // fills in delta matrix w.r.t. two-locus diversity (via matrix multiplication)
   for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
-    size_t row = it - std::begin(sslib.getMoments()); // row index
+    int row = it - std::begin(sslib.getMoments()); // row index
 
     if(it->getPrefix() == "H") // introducing one-locus diversity
     {
-      size_t col = sslib.getDummyMoment().getPosition(); // at column of Dummy Moment
+      int col = sslib.getDummyMoment().getPosition(); // at column of Dummy Moment
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // to work with matrix multiplication inside Epoc::computeExpectedSumStats()
     }
 
@@ -34,7 +34,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       size_t p3 = it->getPopIndices()[2]; // k pop
       size_t p4 = it->getPopIndices()[3]; // l pop
 
-      size_t col = sslib.findHetIndex(p1, p2);
+      int col = sslib.findHetIndex(p1, p2);
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
       col = sslib.findHetIndex(p3, p4);

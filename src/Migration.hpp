@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 27/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -29,8 +29,9 @@ public:
       {
         if((*itI) != (*itJ)) // if population indices are different
         {
-          std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValue, ic);
-          addParameter_(param.get());
+          //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValue, ic);
+          //addParameter_(param.get());
+          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValue, ic));
         }
       }
     }
@@ -51,8 +52,8 @@ public:
   // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
   size_t fetchNumPops()
   {
-    int numPops = 0; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
-    int n = static_cast<int>(matrices_.size()); // raw value of P^2 - P
+    int numPops = 2; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
+    int n = static_cast<int>(getParameters().size()); // raw value of P^2 - P
 
     for(int i = 2; i < n; ++i)
     {

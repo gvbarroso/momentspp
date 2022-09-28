@@ -93,7 +93,7 @@ void SumStatsLibrary::setPi2MomentValue(size_t id1, size_t id2, size_t id3, size
   moments_[focalMomIndex].setValue(value);
 }
 
-/*Eigen::VectorXd SumStatsLibrary::fetchYvec()
+Eigen::VectorXd SumStatsLibrary::fetchYvec()
 {
   Eigen::VectorXd y(moments_.size());
 
@@ -101,7 +101,7 @@ void SumStatsLibrary::setPi2MomentValue(size_t id1, size_t id2, size_t id3, size
     y(i) = moments_[i].getValue();
 
   return y;
-}*/
+}
 
 void SumStatsLibrary::initMoments_()
 {
@@ -123,7 +123,7 @@ void SumStatsLibrary::initMoments_()
   }
 
   // NOTE adds Dummy Moment lexicographically after H_ stats to transform matrix addition of Mutation into matrix multiplication (see  Mutation::setUpMatrices_())
-  moments_.push_back(Moment("I_", 1.));
+  moments_.push_back(Moment("I", 1.));
 
   // this crucially determines the ascending lexicographical order of stats in the rows of transition matrices
   std::sort(std::begin(moments_), std::end(moments_), [](const Moment& a, const Moment& b) { return a.getName() < b.getName(); } );

@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
     std::cout << "Processing input data..."; std::cout.flush();
 
     PolymorphismData data(options, popMaps); // input data, format = ?
-    data.parse(options.getDataFilePath());
-    data.computeSumStats();
+    //data.parse(options.getDataFilePath());
+    //data.computeSumStats();
 
     std::cout << "done." << std::endl;
 

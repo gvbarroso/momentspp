@@ -19,7 +19,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 
   for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
-    size_t row = it - std::begin(sslib.getMoments()); // recombination matrix only has entries in main diagonal
+    int row = it - std::begin(sslib.getMoments()); // recombination matrix only has entries in main diagonal
 
     if(it->getPrefix() == "DD")
       coefficients.push_back(Eigen::Triplet<double>(row, row, -2.));

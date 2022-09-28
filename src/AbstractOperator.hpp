@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 27/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -55,10 +55,7 @@ public:
 
 public:
   virtual ~AbstractOperator()
-  {
-    std::cout << "Destruction of Operator with parameters:\n";
-    getParameters().printParameters(std::cout);
-  }
+  { }
 
   void setParameters(const bpp::ParameterList& params)
   {

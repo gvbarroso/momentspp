@@ -62,10 +62,11 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
   }
 
   Model* model = new Model(name, epochs, data);
+  model->computeExpectedSumStats();
   // TODO alias r and mu among epochs
 
-  fitModel_(model);
-  writeEstimatesToFile_(model);
+  //fitModel_(model);
+  //writeEstimatesToFile_(model);
 
   delete model;
 }

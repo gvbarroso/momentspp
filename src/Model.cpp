@@ -34,6 +34,8 @@ void Model::computeExpectedSumStats()
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
+
+  std::cout << "Here are the expected sum stats: " << expected_ << "\n";
 }
 
 void Model::popAdmix_()

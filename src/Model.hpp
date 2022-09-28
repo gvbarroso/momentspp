@@ -64,10 +64,7 @@ public:
   }
 
   ~Model()
-  {
-    std::cout << "Destruction of Model with parameters:\n";
-    getParameters().printParameters(std::cout);
-  }
+  { }
 
   Model* clone() const
   {

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 23/09/2022
+ * Last modified: 28/09/2022
  *
  */
 
@@ -13,6 +13,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
   size_t numPops = fetchNumPops();
   size_t numStats = sslib.getNumStats();
 
+  std::cout << "numPops = " <<  numPops << std::endl;
   matrices_.reserve(numPops * (numPops - 1));
 
   for(size_t i = 0; i < numPops; ++i) // for i in m_ij (children pop id)
@@ -30,9 +31,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         // for each stat in vector Y (rows of focal matrix), lexicographically sorted based on Moments names
         for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
         {
+          int row = it - std::begin(sslib.getMoments()); // row index
+          int col = 0; // column index
           size_t parentPopIdCount = it->countInstances(j); // count of j in Moment's name
-          size_t row = it - std::begin(sslib.getMoments()); // row index
-          size_t col = 0; // column index
 
           if(it->getPrefix() == "DD")
           {
