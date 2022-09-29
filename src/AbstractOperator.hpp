@@ -93,7 +93,7 @@ public:
     mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
 
     getParameters().printParameters(std::cout);
-    std::cout << mat << std::endl;
+    std::cout << std::setprecision(12) << mat << std::endl;
 
     return mat;
   }

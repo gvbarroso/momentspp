@@ -53,9 +53,12 @@ void Epoch::transferStatistics(Eigen::VectorXd& y)
   // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
   for(size_t i = 0; i < tmp.size(); ++i)
   {
-    int idx = ssl_.getMoments()[i].getParent()->getPosition(); // WARNING if it has a parent
-    std::cout << "i = " << i << "; idx = " << idx << "; val = " << y(idx) << std::endl;
-    tmp(i) = y(idx);
+    if(ssl_.getMoments()[i].getParent() != nullptr)
+    {
+      int idx = ssl_.getMoments()[i].getParent()->getPosition(); // WARNING if it has a parent
+      std::cout << "i = " << i << "; idx = " << idx << "; val = " << y(idx) << std::endl;
+      tmp(i) = y(idx);
+    }
   }
 
   y = tmp; // swap
