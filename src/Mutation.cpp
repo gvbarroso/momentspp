@@ -8,6 +8,7 @@
 
 #include "Mutation.hpp"
 
+
 void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numStats = sslib.getNumStats();

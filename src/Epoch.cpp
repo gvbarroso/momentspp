@@ -45,10 +45,18 @@ void Epoch::computeSteadyState_()
 void Epoch::transferStatistics(Eigen::VectorXd& y)
 {
   Eigen::VectorXd tmp(ssl_.getMoments().size()); // y and tmp have potentially different sizes
+  tmp.setZero();
 
-  // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch, from which y comes
+  std::cout << "size  of y = " << y.size() << "; size of tmp = " << tmp.size() << std::endl;
+  std::cout << "y = " << y << std::endl;
+
+  // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
   for(size_t i = 0; i < tmp.size(); ++i)
-    tmp(i) = y[ssl_.getMoments()[i].getParent()->getPosition()];
+  {
+    int idx = ssl_.getMoments()[i].getParent()->getPosition(); // WARNING if it has a parent
+    std::cout << "i = " << i << "; idx = " << idx << "; val = " << y(idx) << std::endl;
+    tmp(i) = y(idx);
+  }
 
   y = tmp; // swap
 }

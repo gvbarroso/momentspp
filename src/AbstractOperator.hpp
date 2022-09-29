@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 28/09/2022
+ * Last modified: 29/09/2022
  *
  */
 
@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 #include <memory>
 
@@ -79,7 +80,7 @@ public:
   }
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
-  Eigen::SparseMatrix<double> fetchCombinedMatrix()
+  virtual Eigen::SparseMatrix<double> fetchCombinedMatrix()
   {
     Eigen::SparseMatrix<double> mat = matrices_[0];
 
@@ -89,7 +90,12 @@ public:
         mat += matrices_[i];
     }
 
-    return mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
+    mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
+
+    getParameters().printParameters(std::cout);
+    std::cout << mat << std::endl;
+
+    return mat;
   }
 
 public:

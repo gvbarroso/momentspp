@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 28/09/2022
+ * Last modified: 29/09/2022
  *
  */
 
@@ -9,12 +9,12 @@
 
 #include "Drift.hpp"
 
+
 void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters().size();
   size_t numStats = sslib.getNumStats();
 
-  std::cout << "numPops = " <<  numPops << std::endl;
   matrices_.reserve(numPops);
 
   // for each population
@@ -113,7 +113,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     Eigen::SparseMatrix<double> mat(numStats, numStats);
     mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
     mat.makeCompressed();
-    mat *= getParameterValue("N_" + bpp::TextTools::toString(i)); // scales because of updateMatrices_()
+    mat *= (getParameterValue("1/N_" + bpp::TextTools::toString(i))); // scales because of updateMatrices_()
     matrices_.emplace_back(mat); // at the i-th position of vector, where i index the population
   }
 }
@@ -124,12 +124,12 @@ void Drift::updateMatrices_()
 
   for(size_t i = 0; i < matrices_.size(); ++i) // one matrix / eigensolver per population (within each Epoch)
   {
-    paramName = "N_" + bpp::TextTools::toString(i);
+    paramName = "1/N_" + bpp::TextTools::toString(i);
 
     double prevVal = prevParams_.getParameterValue(paramName); // old
     double newVal = getParameterValue(paramName); // new
 
-    matrices_[i] *= (prevVal / newVal); // for Drift, it's inverted (relative to other operators) because we scale matrices by 1 / N
+    matrices_[i] *= (newVal / prevVal);
   }
 
   prevParams_.matchParametersValues(getParameters());

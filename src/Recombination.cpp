@@ -8,7 +8,6 @@
 
 #include "Recombination.hpp"
 
-
 void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numStats = sslib.getNumStats();
@@ -22,10 +21,10 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     int row = it - std::begin(sslib.getMoments()); // recombination matrix only has entries in main diagonal
 
     if(it->getPrefix() == "DD")
-      coefficients.push_back(Eigen::Triplet<double>(row, row, -2.));
+      coefficients.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
     else if(it->getPrefix() == "Dz")
-      coefficients.push_back(Eigen::Triplet<double>(row, row, -1.));
+      coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
   }
 
   Eigen::SparseMatrix<double> mat(numStats, numStats);

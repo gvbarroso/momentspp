@@ -1,19 +1,19 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 28/09/2022
+ * Last modified: 29/09/2022
  *
  */
 
 
 #include "Migration.hpp"
 
+
 void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = fetchNumPops();
   size_t numStats = sslib.getNumStats();
 
-  std::cout << "numPops = " <<  numPops << std::endl;
   matrices_.reserve(numPops * (numPops - 1));
 
   for(size_t i = 0; i < numPops; ++i) // for i in m_ij (children pop id)
@@ -33,7 +33,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           int row = it - std::begin(sslib.getMoments()); // row index
           int col = 0; // column index
-          size_t parentPopIdCount = it->countInstances(j); // count of j in Moment's name
+          int parentPopIdCount = static_cast<int>(it->countInstances(j)); // count of j in Moment's name
 
           if(it->getPrefix() == "DD")
           {
@@ -198,8 +198,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if(it->getPrefix() == "pi2")
           {
-            size_t countLeft = 0; // count of j before ';' character in pi2(**;**)
-            size_t countRight = 0; // count of j after ';' character in pi2(**;**)
+            int countLeft = 0; // count of j before ';' character in pi2(**;**)
+            int countRight = 0; // count of j after ';' character in pi2(**;**)
 
             if(it->getPopIndices()[0] == j)
              ++countLeft;
