@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 27/09/2022
+ * Last modified: 30/09/2022
  *
  */
 
@@ -101,6 +101,12 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
     y(i) = moments_[i].getValue();
 
   return y;
+}
+
+void SumStatsLibrary::printMoments()
+{
+  for(size_t i = 0; i < moments_.size(); ++i)
+    std::cout << moments_[i].getPosition() << " | " << moments_[i].getName() << " = " << moments_[i].getValue() << "\n";
 }
 
 void SumStatsLibrary::initMoments_()

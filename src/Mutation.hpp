@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 28/09/2022
+ * Last modified: 30/09/2022
  *
  */
 
@@ -16,11 +16,9 @@ class Mutation:
 {
 
 public:
-  Mutation(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Mutation(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getNumStats())
   {
-    double initValue = 1e-8;
-
     //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("u_0", initValue, ic);
     //addParameter_(param.get());
     addParameter_(new bpp::Parameter("mu_0", initValue, ic));

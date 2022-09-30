@@ -25,7 +25,7 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats()
 {
-  expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past" (NOTE Moments' values are initialized here)
+  expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
@@ -34,8 +34,9 @@ void Model::computeExpectedSumStats()
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
-
-  std::cout << "Here are the expected sum stats: " << expected_ << "\n";
+  epochs_.back()->updateMoments(expected_);
+  epochs_.back()->getSslib().printMoments();
+  //std::cout << "Here are the expected sum stats: " << std::setprecision(12) << expected_ << "\n";
 }
 
 void Model::popAdmix_()
@@ -178,6 +179,10 @@ void Model::linkMoments_()
 
         it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getPi2Moment(prevP1, prevP2, prevP3, prevP4)));
       }
+
+      else if(it->getPrefix() == "I")
+        it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getDummyMoment()));
+
     } // ends for loop over moments
   } // ends for loop over epochs
 }

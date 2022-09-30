@@ -26,7 +26,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
 void Epoch::computeSteadyState_()
 {
-  updateOperators_(getParameters());
+  //updateOperators_(getParameters());
   Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init
 
   // NOTE we must be careful with the order of operations
@@ -39,6 +39,8 @@ void Epoch::computeSteadyState_()
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
   steadYstate_ = es.eigenvectors().real().col(0);
 
+  std::cout << std::setprecision(2) << transitionMatrix_ << std::endl;
+  //std::cout << es.eigenvectors() << std::endl;
   std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "; associated eigenvector: " << steadYstate_ << std::endl;
 }
 
@@ -47,18 +49,11 @@ void Epoch::transferStatistics(Eigen::VectorXd& y)
   Eigen::VectorXd tmp(ssl_.getMoments().size()); // y and tmp have potentially different sizes
   tmp.setZero();
 
-  std::cout << "size  of y = " << y.size() << "; size of tmp = " << tmp.size() << std::endl;
-  std::cout << "y = " << y << std::endl;
-
   // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
   for(size_t i = 0; i < tmp.size(); ++i)
   {
-    if(ssl_.getMoments()[i].getParent() != nullptr)
-    {
-      int idx = ssl_.getMoments()[i].getParent()->getPosition(); // WARNING if it has a parent
-      std::cout << "i = " << i << "; idx = " << idx << "; val = " << y(idx) << std::endl;
-      tmp(i) = y(idx);
-    }
+    int idx = ssl_.getMoments()[i].getParent()->getPosition();
+    tmp(i) = y(idx);
   }
 
   y = tmp; // swap

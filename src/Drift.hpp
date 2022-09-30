@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 29/09/2022
+ * Last modified: 30/09/2022
  *
  */
 
@@ -17,11 +17,9 @@ class Drift:
 {
 
 public:
-  Drift(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Drift(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getNumStats())
   {
-    double initValue = 1e-4;
-
     // for each population modeled in the epoch this operator belongs to, add Ne parameter
     for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI)
     {

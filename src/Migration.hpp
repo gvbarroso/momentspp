@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 28/09/2022
+ * Last modified: 30/09/2022
  *
  */
 
@@ -16,11 +16,9 @@ class Migration:
 {
 
 public:
-  Migration(std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Migration(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getNumStats())
   {
-    double initValue = 1e-6;
-
     // NOTE the constraint that individual migration rates are "small" (built in ic) guaranteed that the rows
     // of the matrix (m_ij's) sum to 1, with main diagonal entries = 1 - sum of values < 1e=5
     for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI) // for each population modeled in epoch i

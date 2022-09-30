@@ -143,6 +143,8 @@ public:
 
   Eigen::VectorXd fetchYvec();
 
+  void printMoments();
+
 private:
   void initMoments_();
 

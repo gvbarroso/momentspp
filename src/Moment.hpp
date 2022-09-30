@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 28/09/2022
+ * Last modified: 30/09/2022
  *
  */
 
@@ -59,8 +59,6 @@ public:
       for(size_t i = 1; i < splitName.size(); ++i)
         popIndices_.push_back(std::stoul(splitName[i]));
     }
-
-    std::sort(std::begin(popIndices_), std::end(popIndices_));
   }
 
   Moment(const std::string& name, double value, std::shared_ptr<Moment> parent):
@@ -79,8 +77,6 @@ public:
     {
       for(size_t i = 1; i < splitName.size(); ++i)
         popIndices_.push_back(std::stoul(splitName[i]));
-
-      std::sort(std::begin(popIndices_), std::end(popIndices_));
     }
   }
 
@@ -137,7 +133,7 @@ public:
 
   bool hasPopIndex(size_t index)
   {
-    return std::binary_search(std::begin(popIndices_), std::end(popIndices_), index);
+    return !(std::find(std::begin(popIndices_), std::end(popIndices_), index) == std::end(popIndices_));
   }
 
   size_t countInstances(size_t index) const

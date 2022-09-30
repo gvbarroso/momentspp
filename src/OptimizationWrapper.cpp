@@ -31,6 +31,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
   // the range of values that our "small" rates are allowed to take in
   std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-1, true, true);
 
+  double initParamVal = 1e-1;
   // for now, all epochs share recombination and mutation parameters
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
@@ -43,12 +44,12 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     SumStatsLibrary sslib(options_.getOrder(), data.getPopMaps()[i]); // utils class to manage moments from epoch i
 
     // Epoch-specific operators (w.r.t populations present in that epoch, hence parameters)
-    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(ic, sslib);
-    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(ic, sslib);
+    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(initParamVal, ic, sslib);
+    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(initParamVal, ic, sslib);
     // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
     // even though we prob. want single r and mu params in Model
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(ic, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(ic, sslib);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(initParamVal, ic, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(initParamVal, ic, sslib);
 
      // include operators in the correct order for matrix operations
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
