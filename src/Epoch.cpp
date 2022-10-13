@@ -39,9 +39,10 @@ void Epoch::computeSteadyState_()
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
   steadYstate_ = es.eigenvectors().real().col(0);
 
-  std::cout << std::setprecision(2) << transitionMatrix_ << std::endl;
+  std::cout << std::setprecision(7) << transitionMatrix_ << std::endl;
   //std::cout << es.eigenvectors() << std::endl;
-  std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "; associated eigenvector: " << steadYstate_ << std::endl;
+  std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "\n";
+  //std::cout << "associated eigenvector\n: " << steadYstate_ << "\n";
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y)

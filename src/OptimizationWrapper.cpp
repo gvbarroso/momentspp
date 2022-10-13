@@ -29,9 +29,9 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
   epochs.reserve(numEpochs);
 
   // the range of values that our "small" rates are allowed to take in
-  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-1, true, true);
+  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-0, true, true);
 
-  double initParamVal = 1e-1;
+  double initParamVal = 1e-0;
   // for now, all epochs share recombination and mutation parameters
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {

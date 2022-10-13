@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 27/09/2022
+ * Last modified: 13/10/2022
  *
  */
 
@@ -35,11 +35,17 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       size_t p3 = it->getPopIndices()[2]; // k pop
       size_t p4 = it->getPopIndices()[3]; // l pop
 
-      int col = sslib.findHetIndex(p1, p2);
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+      int col = sslib.findHetIndex(p1, p2); // introducing 2-locus het via mutation in right locus when left is already polymorphic
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-      col = sslib.findHetIndex(p3, p4);
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+      col = sslib.findHetIndex(p2, p1); // permutes
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+      col = sslib.findHetIndex(p3, p4); // introducing 2-locus het via mutation in right locus when left is already polymorphic
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+      col = sslib.findHetIndex(p4, p3); // permutes
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
   }
 

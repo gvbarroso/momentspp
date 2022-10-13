@@ -83,9 +83,10 @@ public:
   virtual Eigen::SparseMatrix<double> fetchCombinedMatrix()
   {
     Eigen::SparseMatrix<double> mat = matrices_[0];
-
+    //std::cout << std::setprecision(1) << matrices_[0] << std::endl;
     if(matrices_.size() > 1)
     {
+      //std::cout << std::setprecision(1) << matrices_[1] << std::endl;
       for(size_t i = 1; i < matrices_.size(); ++i)
         mat += matrices_[i];
     }
@@ -93,7 +94,7 @@ public:
     mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
 
     getParameters().printParameters(std::cout);
-    std::cout << std::setprecision(1) << mat << std::endl;
+    std::cout << std::setprecision(0) << mat << std::endl;
 
     return mat;
   }
