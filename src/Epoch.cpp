@@ -5,6 +5,7 @@
  *
  */
 
+#include <ios>
 
 #include "Epoch.hpp"
 
@@ -14,9 +15,9 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   if(matchParametersValues(params))
     updateOperators_(params);
 
-  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init
+  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
 
-  // NOTE we must be careful with the order of operations
+  // we must be careful with the order of operations
   for(size_t i = 1; i < operators_.size(); ++i)
     mat = mat * operators_[i]->fetchCombinedMatrix();
 
@@ -27,22 +28,29 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 void Epoch::computeSteadyState_()
 {
   //updateOperators_(getParameters());
-  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init
+  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
+  operators_[0]->getParameters().printParameters(std::cout);
+  std::cout << std::scientific << mat << std::endl;
 
-  // NOTE we must be careful with the order of operations
+  // we must be careful with the order of operations
   for(size_t i = 1; i < operators_.size(); ++i)
-    mat = mat * operators_[i]->fetchCombinedMatrix();
+  {
+    auto m = operators_[i]->fetchCombinedMatrix();
+    mat = m * mat;
+    operators_[i]->getParameters().printParameters(std::cout);
+    std::cout << std::scientific << m << std::endl;
+    std::cout << std::scientific << mat << std::endl;
+  }
 
   transitionMatrix_ = mat; // converts to dense format
 
   // we find the eigenvector associated with (leading) eigenvalue == 1 in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
-  steadYstate_ = es.eigenvectors().real().col(0);
+  steadYstate_ = es.eigenvectors().real().col(0); // TODO must search position of lambda = 1
 
-  std::cout << std::setprecision(7) << transitionMatrix_ << std::endl;
-  //std::cout << es.eigenvectors() << std::endl;
-  std::cout << "leading eigenvalue = " << es.eigenvalues()[0] << "\n";
-  //std::cout << "associated eigenvector\n: " << steadYstate_ << "\n";
+  //std::cout << std::setprecision(7) << transitionMatrix_ << "\n";
+  std::cout << es.eigenvectors() << "\n";
+  std::cout << es.eigenvalues() << "\n";
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y)

@@ -9,6 +9,7 @@
 #ifndef _OPERATOR_H_
 #define _OPERATOR_H_
 
+#include <ios>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -91,10 +92,13 @@ public:
         mat += matrices_[i];
     }
 
+    //getParameters().printParameters(std::cout);
+    //std::cout << std::scientific << mat << std::endl;
+
     mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
 
-    getParameters().printParameters(std::cout);
-    std::cout << std::setprecision(0) << mat << std::endl;
+    //getParameters().printParameters(std::cout);
+    //std::cout << std::scientific << mat << std::endl;
 
     return mat;
   }

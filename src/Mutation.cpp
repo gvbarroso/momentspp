@@ -21,10 +21,11 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
     int row = it - std::begin(sslib.getMoments()); // row index
+    int col = -1;
 
     if(it->getPrefix() == "H") // introducing one-locus diversity
     {
-      int col = sslib.getDummyMoment().getPosition(); // at column of Dummy Moment
+      col = sslib.getDummyMoment().getPosition(); // at column of Dummy Moment
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // to work with matrix multiplication inside Epoc::computeExpectedSumStats()
     }
 
@@ -35,17 +36,11 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       size_t p3 = it->getPopIndices()[2]; // k pop
       size_t p4 = it->getPopIndices()[3]; // l pop
 
-      int col = sslib.findHetIndex(p1, p2); // introducing 2-locus het via mutation in right locus when left is already polymorphic
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-      col = sslib.findHetIndex(p2, p1); // permutes
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+      col = sslib.findHetIndex(p1, p2); // introducing 2-locus het via mutation in right locus when left is already polymorphic
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
       col = sslib.findHetIndex(p3, p4); // introducing 2-locus het via mutation in right locus when left is already polymorphic
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-      col = sslib.findHetIndex(p4, p3); // permutes
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
     }
   }
 

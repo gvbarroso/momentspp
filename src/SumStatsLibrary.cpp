@@ -5,6 +5,7 @@
  *
  */
 
+#include <ios>
 
 #include "SumStatsLibrary.hpp"
 
@@ -106,7 +107,7 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
 void SumStatsLibrary::printMoments()
 {
   for(size_t i = 0; i < moments_.size(); ++i)
-    std::cout << moments_[i].getPosition() << " | " << moments_[i].getName() << " = " << moments_[i].getValue() << "\n";
+    std::cout << std::scientific << moments_[i].getPosition() << " | " << moments_[i].getName() << " = " << moments_[i].getValue() << "\n";
 }
 
 void SumStatsLibrary::initMoments_()

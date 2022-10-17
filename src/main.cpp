@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
   // 1. parse options.getPopsFilePath()
   // 2. create populations
   // 3. link populations (see Model::linkMoments())
-  size_t numEpochs = 4;
+  size_t numEpochs = 1;
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
   popMaps.reserve(numEpochs);
 

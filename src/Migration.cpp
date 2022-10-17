@@ -32,7 +32,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
         {
           int row = it - std::begin(sslib.getMoments()); // row index
-          int col = 0; // column index
+          int col = -1; // column index
           int childPopIdCount = static_cast<int>(it->countInstances(j)); // count of j in Moment's name
 
           if(it->getPrefix() == "DD")
@@ -42,7 +42,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             if(childPopIdCount == 1)
             {
               col = sslib.findDdIndex(i, i);
-              coefficients.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount / 2.));
+              coefficients.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount));
             }
 
             else if(childPopIdCount == 2)
