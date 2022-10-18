@@ -36,7 +36,6 @@ void Model::computeExpectedSumStats()
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_);
   epochs_.back()->getSslib().printMoments();
-  //std::cout << "Here are the expected sum stats: " << std::setprecision(12) << expected_ << "\n";
 }
 
 void Model::popAdmix_()

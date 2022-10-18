@@ -92,8 +92,9 @@ public:
         mat += matrices_[i];
     }
 
-    //getParameters().printParameters(std::cout);
+    getParameters().printParameters(std::cout);
     //std::cout << std::scientific << mat << std::endl;
+    std::cout << "\n\nsum = " << mat.sum() << "\n\n";
 
     mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
 

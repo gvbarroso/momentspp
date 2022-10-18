@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 29/09/2022
+ * Last modified: 18/10/2022
  *
  */
 
@@ -66,12 +66,15 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
         }
 
-        else
+        else // if D_*_z**
         {
           if(popIdCount == 2)  // D_*_z_ii
           {
             col = sslib.findDdIndex(i, it->getPopIndices()[0]);
-            coefficients.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+            coefficients.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+
+            col = sslib.findDdIndex(it->getPopIndices()[0], i);
+            coefficients.emplace_back(Eigen::Triplet<double>(row, col, 2.));
           }
         }
       }
@@ -101,7 +104,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coefficients.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
-        else if((countLeft == 2) || (countLeft == 2))
+        else if((countLeft == 2) || (countRight == 2))
           coefficients.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 

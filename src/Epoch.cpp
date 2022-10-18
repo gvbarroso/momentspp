@@ -29,7 +29,7 @@ void Epoch::computeSteadyState_()
 {
   //updateOperators_(getParameters());
   Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
-  operators_[0]->getParameters().printParameters(std::cout);
+  //operators_[0]->getParameters().printParameters(std::cout);
   std::cout << std::scientific << mat << std::endl;
 
   // we must be careful with the order of operations
@@ -37,7 +37,7 @@ void Epoch::computeSteadyState_()
   {
     auto m = operators_[i]->fetchCombinedMatrix();
     mat = m * mat;
-    operators_[i]->getParameters().printParameters(std::cout);
+    //operators_[i]->getParameters().printParameters(std::cout);
     std::cout << std::scientific << m << std::endl;
     std::cout << std::scientific << mat << std::endl;
   }
@@ -46,11 +46,19 @@ void Epoch::computeSteadyState_()
 
   // we find the eigenvector associated with (leading) eigenvalue == 1 in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
-  steadYstate_ = es.eigenvectors().real().col(0); // TODO must search position of lambda = 1
+  for(int i = 0; i < es.eigenvalues().size(); ++i)
+  {
+    std::cout << "\n" << std::setprecision(32) << es.eigenvalues().real()(i) << "\n";
+    std::cout << es.eigenvectors().col(i) << "\n\n";
+
+    if(es.eigenvalues().real()(i) == 1.)
+      steadYstate_ = es.eigenvectors().col(i).real();
+  }
 
   //std::cout << std::setprecision(7) << transitionMatrix_ << "\n";
-  std::cout << es.eigenvectors() << "\n";
-  std::cout << es.eigenvalues() << "\n";
+  std::cout << std::setprecision(7) << steadYstate_ << "\n";
+  //std::cout << es.eigenvectors().real() << "\n";
+  //std::cout << es.eigenvalues().real() << "\n";
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y)
