@@ -48,16 +48,16 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(initParamVal, ic, sslib);
     // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
     // even though we prob. want single r and mu params in Model
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(initParamVal, ic, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(initParamVal, ic, sslib);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(1e-4, ic, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(1e-6, ic, sslib);
 
      // include operators in the correct order for matrix operations
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
-    operators.emplace_back(migOp);
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
+    operators.emplace_back(migOp);
 
     epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, data.getPopMaps()[i]));
   }

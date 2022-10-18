@@ -112,7 +112,7 @@ public:
 
   void computeExpectedSumStats(Eigen::VectorXd& y)
   {
-    std::cout << "Epoch::computeExpectedSumStats..." << transitionMatrix_.size() << "\tx\t" << y.size() << std::endl;
+    std::cout << "Epoch::computeExpectedSumStats..." << transitionMatrix_.cols() << "\tx\t" << y.size() << std::endl;
     transitionMatrix_ * y;
   }
 

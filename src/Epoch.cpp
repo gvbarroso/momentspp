@@ -46,15 +46,18 @@ void Epoch::computeSteadyState_()
 
   // we find the eigenvector associated with (leading) eigenvalue == 1 in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
+  int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {
     std::cout << "\n" << std::setprecision(32) << es.eigenvalues().real()(i) << "\n";
     std::cout << es.eigenvectors().col(i) << "\n\n";
 
-    if(es.eigenvalues().real()(i) == 1.)
-      steadYstate_ = es.eigenvectors().col(i).real();
+    // finding the maximum value (should be 1., but searching for equality is problematic due to precision)
+    if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
+      idx = i;
   }
 
+  steadYstate_ = es.eigenvectors().col(idx).real(); // TODO divide by I
   //std::cout << std::setprecision(7) << transitionMatrix_ << "\n";
   std::cout << std::setprecision(7) << steadYstate_ << "\n";
   //std::cout << es.eigenvectors().real() << "\n";
