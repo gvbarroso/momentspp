@@ -16,7 +16,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
   matrices_.reserve(numPops * (numPops - 1));
 
-  for(size_t i = 0; i < numPops; ++i) // for i in m_ij (children pop id)
+  for(size_t i = 0; i < numPops; ++i) // for i in m_ij (child pop id)
   {
     for(size_t j = 0; j < numPops; ++j) // for j in m_ij (parent pop id)
     {

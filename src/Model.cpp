@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 28/09/2022
+ * Last modified: 21/10/2022
  *
  */
 
@@ -35,7 +35,14 @@ void Model::computeExpectedSumStats()
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_);
-  epochs_.back()->getSslib().printMoments();
+  epochs_.back()->getSslib().printMoments(std::cout);
+
+  #ifdef VERBOSE
+  epochs_.back()->timeTest(10000);
+  Log logger;
+  logger.openFile("moments.txt");
+  epochs_.back()->getSslib().printMoments(logger.getLogFile());
+  #endif
 }
 
 void Model::popAdmix_()
@@ -69,14 +76,14 @@ void Model::linkMoments_()
         size_t prevP1 = 0;
         size_t prevP2 = 0;
 
-        size_t focalP1 = it->getPopIndices()[0]; // i in DD_i_j
+        size_t focalP1 = it->getPopIndices()[0]; // i in DD_i_*
         size_t p1LeftParentId = epochs_[i]->getPops().at(focalP1)->getLeftParent()->getId();
         size_t p1RightParentId = epochs_[i]->getPops().at(focalP1)->getRightParent()->getId();
 
         if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
           prevP1 = p1LeftParentId;
 
-        size_t focalP2 = it->getPopIndices()[1]; // j in DD_i_j
+        size_t focalP2 = it->getPopIndices()[1]; // j in DD_*_j
         size_t p2LeftParentId = epochs_[i]->getPops().at(focalP2)->getLeftParent()->getId();
         size_t p2RightParentId = epochs_[i]->getPops().at(focalP2)->getRightParent()->getId();
 

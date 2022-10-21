@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 28/09/2022
+ * Last modified: 21/10/2022
  *
  */
 
@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cstring>
 #include <utility>
+#include <ostream>
 
 #include <Eigen/Core>
 
@@ -136,6 +137,11 @@ public:
     return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
   }
 
+  size_t getDummyIndex() const
+  {
+    return numDDStats_ + numDzStats_ + numHetStats_;
+  }
+
   std::string asString(size_t i)
   {
     return bpp::TextTools::toString(i);
@@ -143,7 +149,7 @@ public:
 
   Eigen::VectorXd fetchYvec();
 
-  void printMoments();
+  void printMoments(std::ostream& stream);
 
 private:
   void initMoments_();

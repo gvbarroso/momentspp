@@ -1,11 +1,13 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 23/09/2022
+ * Last modified: 19/10/2022
  *
  */
 
 #include <ios>
+
+#include "Log.hpp"
 
 #include "Epoch.hpp"
 
@@ -17,7 +19,6 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
   Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
 
-  // we must be careful with the order of operations
   for(size_t i = 1; i < operators_.size(); ++i)
     mat = mat * operators_[i]->fetchCombinedMatrix();
 
@@ -25,22 +26,56 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   eigenDec_.exponentiate(transitionMatrix_, duration()); // matrix passed as non-const ref
 }
 
+void Epoch::timeTest(size_t g)
+{
+  Log logger;
+  logger.openFile("timing.txt");
+
+  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
+
+  for(size_t i = 1; i < operators_.size(); ++i)
+    mat = mat * operators_[i]->fetchCombinedMatrix();
+
+  logger.start_timer();
+  for(size_t i = 0; i < g; ++i)
+    mat = mat * mat;
+  logger.stop_timer(1e+6, "naive mat mult x" + bpp::TextTools::toString(g), "s");
+
+  logger.start_timer();
+  transitionMatrix_ = mat; // converts to dense format
+  eigenDec_.exponentiate(transitionMatrix_, g); // matrix passed as non-const ref
+  logger.stop_timer(1e+6, "eigen-dec mat mult x" + bpp::TextTools::toString(g), "s");
+}
+
 void Epoch::computeSteadyState_()
 {
-  //updateOperators_(getParameters());
-  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
-  //operators_[0]->getParameters().printParameters(std::cout);
-  std::cout << std::scientific << mat << std::endl;
+  #ifdef VERBOSE
+  Log logger;
+  logger.openFile("matrices.txt");
+  Eigen::SparseMatrix<double> tmp(ssl_.getNumStats(), ssl_.getNumStats());
+  tmp.setZero();
 
-  // we must be careful with the order of operations
-  for(size_t i = 1; i < operators_.size(); ++i)
+  for(size_t i = 0; i < operators_.size(); ++i)
   {
-    auto m = operators_[i]->fetchCombinedMatrix();
-    mat = m * mat;
-    //operators_[i]->getParameters().printParameters(std::cout);
-    std::cout << std::scientific << m << std::endl;
-    std::cout << std::scientific << mat << std::endl;
+    for(size_t j = 0; j < operators_[i]->getMatrices().size(); ++j)
+    {
+      tmp += operators_[i]->getMatrices()[j];
+      bpp::ParameterList pl;
+      pl.addParameter(operators_[i]->getParameters()[j]);
+      pl.printParameters(logger.getLogFile());
+      logger.getLogFile() << std::setprecision(0) << operators_[i]->getMatrices()[j] << std::endl;
+    }
+
+    operators_[i]->getParameters().printParameters(logger.getLogFile());
+    logger.getLogFile() << "\n\nsum of entries = " << tmp.sum() << "\n\n";
+    logger.getLogFile() << std::scientific << tmp << std::endl;
   }
+  #endif
+
+  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
+
+  for(size_t i = 1; i < operators_.size(); ++i)
+    mat = mat * operators_[i]->fetchCombinedMatrix();
 
   transitionMatrix_ = mat; // converts to dense format
 
@@ -49,19 +84,13 @@ void Epoch::computeSteadyState_()
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {
-    std::cout << "\n" << std::setprecision(32) << es.eigenvalues().real()(i) << "\n";
-    std::cout << es.eigenvectors().col(i) << "\n\n";
-
-    // finding the maximum value (should be 1., but searching for equality is problematic due to precision)
+    // finding the maximum value (should be == 1., but searching for equality is problematic due to precision)
     if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
       idx = i;
   }
 
-  steadYstate_ = es.eigenvectors().col(idx).real(); // TODO divide by I
-  //std::cout << std::setprecision(7) << transitionMatrix_ << "\n";
-  std::cout << std::setprecision(7) << steadYstate_ << "\n";
-  //std::cout << es.eigenvectors().real() << "\n";
-  //std::cout << es.eigenvalues().real() << "\n";
+  steadYstate_ = es.eigenvectors().col(idx).real();
+  steadYstate_ /= steadYstate_(ssl_.getDummyIndex()); // divide by I moment, which embodies constant used for Eigen decomposition
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y)
@@ -70,7 +99,7 @@ void Epoch::transferStatistics(Eigen::VectorXd& y)
   tmp.setZero();
 
   // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
-  for(size_t i = 0; i < tmp.size(); ++i)
+  for(int i = 0; i < tmp.size(); ++i)
   {
     int idx = ssl_.getMoments()[i].getParent()->getPosition();
     tmp(i) = y(idx);
@@ -84,6 +113,6 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
   if(y.size() != ssl_.getMoments().size())
     throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
 
-  for(size_t i = 0; i < y.size(); ++i)
+  for(int i = 0; i < y.size(); ++i)
     ssl_.getMoments()[i].setValue(y(i));
 }

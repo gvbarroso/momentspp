@@ -4,6 +4,7 @@
 # Created: 06/09/2022
 
 SET(momentspp_CPP
+  Log.cpp
   PolymorphismData.cpp
   SumStatsLibrary.cpp
   Drift.cpp

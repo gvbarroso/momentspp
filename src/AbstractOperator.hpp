@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 29/09/2022
+ * Last modified: 21/10/2022
  *
  */
 
@@ -30,6 +30,7 @@
 
 #include "SumStatsLibrary.hpp"
 #include "EigenDecomposition.hpp"
+#include "Log.hpp"
 
 class AbstractOperator:
   public bpp::AbstractParameterAliasable
@@ -84,24 +85,14 @@ public:
   virtual Eigen::SparseMatrix<double> fetchCombinedMatrix()
   {
     Eigen::SparseMatrix<double> mat = matrices_[0];
-    //std::cout << std::setprecision(1) << matrices_[0] << std::endl;
+
     if(matrices_.size() > 1)
     {
-      //std::cout << std::setprecision(1) << matrices_[1] << std::endl;
       for(size_t i = 1; i < matrices_.size(); ++i)
         mat += matrices_[i];
     }
 
-    getParameters().printParameters(std::cout);
-    //std::cout << std::scientific << mat << std::endl;
-    std::cout << "\n\nsum = " << mat.sum() << "\n\n";
-
-    mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
-
-    //getParameters().printParameters(std::cout);
-    //std::cout << std::scientific << mat << std::endl;
-
-    return mat;
+    return mat += identity_; // adds Identity to convert from "delta" to "transition" matrix (fixes row of Dummy moment)
   }
 
 public:

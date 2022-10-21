@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 28/09/2022
+ * Last modified: 21/10/2022
  *
  */
 
@@ -112,7 +112,6 @@ public:
 
   void computeExpectedSumStats(Eigen::VectorXd& y)
   {
-    std::cout << "Epoch::computeExpectedSumStats..." << transitionMatrix_.cols() << "\tx\t" << y.size() << std::endl;
     transitionMatrix_ * y;
   }
 
@@ -144,6 +143,8 @@ public:
   void transferStatistics(Eigen::VectorXd& y);
 
   void updateMoments(const Eigen::VectorXd& y);
+
+  void timeTest(size_t g);
 
 private:
   void computeSteadyState_();

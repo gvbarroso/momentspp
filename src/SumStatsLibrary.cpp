@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 30/09/2022
+ * Last modified: 19/10/2022
  *
  */
 
@@ -51,8 +51,7 @@ const Moment& SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, 
 
 const Moment& SumStatsLibrary::getDummyMoment() const
 {
-  size_t focalMomIndex = numDDStats_ + numDzStats_ + numHetStats_;
-  return moments_[focalMomIndex];
+  return moments_[getDummyIndex()];
 }
 
 void SumStatsLibrary::setDdMomentValue(size_t id1, size_t id2, double value)
@@ -104,10 +103,10 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
   return y;
 }
 
-void SumStatsLibrary::printMoments()
+void SumStatsLibrary::printMoments(std::ostream& stream)
 {
   for(size_t i = 0; i < moments_.size(); ++i)
-    std::cout << std::scientific << moments_[i].getPosition() << " | " << moments_[i].getName() << " = " << moments_[i].getValue() << "\n";
+    stream << std::scientific << moments_[i].getPosition() << " | " << moments_[i].getName() << " = " << moments_[i].getValue() << "\n";
 }
 
 void SumStatsLibrary::initMoments_()

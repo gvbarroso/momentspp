@@ -14,6 +14,11 @@ make
 make install
 
 The 'momentspp' executable should then be copied in $HOME/.local/bin 
+NOTE: you can use 
+
+cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local  ..
+
+For compiling in 'Verbose' mode, where a log_file.txt will be output.
 
 On a standard linux workstation, Moments++ takes < 2 minutes to compile and install once all dependencies are met. Note that static linkage is not supported, meaning that Moments++ should only be executed on the same machine where it was built.
 

@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 28/09/2022
+ * Last modified: 21/10/2022
  * Source code for moments++
  *
  */
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 28/Sep/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Oct/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
   // 1. parse options.getPopsFilePath()
   // 2. create populations
   // 3. link populations (see Model::linkMoments())
-  size_t numEpochs = 1;
+  size_t numEpochs = options.getNumEpochs();
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
   popMaps.reserve(numEpochs);
 
@@ -68,19 +68,19 @@ int main(int argc, char *argv[]) {
   {
     std::map<size_t, std::shared_ptr<Population>> map;
 
-    std::shared_ptr<Population> bra = std::make_shared<Population>(0, "Brazil");
-    std::shared_ptr<Population> arg = std::make_shared<Population>(1, "Argentina");
-
-    map.try_emplace(0, bra);
-    map.try_emplace(1, arg);
+    for(size_t j = 0; j < options.getNumPops(); ++j)
+    {
+      std::shared_ptr<Population> pop = std::make_shared<Population>(j, "pop_" + bpp::TextTools::toString(j));
+      map.try_emplace(j, pop);
+    }
 
     if(i > 0)
     {
-      map.at(0)->setLeftParent(popMaps.back().at(0));
-      map.at(0)->setRightParent(popMaps.back().at(0));
-
-      map.at(1)->setLeftParent(popMaps.back().at(1));
-      map.at(1)->setRightParent(popMaps.back().at(1));
+      for(size_t j = 0; j < options.getNumPops(); ++j)
+      {
+        map.at(j)->setLeftParent(popMaps.back().at(j));
+        map.at(j)->setRightParent(popMaps.back().at(j));
+      }
     }
 
     popMaps.emplace_back(map);

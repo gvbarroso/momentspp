@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 12/09/2022
+ * Last modified: 21/10/2022
  *
  */
 
@@ -33,17 +33,6 @@ public:
   mat_()
   { }
 
-  void exponentiate(Eigen::MatrixXd& mat, size_t exponent)
-  {
-    es_.compute(mat);
-
-    matInverse_ = es_.eigenvectors().real().inverse();
-    lambda_ = es_.eigenvalues().real().array().pow(exponent).matrix().asDiagonal(); // NOTE
-    mat_ = es_.eigenvectors().real();
-
-    mat = matInverse_ * lambda_ * mat_;
-  }
-
   const Eigen::MatrixXd& matrix()
   {
     return mat_;
@@ -62,6 +51,18 @@ public:
   void setLambda(const Eigen::MatrixXd& newLambda)
   {
     lambda_ = newLambda;
+  }
+
+  void exponentiate(Eigen::MatrixXd& mat, size_t exponent)
+  {
+    es_.compute(mat);
+
+    // WARNING
+    matInverse_ = es_.eigenvectors().real().inverse();
+    lambda_ = es_.eigenvalues().real().array().pow(exponent).matrix().asDiagonal();
+    mat_ = es_.eigenvectors().real();
+
+    mat = matInverse_ * lambda_ * mat_;
   }
 
 };

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 23/09/2022
+ * Last modified: 21/10/2022
  *
  */
 
@@ -31,7 +31,6 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
   // the range of values that our "small" rates are allowed to take in
   std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-0, true, true);
 
-  double initParamVal = 1e-4;
   // for now, all epochs share recombination and mutation parameters
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
@@ -43,21 +42,26 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
 
     SumStatsLibrary sslib(options_.getOrder(), data.getPopMaps()[i]); // utils class to manage moments from epoch i
 
-    // Epoch-specific operators (w.r.t populations present in that epoch, hence parameters)
-    std::shared_ptr<Migration> migOp = std::make_shared<Migration>(initParamVal, ic, sslib);
-    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(initParamVal, ic, sslib);
+    // Epoch-specific operators (concern populations present in that epoch, hence parameters must follow suit)
+    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(options_.getInitDrift(), ic, sslib);
     // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
     // even though we prob. want single r and mu params in Model
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(1e-4, ic, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(1e-6, ic, sslib);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options_.getInitR(), ic, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options_.getInitMu(), ic, sslib);
 
-     // include operators in the correct order for matrix operations
+    // include operators in the correct order for matrix operations
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
+
+    if(options_.getNumPops() > 1)
+    {
+      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(options_.getInitMig(), ic, sslib);
+      operators.emplace_back(migOp);
+    }
+
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
-    operators.emplace_back(migOp);
 
     epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, data.getPopMaps()[i]));
   }
@@ -217,23 +221,17 @@ void OptimizationWrapper::writeEstimatesToFile_(Model* model)
   std::ofstream file;
   file.open(model->getName() + "_estimates.txt");
 
-  file << "CLL = " << model->comLogLikelihood() << std::endl << std::endl;
+  file << "CLL = " << model->comLogLikelihood() << "\n\n";
 
   for(size_t i = 0; i < model->getEpochs().size(); ++i)
   {
     std::shared_ptr<Epoch> epoch = model->getEpochs()[i];
-    file << epoch->getNamespace() << "\t" << epoch->start() << "\t" << epoch->end() << "\t";
+    file << epoch->getNamespace() << "\t" << epoch->start() << "\t" << epoch->end() << "\n";
 
     for(size_t j = 0; j < epoch->getParameters().size(); ++j)
-    {
-      file << epoch->getParameters()[i].getName() << "=" << epoch->getParameters()[i].getValue();
+      file << epoch->getParameters()[i].getName() << "=" << epoch->getParameters()[i].getValue() << "\n";
 
-      if(i < epoch->getParameters().size() - 1)
-        file << "\t";
-
-      else
-        file << "\n";
-    }
+    file << "\n";
   }
 
   file.close();
