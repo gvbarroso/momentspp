@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/10/2022
+ * Last modified: 24/10/2022
  *
  */
 
@@ -26,8 +26,8 @@ private:
   std::string dataFilePath_;
   std::string numericalOptimizer_;
 
-  double initMij_;
-  double initDrift_;
+  std::vector<double> initMij_;
+  std::vector<double> initDrift_;
   double initMu_;
   double initR_;
   double tolerance_; // for numerical optimization
@@ -45,8 +45,8 @@ public:
   popsFilePath_(bpp::ApplicationTools::getAFilePath("pop_file", options, "none")),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("data_file", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
-  initMij_(bpp::ApplicationTools::getDoubleParameter("mij", options, 1e-5)),
-  initDrift_(bpp::ApplicationTools::getDoubleParameter("drift", options, 1e-4)),
+  initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
+  initDrift_(bpp::ApplicationTools::getVectorParameter<double>("1/Ni", options, ',', "none")),
   initMu_(bpp::ApplicationTools::getDoubleParameter("mu", options, 1e-8)),
   initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-9)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
@@ -58,7 +58,14 @@ public:
   numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options,
                                                                std::thread::hardware_concurrency(),
                                                                "", true, 4))
-  { }
+  {
+    if(numPops_ != initDrift_.size())
+      throw bpp::Exception("OptionsContainer::num_pops does not match length of 1/Ni parameters!");
+
+    if(numPops_ > 1)
+      if(numPops_ * (numPops_ - 1) != initMij_.size())
+        throw bpp::Exception("OptionsContainer::num_pops is not compatible with length of mij parameters!");
+  }
   
 public:
   const std::string& getPopsFilePath() const
@@ -76,22 +83,22 @@ public:
     return numericalOptimizer_;
   }
 
-  double getInitMig()
+  const std::vector<double>& getInitMig() const
   {
     return initMij_;
   }
 
-  double getInitDrift()
+  const std::vector<double>& getInitDrift() const
   {
     return initDrift_;
   }
 
-  double getInitMu()
+  double getInitMu() const
   {
     return initMu_;
   }
 
-  double getInitR()
+  double getInitR() const
   {
     return initR_;
   }

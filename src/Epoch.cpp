@@ -29,7 +29,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 void Epoch::timeTest(size_t g)
 {
   Log logger;
-  logger.openFile("timing.txt");
+  logger.openFile("mat_mult_timing.txt");
 
   Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
 

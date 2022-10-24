@@ -31,6 +31,12 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
   // the range of values that our "small" rates are allowed to take in
   std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-0, true, true);
 
+  #ifdef VERBOSE
+  Log logger;
+  logger.openFile("build_model_timing.txt");
+  logger.start_timer();
+  #endif
+
   // for now, all epochs share recombination and mutation parameters
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
@@ -38,7 +44,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
 
     // define start and end of epochs as quantiles of the exp dist?
     size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
-    size_t end = (numEpochs - i - 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
+    size_t end = (numEpochs - i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
     SumStatsLibrary sslib(options_.getOrder(), data.getPopMaps()[i]); // utils class to manage moments from epoch i
 
@@ -65,6 +71,10 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
 
     epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, data.getPopMaps()[i]));
   }
+
+  #ifdef VERBOSE
+  logger.stop_timer(1e+6, "build_model", "s");
+  #endif
 
   Model* model = new Model(name, epochs, data);
   model->computeExpectedSumStats();

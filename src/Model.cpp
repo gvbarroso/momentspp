@@ -35,10 +35,10 @@ void Model::computeExpectedSumStats()
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_);
-  epochs_.back()->getSslib().printMoments(std::cout);
+  //epochs_.back()->getSslib().printMoments(std::cout);
 
   #ifdef VERBOSE
-  epochs_.back()->timeTest(10000);
+  epochs_.back()->timeTest(epochs_.back()->duration());
   Log logger;
   logger.openFile("moments.txt");
   epochs_.back()->getSslib().printMoments(logger.getLogFile());

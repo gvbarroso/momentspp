@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 13/10/2022
+ * Last modified: 24/10/2022
  *
  */
 
@@ -392,7 +392,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         Eigen::SparseMatrix<double> mat(numStats, numStats);
         mat.setFromTriplets(std::begin(coefficients), std::end(coefficients));
         mat.makeCompressed();
-        mat *= getParameterValue("m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j)); // scales because of updateMatrices_()
+        mat *= getParameterValue("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j)); // scales because of updateMatrices_()
         matrices_.emplace_back(mat);
       } // ends if(i != j)
     }
@@ -411,7 +411,7 @@ void Migration::updateMatrices_()
     {
       if(i != j)
       {
-        paramName = "m_" + bpp::TextTools::toString(i) + bpp::TextTools::toString(j);
+        paramName = "m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j);
 
         double prevVal = prevParams_.getParameterValue(paramName);
         double newVal = getParameterValue(paramName);
