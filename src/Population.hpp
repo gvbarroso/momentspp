@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 28/09/2022
+ * Last modified: 26/10/2022
  *
  */
 
@@ -20,30 +20,37 @@
 class Population
 {
 private:
-  size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
   std::string name_; // human label, e.g. "Yoruba"
+  std::string description_;
 
   // parents in previous epoch; they will be the same unless focal population is a result of admixture
   std::shared_ptr<Population> leftParent_;
   std::shared_ptr<Population> rightParent_;
 
+  size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
+  size_t startTime_; // in units of generations
+  size_t endTime_; // in units of generations
+
 public:
-  Population(size_t id, const std::string& name):
-  id_(id),
+  Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize):
   name_(name),
+  description_(description),
   leftParent_(nullptr),
-  rightParent_(nullptr)
+  rightParent_(nullptr),
+  id_(id),
+  startTime_(startTime),
+  endTime_(endTime)
   { }
 
 public:
-  size_t getId()
-  {
-    return id_;
-  }
-
   const std::string& getName() const
   {
     return name_;
+  }
+
+  const std::string& getDescription() const
+  {
+    return description_;
   }
 
   std::shared_ptr<Population> getLeftParent()
@@ -64,6 +71,21 @@ public:
   void setRightParent(std::shared_ptr<Population> parent)
   {
     rightParent_ = parent;
+  }
+
+  size_t getId()
+  {
+    return id_;
+  }
+
+  size_t getStartTime()
+  {
+    return startTime_;
+  }
+
+  size_t getEndTime()
+  {
+    return endTime_;
   }
 
 };

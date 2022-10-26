@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 
     for(size_t j = 0; j < options.getNumPops(); ++j)
     {
-      std::shared_ptr<Population> pop = std::make_shared<Population>(j, "pop_" + bpp::TextTools::toString(j));
+      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, );
       map.try_emplace(j, pop);
     }
 

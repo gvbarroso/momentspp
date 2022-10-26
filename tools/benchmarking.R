@@ -19,7 +19,7 @@ stats_1 <- read.table("pops_1/moments.txt")
 stats_2 <- read.table("pops_2/moments.txt")
 stats_4 <- read.table("pops_4/moments.txt")
 stats_8 <- read.table("pops_8/moments.txt")
-stats_10 <- read.table("pops_8/moments.txt")
+stats_10 <- read.table("pops_10/moments.txt")
 
 MultTimeTable$num_pops <- c(1, 2, 4, 8, 10)
 MultTimeTable$num_stats <- c(nrow(stats_1), nrow(stats_2), nrow(stats_4), nrow(stats_8), nrow(stats_10))
