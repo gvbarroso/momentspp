@@ -7,12 +7,12 @@
 
 #include "Demes.hpp"
 
-void parse(const std::string& fileName)
+void Demes::parse(const std::string& fileName)
 {
   //parser.HandleNextDocument(test);
   YAML::Node test = YAML::LoadFile(fileName);
 
 
-  std::ofstream fout("test_out.yaml");
-  fout << test;
+  //std::ofstream fout("test_out.yaml");
+  //fout << test;
 }
