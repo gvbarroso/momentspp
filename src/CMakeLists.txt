@@ -14,10 +14,13 @@ SET(momentspp_CPP
   Epoch.cpp
   Model.cpp
   OptimizationWrapper.cpp
+  Demes.cpp
   main.cpp
 )
 
 ADD_EXECUTABLE (momentspp ${momentspp_CPP})
+add_executable(yaml_cpp main.cpp)
+target_link_libraries(yaml_cpp ${yaml-cpp_LIBRARIES})
 
 SET(momentspp-targets momentspp)
 

@@ -3,7 +3,7 @@
 #   Gustavo V. Barroso
 # Created: 28/07/2022
 
-cmake_minimum_required (VERSION 3.1.0)
+cmake_minimum_required (VERSION 3.5.0)
 project (momentspp CXX)
 
 # Telling the compiler to optimize based on CPU architecture leads to considerable speed-up.
@@ -29,7 +29,6 @@ INCLUDE(GNUInstallDirs)
 FIND_PACKAGE(bpp-phyl3 1.0.0 REQUIRED)
 
 # Boost:
-#SET(Boost_USE_STATIC_LIBS ${BUILD_STATIC})
 SET(Boost_USE_MULTITHREADED OFF)
 FIND_PACKAGE(Boost 1.67.0 REQUIRED COMPONENTS "iostreams")
 IF(Boost_FOUND)
@@ -48,6 +47,15 @@ IF(Eigen3_FOUND)
   MESSAGE("-- EIGEN3 libraries found here:")
   MESSAGE("   includes: ${Eigen3_INCLUDE_DIRS}")
   MESSAGE("   dynamic libraries: ${Eigen3_LIBRARIES}")
+ENDIF()
+
+# yaml-cpp
+FIND_PACKAGE(yaml-cpp REQUIRED)
+IF(yaml-cpp_FOUND)
+  INCLUDE_DIRECTORIES(${yaml-cpp_INCLUDE_DIRS})
+  SET(LIBS ${LIBS} ${yaml-cpp_LIBRARIES})
+  MESSAGE("-- yaml-cpp libraries found here:")
+  MESSAGE("   includes: ${yaml-cpp_INCLUDE_DIRS}")
 ENDIF()
 
 # here is a useful function:

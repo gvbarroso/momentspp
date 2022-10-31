@@ -43,6 +43,17 @@ private:
   std::vector<Moment> moments_; // sorted lexicographically based on name_
 
 public:
+  SumStatsLibrary():
+  order_(0),
+  numPops_(0),
+  numDDStats_(0),
+  numDzStats_(0),
+  numHetStats_(0),
+  numPi2Stats_(0),
+  popIndices_(0),
+  moments_(0)
+  { }
+
   SumStatsLibrary(size_t order, const std::map<size_t, std::shared_ptr<Population>>& popMap):
   order_(order),
   numPops_(popMap.size()),

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 21/10/2022
+ * Last modified: 31/10/2022
  *
  */
 
@@ -46,6 +46,18 @@ private:
   Eigen::VectorXd steadYstate_; // based on the parameters of this epoch
 
 public:
+  Epoch():
+  bpp::AbstractParameterAliasable(""),
+  ssl_(),
+  startGen_(0),
+  endGen_(0),
+  operators_(0),
+  pops_(),
+  eigenDec_(),
+  transitionMatrix_(),
+  steadYstate_()
+  { }
+
   Epoch(const SumStatsLibrary& ssl, size_t start, size_t end, const std::string& name,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
         const std::map<size_t, std::shared_ptr<Population>>& pops):

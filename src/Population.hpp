@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 26/10/2022
+ * Last modified: 31/10/2022
  *
  */
 
@@ -32,6 +32,16 @@ private:
   size_t endTime_; // in units of generations
 
 public:
+  Population():
+  name_(""),
+  description_(""),
+  leftParent_(nullptr),
+  rightParent_(nullptr),
+  id_(0),
+  startTime_(0),
+  endTime_(0)
+  { }
+
   Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize):
   name_(name),
   description_(description),

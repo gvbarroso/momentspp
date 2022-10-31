@@ -22,7 +22,7 @@ class OptionsContainer
 {
 
 private:
-  std::string popsFilePath_;
+  std::string yamlFilePath_;
   std::string dataFilePath_;
   std::string numericalOptimizer_;
 
@@ -42,8 +42,8 @@ private:
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
-  popsFilePath_(bpp::ApplicationTools::getAFilePath("pop_file", options, "none")),
-  dataFilePath_(bpp::ApplicationTools::getAFilePath("data_file", options, "none")),
+  yamlFilePath_(bpp::ApplicationTools::getAFilePath("yaml_file", options, "none")),
+  dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
   initDrift_(bpp::ApplicationTools::getVectorParameter<double>("1/Ni", options, ',', "none")),
@@ -68,9 +68,9 @@ public:
   }
   
 public:
-  const std::string& getPopsFilePath() const
+  const std::string& getYamlFilePath() const
   {
-    return popsFilePath_;
+    return yamlFilePath_;
   }
 
   const std::string& getDataFilePath() const

@@ -1,4 +1,4 @@
-pop_file = pops.tsv
+demes_file = demes.yaml
 data_file = data.vcf
 
 optimizer = Powell

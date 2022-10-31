@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 21/10/2022
+ * Last modified: 31/10/2022
  * Source code for moments++
  *
  */
@@ -19,6 +19,7 @@
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
 #include "PolymorphismData.hpp"
+#include "Demes.hpp"
 
 int main(int argc, char *argv[]) {
 
@@ -32,7 +33,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Oct/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 31/Oct/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
@@ -57,6 +58,9 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
+  Demes demes;
+  demes.parse(options.getYamlFilePath());
+
   // 1. parse options.getPopsFilePath()
   // 2. create populations
   // 3. link populations (see Model::linkMoments())
@@ -64,7 +68,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
   popMaps.reserve(numEpochs);
 
-  for(size_t i = 0; i < numEpochs; ++i)
+  /*for(size_t i = 0; i < numEpochs; ++i)
   {
     std::map<size_t, std::shared_ptr<Population>> map;
 
@@ -84,7 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
     popMaps.emplace_back(map);
-  }
+  }*/
 
   try
   {

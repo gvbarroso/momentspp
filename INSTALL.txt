@@ -3,7 +3,8 @@ Dependencies:
 - CMake >= 3.1 for building
 - The Boost C++ libraries >= 1.71, available in https://www.boost.org/
 - The Threads library (usually provided along with the C++ compiler installation)
-- The Bio++ Libraries >= 3.0 (bpp-core, bpp-seq, bpp-phyl), available in https://github.com/BioPP
+- The Bio++ libraries >= 3.0 (bpp-core, bpp-seq, bpp-phyl), available in https://github.com/BioPP
+- The yaml-cpp library (https://github.com/jbeder/yaml-cpp)
 
 Installation using an external build:
 
