@@ -26,6 +26,7 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 void Model::computeExpectedSumStats()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
+  //epochs_[0]->getSslib().printMoments(std::cout);
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
@@ -35,7 +36,7 @@ void Model::computeExpectedSumStats()
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_);
-  //epochs_.back()->getSslib().printMoments(std::cout);
+  epochs_.back()->getSslib().printMoments(std::cout);
 
   #ifdef VERBOSE
   epochs_.back()->timeTest(epochs_.back()->duration());

@@ -91,6 +91,8 @@ void Epoch::computeSteadyState_()
 
   steadYstate_ = es.eigenvectors().col(idx).real();
   steadYstate_ /= steadYstate_(ssl_.getDummyIndex()); // divide by I moment, which embodies constant used for Eigen decomposition
+
+  updateMoments(steadYstate_);
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y)

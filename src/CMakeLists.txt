@@ -19,8 +19,6 @@ SET(momentspp_CPP
 )
 
 ADD_EXECUTABLE (momentspp ${momentspp_CPP})
-add_executable(yaml_cpp main.cpp)
-target_link_libraries(yaml_cpp ${yaml-cpp_LIBRARIES})
 
 SET(momentspp-targets momentspp)
 

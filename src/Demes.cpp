@@ -10,7 +10,7 @@
 void Demes::parse(const std::string& fileName)
 {
   //parser.HandleNextDocument(test);
-  YAML::Node test = YAML::LoadFile(fileName);
+  //YAML::Node test = YAML::LoadFile(fileName);
 
 
   //std::ofstream fout("test_out.yaml");

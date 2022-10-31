@@ -58,8 +58,8 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  Demes demes;
-  demes.parse(options.getYamlFilePath());
+  //Demes demes;
+  //demes.parse(options.getYamlFilePath());
 
   // 1. parse options.getPopsFilePath()
   // 2. create populations
@@ -68,13 +68,14 @@ int main(int argc, char *argv[]) {
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
   popMaps.reserve(numEpochs);
 
-  /*for(size_t i = 0; i < numEpochs; ++i)
+  for(size_t i = 0; i < numEpochs; ++i)
   {
     std::map<size_t, std::shared_ptr<Population>> map;
 
     for(size_t j = 0; j < options.getNumPops(); ++j)
     {
-      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, );
+      //Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize):
+      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, 500000, 0, 10000, 10000);
       map.try_emplace(j, pop);
     }
 
@@ -88,7 +89,7 @@ int main(int argc, char *argv[]) {
     }
 
     popMaps.emplace_back(map);
-  }*/
+  }
 
   try
   {

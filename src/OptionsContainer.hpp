@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 24/10/2022
+ * Last modified: 31/10/2022
  *
  */
 
@@ -22,7 +22,7 @@ class OptionsContainer
 {
 
 private:
-  std::string yamlFilePath_;
+  std::string demesFilePath_;
   std::string dataFilePath_;
   std::string numericalOptimizer_;
 
@@ -42,7 +42,7 @@ private:
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
-  yamlFilePath_(bpp::ApplicationTools::getAFilePath("yaml_file", options, "none")),
+  demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, "none")),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
@@ -68,9 +68,9 @@ public:
   }
   
 public:
-  const std::string& getYamlFilePath() const
+  const std::string& getDemesFilePath() const
   {
-    return yamlFilePath_;
+    return demesFilePath_;
   }
 
   const std::string& getDataFilePath() const
