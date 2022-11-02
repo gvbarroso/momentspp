@@ -1,0 +1,14 @@
+description: Test data for benchmarking
+time_units: generations
+demes:
+  - name: pop_2
+    epochs:
+      - {start_time: .inf, end_time: 0, start_size: 10000}
+  - name: pop_2
+    epochs:
+      - {start_time: .inf, end_time: 0, start_size: 10000}
+
+migrations:
+  - {source: pop_1, dest: pop_2, rate: 1e-5}
+  - {source: pop_2, dest: pop_1, rate: 1e-5}
+
