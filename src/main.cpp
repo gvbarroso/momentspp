@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 31/Oct/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 02/Nov/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;
@@ -58,8 +58,8 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  //Demes demes;
-  //demes.parse(options.getYamlFilePath());
+  Demes demes;
+  demes.parse(options.getDemesFilePath());
 
   // 1. parse options.getPopsFilePath()
   // 2. create populations

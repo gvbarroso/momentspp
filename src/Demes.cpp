@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 31/10/2022
+ * Last modified: 02/10/2022
  *
  */
 
@@ -9,10 +9,14 @@
 
 void Demes::parse(const std::string& fileName)
 {
-  //parser.HandleNextDocument(test);
-  //YAML::Node test = YAML::LoadFile(fileName);
+  std::cout << "parsing " << fileName << "\n";
+  YAML::Node test = YAML::LoadFile(fileName);
 
+  std::ofstream fout("test.yaml");
+  fout << test;
+  fout.close();
 
-  //std::ofstream fout("test_out.yaml");
-  //fout << test;
+  for(YAML::const_iterator it=test.begin();it!=test.end();++it)
+    std::cout << "blah " << it->first.as<std::string>() << " is " << it->second.as<std::string>() << "\n";
+
 }

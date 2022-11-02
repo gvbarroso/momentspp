@@ -19,16 +19,17 @@ IF(CMAKE_INSTALL_PREFIX)
 ENDIF(CMAKE_INSTALL_PREFIX)
 
 IF(VERBOSE)
-  add_definitions(-DVERBOSE)
+  ADD_DEFINITIONS(-DVERBOSE)
 ENDIF()
 
 #SET(THREADS_PREFER_PTHREAD_FLAG ON)
 #FIND_PACKAGE(Threads REQUIRED)
 
 INCLUDE(GNUInstallDirs)
+FIND_PACKAGE(bpp-core3 1.0.0 REQUIRED)
+FIND_PACKAGE(bpp-seq3 1.0.0 REQUIRED)
 FIND_PACKAGE(bpp-phyl3 1.0.0 REQUIRED)
 
-# Boost:
 SET(Boost_USE_MULTITHREADED OFF)
 FIND_PACKAGE(Boost 1.67.0 REQUIRED COMPONENTS "iostreams")
 IF(Boost_FOUND)
@@ -39,46 +40,23 @@ IF(Boost_FOUND)
   MESSAGE("   dynamic libraries: ${Boost_LIBRARIES}")
 ENDIF()
 
-# Eigen3
 FIND_PACKAGE(Eigen3 3.4 REQUIRED NO_MODULE)
 IF(Eigen3_FOUND)
   INCLUDE_DIRECTORIES(${Eigen3_INCLUDE_DIRS})
   SET(LIBS ${LIBS} ${Eigen3_LIBRARIES})
-  MESSAGE("-- EIGEN3 libraries found here:")
-  MESSAGE("   includes: ${Eigen3_INCLUDE_DIRS}")
-  MESSAGE("   dynamic libraries: ${Eigen3_LIBRARIES}")
+  MESSAGE("-- Eigen3 libraries found.")
 ENDIF()
 
-# yaml-cpp
 FIND_PACKAGE(yaml-cpp REQUIRED)
 IF(yaml-cpp_FOUND)
-  INCLUDE_DIRECTORIES(${yaml-cpp_INCLUDE_DIRS})
-  SET(LIBS ${LIBS} ${yaml-cpp_LIBRARIES})
-  MESSAGE("-- yaml-cpp libraries found here:")
-  MESSAGE("   includes: ${yaml-cpp_INCLUDE_DIRS}")
+	INCLUDE_DIRECTORIES(${YAML_CPP_INCLUDE_DIR})
+  SET(LIBS ${LIBS} ${YAML_CPP_LIBRARY_DIR})
+  MESSAGE("-- yaml-cpp libraries found.")
+  MESSAGE("   includes: ${YAML_CPP_INCLUDE_DIR}")
+  MESSAGE("   dynamic libraries: ${YAML_CPP_LIBRARIES}")
 ENDIF()
 
-# here is a useful function:
-MACRO(IMPROVED_FIND_LIBRARY OUTPUT_LIBS lib_name include_to_find)
-  # start:
-  FIND_PATH(${lib_name}_INCLUDE_DIR ${include_to_find})
-  INCLUDE_DIRECTORIES(${${lib_name}_INCLUDE_DIR})
-
-  SET(${lib_name}_NAMES ${lib_name} ${lib_name}.lib ${lib_name}.dll)
-  FIND_LIBRARY(${lib_name}_LIBRARY NAMES ${${lib_name}_NAMES} PATH_SUFFIXES lib${LIB_SUFFIX})
-  IF(${lib_name}_LIBRARY)
-    MESSAGE("-- Library ${lib_name} found here:")
-    MESSAGE("   includes: ${${lib_name}_INCLUDE_DIR}")
-    MESSAGE("   dynamic libraries: ${${lib_name}_LIBRARY}")
-  ELSE()
-    MESSAGE(FATAL_ERROR "${lib_name} required but not found.")
-  ENDIF()
-  # add the dependency:
-  SET(${OUTPUT_LIBS} ${${OUTPUT_LIBS}} ${${lib_name}_LIBRARY})
-  
-ENDMACRO(IMPROVED_FIND_LIBRARY)
-
-# Set the CMAKE_PREFIX_PATH for the find_library fonction when using non
+# Set the CMAKE_PREFIX_PATH for the find_library function when using non
 # standard install location
 IF(CMAKE_INSTALL_PREFIX)
   SET(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}" ${CMAKE_PREFIX_PATH})

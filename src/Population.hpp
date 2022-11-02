@@ -1,13 +1,15 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 31/10/2022
+ * Last modified: 02/11/2022
  *
  */
 
 
 #ifndef _POPULATION_H_
 #define _POPULATION_H_
+
+#include <Bpp/App/ApplicationTools.h>
 
 #include <string>
 #include <vector>
@@ -30,6 +32,8 @@ private:
   size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
   size_t startTime_; // in units of generations
   size_t endTime_; // in units of generations
+  size_t startSize_; // N_i in 1/N_i Drift parameters
+  size_t endSize_; // must be equal to startSize
 
 public:
   Population():
@@ -39,7 +43,9 @@ public:
   rightParent_(nullptr),
   id_(0),
   startTime_(0),
-  endTime_(0)
+  endTime_(0),
+  startSize_(0),
+  endSize_(0)
   { }
 
   Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize):
@@ -49,8 +55,13 @@ public:
   rightParent_(nullptr),
   id_(id),
   startTime_(startTime),
-  endTime_(endTime)
-  { }
+  endTime_(endTime),
+  startSize_(startSize),
+  endSize_(endSize)
+  {
+    if(startSize_ != endSize_)
+      throw bpp::Exception("Population::invalid parameters: start and end sizes specified in YAML file are not equal!");
+  }
 
 public:
   const std::string& getName() const

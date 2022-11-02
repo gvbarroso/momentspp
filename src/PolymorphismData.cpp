@@ -11,7 +11,7 @@
 
 void PolymorphismData::parse(const std::string& file)
 {
-
+  std::cout << file << std::endl;
 }
 
 void PolymorphismData::computeSumStats()
