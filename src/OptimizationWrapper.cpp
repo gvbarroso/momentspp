@@ -37,15 +37,26 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
 
     // define start and end of epochs as quantiles of the exp dist?
-    size_t start = (numEpochs - i) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
-    size_t end = (numEpochs - i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
+    size_t start = i * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
+    size_t end = (i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
     SumStatsLibrary sslib(options_.getOrder(), data.getPopMaps()[i]); // utils class to manage moments from epoch i
 
-    // Epoch-specific operators (concern populations present in that epoch, hence parameters must follow suit)
-    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(options_.getInitDrift(), ic, sslib);
+    // Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
     // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
     // even though we prob. want single r and mu params in Model
+
+    // WARNING ad-hockery
+    std::vector<double> drift = options_.getInitDrift();
+    if(i == 1)
+    {
+      for(size_t j = 0; j < drift.size(); ++j)
+        drift[j] *= 10.;
+    }
+
+    //std::cout << i << "\t" << "start: " << start << "; end: " << end << "\t" << drift[0] << "; " << drift[1] << std::endl;
+
+    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options_.getInitR(), ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options_.getInitMu(), ic, sslib);
 

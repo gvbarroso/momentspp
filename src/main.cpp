@@ -58,8 +58,8 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  Demes demes;
-  demes.parse(options.getDemesFilePath());
+  //Demes demes;
+  //demes.parse(options.getDemesFilePath());
 
   // 1. parse options.getPopsFilePath()
   // 2. create populations

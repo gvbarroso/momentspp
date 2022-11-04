@@ -1,16 +1,25 @@
 library(matlib)
-library(reshape2)
 library(tidyverse)
 library(scales)
 library(patchwork) # To display 2 charts together
 
-#######################
-#
-# timing
-#
-#######################
-
 setwd("Devel/momentspp/benchmarking/")
+
+two_pops_params <- as.data.frame(matrix(nrow = 16, ncol = 10))
+names(two_pops_params) <- c("mu", "r", "m_12", "m_21", "N_1_epoch_1", "N_2_epoch_1", "N_1_epoch_2", "N_2_epoch_2", "num_gen_epoch_2", "num_epochs")
+
+two_pops_params$mu <- 1.5e-08
+two_pops_params$r <- c(rep(0, 8), rep(1e-9, 8))
+two_pops_params$m_12 <- rep(c(c(1e-5, 1e-5), c(0, 1e-5)), 4)
+two_pops_params$m_21 <- 1e-5 
+two_pops_params$N_1_epoch_1 <- rep(c(1e+4, 1e+3), 8)
+two_pops_params$N_2_epoch_1 <- 1e+4
+two_pops_params$num_gen_epoch_2 <- rep(c(rep(5e+3, 4), rep(NA, 4)), 2)
+two_pops_params$N_1_epoch_2 <- rep(c(rep(c(1e+3, 1e+2), 2), rep(NA, 4)), 2)
+two_pops_params$N_2_epoch_2 <- rep(c(rep(1e+3, 4), rep(NA, 4)), 2)
+two_pops_params$num_epochs <- rep(c(rep(2, 4), rep(1, 4)), 2)
+
+write.table(two_pops_params, "bench_params.tsv", sep = ",", row.names = F)
 
 MultTimeTable <- as.data.frame(matrix(nrow = 5, ncol = 5))
 names(MultTimeTable) <- c("num_pops", "num_stats", "build_model", "mult_naive", "mult_eigendec")

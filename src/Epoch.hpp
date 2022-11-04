@@ -74,7 +74,7 @@ public:
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       shareParameters_((*it)->getParameters());
 
-    computeSteadyState_();
+    computeSteadyState_(); // updates moments inside ssl_
   }
 
   ~Epoch()
@@ -124,7 +124,13 @@ public:
 
   void computeExpectedSumStats(Eigen::VectorXd& y)
   {
-    transitionMatrix_ * y;
+    //std::cout << y << std::endl;
+    //std::cout << transitionMatrix_ << std::endl;
+    // WARNING ad-hockery for testing
+    eigenDec_.exponentiate(transitionMatrix_, duration()); // matrix passed as non-const ref
+    y = transitionMatrix_ * y;
+    //std::cout << transitionMatrix_ << std::endl;
+    //std::cout << y << std::endl;
   }
 
   const std::map<size_t, std::shared_ptr<Population>>& getPops()

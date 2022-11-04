@@ -1,7 +1,7 @@
 description: Test data for benchmarking
 time_units: generations
 demes:
-  - name: pop_2
+  - name: pop_1
     epochs:
       - {start_time: .inf, end_time: 0, start_size: 10000}
   - name: pop_2
