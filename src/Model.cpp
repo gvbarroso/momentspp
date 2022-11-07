@@ -26,8 +26,9 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 void Model::computeExpectedSumStats()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
-  //epochs_[0]->getSslib().printMoments(std::cout);
-  std::cout << expected_ << std::endl;
+  std::cout << "steady state:" << std::endl;
+  epochs_[0]->getSslib().printMoments(std::cout);
+  //std::cout << expected_ << std::endl;
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs (pass expected_ by ref)
@@ -36,15 +37,16 @@ void Model::computeExpectedSumStats()
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_);
-  //epochs_.back()->getSslib().printMoments(std::cout);
-  std::cout << "\n\n\n" << expected_ << std::endl;
+  std::cout << "\n\nA * steady state:" << std::endl;
+  epochs_.back()->getSslib().printMoments(std::cout);
+  //std::cout << "\n\n\n" << expected_ << std::endl;
 
-  #ifdef VERBOSE
+  /*#ifdef VERBOSE
   epochs_.back()->timeTest(epochs_.back()->duration());
   Log logger;
   logger.openFile("moments.txt");
   epochs_.back()->getSslib().printMoments(logger.getLogFile());
-  #endif
+  #endif*/
 }
 
 void Model::popAdmix_()
@@ -64,7 +66,7 @@ void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, cons
   compLogLikelihood_ = cll;
 }
 
-// this method sets the relationships among moments from different epochs dues to population splits
+// this method defines the relationships among moments from different epochs (w.r.t population indices)
 void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd

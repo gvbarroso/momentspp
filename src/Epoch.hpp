@@ -124,13 +124,17 @@ public:
 
   void computeExpectedSumStats(Eigen::VectorXd& y)
   {
-    //std::cout << y << std::endl;
-    //std::cout << transitionMatrix_ << std::endl;
+    //std::cout << y << std::endl << std::endl;
+    //std::cout << "Epoch::computeExpectedSumStats:\n" << std::setprecision(12) << std::scientific << transitionMatrix_ << std::endl;
     // WARNING ad-hockery for testing
     eigenDec_.exponentiate(transitionMatrix_, duration()); // matrix passed as non-const ref
     y = transitionMatrix_ * y;
     //std::cout << transitionMatrix_ << std::endl;
-    //std::cout << y << std::endl;
+    //std::cout << y << std::endl << std::endl;
+
+    //y /= y(ssl_.getDummyIndex());
+
+    //std::cout << y << std::endl << std::endl;
   }
 
   const std::map<size_t, std::shared_ptr<Population>>& getPops()

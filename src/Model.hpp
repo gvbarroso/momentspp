@@ -132,6 +132,7 @@ public:
   bpp::ParameterList getUnfrozenParameters()
   {
     bpp::ParameterList unfrozen = getIndependentParameters();
+
     if(frozenParams_.size() > 0)
     {
       for(auto it = std::begin(frozenParams_); it != std::end(frozenParams_); ++it)

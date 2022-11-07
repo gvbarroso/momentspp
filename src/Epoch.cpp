@@ -41,6 +41,11 @@ void Epoch::timeTest(size_t g)
     mat = mat * mat;
   logger.stop_timer(1e+6, "naive mat mult x" + bpp::TextTools::toString(g), "s");
 
+  mat = operators_[0]->fetchCombinedMatrix(); // restarts mat
+
+  for(size_t i = 1; i < operators_.size(); ++i)
+    mat = mat * operators_[i]->fetchCombinedMatrix();
+
   logger.start_timer();
   transitionMatrix_ = mat; // converts to dense format
   eigenDec_.exponentiate(transitionMatrix_, g); // matrix passed as non-const ref
@@ -52,23 +57,29 @@ void Epoch::computeSteadyState_()
   #ifdef VERBOSE
   Log logger;
   logger.openFile("matrices.txt");
-  Eigen::SparseMatrix<double> tmp(ssl_.getNumStats(), ssl_.getNumStats());
-  tmp.setZero();
+  Eigen::SparseMatrix<double> test(ssl_.getNumStats(), ssl_.getNumStats());
+  test.setIdentity();
 
   for(size_t i = 0; i < operators_.size(); ++i)
   {
+    Eigen::SparseMatrix<double> tmp(ssl_.getNumStats(), ssl_.getNumStats());
+    tmp.setZero();
     for(size_t j = 0; j < operators_[i]->getMatrices().size(); ++j)
     {
       tmp += operators_[i]->getMatrices()[j];
       bpp::ParameterList pl;
       pl.addParameter(operators_[i]->getParameters()[j]);
       pl.printParameters(logger.getLogFile());
-      logger.getLogFile() << std::setprecision(0) << operators_[i]->getMatrices()[j] << std::endl;
+      logger.getLogFile() << std::setprecision(1e-6) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries = " << tmp.sum() << "\n\n";
-    logger.getLogFile() << std::scientific << tmp << std::endl;
+    logger.getLogFile() << "\n\nsum of entries = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
+    logger.getLogFile() << std::scientific << tmp << "\n";
+
+    logger.getLogFile() << "accumulated transition matrix:\n";
+    test = test * operators_[i]->fetchCombinedMatrix();
+    logger.getLogFile() << std::setprecision(1e-9) << std::scientific << test << "\n";
   }
   #endif
 
@@ -81,6 +92,7 @@ void Epoch::computeSteadyState_()
 
   // we find the eigenvector associated with (leading) eigenvalue == 1 in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
+
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {

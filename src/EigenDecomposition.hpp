@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 21/10/2022
+ * Last modified: 07/11/2022
  *
  */
 
@@ -15,6 +15,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 
+#include "Log.hpp"
 
 class EigenDecomposition
 {
@@ -55,14 +56,33 @@ public:
 
   void exponentiate(Eigen::MatrixXd& mat, size_t exponent)
   {
+    Log logger;
+    logger.openFile("input_mat.txt");
+    logger.getLogFile() << mat << "\n\n";
+    logger.closeFile();
+
     es_.compute(mat);
 
+    logger.openFile("dec_mat.txt");
+    logger.getLogFile() << es_.eigenvectors().inverse() * es_.eigenvalues().matrix().asDiagonal() * es_.eigenvectors() << "\n\n";
+    logger.closeFile();
+
     // WARNING
+    mat_ = es_.eigenvectors().real();
     matInverse_ = es_.eigenvectors().real().inverse();
     lambda_ = es_.eigenvalues().real().array().pow(exponent).matrix().asDiagonal();
-    mat_ = es_.eigenvectors().real();
 
-    mat = matInverse_ * lambda_ * mat_;
+    std::cout << "\n\neigenvalues:\n" << es_.eigenvalues();
+
+    mat = mat_ * lambda_ * matInverse_;
+
+    logger.openFile("dec_mat_real.txt");
+    logger.getLogFile() << matInverse_ << "\n\n";
+    logger.getLogFile() << lambda_ << "\n\n";
+    logger.getLogFile() << mat_ << "\n\n";
+    logger.getLogFile() << matInverse_ * mat_  << "\n\n";
+    logger.getLogFile() << lambda_ * mat_ * matInverse_ << "\n\n";
+    logger.closeFile();
   }
 
 };
