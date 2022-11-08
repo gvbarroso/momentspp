@@ -1,14 +1,13 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 19/10/2022
+ * Last modified: 08/11/2022
  *
  */
 
 #include <ios>
 
 #include "Log.hpp"
-
 #include "Epoch.hpp"
 
 // this method is where the heavier Eigen linear algebra takes place
@@ -23,33 +22,59 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
     mat = mat * operators_[i]->fetchCombinedMatrix();
 
   transitionMatrix_ = mat; // converts to dense format
-  eigenDec_.exponentiate(transitionMatrix_, duration()); // matrix passed as non-const ref
 }
 
-void Epoch::timeTest(size_t g)
+void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
+  Eigen::EigenSolver<Eigen::MatrixXd> es_(transitionMatrix_);
+  y = es_.eigenvectors().real() * es_.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es_.eigenvectors().real().inverse() * y;
+
+  #ifdef VERBOSE
   Log logger;
-  logger.openFile("mat_mult_timing.txt");
 
-  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
+  logger.openFile("eigenvalues_real.txt");
+  logger.getLogFile() << es_.eigenvalues().real() << "\n";
+  logger.closeFile();
 
-  for(size_t i = 1; i < operators_.size(); ++i)
-    mat = mat * operators_[i]->fetchCombinedMatrix();
+  logger.openFile("eigenvalues_imag.txt");
+  logger.getLogFile() << es_.eigenvalues().imag() << "\n";
+  logger.closeFile();
 
-  logger.start_timer();
-  for(size_t i = 0; i < g; ++i)
-    mat = mat * mat;
-  logger.stop_timer(1e+6, "naive mat mult x" + bpp::TextTools::toString(g), "s");
+  for(int i = 0; i < es_.eigenvalues().size(); ++i)
+  {
+    logger.openFile("eigenvector_" + bpp::TextTools::toString(i) + "_real.txt");
+    logger.getLogFile() << es_.eigenvectors().col(i).real() << "\n";
+    logger.closeFile();
 
-  mat = operators_[0]->fetchCombinedMatrix(); // restarts mat
+    logger.openFile("eigenvector_" + bpp::TextTools::toString(i) + "_imag.txt");
+    logger.getLogFile() << es_.eigenvectors().col(i).imag() << "\n";
+    logger.closeFile();
+  }
+  #endif
+}
 
-  for(size_t i = 1; i < operators_.size(); ++i)
-    mat = mat * operators_[i]->fetchCombinedMatrix();
+void Epoch::transferStatistics(Eigen::VectorXd& y)
+{
+  Eigen::VectorXd tmp(ssl_.getMoments().size()); // y and tmp have potentially different sizes
+  tmp.setZero();
 
-  logger.start_timer();
-  transitionMatrix_ = mat; // converts to dense format
-  eigenDec_.exponentiate(transitionMatrix_, g); // matrix passed as non-const ref
-  logger.stop_timer(1e+6, "eigen-dec mat mult x" + bpp::TextTools::toString(g), "s");
+  // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
+  for(int i = 0; i < tmp.size(); ++i)
+  {
+    int idx = ssl_.getMoments()[i].getParent()->getPosition();
+    tmp(i) = y(idx);
+  }
+
+  y = tmp; // swap
+}
+
+void Epoch::updateMoments(const Eigen::VectorXd& y)
+{
+  if(y.size() != ssl_.getMoments().size())
+    throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
+
+  for(int i = 0; i < y.size(); ++i)
+    ssl_.getMoments()[i].setValue(y(i));
 }
 
 void Epoch::computeSteadyState_()
@@ -105,28 +130,4 @@ void Epoch::computeSteadyState_()
   steadYstate_ /= steadYstate_(ssl_.getDummyIndex()); // divide by I moment, which embodies constant used for Eigen decomposition
 
   updateMoments(steadYstate_);
-}
-
-void Epoch::transferStatistics(Eigen::VectorXd& y)
-{
-  Eigen::VectorXd tmp(ssl_.getMoments().size()); // y and tmp have potentially different sizes
-  tmp.setZero();
-
-  // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
-  for(int i = 0; i < tmp.size(); ++i)
-  {
-    int idx = ssl_.getMoments()[i].getParent()->getPosition();
-    tmp(i) = y(idx);
-  }
-
-  y = tmp; // swap
-}
-
-void Epoch::updateMoments(const Eigen::VectorXd& y)
-{
-  if(y.size() != ssl_.getMoments().size())
-    throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
-
-  for(int i = 0; i < y.size(); ++i)
-    ssl_.getMoments()[i].setValue(y(i));
 }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 31/10/2022
+ * Last modified: 08/11/2022
  *
  */
 
@@ -41,7 +41,6 @@ private:
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
   std::map<size_t, std::shared_ptr<Population>> pops_; // pop-id >class object (containing that same id as a member)
 
-  EigenDecomposition eigenDec_;
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::VectorXd steadYstate_; // based on the parameters of this epoch
 
@@ -53,7 +52,6 @@ public:
   endGen_(0),
   operators_(0),
   pops_(),
-  eigenDec_(),
   transitionMatrix_(),
   steadYstate_()
   { }
@@ -67,7 +65,6 @@ public:
   endGen_(end),
   operators_(ops),
   pops_(pops),
-  eigenDec_(),
   transitionMatrix_(),
   steadYstate_()
   {
@@ -117,26 +114,6 @@ public:
     return transitionMatrix_;
   }
 
-  const EigenDecomposition& getEigenDecompositions()
-  {
-    return eigenDec_;
-  }
-
-  void computeExpectedSumStats(Eigen::VectorXd& y)
-  {
-    //std::cout << y << std::endl << std::endl;
-    //std::cout << "Epoch::computeExpectedSumStats:\n" << std::setprecision(12) << std::scientific << transitionMatrix_ << std::endl;
-    // WARNING ad-hockery for testing
-    eigenDec_.exponentiate(transitionMatrix_, duration()); // matrix passed as non-const ref
-    y = transitionMatrix_ * y;
-    //std::cout << transitionMatrix_ << std::endl;
-    //std::cout << y << std::endl << std::endl;
-
-    //y /= y(ssl_.getDummyIndex());
-
-    //std::cout << y << std::endl << std::endl;
-  }
-
   const std::map<size_t, std::shared_ptr<Population>>& getPops()
   {
     return pops_;
@@ -161,6 +138,8 @@ public:
   {
     return ssl_.getMoments();
   }
+
+  void computeExpectedSumStats(Eigen::VectorXd& y);
 
   void transferStatistics(Eigen::VectorXd& y);
 

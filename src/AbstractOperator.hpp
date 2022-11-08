@@ -29,7 +29,6 @@
 #include <Bpp/Text/TextTools.h>
 
 #include "SumStatsLibrary.hpp"
-#include "EigenDecomposition.hpp"
 #include "Log.hpp"
 
 class AbstractOperator:

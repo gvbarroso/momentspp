@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/10/2022
+ * Last modified: 08/11/2022
  *
  */
 
@@ -25,10 +25,14 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats()
 {
+  std::ofstream stats;
+
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
-  std::cout << "steady state:" << std::endl;
-  epochs_[0]->getSslib().printMoments(std::cout);
-  //std::cout << expected_ << std::endl;
+
+  stats.open("steady_state.txt");
+  epochs_[0]->getSslib().printMoments(stats);
+  stats.close();
+
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs (pass expected_ by ref)
@@ -37,16 +41,10 @@ void Model::computeExpectedSumStats()
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_);
-  std::cout << "\n\nA * steady state:" << std::endl;
-  epochs_.back()->getSslib().printMoments(std::cout);
-  //std::cout << "\n\n\n" << expected_ << std::endl;
 
-  /*#ifdef VERBOSE
-  epochs_.back()->timeTest(epochs_.back()->duration());
-  Log logger;
-  logger.openFile("moments.txt");
-  epochs_.back()->getSslib().printMoments(logger.getLogFile());
-  #endif*/
+  stats.open("final_moments.txt");
+  epochs_.back()->getSslib().printMoments(stats);
+  stats.close();
 }
 
 void Model::popAdmix_()
