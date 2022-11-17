@@ -49,12 +49,14 @@ bench_plot <- bench_plot + theme(axis.title = element_text(size = 20), axis.text
 bench_plot
 
 # single population case
-EigenValuesTableReal <- as.data.frame(matrix(nrow = 27, ncol = 5))
-names(EigenValuesTableReal) <- paste("e", 1:5, sep = "")
+num_stats <- 5 # DD, Dz, H, I, Pi2, == num eigenvalues
 
 a <- c("low_Ne", "mid_Ne", "high_Ne")
 b <- c("low_mu", "mid_mu", "high_mu")
 c <- c("low_r", "mid_r", "high_r")
+
+EigenValuesTableReal <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c), ncol = num_stats))
+EigenVectorsTableReal <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c), ncol = num_stats))
 
 idx = 1
 for(x in 1:length(a)) {
@@ -63,65 +65,54 @@ for(x in 1:length(a)) {
       reals <- read.table(paste(paste("pops_1", a[x], b[y], c[z], sep = "/"), "/eigenvalues_real.txt", sep = ""))
       EigenValuesTableReal[idx,] <- t(reals)
       
+      vecs <- read.table(paste(paste("pops_1", a[x], b[y], c[z], sep = "/"), "/eigenvector_real.txt", sep = ""))
+      EigenVectorsTableReal[idx,] <- t(vecs)
+      
       idx = idx + 1
     }
   }
 }
 
+EigenValuesTableReal <- select(EigenValuesTableReal, order(colSums(EigenValuesTableReal), decreasing = T))
+names(EigenValuesTableReal) <- paste("e", 1:num_stats, sep = "")
+
 EigenValuesTableReal$Ne <- c(rep(1e+6, 9), rep(1e+7, 9), rep(1e+8, 9))
 EigenValuesTableReal$mu <- c(rep(c(rep(1e-8, 3), rep(1e-7, 3), rep(1e-6, 3)), 3))
 EigenValuesTableReal$r <- rep(c(1e-8, 1e-7, 1e-6), 9)
 
-m_e1 <- pivot_longer(EigenValuesTableReal, cols = "e1", names_to = "variable")
+EigenValuesTableReal$theta <- 4 * EigenValuesTableReal$Ne * EigenValuesTableReal$mu
+EigenValuesTableReal$rho <- 4 * EigenValuesTableReal$Ne * EigenValuesTableReal$r
+EigenValuesTableReal$ratio <- EigenValuesTableReal$theta / EigenValuesTableReal$rho
 
-e1_plot <- ggplot(data = m_e1, aes(x = Ne, y = value)) + facet_grid(r~mu)
-e1_plot <- e1_plot + geom_line(data = m_e1) + geom_point(size = 2.5) + theme_bw()
-e1_plot <- e1_plot + scale_x_continuous(breaks = c(1e+6, 1e+7, 1e+8), trans = "log10") 
-e1_plot <- e1_plot + scale_y_continuous(breaks = pretty_breaks(), trans = "log10")
-e1_plot <- e1_plot + labs(title = "Eigenvalue, rows = r, cols = mu", x = "Ne", y = "e1")
-e1_plot <- e1_plot + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "none")
-ggsave("e1.png", e1_plot, device = "png")
+dat <- pivot_longer(EigenValuesTableReal, cols = starts_with("e"), names_to = "variable")
 
-m_e2 <- pivot_longer(EigenValuesTableReal, cols = "e2", names_to = "variable")
+p <- ggplot(data = dat, aes(x = Ne, y = value, shape = variable, color = log(ratio))) + facet_grid(r~mu)
+p <- p + geom_point(size = 3) + theme_bw()
+p <- p + scale_shape_manual(values = c(0, 1, 2, 3, 4))
+p <- p + scale_x_continuous(trans = "log10", breaks = c(1e+6, 1e+7, 1e+8)) 
+p <- p + scale_y_continuous(trans = "log10", breaks = pretty_breaks())
+p <- p + labs(title = "Eigenvalues x r (rows) and u (cols)", x = "Ne", y = "Eigenvalue")
+p <- p + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "bottom")
+p
 
-e2_plot <- ggplot(data = m_e2, aes(x = Ne, y = value)) + facet_grid(r~mu)
-e2_plot <- e2_plot + geom_line(data = m_e2) + geom_point(size = 2.5) + theme_bw()
-e2_plot <- e2_plot + scale_x_continuous(breaks = c(1e+6, 1e+7, 1e+8), trans = "log10") 
-e2_plot <- e2_plot + scale_y_continuous(breaks = pretty_breaks(), trans = "log10")
-e2_plot <- e2_plot + labs(title = "Eigenvalue, rows = r, cols = mu", x = "Ne", y = "e2")
-e2_plot <- e2_plot + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "none")
-ggsave("e2.png", e2_plot, device = "png")
+ggsave("eigen_vals.pdf", p, device = "pdf", width = 12, height = 12)
 
-m_e3 <- pivot_longer(EigenValuesTableReal, cols = "e3", names_to = "variable")
 
-e3_plot <- ggplot(data = m_e3, aes(x = Ne, y = value)) + facet_grid(r~mu)
-e3_plot <- e3_plot + geom_line(data = m_e3) + geom_point(size = 2.5) + theme_bw()
-e3_plot <- e3_plot + scale_x_continuous(breaks = c(1e+6, 1e+7, 1e+8), trans = "log10") 
-e3_plot <- e3_plot + scale_y_continuous(breaks = pretty_breaks(), trans = "log10")
-e3_plot <- e3_plot + labs(title = "Eigenvalue, rows = r, cols = mu", x = "Ne", y = "e3")
-e3_plot <- e3_plot + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "none")
-ggsave("e3.png", e3_plot, device = "png")
 
-m_e4 <- pivot_longer(EigenValuesTableReal, cols = "e4", names_to = "variable")
 
-e4_plot <- ggplot(data = m_e4, aes(x = Ne, y = value)) + facet_grid(r~mu)
-e4_plot <- e4_plot + geom_line(data = m_e4) + geom_point(size = 2.5) + theme_bw()
-e4_plot <- e4_plot + scale_x_continuous(breaks = c(1e+6, 1e+7, 1e+8), trans = "log10") 
-e4_plot <- e4_plot + scale_y_continuous(breaks = pretty_breaks(), trans = "log10")
-e4_plot <- e4_plot + labs(title = "Eigenvalue, rows = r, cols = mu", x = "r", y = "e4")
-e4_plot <- e4_plot + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "none")
-ggsave("e4.png", e4_plot, device = "png")
+m1 <- lm(e1 ~ (Ne + mu + r), data = EigenValuesTableReal)
+m2 <- lm(e2 ~ (Ne + mu + r), data = EigenValuesTableReal)
+m3 <- lm(e3 ~ (Ne + mu + r), data = EigenValuesTableReal)
+m4 <- lm(e4 ~ (Ne + mu + r), data = EigenValuesTableReal)
+m5 <- lm(e5 ~ (Ne + mu + r), data = EigenValuesTableReal)
 
-m_e5 <- pivot_longer(EigenValuesTableReal, cols = "e5", names_to = "variable")
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+summary(m5)
 
-e5_plot <- ggplot(data = m_e5, aes(x = Ne, y = value)) + facet_grid(r~mu)
-e5_plot <- e5_plot + geom_line(data = m_e5) + geom_point(size = 2.5) + theme_bw()
-e5_plot <- e5_plot + scale_x_continuous(breaks = c(1e+6, 1e+7, 1e+8), trans = "log10") 
-e5_plot <- e5_plot + scale_y_continuous(breaks = pretty_breaks(), trans = "log10")
-e5_plot <- e5_plot + labs(title = "Eigenvalue, rows = r, cols = mu", x = "r", y = "e5")
-e5_plot <- e5_plot + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "none")
-ggsave("e5.png", e5_plot, device = "png")
-
+filter(EigenValuesTableReal, Ne == 1e+6) %>% e2 / mu
 
 p1_stats <- c("DD", "Dz", "H", "I", "Pi2")
 
@@ -206,6 +197,17 @@ z
 X_inv <- inverse(ev6$vectors)
 
 
+s <- c(1e-5, 1e-4, 1e-3, 1e-2, 1e-1)
+N <- c(1e+3, 1e+4, 1e+5, 1e+6, 1e+7)
+tbl <- crossing(N, s)
+tbl$alpha <- 2 * tbl$N * tbl$s
+tbl$p_fix <- tbl$s / (1 - exp(-tbl$alpha))
 
-
-
+p_plot <- ggplot(data = tbl, aes(x = alpha, y = p_fix, color = log(N), shape = as.factor(s)))
+p_plot <- p_plot + geom_point(size = 3) + theme_bw()
+p_plot <- p_plot + scale_shape_manual(values = c(15, 16, 17, 18, 19, 20))
+p_plot <- p_plot + scale_x_continuous(trans = "log10", breaks = unique(tbl$alpha)) 
+p_plot <- p_plot + scale_y_continuous(trans = "log10", breaks = c(1e-5, 1e-3, 1e-2, 1e-1))
+p_plot <- p_plot + labs(title = NULL, x = "Alpha", y = "P(fix)")
+p_plot <- p_plot + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "right")
+p_plot
