@@ -33,17 +33,21 @@ void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
   Log logger;
 
   logger.openFile("eigenvalues_real.txt");
-  logger.getLogFile() << es_.eigenvalues().real() << "\n";
+  logger.getLogFile() << std::scientific << std::setprecision(16) << es_.eigenvalues().real() << "\n";
   logger.closeFile();
 
   logger.openFile("eigenvalues_imag.txt");
-  logger.getLogFile() << es_.eigenvalues().imag() << "\n";
+  logger.getLogFile() << std::scientific << std::setprecision(16) << es_.eigenvalues().imag() << "\n";
   logger.closeFile();
 
   for(int i = 0; i < es_.eigenvalues().size(); ++i)
   {
     logger.openFile("eigenvector_" + bpp::TextTools::toString(i) + "_real.txt");
-    logger.getLogFile() << es_.eigenvectors().col(i).real() << "\n";
+    Eigen::VectorXd x = es_.eigenvectors().col(i).real();
+    std::cout << std::setprecision(16) << x << "\n";
+    x /= x(ssl_.getDummyIndex());
+    std::cout << std::setprecision(16) << x << "\n";
+    logger.getLogFile() << x << "\n";
     logger.closeFile();
 
     logger.openFile("eigenvector_" + bpp::TextTools::toString(i) + "_imag.txt");
@@ -95,7 +99,7 @@ void Epoch::computeSteadyState_()
       bpp::ParameterList pl;
       pl.addParameter(operators_[i]->getParameters()[j]);
       pl.printParameters(logger.getLogFile());
-      logger.getLogFile() << std::setprecision(1e-6) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
+      logger.getLogFile() << std::setprecision(1e-12) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
@@ -103,15 +107,15 @@ void Epoch::computeSteadyState_()
     logger.getLogFile() << std::scientific << tmp << "\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";
-    test = test * operators_[i]->fetchCombinedMatrix();
-    logger.getLogFile() << std::setprecision(1e-9) << std::scientific << test << "\n";
+    test = operators_[i]->fetchCombinedMatrix() * test;
+    logger.getLogFile() << std::setprecision(1e-12) << std::scientific << test << "\n";
   }
   #endif
 
   Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
 
   for(size_t i = 1; i < operators_.size(); ++i)
-    mat = mat * operators_[i]->fetchCombinedMatrix();
+    mat = operators_[i]->fetchCombinedMatrix() * mat;
 
   transitionMatrix_ = mat; // converts to dense format
 

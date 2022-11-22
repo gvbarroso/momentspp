@@ -48,15 +48,22 @@ bench_plot <- bench_plot + labs(title = "Benchmark (apply transformation to 1000
 bench_plot <- bench_plot + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 16), legend.position = "bottom")
 bench_plot
 
+##############################
+#
 # single population case
-num_stats <- 5 # DD, Dz, H, I, Pi2, == num eigenvalues
+#
+##############################
+
+p1_stats <- c("DD", "Dz", "H", "I", "Pi2")
+num_stats <- length(p1_stats)
 
 a <- c("low_Ne", "mid_Ne", "high_Ne")
 b <- c("low_mu", "mid_mu", "high_mu")
 c <- c("low_r", "mid_r", "high_r")
 
 EigenValuesTableReal <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c), ncol = num_stats))
-EigenVectorsTableReal <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c), ncol = num_stats))
+
+eigen_list <- list() # one EigenVectors matrix per scenario
 
 idx = 1
 for(x in 1:length(a)) {
@@ -65,18 +72,24 @@ for(x in 1:length(a)) {
       reals <- read.table(paste(paste("pops_1", a[x], b[y], c[z], sep = "/"), "/eigenvalues_real.txt", sep = ""))
       EigenValuesTableReal[idx,] <- t(reals)
       
-      vecs <- read.table(paste(paste("pops_1", a[x], b[y], c[z], sep = "/"), "/eigenvector_real.txt", sep = ""))
-      EigenVectorsTableReal[idx,] <- t(vecs)
+      tbl <- as.data.frame(matrix(nrow = num_stats, ncol = num_stats))
+      
+      for(i in 1:num_stats) {
+        tbl[i, ] <- t(read.table(paste(paste("pops_2", a[x], b[y], c[z], d[w], sep = "/"), "/eigenvector_", i - 1, "_real.txt", sep = "")))
+        names(tbl) <- p1_stats
+      }
+      
+      eigen_list[[idx]] <- tbl
       
       idx = idx + 1
     }
   }
 }
 
-EigenValuesTableReal <- select(EigenValuesTableReal, order(colSums(EigenValuesTableReal), decreasing = T))
+#EigenValuesTableReal <- select(EigenValuesTableReal, order(colSums(EigenValuesTableReal), decreasing = T))
 names(EigenValuesTableReal) <- paste("e", 1:num_stats, sep = "")
 
-EigenValuesTableReal$Ne <- c(rep(1e+6, 9), rep(1e+7, 9), rep(1e+8, 9))
+EigenValuesTableReal$Ne <- c(rep(1e+3, 9), rep(1e+4, 9), rep(1e+5, 9))
 EigenValuesTableReal$mu <- c(rep(c(rep(1e-8, 3), rep(1e-7, 3), rep(1e-6, 3)), 3))
 EigenValuesTableReal$r <- rep(c(1e-8, 1e-7, 1e-6), 9)
 
@@ -84,12 +97,14 @@ EigenValuesTableReal$theta <- 4 * EigenValuesTableReal$Ne * EigenValuesTableReal
 EigenValuesTableReal$rho <- 4 * EigenValuesTableReal$Ne * EigenValuesTableReal$r
 EigenValuesTableReal$ratio <- EigenValuesTableReal$theta / EigenValuesTableReal$rho
 
+write.table(EigenValuesTableReal, "eigenvals.txt", sep = ",")
+
 dat <- pivot_longer(EigenValuesTableReal, cols = starts_with("e"), names_to = "variable")
 
 p <- ggplot(data = dat, aes(x = Ne, y = value, shape = variable, color = log(ratio))) + facet_grid(r~mu)
 p <- p + geom_point(size = 3) + theme_bw()
 p <- p + scale_shape_manual(values = c(0, 1, 2, 3, 4))
-p <- p + scale_x_continuous(trans = "log10", breaks = c(1e+6, 1e+7, 1e+8)) 
+p <- p + scale_x_continuous(trans = "log10", breaks = c(1e+3, 1e+4, 1e+5)) 
 p <- p + scale_y_continuous(trans = "log10", breaks = pretty_breaks())
 p <- p + labs(title = "Eigenvalues x r (rows) and u (cols)", x = "Ne", y = "Eigenvalue")
 p <- p + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "bottom")
@@ -97,25 +112,118 @@ p
 
 ggsave("eigen_vals.pdf", p, device = "pdf", width = 12, height = 12)
 
+##############################
+#
+# 2-pop case
+#
+##############################
 
+pop_indices <- c(0, 1)
+DD_stats <- NULL
+Dz_stats <- NULL
+H_stats <- NULL
+pi2_stats <- NULL
 
+for(i in 1:length(pop_indices)) {
+  for(j in 1:length(pop_indices)) {
+    
+    DD_stats <- c(DD_stats, paste("DD", pop_indices[i], pop_indices[j], sep = "_"))
+    H_stats <- c(H_stats, paste("H", pop_indices[i], pop_indices[j], sep = "_"))
+    
+    for(k in 1:length(pop_indices)) {
+      
+      Dz_stats <- c(Dz_stats, paste("Dz", pop_indices[i], pop_indices[j], pop_indices[k], sep = "_"))
+      
+      for(l in 1:length(pop_indices)) {
+        
+        pi2_stats <- c(pi2_stats, paste("pi2", pop_indices[i], pop_indices[j], pop_indices[k], pop_indices[l], sep = "_"))
+      }
+    }
+  }
+}
 
-m1 <- lm(e1 ~ (Ne + mu + r), data = EigenValuesTableReal)
-m2 <- lm(e2 ~ (Ne + mu + r), data = EigenValuesTableReal)
-m3 <- lm(e3 ~ (Ne + mu + r), data = EigenValuesTableReal)
-m4 <- lm(e4 ~ (Ne + mu + r), data = EigenValuesTableReal)
-m5 <- lm(e5 ~ (Ne + mu + r), data = EigenValuesTableReal)
+p2_stats <- c(DD_stats, Dz_stats, H_stats, "I", pi2_stats)
+num_stats <- length(p2_stats)
 
-summary(m1)
-summary(m2)
-summary(m3)
-summary(m4)
-summary(m5)
+a <- c("zero_rec", "nonzero_rec")
+b <- c("single_epoch", "two_epochs")
+c <- c("symmetric_mig", "asymmetric_mig")
+d <- c("same_Ne", "diff_Ne")
 
-filter(EigenValuesTableReal, Ne == 1e+6) %>% e2 / mu
+# params table (scenarios)
+params <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c) * length(d), ncol = 7))
+names(params) <- c("N_0", "N_1", "m_01", "m_10", "num_epochs", "r", "mu")
 
-p1_stats <- c("DD", "Dz", "H", "I", "Pi2")
+params$N_0 <- rep(c(1e+4, 1e+3), 8)
+params$N_1 <- rep(1e+4, 16)
+params$m_01 <- rep(c(1e-5, 0), 8)
+params$m_10 <- rep(1e-5, 16)
+params$num_epochs <- rep(c(rep(2, 4), rep(1, 4)), 2)
+params$r <- c(rep(0, 8), rep(1e-8, 8))
+params$mu <- 1e-8
 
+EigenValuesTableReal <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c) * length(d), ncol = num_stats))
+EigenValuesTableImag <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c) * length(d), ncol = num_stats))
+SteadyStateTable <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c) * length(d), ncol = num_stats))
+eigen_list <- list()  # one EigenVectors matrix per scenario
+
+idx = 1
+for(x in 1:length(a)) {
+  for(y in 1:length(b)) {
+    for(z in 1:length(c)) {
+      for(w in 1:length(d)) {
+        
+        reals <- read.table(paste(paste("pops_2", a[x], b[y], c[z], d[w], sep = "/"), "/eigenvalues_real.txt", sep = ""))
+        EigenValuesTableReal[idx,] <- t(reals)
+        
+        imag <- read.table(paste(paste("pops_2", a[x], b[y], c[z], d[w], sep = "/"), "/eigenvalues_imag.txt", sep = ""))
+        EigenValuesTableImag[idx,] <- t(imag)
+        
+        steady_state <- read.table(paste(paste("pops_2", a[x], b[y], c[z], d[w], sep = "/"), "/steady_state.txt", sep = ""))
+        SteadyStateTable[idx,] <- t(steady_state$V5)
+        
+        tbl <- as.data.frame(matrix(nrow = num_stats, ncol = num_stats))
+        for(i in 1:num_stats) {
+          tbl[i, ] <- t(read.table(paste(paste("pops_2", a[x], b[y], c[z], d[w], sep = "/"), "/eigenvector_", i - 1, "_real.txt", sep = "")))
+          names(tbl) <- p2_stats
+        }
+        
+        eigen_list[[idx]] <- tbl
+        
+        idx = idx + 1
+      }
+    }
+  }
+}
+
+names(SteadyStateTable) <- p2_stats
+names(EigenValuesTableReal) <- paste("e", 1:num_stats, sep = "")
+names(EigenValuesTableImag) <- paste("e", 1:num_stats, sep = "")
+
+eigen_reals <- bind_cols(EigenValuesTableReal, params)
+eigen_imag <- bind_cols(EigenValuesTableImag, params)
+steadY <- bind_cols(SteadyStateTable, params)
+steadY$has_imag <- rowSums(abs(EigenValuesTableImag)) > 0
+
+write.table(steadY, "steadY_tbl.tsv", sep = ",", row.names = F, quote = F)
+
+dat <- pivot_longer(eigen_imag, cols = starts_with("e"), names_to = "variable")
+datComplexOnly <- filter(dat, value != 0)
+datComplexOnly$value <- abs(datComplexOnly$value) # sends conjugate pairs to the same value in order to plot in log scale
+
+p <- ggplot(data = datComplexOnly, aes(x = r, y = value, color = variable)) + facet_grid(N_0~m_01)
+p <- p + geom_point(size = 3, alpha = 0.2) + theme_bw()
+p <- p + labs(title = "Eigenvalues x  N_0 (rows) and m_01 (cols)", x = "r", y = "Eigenvalue")
+p <- p + scale_y_continuous(trans = "log10", breaks = exp(seq(log(1), log(1e-18), length.out=19)))
+p <- p + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "bottom")
+p
+
+q <- ggplot(data = datComplexOnly, aes(x = num_epochs, y = value, color = variable)) + facet_grid(N_0~m_01)
+q <- q + geom_point(size = 3, alpha = 0.2) + theme_bw()
+q <- q + labs(title = "Eigenvalues x  N_0 (rows) and m_01 (cols)", x = "num_epochs", y = "Eigenvalue")
+q <- q + scale_y_continuous(trans = "log10", breaks = exp(seq(log(1), log(1e-18), length.out=19)))
+q <- q + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "bottom")
+q
 
 
 #######################
