@@ -36,7 +36,7 @@ public:
       logFile_.close();
   }
 
-  void stop_timer(double mult, const std::string& task, const std::string& unit);
+  void stop_timer();
 
   void start_timer()
   {

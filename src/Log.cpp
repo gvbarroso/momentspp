@@ -8,7 +8,7 @@
 
 #include "Log.hpp"
 
-void Log::stop_timer(double mult, const std::string& task, const std::string& unit)
+void Log::stop_timer()
 {
   endTimePoint_ = std::chrono::high_resolution_clock::now();
 
@@ -16,8 +16,8 @@ void Log::stop_timer(double mult, const std::string& task, const std::string& un
   auto end = std::chrono::time_point_cast<std::chrono::microseconds>(endTimePoint_).time_since_epoch().count();
 
   auto duration = end - start;
-  double conv = duration / mult;
+  double conv = duration / 1e+6;
     
-  logFile_ << "Duration of " << task << " = " << std::setprecision(3) << conv << " (" << unit << ")\n";
+  logFile_ << std::setprecision(6) << conv << "\n";
 }
 

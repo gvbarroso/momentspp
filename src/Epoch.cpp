@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 08/11/2022
+ * Last modified: 05/12/2022
  *
  */
 
@@ -10,7 +10,6 @@
 #include "Log.hpp"
 #include "Epoch.hpp"
 
-// this method is where the heavier Eigen linear algebra takes place
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
   if(matchParametersValues(params))
@@ -24,37 +23,25 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   transitionMatrix_ = mat; // converts to dense format
 }
 
+// this method is where the heavier Eigen3 linear algebra takes place
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
+  Log timer;
+  timer.openFile("timing.txt");
+
   Eigen::EigenSolver<Eigen::MatrixXd> es_(transitionMatrix_);
-  y = es_.eigenvectors().real() * es_.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es_.eigenvectors().real().inverse() * y;
 
-  #ifdef VERBOSE
-  Log logger;
+  timer.start_timer();
+  auto tmp1 = transitionMatrix_.pow(duration()) * y;
+  timer.stop_timer();
 
-  logger.openFile("eigenvalues_real.txt");
-  logger.getLogFile() << std::scientific << std::setprecision(16) << es_.eigenvalues().real() << "\n";
-  logger.closeFile();
+  timer.start_timer();
+  auto tmp2 = es_.eigenvectors().real() * es_.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es_.eigenvectors().real().inverse() * y;
+  timer.stop_timer();
 
-  logger.openFile("eigenvalues_imag.txt");
-  logger.getLogFile() << std::scientific << std::setprecision(16) << es_.eigenvalues().imag() << "\n";
-  logger.closeFile();
-
-  for(int i = 0; i < es_.eigenvalues().size(); ++i)
-  {
-    logger.openFile("eigenvector_" + bpp::TextTools::toString(i) + "_real.txt");
-    Eigen::VectorXd x = es_.eigenvectors().col(i).real();
-    std::cout << std::setprecision(16) << x << "\n";
-    x /= x(ssl_.getDummyIndex());
-    std::cout << std::setprecision(16) << x << "\n";
-    logger.getLogFile() << x << "\n";
-    logger.closeFile();
-
-    logger.openFile("eigenvector_" + bpp::TextTools::toString(i) + "_imag.txt");
-    logger.getLogFile() << es_.eigenvectors().col(i).imag() << "\n";
-    logger.closeFile();
-  }
-  #endif
+  timer.start_timer();
+  y = es_.pseudoEigenvectors() * es_.pseudoEigenvalueMatrix().pow(duration()) * es_.pseudoEigenvectors().inverse() * y;
+  timer.stop_timer();
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y)
@@ -125,7 +112,7 @@ void Epoch::computeSteadyState_()
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {
-    // finding the maximum value (should be == 1., but searching for equality is problematic due to precision)
+    // finding the maximum value (should be == 1., but searching for equality is problematic due to precision issues)
     if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
       idx = i;
   }

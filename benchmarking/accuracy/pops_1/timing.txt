@@ -1,0 +1,3 @@
+Duration of no-diagonalization = 3e-06 (s)
+Duration of full-diagonalization = 2.4e-05 (s)
+Duration of pseudo-diagonalization = 0.000188 (s)

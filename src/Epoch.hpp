@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 08/11/2022
+ * Last modified: 05/12/2022
  *
  */
 
@@ -19,6 +19,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
+#include <unsupported/Eigen/MatrixFunctions> // for es_.pseudoEigenvalueMatrix().pow(duration())
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
@@ -39,10 +40,10 @@ private:
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
-  std::map<size_t, std::shared_ptr<Population>> pops_; // pop-id >class object (containing that same id as a member)
+  std::map<size_t, std::shared_ptr<Population>> pops_; // pop-id->class object (containing that same id as a member variable)
 
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
-  Eigen::VectorXd steadYstate_; // based on the parameters of this epoch
+  Eigen::VectorXd steadYstate_; // based on the parameters of *this epoch
 
 public:
   Epoch():

@@ -60,7 +60,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options_.getInitR(), ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options_.getInitMu(), ic, sslib);
 
-    // include operators in the correct order for matrix operations
+    // include operators in the "correct" order for matrix operations
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
 

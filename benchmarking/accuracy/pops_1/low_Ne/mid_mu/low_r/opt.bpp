@@ -1,0 +1,14 @@
+demes_file = ../../../../pops.tsv
+stats_file = ../../../../data.vcf
+
+optimizer = Powell
+tolerance = 1e-6
+ci = false
+order = 2
+num_epochs = 1
+num_pops = 1
+total_gen = 10000
+number_threads = 1
+
+# additional file with initial parameter values
+params=init_parameters.bpp
