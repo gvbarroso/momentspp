@@ -26,22 +26,27 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 // this method is where the heavier Eigen3 linear algebra takes place
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
-  Log timer;
-  timer.openFile("timing.txt");
+  Eigen::EigenSolver<Eigen::MatrixXd> es;
 
-  Eigen::EigenSolver<Eigen::MatrixXd> es_(transitionMatrix_);
+  Log dir;
+  dir.openFile("timing_direct.txt");
+  dir.start_timer();
+  y = transitionMatrix_.pow(duration()) * y;
+  dir.stop_timer();
 
-  timer.start_timer();
-  auto tmp1 = transitionMatrix_.pow(duration()) * y;
-  timer.stop_timer();
+  Log eigen;
+  eigen.openFile("timing_eigen.txt");
+  eigen.start_timer();
+  es.compute(transitionMatrix_);
+  auto tmp1 = es.eigenvectors().real() * es.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es.eigenvectors().real().inverse() * y;
+  eigen.stop_timer();
 
-  timer.start_timer();
-  auto tmp2 = es_.eigenvectors().real() * es_.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es_.eigenvectors().real().inverse() * y;
-  timer.stop_timer();
-
-  timer.start_timer();
-  y = es_.pseudoEigenvectors() * es_.pseudoEigenvalueMatrix().pow(duration()) * es_.pseudoEigenvectors().inverse() * y;
-  timer.stop_timer();
+  Log psuedoeigen;
+  psuedoeigen.openFile("timing_pseudo-eigen.txt");
+  psuedoeigen.start_timer();
+  es.compute(transitionMatrix_);
+  auto tmp2 = es.pseudoEigenvectors() * es.pseudoEigenvalueMatrix().pow(duration()) * es.pseudoEigenvectors().inverse() * y;
+  psuedoeigen.stop_timer();
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y)
