@@ -1,9 +1,8 @@
 library(matlib)
 library(tidyverse)
 library(scales)
-library(patchwork) # To display 2 charts together
 
-setwd("Devel/momentspp/benchmarking/")
+setwd("~/Devel/momentspp/benchmarking/")
 
 ##############################
 #
@@ -20,6 +19,7 @@ for(i in 1:length(pop_scenarios)) {
   dir <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_direct.txt", sep = ""))
   eigen <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_eigen.txt", sep = ""))
   pseudo <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_pseudo-eigen.txt", sep = ""))
+  
   MultTimeTable[i,] <- c(pop_scenarios[i], nrow(stats), dir, eigen, pseudo)
 }
 
@@ -80,16 +80,17 @@ for(x in 1:length(a)) {
 stats <- bind_cols(bind_rows(steadyStateTable, finalMomentsTable), bind_rows(params, params))
 stats$type <- c(rep("steady", num_scenarios), rep("final", num_scenarios))
 
+write.table(stats, "bench_1-pop_moments.csv", sep = ",", row.names = F, quote = F)
+
 dat_stats <- pivot_longer(stats, cols = all_of(p1_stats), names_to = "variable")
 
 p <- ggplot(data = dat_stats, aes(x = variable, y = value, shape = type, color = as.factor(Ne))) + facet_grid(r~mu)
 p <- p + geom_point(size = 5) + theme_bw()
 p <- p + scale_shape_manual(values = c(0, 1, 2, 3, 4))
 p <- p + scale_y_continuous(trans = "log10")
-p <- p + labs(title = "Stat x r (rows) and u (cols)", x = "Moment", y = "Value")
+p <- p + labs(title = "1-Epoch Moments x r (rows) and u (cols)", x = "Moment", y = "Value")
 p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), legend.position = "bottom")
 p
-
 ggsave("moments_1-pop.pdf", p, device = "pdf", width = 12, height = 12)
 
 ##############################
@@ -98,12 +99,12 @@ ggsave("moments_1-pop.pdf", p, device = "pdf", width = 12, height = 12)
 #
 ##############################
 
-mu <- 1e-5
+mu <- 1e-6
 r <- c(0, 1e-5)
 Ne_0 <- c(1e+3, 1e+4)
 Ne_1 <- 1e+4
-m_01 <- c(0, 1e-5)
-m_10 <- 1e-5
+m_01 <- c(0, 1e-4)
+m_10 <- 1e-4
 num_epochs <- c(1, 2)
 
 num_gen_epoch_2 <- 5000
@@ -116,8 +117,6 @@ params <- mutate(params, Ne_1_bottleneck = case_when(num_epochs == 1 ~ NA_real_,
 params <- mutate(params, num_gen_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ 5000))
 
 num_scenarios <- nrow(params)
-
-write.table(two_pops_params, "bench_2-pop_params.csv", sep = ",", row.names = F)
 
 pop_indices <- c(0, 1)
 DD_stats <- NULL
@@ -189,111 +188,19 @@ dat_stats <- pivot_longer(stats, cols = all_of(p2_stats), names_to = "variable")
 p1 <- ggplot(data = filter(dat_stats, num_epochs == 1), aes(x = variable, y = value, shape = type, color = as.factor(r))) + facet_grid(Ne_0~m_01)
 p1 <- p1 + geom_point(size = 5) + theme_bw()
 p1 <- p1 + scale_shape_manual(values = c(0, 1))
-p1 <- p1 + labs(title = "Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
+p1 <- p1 + labs(title = "1-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p1 <- p1 + scale_y_continuous(trans = "log10")
-p1 <- p1 + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
+p1 <- p1 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
 p1
-ggsave("", p1, device = "png", width = 9, height = 6)
+ggsave("moments_1-epoch.png", p1, device = "png", width = 12, height = 12)
 
+# two epochs plot
 p2 <- ggplot(data = filter(dat_stats, num_epochs == 2), aes(x = variable, y = value, shape = type, color = as.factor(r))) + facet_grid(Ne_0~m_01)
 p2 <- p2 + geom_point(size = 5) + theme_bw()
 p2 <- p2 + scale_shape_manual(values = c(0, 1))
-p2 <- p2 + labs(title = "Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
+p2 <- p2 + labs(title = "2-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p2 <- p2 + scale_y_continuous(trans = "log10")
-p2 <- p2 + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
+p2 <- p2 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
 p2
-ggsave("eigen_imag.png", p, device = "png", width = 9, height = 6)
+ggsave("moments_2-epochs.png", p2, device = "png", width = 12, height = 12)
 
-#######################
-#
-# misc (mess)
-#
-#######################
-
-U <- matrix(c(1, 0, 0, 0, 0,
-              0, 1, 0, 0, 0,
-              0, 0, 1, 0, 6e-8,
-              0, 0, 3e-8, 1, 0,
-              0, 0, 0, 0, 1), 5, 5)
-
-
-R <- matrix(c(1, 0, 0, 0, 0,
-              0, 1, 0, 0, 0,
-              0, 0, 1, 0, 0,
-              0, 0, 0, 1, 0,
-              0, 0, 0, 0, 1), 5, 5)
-
-D <- matrix(c(9.997e-01, 4e-04, 0, 0, 0,
-              1e-04, 9.995e-01, 0, 0, 1e-04,
-              0, 0, 9.999e-01, 0, 0,
-              0, 0, 0, 1, 0,
-              1e-04, 0, 0, 0, 9.998e-01), 5, 5)
-
-
-Z1 <- R %*% D
-Z2 <- R %*% U
-Z3 <- D %*% R
-Z4 <- D %*% U
-Z5 <- U %*% R
-Z6 <- U %*% D
-
-X1 <- U %*% Z1
-X2 <- U %*% Z3
-X3 <- R %*% Z4
-X4 <- R %*% Z6
-X5 <- D %*% Z2
-X6 <- D %*% Z5
-
-ev1 <- eigen(X1)
-ev2 <- eigen(X2)
-ev3 <- eigen(X3)
-ev4 <- eigen(X4)
-ev5 <- eigen(X5)
-ev6 <- eigen(X6)
-
-
-v <- c(0.1, 0.1, 1e-3, 1, 1e-6)
-v <- rep(1, 5)
-names(v) <- c("D2", "Dz", "H", "I", "Pi2")
-
-M1 <- X1
-
-for(i in 1:1e+7) {
-  #v = X1 %*% v
-  #M1 = M1 %*% M1
-  W <- W %*% W
-}
-W
-M1
-v
-X1 %*% ev1$vectors[,1]
-M1 %*% ev1$vectors[,1]
-
-M <- matrix(c(9.995001e-01, 9.998000e-05, 0, 0, 9.998000e-05, 
-3.999600e-04, 9.994001e-01, 0, 0, 0 ,
-0, 0, 9.999000e-01, 2.000000e-04, 0, 
-0, 0, 0, 1.000000e+00, 0, 
-0, 1.000000e-04, 3.999600e-04, 0, 9.998000e-01), 5, 5)
-
-W <- t(M)
-z <- eigen(W)
-z
-
-
-X_inv <- inverse(ev6$vectors)
-
-
-s <- c(1e-5, 1e-4, 1e-3, 1e-2, 1e-1)
-N <- c(1e+3, 1e+4, 1e+5, 1e+6, 1e+7)
-tbl <- crossing(N, s)
-tbl$alpha <- 2 * tbl$N * tbl$s
-tbl$p_fix <- tbl$s / (1 - exp(-tbl$alpha))
-
-p_plot <- ggplot(data = tbl, aes(x = alpha, y = p_fix, color = log(N), shape = as.factor(s)))
-p_plot <- p_plot + geom_point(size = 3) + theme_bw()
-p_plot <- p_plot + scale_shape_manual(values = c(15, 16, 17, 18, 19, 20))
-p_plot <- p_plot + scale_x_continuous(trans = "log10", breaks = unique(tbl$alpha)) 
-p_plot <- p_plot + scale_y_continuous(trans = "log10", breaks = c(1e-5, 1e-3, 1e-2, 1e-1))
-p_plot <- p_plot + labs(title = NULL, x = "Alpha", y = "P(fix)")
-p_plot <- p_plot + theme(axis.title = element_text(size = 12), axis.text = element_text(size = 10), legend.position = "right")
-p_plot
