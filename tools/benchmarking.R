@@ -25,15 +25,15 @@ for(i in 1:length(pop_scenarios)) {
 
 molten_time <- pivot_longer(MultTimeTable, cols = c("direct", "eigen", "pseudo-eigen"), names_to = "variable")
 
-bench_plot <- ggplot(data = molten_time, aes(x = num_pops, y = value, shape = variable))
-bench_plot <- bench_plot + geom_line(data = molten_time)
-bench_plot <- bench_plot + geom_point(aes(shape = variable), size = 4)
-bench_plot <- bench_plot + scale_x_continuous(breaks = pop_scenarios, trans="log2") 
-bench_plot <- bench_plot + scale_y_continuous(breaks = c(1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e+0, 1e+1, 1e+2, 1e+3, 1e+4), trans="log10")
-bench_plot <- bench_plot + scale_shape_manual(values = c(0, 1, 2))
-bench_plot <- bench_plot + labs(title = "Benchmark (apply transformation to 10000 generations)", x = "Num Pops.", y = "Time (seconds)") + theme_bw()
-bench_plot <- bench_plot + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 16), legend.position = "bottom")
-bench_plot
+b <- ggplot(data = molten_time, aes(x = num_pops, y = value, shape = variable))
+b <- b + geom_line(data = molten_time)
+b <- b + geom_point(aes(shape = variable), size = 4)
+b <- b + scale_x_continuous(breaks = pop_scenarios, trans="log2") 
+b <- b + scale_y_continuous(breaks = c(1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e+0, 1e+1, 1e+2, 1e+3, 1e+4), trans="log10")
+b <- b + scale_shape_manual(values = c(0, 1, 2))
+b <- b + labs(title = "Timing benchmark (apply transformation to 10000 generations)", x = "Num Pops.", y = "Time (seconds)") + theme_bw()
+b <- b + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 16), legend.position = "bottom")
+ggsave("mat_mult_timing.png", b, device = "png", width = 12, height = 12)
 
 ##############################
 #
@@ -90,8 +90,7 @@ p <- p + scale_shape_manual(values = c(0, 1, 2, 3, 4))
 p <- p + scale_y_continuous(trans = "log10")
 p <- p + labs(title = "1-Epoch Moments x r (rows) and u (cols)", x = "Moment", y = "Value")
 p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), legend.position = "bottom")
-p
-ggsave("moments_1-pop.pdf", p, device = "pdf", width = 12, height = 12)
+ggsave("moments_1-pop.png", p, device = "png", width = 12, height = 12)
 
 ##############################
 #
@@ -108,15 +107,17 @@ m_10 <- 1e-4
 num_epochs <- c(1, 2)
 
 num_gen_epoch_2 <- 5000
-Ne_0_bottleneck <- Ne_0 / 10
-Ne_1_bottleneck <- Ne_1 / 10
+Ne_0_epoch_2 <- Ne_0 / 10
+Ne_1_epoch_2 <- Ne_1 / 10
 
 params <- crossing(mu, r, num_epochs, m_01, m_10, Ne_0, Ne_1)
-params <- mutate(params, Ne_0_bottleneck = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_0 / 10)))
-params <- mutate(params, Ne_1_bottleneck = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_1 / 10)))
+params <- mutate(params, Ne_0_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_0 / 10)))
+params <- mutate(params, Ne_1_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_1 / 10)))
 params <- mutate(params, num_gen_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ 5000))
 
 num_scenarios <- nrow(params)
+
+write.table(params, "bench_params.csv", sep = ",", quote = F, row.names = F, col.names = T)
 
 pop_indices <- c(0, 1)
 DD_stats <- NULL
@@ -191,7 +192,6 @@ p1 <- p1 + scale_shape_manual(values = c(0, 1))
 p1 <- p1 + labs(title = "1-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p1 <- p1 + scale_y_continuous(trans = "log10")
 p1 <- p1 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
-p1
 ggsave("moments_1-epoch.png", p1, device = "png", width = 12, height = 12)
 
 # two epochs plot
@@ -201,6 +201,49 @@ p2 <- p2 + scale_shape_manual(values = c(0, 1))
 p2 <- p2 + labs(title = "2-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p2 <- p2 + scale_y_continuous(trans = "log10")
 p2 <- p2 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
-p2
 ggsave("moments_2-epochs.png", p2, device = "png", width = 12, height = 12)
+
+
+# comparison with moments.LD 
+py_moments <- read.csv("bench_python.csv") # output file from run_bench.py
+
+common_moments <- intersect(names(finalMomentsTable), names(py_moments))
+match_moments <- bind_rows(select(finalMomentsTable, all_of(common_moments)), select(py_moments, all_of(common_moments)))
+match_moments$scenario <- rep(seq(1:num_scenarios), 2)
+match_moments$method <- c(rep("moments++", num_scenarios), rep("moments.LD", num_scenarios))
+
+dat_matched <- pivot_longer(match_moments, cols = all_of(common_moments), names_to = "variable")
+
+# all moments/all scenarios together
+p3 <- ggplot(data = dat_matched, aes(x = variable, y = value, color = method, shape = as.factor(scenario)))
+p3 <- p3 + geom_point(size = 3) + theme_bw()
+p3 <- p3 + labs(title = "2-Epoch Moments (C++ x Python)", x = "Moment", y = "Value")
+p3 <- p3 + scale_y_continuous(trans = "log10")
+p3 <- p3 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
+ggsave("moments_python_vs_c++.png", p3, device = "png", width = 12, height = 12)
+
+# for each moment
+for(i in 1:length(common_moments)) {
+  
+  mom <- common_moments[i]
+  
+  p <- ggplot(data = filter(dat_matched, variable == mom), aes(x = scenario, y = value, shape = method))
+  p <- p + geom_point(size = 5) + theme_bw()
+  p <- p + scale_shape_manual(values = c(0, 1))
+  p <- p + labs(title = paste(mom, "(C++ x Python)", sep = " "), x = "Scenario", y = "Value")
+  p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), legend.position = "bottom")
+  ggsave(paste(mom, "python_vs_c++.png", sep = "_"), p, device = "png", width = 12, height = 12)
+}
+
+# for each scenario
+for(i in 1:num_scenarios) {
+  
+  p <- ggplot(data = filter(dat_matched, scenario == i), aes(x = variable, y = value, shape = method))
+  p <- p + geom_point(size = 5) + theme_bw()
+  p <- p + scale_shape_manual(values = c(0, 1))
+  p <- p + scale_y_continuous(trans = "log10")
+  p <- p + labs(title = paste("scenario", i, "(C++ x Python)", sep = " "), x = "Moment", y = "Value")
+  p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
+  ggsave(paste("scenario_", i, "python_vs_c++.png", sep = "_"), p, device = "png", width = 12, height = 12)
+}
 

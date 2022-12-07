@@ -43,7 +43,7 @@ protected:
   std::vector<Eigen::SparseMatrix<double>> matrices_;
   Eigen::SparseMatrix<double> identity_; // helper matrix to convert from "delta" to "transition" matrix
 
-  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast updates)
+  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
 
 public:
   AbstractOperator(size_t numStats):
