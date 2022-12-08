@@ -23,7 +23,7 @@ knitr::opts_knit$set(root.dir = "~/Devel/momentspp/benchmarking/", engine.opts =
 
 # Setting up scenarios to test (parameter combinations)
 
-## 1-population parameters
+## 1_population parameters
 
 ```{r, message=FALSE, warning=FALSE}
 
@@ -32,40 +32,40 @@ num_stats <- length(p1_stats)
 
 r <- c(1e-8, 1e-7, 1e-6)
 mu <- c(1e-8, 1e-7, 1e-6)
-Ne <- c(1e+3, 1e+4, 1e+5)
+N <- c(1e+3, 1e+4, 1e+5)
 
-params_1-pop <- crossing(Ne, mu, r)
+params_1_pop <- crossing(N, mu, r)
 
-write.csv(params_1-pop, "params_1-pop.csv", quote = F, sep = ",", row.names = F)
+write.csv(params_1_pop, "params_1_pop.csv", quote = F, sep = ",", row.names = F)
 ```
 
-## 2-populations parameters
+## 2_populations parameters
 
 ```{r, message=FALSE, warning=FALSE}
 
-mu <- 1e-6
-r <- c(0, 1e-5)
-Ne_0 <- c(1e+3, 1e+4)
-Ne_1 <- 1e+4
+mu <- 1e-7
+r <- c(0, 1e-6)
+N_0 <- c(1e+4, 1e+5)
+N_1 <- 1e+5
 m_01 <- c(0, 1e-4)
 m_10 <- 1e-4
 num_epochs <- c(1, 2)
 
 num_gen_epoch_2 <- 5000
-Ne_0_epoch_2 <- Ne_0 / 10
-Ne_1_epoch_2 <- Ne_1 / 10
+N_0_epoch_2 <- N_0 / 10
+N_1_epoch_2 <- N_1 / 10
 
-params_2-pop <- crossing(mu, r, num_epochs, m_01, m_10, Ne_0, Ne_1)
-params_2-pop <- mutate(params_2-pop, Ne_0_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_0 / 10)))
-params_2-pop <- mutate(params_2-pop, Ne_1_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_1 / 10)))
-params_2-pop <- mutate(params_2-pop, num_gen_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ 5000))
+params_2_pop <- crossing(num_epochs, mu, r , m_01, m_10, N_0, N_1)
+params_2_pop <- mutate(params_2_pop, N_0_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (N_0 / 10)))
+params_2_pop <- mutate(params_2_pop, N_1_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (N_1 / 10)))
+params_2_pop <- mutate(params_2_pop, num_gen_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ 5000))
 
-write.csv(params_2-pop, "params_2-pops.csv", sep = ",", quote = F, row.names = F, col.names = T)
+write.csv(params_2_pop, "accuracy/params_2_pops.csv", sep = ",", quote = F, row.names = F, col.names = T)
 ```
 
 # Running moments++
 
-## 1-population
+## 1_population
 
 ```{bash}
 
@@ -73,7 +73,7 @@ write.csv(params_2-pop, "params_2-pops.csv", sep = ",", quote = F, row.names = F
 mkdir pops_1
 cd pops_1
 
-a <- c("low_Ne", "mid_Ne", "high_Ne")
+a <- c("low_N", "mid_N", "high_N")
 b <- c("low_mu", "mid_mu", "high_mu")
 c <- c("low_r", "mid_r", "high_r")
 
@@ -88,7 +88,7 @@ for(x in 1:length(a)) {
 }
 ```
 
-## 2-populations
+## 2_populations
 
 ```{bash}
 
@@ -106,7 +106,7 @@ cd pops_2
 
 import moments.LD
 
-with open("params_2-pops.csv") as fin:
+with open("params_2_pops.csv") as fin:
     params = fin.readlines()
 
 p_names = params[0].strip().split(",")
@@ -121,8 +121,8 @@ with open("accuracy/moments_LD_out.csv", "w+") as fout:
         r = eval(p_list[p_names.index('r')])
         m01 = eval(p_list[p_names.index('m_01')])
         m10 = eval(p_list[p_names.index('m_10')])
-        N0 = eval(p_list[p_names.index('Ne_0_epoch_1')])
-        N1 = eval(p_list[p_names.index('Ne_1_epoch_1')])
+        N0 = eval(p_list[p_names.index('N_0_epoch_1')])
+        N1 = eval(p_list[p_names.index('N_1_epoch_1')])
         rho = 4 * N0 * r
         theta = 4 * N0 * u
         nus = [N0 / N0, N1 / N0]
@@ -134,8 +134,8 @@ with open("accuracy/moments_LD_out.csv", "w+") as fout:
         num_epochs = eval(p_list[p_names.index('num_epochs')])
         if num_epochs == 2:
             T = eval(p_list[p_names.index('num_gen_epoch_2')]) / 2 / N1
-            N1b = eval(p_list[p_names.index('Ne_1_epoch_2')])
-            N2b = eval(p_list[p_names.index('Ne_2_epoch_2')])
+            N1b = eval(p_list[p_names.index('N_1_epoch_2')])
+            N2b = eval(p_list[p_names.index('N_2_epoch_2')])
             nus = [N1b / N1, N2b / N1]
             y.integrate(nus, T, theta=theta, rho=rho, m=m)
         else:
@@ -144,11 +144,11 @@ with open("accuracy/moments_LD_out.csv", "w+") as fout:
         fout.write(l)
 ```
 
-# Accuracy in 1-pop scenarios
+# Accuracy in 1_pop scenarios
 
 ```{r, message=FALSE, warning=FALSE}
 
-params_1-pop <- read.csv("params_1-pop.csv", header = T, sep = ",", row.names = F)
+params_1_pop <- read.csv("params_1_pop.csv", header = T, sep = ",", row.names = F)
 num_scenarios <- nrow(params)
   
 steadyStateTable <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c), ncol = num_stats))
@@ -157,7 +157,7 @@ finalMomentsTable <- as.data.frame(matrix(nrow = length(a) * length(b) * length(
 names(steadyStateTable) <- p1_stats
 names(finalMomentsTable) <- p1_stats
 
-a <- c("low_Ne", "mid_Ne", "high_Ne")
+a <- c("low_N", "mid_N", "high_N")
 b <- c("low_mu", "mid_mu", "high_mu")
 c <- c("low_r", "mid_r", "high_r")
 
@@ -177,14 +177,14 @@ for(x in 1:length(a)) {
   }
 }
 
-stats <- bind_cols(bind_rows(steadyStateTable, finalMomentsTable), bind_rows(params_1-pop, params_1-pop))
+stats <- bind_cols(bind_rows(steadyStateTable, finalMomentsTable), bind_rows(params_1_pop, params_1_pop))
 stats$type <- c(rep("steady", num_scenarios), rep("final", num_scenarios))
 
-write.table(stats, "accuracy/bench_1-pop_moments.csv", sep = ",", row.names = F, quote = F)
+write.table(stats, "accuracy/bench_1_pop_moments.csv", sep = ",", row.names = F, quote = F)
 
 dat_stats <- pivot_longer(stats, cols = all_of(p1_stats), names_to = "variable")
 
-p <- ggplot(data = dat_stats, aes(x = variable, y = value, shape = type, color = as.factor(Ne))) + facet_grid(r~mu)
+p <- ggplot(data = dat_stats, aes(x = variable, y = value, shape = type, color = as.factor(N))) + facet_grid(r~mu)
 p <- p + geom_point(size = 5) + theme_bw()
 p <- p + scale_shape_manual(values = c(0, 1, 2, 3, 4))
 p <- p + scale_y_continuous(trans = "log10")
@@ -192,17 +192,17 @@ p <- p + labs(title = "1-Epoch Moments x r (rows) and u (cols)", x = "Moment", y
 p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), legend.position = "bottom")
 p
 
-ggsave("accuracy/moments_1-pop.png", p, device = "png", width = 12, height = 12)
+ggsave("accuracy/moments_1_pop.png", p, device = "png", width = 12, height = 12)
 ```
 
-# Accuracy in 2-pops scenarios
+# Accuracy in 2_pops scenarios
 
 ## moments++ 
 
 ```{r, message=FALSE, warning=FALSE}
 
-params_2-pop <- read.csv("params_2-pops.csv", header = T, sep = ",", row.names = F)
-num_scenarios <- nrow(params_2-pop)
+params_2_pop <- read.csv("params_2_pops.csv", header = T, sep = ",", row.names = F)
+num_scenarios <- nrow(params_2_pop)
 
 pop_indices <- c(0, 1)
 DD_stats <- NULL
@@ -234,7 +234,7 @@ num_stats <- length(p2_stats)
 a <- c("zero_rec", "nonzero_rec")
 b <- c("single_epoch", "two_epochs")
 c <- c("asymmetric_mig", "symmetric_mig")
-d <- c("diff_Ne", "same_Ne")
+d <- c("diff_N", "same_N")
 
 steadyStateTable <- as.data.frame(matrix(nrow = num_scenarios, ncol = num_stats))
 finalMomentsTable <- as.data.frame(matrix(nrow = num_scenarios, ncol = num_stats))
@@ -266,12 +266,12 @@ finY <- bind_cols(finalMomentsTable, params)
 stats <- bind_rows(steadY, finY)
 stats$type <- c(rep("steady", num_scenarios), rep("final", num_scenarios))
 
-write.table(stats, "accuracy/moments_2-pops.csv", sep = ",", row.names = F, quote = F)
+write.table(stats, "accuracy/moments_2_pops.csv", sep = ",", row.names = F, quote = F)
 
 dat_stats <- pivot_longer(stats, cols = all_of(p2_stats), names_to = "variable")
 
 # one epoch plot
-p1 <- ggplot(data = filter(dat_stats, num_epochs == 1), aes(x = variable, y = value, shape = type, color = as.factor(r))) + facet_grid(Ne_0~m_01)
+p1 <- ggplot(data = filter(dat_stats, num_epochs == 1), aes(x = variable, y = value, shape = type, color = as.factor(r))) + facet_grid(N_0~m_01)
 p1 <- p1 + geom_point(size = 5) + theme_bw()
 p1 <- p1 + scale_shape_manual(values = c(0, 1))
 p1 <- p1 + labs(title = "1-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
@@ -282,7 +282,7 @@ p1
 ggsave("accuracy/moments_1-epoch.png", p1, device = "png", width = 12, height = 12)
 
 # two epochs plot
-p2 <- ggplot(data = filter(dat_stats, num_epochs == 2), aes(x = variable, y = value, shape = type, color = as.factor(r))) + facet_grid(Ne_0~m_01)
+p2 <- ggplot(data = filter(dat_stats, num_epochs == 2), aes(x = variable, y = value, shape = type, color = as.factor(r))) + facet_grid(N_0~m_01)
 p2 <- p2 + geom_point(size = 5) + theme_bw()
 p2 <- p2 + scale_shape_manual(values = c(0, 1))
 p2 <- p2 + labs(title = "2-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
@@ -304,7 +304,7 @@ common_moments <- intersect(names(finalMomentsTable), names(py_moments))
 match_moments <- bind_rows(select(finalMomentsTable, all_of(common_moments)), select(py_moments, all_of(common_moments)))
 match_moments$scenario <- rep(seq(1:num_scenarios), 2)
 match_moments$method <- c(rep("moments++", num_scenarios), rep("moments.LD", num_scenarios))
-full_tbl <- bind_cols(match_moments, bind_rows(params_2-pop, params_2-pop)) # binds parameters together with moments
+full_tbl <- bind_cols(match_moments, bind_rows(params_2_pop, params_2_pop)) # binds parameters together with moments
 
 dat_matched <- pivot_longer(full_tbl, cols = all_of(common_moments), names_to = "variable")
 
@@ -347,7 +347,7 @@ for(i in 1:num_scenarios) {
 
 # check parameters in scenarios
 p4 <- ggplot(data = filter(dat_matched, r == 0), aes(x = variable, y = value, color = method, shape = as.factor(scenario))) 
-p4 <- p4 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
+p4 <- p4 + geom_point(size = 3) + theme_bw() + facet_grid(N_0 ~ m_01)
 p4 <- p4 + scale_y_continuous(trans = "log10")
 p4 <- p4 + scale_shape_manual(values = seq(from=1, to=8))
 p4 <- p4 + labs(title = "Moments (r == 0) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
@@ -357,7 +357,7 @@ p4
 ggsave("accuracy/moments_no-rec_moments++_vs_moments.LD.png", p4, device = "png", width = 12, height = 12)
 
 p5 <- ggplot(data = filter(dat_matched, r == 1e-5), aes(x = variable, y = value, color = method, shape = as.factor(scenario))) 
-p5 <- p5 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
+p5 <- p5 + geom_point(size = 3) + theme_bw() + facet_grid(N_0 ~ m_01)
 p5 <- p5 + scale_y_continuous(trans = "log10")
 p5 <- p5 + scale_shape_manual(values = seq(from=1, to=8))
 p5 <- p5 + labs(title = "Moments (r == 1.5e-05) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
@@ -367,7 +367,7 @@ p5
 ggsave("accuracy/moments_rec_moments++_vs_moments.LD.png", p5, device = "png", width = 12, height = 12)
 
 p6 <- ggplot(data = filter(dat_matched, num_epochs == 1), aes(x = variable, y = value, color = method, shape = as.factor(scenario))) 
-p6 <- p6 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
+p6 <- p6 + geom_point(size = 3) + theme_bw() + facet_grid(N_0 ~ m_01)
 p6 <- p6 + scale_y_continuous(trans = "log10")
 p6 <- p6 + scale_shape_manual(values = seq(from=1, to=8))
 p6 <- p6 + labs(title = "Moments (1-epoch) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
@@ -377,7 +377,7 @@ p6
 ggsave("accuracy/moments_1-epoch_moments++_vs_moments.LD.png", p6, device = "png", width = 12, height = 12)
 
 p7 <- ggplot(data = filter(dat_matched, num_epochs == 2), aes(x = variable, y = value, color = method, shape = as.factor(scenario))) 
-p7 <- p7 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
+p7 <- p7 + geom_point(size = 3) + theme_bw() + facet_grid(N_0 ~ m_01)
 p7 <- p7 + scale_y_continuous(trans = "log10")
 p7 <- p7 + scale_shape_manual(values = seq(from=1, to=8))
 p7 <- p7 + labs(title = "Moments (2-epochs) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")

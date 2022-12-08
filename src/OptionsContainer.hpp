@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/10/2022
+ * Last modified: 08/12/2022
  *
  */
 
@@ -23,7 +23,9 @@ class OptionsContainer
 
 private:
   std::string demesFilePath_;
-  std::string dataFilePath_;
+  std::string dataFilePath_; // or observed sum stats
+  std::string initParamsFilePath_;
+
   std::string numericalOptimizer_;
 
   std::vector<double> initMij_;
@@ -44,6 +46,7 @@ public:
   OptionsContainer(const std::map<std::string, std::string>& options):
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, "none")),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, "none")),
+  initParamsFilePath_(bpp::ApplicationTools::getAFilePath("params_file", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
   initDrift_(bpp::ApplicationTools::getVectorParameter<double>("1/Ni", options, ',', "none")),
@@ -76,6 +79,11 @@ public:
   const std::string& getDataFilePath() const
   {
     return dataFilePath_;
+  }
+
+  const std::string& getParamsFilePath() const
+  {
+    return initParamsFilePath_;
   }
 
   const std::string& getOptimMethod() const

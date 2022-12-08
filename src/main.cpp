@@ -58,6 +58,16 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
+  //
+
+  if(mode == "compute")
+  {
+  }
+
+  else if(mode == "optimize")
+  {
+  }
+
   //Demes demes;
   //demes.parse(options.getDemesFilePath());
 
