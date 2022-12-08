@@ -23,7 +23,7 @@
 void OptimizationWrapper::optimize(const PolymorphismData& data)
 {
   size_t numEpochs = data.getPopMaps().size();
-  std::string name = bpp::TextTools::toString(numEpochs) + "_epochs_model";
+  std::string modelName = bpp::TextTools::toString(numEpochs) + "_epochs_model";
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
@@ -77,7 +77,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, data.getPopMaps()[i]));
   }
 
-  Model* model = new Model(name, epochs, data);
+  Model* model = new Model(modelName, epochs, data);
   model->computeExpectedSumStats();
   // TODO alias r and mu among epochs
 

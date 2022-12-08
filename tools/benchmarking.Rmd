@@ -1,45 +1,31 @@
+---
+title: "Benchmarking Moments++"
+author: "Gustavo V. Barroso"
+date: "Dec 8th 2022"
+output:
+  pdf_document:
+  toc: true
+number_sections: true
+toc_depth: 3
+---
+
+```{r setup, echo=FALSE, warning=FALSE, message=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
 library(matlib)
 library(tidyverse)
 library(scales)
+library(reticulate)
 
-setwd("~/Devel/momentspp/benchmarking/")
+knitr::opts_knit$set(root.dir = "~/Devel/momentspp/benchmarking/", engine.opts = list(bash = "-l"))
+```
 
-##############################
-#
-# timing
-#
-##############################
+# Setting up scenarios to test (parameter combinations)
 
-pop_scenarios <- 2^(0:3)
-MultTimeTable <- as.data.frame(matrix(nrow = length(pop_scenarios), ncol = 5))
-names(MultTimeTable) <- c("num_pops", "num_stats", "direct", "eigen", "pseudo-eigen")
+## 1-population parameters
 
-for(i in 1:length(pop_scenarios)) {
-  stats <- read.table(paste("timing/pops_", pop_scenarios[i], "/final_moments.txt", sep = ""))
-  dir <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_direct.txt", sep = ""))
-  eigen <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_eigen.txt", sep = ""))
-  pseudo <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_pseudo-eigen.txt", sep = ""))
-  
-  MultTimeTable[i,] <- c(pop_scenarios[i], nrow(stats), dir, eigen, pseudo)
-}
-
-molten_time <- pivot_longer(MultTimeTable, cols = c("direct", "eigen", "pseudo-eigen"), names_to = "variable")
-
-b <- ggplot(data = molten_time, aes(x = num_pops, y = value, shape = variable))
-b <- b + geom_line(data = molten_time)
-b <- b + geom_point(aes(shape = variable), size = 4)
-b <- b + scale_x_continuous(breaks = pop_scenarios, trans="log2") 
-b <- b + scale_y_continuous(breaks = c(1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e+0, 1e+1, 1e+2, 1e+3, 1e+4), trans="log10")
-b <- b + scale_shape_manual(values = c(0, 1, 2))
-b <- b + labs(title = "Timing benchmark (apply transformation to 10000 generations)", x = "Num Pops.", y = "Time (seconds)") + theme_bw()
-b <- b + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 16), legend.position = "bottom")
-ggsave("timing/mat_mult_timing.png", b, device = "png", width = 12, height = 12)
-
-##############################
-#
-# 1-pop accuracy
-#
-##############################
+```{r, message=FALSE, warning=FALSE}
 
 p1_stats <- c("DD", "Dz", "H", "I", "Pi2")
 num_stats <- length(p1_stats)
@@ -48,11 +34,121 @@ r <- c(1e-8, 1e-7, 1e-6)
 mu <- c(1e-8, 1e-7, 1e-6)
 Ne <- c(1e+3, 1e+4, 1e+5)
 
+params_1-pop <- crossing(Ne, mu, r)
+
+write.csv(params_1-pop, "params_1-pop.csv", quote = F, sep = ",", row.names = F)
+```
+
+## 2-populations parameters
+
+```{r, message=FALSE, warning=FALSE}
+
+mu <- 1e-6
+r <- c(0, 1e-5)
+Ne_0 <- c(1e+3, 1e+4)
+Ne_1 <- 1e+4
+m_01 <- c(0, 1e-4)
+m_10 <- 1e-4
+num_epochs <- c(1, 2)
+
+num_gen_epoch_2 <- 5000
+Ne_0_epoch_2 <- Ne_0 / 10
+Ne_1_epoch_2 <- Ne_1 / 10
+
+params_2-pop <- crossing(mu, r, num_epochs, m_01, m_10, Ne_0, Ne_1)
+params_2-pop <- mutate(params_2-pop, Ne_0_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_0 / 10)))
+params_2-pop <- mutate(params_2-pop, Ne_1_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_1 / 10)))
+params_2-pop <- mutate(params_2-pop, num_gen_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ 5000))
+
+write.csv(params_2-pop, "params_2-pops.csv", sep = ",", quote = F, row.names = F, col.names = T)
+```
+
+# Running moments++
+
+## 1-population
+
+```{bash}
+
+# create directories and input files
+mkdir pops_1
+cd pops_1
+
 a <- c("low_Ne", "mid_Ne", "high_Ne")
 b <- c("low_mu", "mid_mu", "high_mu")
 c <- c("low_r", "mid_r", "high_r")
 
-params <- crossing(Ne, mu, r)
+for(x in 1:length(a)) {
+  for(y in 1:length(b)) {
+    for(z in 1:length(c)) {
+      
+      mkdir a[x]
+      
+    }
+  }
+}
+```
+
+## 2-populations
+
+```{bash}
+
+mkdir pops_2
+cd pops_2
+
+
+
+
+```
+
+# Running moments.LD
+
+```{python}
+
+import moments.LD
+
+with open("params_2-pops.csv") as fin:
+    params = fin.readlines()
+
+p_names = params[0].strip().split(",")
+
+with open("accuracy/moments_LD_out.csv", "w+") as fout:
+    stats = moments.LD.Util.moment_names(2)
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    for p_list in params[1:]:
+        p_list = p_list.split(",")
+        u = eval(p_list[p_names.index('mu')])
+        r = eval(p_list[p_names.index('r')])
+        m01 = eval(p_list[p_names.index('m_01')])
+        m10 = eval(p_list[p_names.index('m_10')])
+        N0 = eval(p_list[p_names.index('Ne_0_epoch_1')])
+        N1 = eval(p_list[p_names.index('Ne_1_epoch_1')])
+        rho = 4 * N0 * r
+        theta = 4 * N0 * u
+        nus = [N0 / N0, N1 / N0]
+        m = [[0, 2 * N0 * m01], [2 * N0 * m10, 0]]
+        y = moments.LD.LDstats(
+            moments.LD.Numerics.steady_state_two_pop(nus, m, rho=rho, theta=theta),
+            num_pops=2,
+        )
+        num_epochs = eval(p_list[p_names.index('num_epochs')])
+        if num_epochs == 2:
+            T = eval(p_list[p_names.index('num_gen_epoch_2')]) / 2 / N1
+            N1b = eval(p_list[p_names.index('Ne_1_epoch_2')])
+            N2b = eval(p_list[p_names.index('Ne_2_epoch_2')])
+            nus = [N1b / N1, N2b / N1]
+            y.integrate(nus, T, theta=theta, rho=rho, m=m)
+        else:
+            assert num_epochs == 1
+        l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+        fout.write(l)
+```
+
+# Accuracy in 1-pop scenarios
+
+```{r, message=FALSE, warning=FALSE}
+
+params_1-pop <- read.csv("params_1-pop.csv", header = T, sep = ",", row.names = F)
 num_scenarios <- nrow(params)
   
 steadyStateTable <- as.data.frame(matrix(nrow = length(a) * length(b) * length(c), ncol = num_stats))
@@ -60,6 +156,10 @@ finalMomentsTable <- as.data.frame(matrix(nrow = length(a) * length(b) * length(
 
 names(steadyStateTable) <- p1_stats
 names(finalMomentsTable) <- p1_stats
+
+a <- c("low_Ne", "mid_Ne", "high_Ne")
+b <- c("low_mu", "mid_mu", "high_mu")
+c <- c("low_r", "mid_r", "high_r")
 
 idx = 1
 for(x in 1:length(a)) {
@@ -77,10 +177,10 @@ for(x in 1:length(a)) {
   }
 }
 
-stats <- bind_cols(bind_rows(steadyStateTable, finalMomentsTable), bind_rows(params, params))
+stats <- bind_cols(bind_rows(steadyStateTable, finalMomentsTable), bind_rows(params_1-pop, params_1-pop))
 stats$type <- c(rep("steady", num_scenarios), rep("final", num_scenarios))
 
-write.table(stats, "bench_1-pop_moments.csv", sep = ",", row.names = F, quote = F)
+write.table(stats, "accuracy/bench_1-pop_moments.csv", sep = ",", row.names = F, quote = F)
 
 dat_stats <- pivot_longer(stats, cols = all_of(p1_stats), names_to = "variable")
 
@@ -90,34 +190,19 @@ p <- p + scale_shape_manual(values = c(0, 1, 2, 3, 4))
 p <- p + scale_y_continuous(trans = "log10")
 p <- p + labs(title = "1-Epoch Moments x r (rows) and u (cols)", x = "Moment", y = "Value")
 p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), legend.position = "bottom")
+p
+
 ggsave("accuracy/moments_1-pop.png", p, device = "png", width = 12, height = 12)
+```
 
-##############################
-#
-# 2-pop accuracy
-#
-##############################
+# Accuracy in 2-pops scenarios
 
-mu <- 1e-6
-r <- c(0, 1e-5)
-Ne_0 <- c(1e+3, 1e+4)
-Ne_1 <- 1e+4
-m_01 <- c(0, 1e-4)
-m_10 <- 1e-4
-num_epochs <- c(1, 2)
+## moments++ 
 
-num_gen_epoch_2 <- 5000
-Ne_0_epoch_2 <- Ne_0 / 10
-Ne_1_epoch_2 <- Ne_1 / 10
+```{r, message=FALSE, warning=FALSE}
 
-params <- crossing(mu, r, num_epochs, m_01, m_10, Ne_0, Ne_1)
-params <- mutate(params, Ne_0_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_0 / 10)))
-params <- mutate(params, Ne_1_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ (Ne_1 / 10)))
-params <- mutate(params, num_gen_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, num_epochs == 2 ~ 5000))
-
-num_scenarios <- nrow(params)
-
-write.table(params, "accuracy/bench_params.csv", sep = ",", quote = F, row.names = F, col.names = T)
+params_2-pop <- read.csv("params_2-pops.csv", header = T, sep = ",", row.names = F)
+num_scenarios <- nrow(params_2-pop)
 
 pop_indices <- c(0, 1)
 DD_stats <- NULL
@@ -175,17 +260,13 @@ for(x in 1:length(a)) {
 names(steadyStateTable) <- p2_stats
 names(finalMomentsTable) <- p2_stats
 
-transf_steadY <- sign(steadyStateTable) * log(1 + abs(steadyStateTable) / 10^1)
-transf_finY <- sign(finalMomentsTable) * log(1 + abs(finalMomentsTable) / 10^1)
-
-
-steadY <- bind_cols(transf_steadY, params)
-finY <- bind_cols(transf_finY, params)
+steadY <- bind_cols(steadyStateTable, params)
+finY <- bind_cols(finalMomentsTable, params)
 
 stats <- bind_rows(steadY, finY)
 stats$type <- c(rep("steady", num_scenarios), rep("final", num_scenarios))
 
-write.table(stats, "accuracy/bench_2-pop_moments.csv", sep = ",", row.names = F, quote = F)
+write.table(stats, "accuracy/moments_2-pops.csv", sep = ",", row.names = F, quote = F)
 
 dat_stats <- pivot_longer(stats, cols = all_of(p2_stats), names_to = "variable")
 
@@ -196,6 +277,8 @@ p1 <- p1 + scale_shape_manual(values = c(0, 1))
 p1 <- p1 + labs(title = "1-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p1 <- p1 + scale_y_continuous(trans = "log10")
 p1 <- p1 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
+p1
+
 ggsave("accuracy/moments_1-epoch.png", p1, device = "png", width = 12, height = 12)
 
 # two epochs plot
@@ -205,17 +288,23 @@ p2 <- p2 + scale_shape_manual(values = c(0, 1))
 p2 <- p2 + labs(title = "2-Epoch Moments x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p2 <- p2 + scale_y_continuous(trans = "log10")
 p2 <- p2 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
+p2
+
 ggsave("accuracy/moments_2-epochs.png", p2, device = "png", width = 12, height = 12)
+```
 
 
-# comparison with moments.LD 
-py_moments <- read.csv("accuracy/bench_python.csv") # output file from run_bench.py
+## Comparison with moments.LD 
+
+```{r, message=FALSE, warning=FALSE}
+
+py_moments <- read.csv("accuracy/moments_LD_out.csv") # output file from python chunk above
 
 common_moments <- intersect(names(finalMomentsTable), names(py_moments))
 match_moments <- bind_rows(select(finalMomentsTable, all_of(common_moments)), select(py_moments, all_of(common_moments)))
 match_moments$scenario <- rep(seq(1:num_scenarios), 2)
 match_moments$method <- c(rep("moments++", num_scenarios), rep("moments.LD", num_scenarios))
-full_tbl <- bind_cols(match_moments, bind_rows(params, params)) # binds parameters together with moments
+full_tbl <- bind_cols(match_moments, bind_rows(params_2-pop, params_2-pop)) # binds parameters together with moments
 
 dat_matched <- pivot_longer(full_tbl, cols = all_of(common_moments), names_to = "variable")
 
@@ -225,7 +314,7 @@ p3 <- p3 + geom_point(size = 3) + theme_bw()
 p3 <- p3 + labs(title = "2-Epoch Moments (moments++ vs moments.LD)", x = "Moment", y = "Value")
 p3 <- p3 + scale_y_continuous(trans = "log10")
 p3 <- p3 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
-ggsave("accuracy/moments_python_vs_c++.png", p3, device = "png", width = 12, height = 12)
+ggsave("accuracy/all_stats_moments++_vs_moments.LD.png", p3, device = "png", width = 12, height = 12)
 
 # for each moment
 for(i in 1:length(common_moments)) {
@@ -237,18 +326,22 @@ for(i in 1:length(common_moments)) {
   p <- p + scale_shape_manual(values = c(0, 1))
   p <- p + labs(title = paste(mom, "(moments++ vs moments.LD)", sep = " "), x = "Scenario", y = "Value")
   p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), legend.position = "bottom")
-  ggsave(paste("accuracy/", mom, "_python_vs_c++.png", sep = " "), p, device = "png", width = 12, height = 12)
+  p
+  
+  ggsave(paste("accuracy/", mom, "_moments++_vs_moments.LD.png", sep = ""), p, device = "png", width = 12, height = 12)
 }
 
 # for each scenario
 for(i in 1:num_scenarios) {
   
-  p <- ggplot(data = filter(dat_matched, scenario == i), aes(x = variable, y = value, shape = method, color = as.factor(num_epochs)))
+  p <- ggplot(data = filter(dat_matched, scenario == i), aes(x = variable, y = value, shape = method))
   p <- p + geom_point(size = 5) + theme_bw()
   p <- p + scale_shape_manual(values = c(0, 1))
   p <- p + scale_y_continuous(trans = "log10")
   p <- p + labs(title = paste("scenario", i, "(moments++ vs moments.LD)", sep = " "), x = "Moment", y = "Value")
   p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
+  p
+  
   ggsave(paste("accuracy/scenario_", i, "python_vs_c++.png", sep = "_"), p, device = "png", width = 12, height = 12)
 }
 
@@ -257,32 +350,71 @@ p4 <- ggplot(data = filter(dat_matched, r == 0), aes(x = variable, y = value, co
 p4 <- p4 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
 p4 <- p4 + scale_y_continuous(trans = "log10")
 p4 <- p4 + scale_shape_manual(values = seq(from=1, to=8))
-p4 <- p4 + labs(title = "Moments (r == 0) x N_01 (rows) and m_01 (cols)", x = "Moment", y = "Value")
+p4 <- p4 + labs(title = "Moments (r == 0) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p4 <- p4 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
-ggsave("accuracy/moments_no-rec_python_vs_c++.png", p4, device = "png", width = 12, height = 12)
+p4
+
+ggsave("accuracy/moments_no-rec_moments++_vs_moments.LD.png", p4, device = "png", width = 12, height = 12)
 
 p5 <- ggplot(data = filter(dat_matched, r == 1e-5), aes(x = variable, y = value, color = method, shape = as.factor(scenario))) 
 p5 <- p5 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
 p5 <- p5 + scale_y_continuous(trans = "log10")
 p5 <- p5 + scale_shape_manual(values = seq(from=1, to=8))
-p5 <- p5 + labs(title = "Moments (r == 1.5e-05) x N_01 (rows) and m_01 (cols)", x = "Moment", y = "Value")
+p5 <- p5 + labs(title = "Moments (r == 1.5e-05) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p5 <- p5 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
-ggsave("accuracy/moments_rec_python_vs_c++.png", p5, device = "png", width = 12, height = 12)
+p5
+
+ggsave("accuracy/moments_rec_moments++_vs_moments.LD.png", p5, device = "png", width = 12, height = 12)
 
 p6 <- ggplot(data = filter(dat_matched, num_epochs == 1), aes(x = variable, y = value, color = method, shape = as.factor(scenario))) 
 p6 <- p6 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
 p6 <- p6 + scale_y_continuous(trans = "log10")
 p6 <- p6 + scale_shape_manual(values = seq(from=1, to=8))
-p6 <- p6 + labs(title = "Moments (1-epoch) x N_01 (rows) and m_01 (cols)", x = "Moment", y = "Value")
+p6 <- p6 + labs(title = "Moments (1-epoch) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p6 <- p6 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
-ggsave("accuracy/moments_1-epoch_python_vs_c++.png", p6, device = "png", width = 12, height = 12)
+p6
+
+ggsave("accuracy/moments_1-epoch_moments++_vs_moments.LD.png", p6, device = "png", width = 12, height = 12)
 
 p7 <- ggplot(data = filter(dat_matched, num_epochs == 2), aes(x = variable, y = value, color = method, shape = as.factor(scenario))) 
 p7 <- p7 + geom_point(size = 3) + theme_bw() + facet_grid(Ne_0 ~ m_01)
 p7 <- p7 + scale_y_continuous(trans = "log10")
 p7 <- p7 + scale_shape_manual(values = seq(from=1, to=8))
-p7 <- p7 + labs(title = "Moments (2-epochs) x N_01 (rows) and m_01 (cols)", x = "Moment", y = "Value")
+p7 <- p7 + labs(title = "Moments (2-epochs) x N_0 (rows) and m_01 (cols)", x = "Moment", y = "Value")
 p7 <- p7 + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom")
-ggsave("accuracy/moments_2-epoch_python_vs_c++.png", p7, device = "png", width = 12, height = 12)
+p7
 
+ggsave("accuracy/moments_2-epoch_moments++_vs_moments.LD.png", p7, device = "png", width = 12, height = 12)
+```
 
+# Timing method for matrix multiplication
+
+```{r, message=FALSE, warning=FALSE}
+
+pop_scenarios <- 2^(0:3)
+MultTimeTable <- as.data.frame(matrix(nrow = length(pop_scenarios), ncol = 5))
+names(MultTimeTable) <- c("num_pops", "num_stats", "direct", "eigen", "pseudo-eigen")
+
+for(i in 1:length(pop_scenarios)) {
+  stats <- read.table(paste("timing/pops_", pop_scenarios[i], "/final_moments.txt", sep = ""))
+  dir <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_direct.txt", sep = ""))
+  eigen <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_eigen.txt", sep = ""))
+  pseudo <- read.table(paste("timing/pops_", pop_scenarios[i], "/timing_pseudo-eigen.txt", sep = ""))
+  
+  MultTimeTable[i,] <- c(pop_scenarios[i], nrow(stats), dir, eigen, pseudo)
+}
+
+molten_time <- pivot_longer(MultTimeTable, cols = c("direct", "eigen", "pseudo-eigen"), names_to = "variable")
+
+b <- ggplot(data = molten_time, aes(x = num_pops, y = value, shape = variable))
+b <- b + geom_line(data = molten_time)
+b <- b + geom_point(aes(shape = variable), size = 4)
+b <- b + scale_x_continuous(breaks = pop_scenarios, trans="log2") 
+b <- b + scale_y_continuous(breaks = c(1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e+0, 1e+1, 1e+2, 1e+3, 1e+4), trans="log10")
+b <- b + scale_shape_manual(values = c(0, 1, 2))
+b <- b + labs(title = "Timing benchmark (apply transformation to 10000 generations)", x = "Num Pops.", y = "Time (seconds)") + theme_bw()
+b <- b + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 16), legend.position = "bottom")
+b
+
+ggsave("timing/mat_mult_timing.png", b, device = "png", width = 12, height = 12)
+```
