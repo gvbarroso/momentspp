@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 30/09/2022
+ * Last modified: 05/12/2022
  *
  */
 
@@ -16,6 +16,14 @@ class Recombination:
 {
 
 public:
+  Recombination(const bpp::ParameterList recParams, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getNumStats())
+  {
+    includeParameters_(recParams);
+    prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    setUpMatrices_(sslib);
+  }
+
   Recombination(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getNumStats())
   {

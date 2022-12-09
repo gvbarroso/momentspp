@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 24/10/2022
+ * Last modified: 05/12/2022
  *
  */
 
@@ -16,6 +16,14 @@ class Migration:
 {
 
 public:
+  Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getNumStats())
+  {
+    includeParameters_(migParams);
+    prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    setUpMatrices_(sslib);
+  }
+
   Migration(const std::vector<double>& initValues, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getNumStats())
   {

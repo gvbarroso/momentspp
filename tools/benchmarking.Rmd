@@ -121,8 +121,8 @@ with open("accuracy/moments_LD_out.csv", "w+") as fout:
         r = eval(p_list[p_names.index('r')])
         m01 = eval(p_list[p_names.index('m_01')])
         m10 = eval(p_list[p_names.index('m_10')])
-        N0 = eval(p_list[p_names.index('N_0_epoch_1')])
-        N1 = eval(p_list[p_names.index('N_1_epoch_1')])
+        N0 = eval(p_list[p_names.index('N_0')])
+        N1 = eval(p_list[p_names.index('N_1')])
         rho = 4 * N0 * r
         theta = 4 * N0 * u
         nus = [N0 / N0, N1 / N0]
@@ -134,9 +134,9 @@ with open("accuracy/moments_LD_out.csv", "w+") as fout:
         num_epochs = eval(p_list[p_names.index('num_epochs')])
         if num_epochs == 2:
             T = eval(p_list[p_names.index('num_gen_epoch_2')]) / 2 / N1
+            N0b = eval(p_list[p_names.index('N_0_epoch_2')])
             N1b = eval(p_list[p_names.index('N_1_epoch_2')])
-            N2b = eval(p_list[p_names.index('N_2_epoch_2')])
-            nus = [N1b / N1, N2b / N1]
+            nus = [N0b / N0, N1b / N0]
             y.integrate(nus, T, theta=theta, rho=rho, m=m)
         else:
             assert num_epochs == 1
@@ -201,7 +201,7 @@ ggsave("accuracy/moments_1_pop.png", p, device = "png", width = 12, height = 12)
 
 ```{r, message=FALSE, warning=FALSE}
 
-params_2_pop <- read.csv("params_2_pops.csv", header = T, sep = ",", row.names = F)
+params_2_pop <- read.csv("params_2_pops.csv", header = T, sep = ",")
 num_scenarios <- nrow(params_2_pop)
 
 pop_indices <- c(0, 1)
@@ -234,7 +234,7 @@ num_stats <- length(p2_stats)
 a <- c("zero_rec", "nonzero_rec")
 b <- c("single_epoch", "two_epochs")
 c <- c("asymmetric_mig", "symmetric_mig")
-d <- c("diff_N", "same_N")
+d <- c("diff_Ne", "same_Ne")
 
 steadyStateTable <- as.data.frame(matrix(nrow = num_scenarios, ncol = num_stats))
 finalMomentsTable <- as.data.frame(matrix(nrow = num_scenarios, ncol = num_stats))
@@ -260,8 +260,8 @@ for(x in 1:length(a)) {
 names(steadyStateTable) <- p2_stats
 names(finalMomentsTable) <- p2_stats
 
-steadY <- bind_cols(steadyStateTable, params)
-finY <- bind_cols(finalMomentsTable, params)
+steadY <- bind_cols(steadyStateTable, params_2_pop)
+finY <- bind_cols(finalMomentsTable, params_2_pop)
 
 stats <- bind_rows(steadY, finY)
 stats$type <- c(rep("steady", num_scenarios), rep("final", num_scenarios))

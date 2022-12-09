@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 30/09/2022
+ * Last modified: 05/12/2022
  *
  */
 
@@ -17,6 +17,14 @@ class Drift:
 {
 
 public:
+  Drift(const bpp::ParameterList driftParams, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getNumStats())
+  {
+    includeParameters_(driftParams);
+    prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    setUpMatrices_(sslib);
+  }
+
   Drift(const std::vector<double>& initValues, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getNumStats())
   {
