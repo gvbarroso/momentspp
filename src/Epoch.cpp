@@ -91,16 +91,16 @@ void Epoch::computeSteadyState_()
       bpp::ParameterList pl;
       pl.addParameter(operators_[i]->getParameters()[j]);
       pl.printParameters(logger.getLogFile());
-      logger.getLogFile() << std::setprecision(1e-12) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
+      logger.getLogFile() << /*std::setprecision(1e-12) << std::scientific <<*/ operators_[i]->getMatrices()[j] << "\n";
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
-    logger.getLogFile() << std::scientific << tmp << "\n";
+    logger.getLogFile() << "\n\nsum of entries = " << /*std::setprecision(1e-12) << std::scientific <<*/ tmp.sum() << "\n";
+    logger.getLogFile() << operators_[i]->fetchCombinedMatrix() << "\n\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";
     test = operators_[i]->fetchCombinedMatrix() * test;
-    logger.getLogFile() << std::setprecision(1e-12) << std::scientific << test << "\n";
+    logger.getLogFile() << /*std::setprecision(1e-12) <<*/ test << "\n";
   }
   #endif
 
@@ -117,10 +117,14 @@ void Epoch::computeSteadyState_()
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {
+    std::cout << es.eigenvalues().real()(i) << "\t" << es.eigenvalues().real()(idx) << std::endl;
+
     // finding the maximum value (should be == 1., but searching for equality is problematic due to precision issues)
     if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
       idx = i;
   }
+
+  std::cout << es.eigenvectors().col(idx).real() << std::endl;
 
   steadYstate_ = es.eigenvectors().col(idx).real();
   steadYstate_ /= steadYstate_(ssl_.getDummyIndex()); // divide by I moment, which embodies constant used for Eigen decomposition

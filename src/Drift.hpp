@@ -32,9 +32,9 @@ public:
     // for each population modeled in the epoch this operator belongs to, add Ne parameter
     for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI)
     {
-      //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("1/N_" + bpp::TextTools::toString((*itI)), initValue, bpp::Parameter::R_PLUS_STAR);
+      //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("1/2N_" + bpp::TextTools::toString((*itI)), initValue, bpp::Parameter::R_PLUS_STAR);
       //addParameter_(param);
-      addParameter_(new bpp::Parameter("1/N_" + bpp::TextTools::toString(*itI), initValues[idx], ic));
+      addParameter_(new bpp::Parameter("1/2N_" + bpp::TextTools::toString(*itI), initValues[idx], ic));
       ++idx;
     }
 

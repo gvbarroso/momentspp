@@ -118,6 +118,8 @@ void SumStatsLibrary::initMoments_()
       moments_.push_back(Moment("DD_" + asString(*itI) + "_" + asString(*itJ), 0.));
       moments_.push_back(Moment("H_" + asString(*itI) + "_" + asString(*itJ), 0.));
 
+      // TODO introduce H_ii' and H_i'i statistics
+
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {
         moments_.push_back(Moment("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK), 0.));
@@ -128,10 +130,10 @@ void SumStatsLibrary::initMoments_()
     }
   }
 
-  // NOTE adds Dummy Moment lexicographically after H_ stats to transform matrix addition of Mutation into matrix multiplication (see  Mutation::setUpMatrices_())
+  // NOTE adds Dummy Moment lexicographically after H_ stats to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.push_back(Moment("I", 1.));
 
-  // this crucially determines the ascending lexicographical order of stats in the rows of transition matrices
+  // this determines the ascending lexicographical order of stats in the rows of transition matrices
   std::sort(std::begin(moments_), std::end(moments_), [](const Moment& a, const Moment& b) { return a.getName() < b.getName(); } );
 
   for(size_t i = 0; i < moments_.size(); ++i)

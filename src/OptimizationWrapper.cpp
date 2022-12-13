@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/10/2022
+ * Last modified: 12/12/2022
  *
  */
 
@@ -46,8 +46,11 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
     // even though we prob. want single r and mu params in Model
 
+    std::vector<double> drift = options_.getInitPopSizes();
+    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes to drift parameters
+      drift[j] = 1. / (2. * drift[j]);
+
     // WARNING ad-hockery
-    std::vector<double> drift = options_.getInitDrift();
     if(i == 1)
     {
       for(size_t j = 0; j < drift.size(); ++j)

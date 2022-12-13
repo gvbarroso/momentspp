@@ -266,7 +266,7 @@ finY <- bind_cols(finalMomentsTable, params_2_pop)
 stats <- bind_rows(steadY, finY)
 stats$type <- c(rep("steady", num_scenarios), rep("final", num_scenarios))
 
-write.table(stats, "accuracy/moments_2_pops.csv", sep = ",", row.names = F, quote = F)
+write.table(stats, "accuracy/moments++_2_pops_stats.csv", sep = ",", row.names = F, quote = F)
 
 dat_stats <- pivot_longer(stats, cols = all_of(p2_stats), names_to = "variable")
 
@@ -324,6 +324,7 @@ for(i in 1:length(common_moments)) {
   p <- ggplot(data = filter(dat_matched, variable == mom), aes(x = scenario, y = value, shape = method, color = as.factor(num_epochs)))
   p <- p + geom_point(size = 5) + theme_bw()
   p <- p + scale_shape_manual(values = c(0, 1))
+  p <- p + scale_y_continuous(trans = "log10")
   p <- p + labs(title = paste(mom, "(moments++ vs moments.LD)", sep = " "), x = "Scenario", y = "Value")
   p <- p + theme(axis.title = element_text(size = 20), axis.text = element_text(size = 14), legend.position = "bottom")
   p

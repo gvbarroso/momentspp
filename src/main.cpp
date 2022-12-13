@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  //
+  /*
 
   if(mode == "compute")
   {
@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
   {
   }
 
+  */
   //Demes demes;
   //demes.parse(options.getDemesFilePath());
 

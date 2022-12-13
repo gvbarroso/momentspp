@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/12/2022
+ * Last modified: 12/12/2022
  *
  */
 
@@ -24,12 +24,12 @@ class OptionsContainer
 private:
   std::string demesFilePath_;
   std::string dataFilePath_; // or observed sum stats
-  std::string initParamsFilePath_;
+  //std::string initParamsFilePath_;
 
   std::string numericalOptimizer_;
 
   std::vector<double> initMij_;
-  std::vector<double> initDrift_;
+  std::vector<double> initPopSizes_;
   double initMu_;
   double initR_;
   double tolerance_; // for numerical optimization
@@ -46,10 +46,10 @@ public:
   OptionsContainer(const std::map<std::string, std::string>& options):
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, "none")),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, "none")),
-  initParamsFilePath_(bpp::ApplicationTools::getAFilePath("params_file", options, "none")),
+  //initParamsFilePath_(bpp::ApplicationTools::getAFilePath("params_file", options, "none")),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
-  initDrift_(bpp::ApplicationTools::getVectorParameter<double>("1/Ni", options, ',', "none")),
+  initPopSizes_(bpp::ApplicationTools::getVectorParameter<double>("Ni", options, ',', "none")),
   initMu_(bpp::ApplicationTools::getDoubleParameter("mu", options, 1e-8)),
   initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-9)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
@@ -62,8 +62,8 @@ public:
                                                                std::thread::hardware_concurrency(),
                                                                "", true, 4))
   {
-    if(numPops_ != initDrift_.size())
-      throw bpp::Exception("OptionsContainer::num_pops does not match length of 1/Ni parameters!");
+    if(numPops_ != initPopSizes_.size())
+      throw bpp::Exception("OptionsContainer::num_pops does not match length of Ni parameters!");
 
     if(numPops_ > 1)
       if(numPops_ * (numPops_ - 1) != initMij_.size())
@@ -80,11 +80,11 @@ public:
   {
     return dataFilePath_;
   }
-
+  /*
   const std::string& getParamsFilePath() const
   {
     return initParamsFilePath_;
-  }
+  }*/
 
   const std::string& getOptimMethod() const
   {
@@ -96,9 +96,9 @@ public:
     return initMij_;
   }
 
-  const std::vector<double>& getInitDrift() const
+  const std::vector<double>& getInitPopSizes() const
   {
-    return initDrift_;
+    return initPopSizes_;
   }
 
   double getInitMu() const
