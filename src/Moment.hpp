@@ -30,7 +30,7 @@ private:
   size_t position_; // in the Y vector
   double value_;
 
-  std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, due to population ancestry
+  std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry
 
 public:
   Moment():

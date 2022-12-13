@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 05/12/2022
+ * Last modified: 12/12/2022
  *
  */
 
@@ -40,9 +40,9 @@ public:
     return new Recombination(*this);
   }
 
-  void setUpMatrices_(const SumStatsLibrary& sslib);
+  void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
-  void updateMatrices_();
+  void updateMatrices_() override;
 
 };
 

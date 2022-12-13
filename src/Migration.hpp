@@ -51,9 +51,9 @@ public:
     return new Migration(*this);
   }
 
-  void setUpMatrices_(const SumStatsLibrary& sslib);
+  void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
-  void updateMatrices_();
+  void updateMatrices_() override;
 
   // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
   size_t fetchNumPops()
