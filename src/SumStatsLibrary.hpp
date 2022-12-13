@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 12/12/2022
+ * Last modified: 13/12/2022
  *
  */
 
@@ -36,7 +36,8 @@ private:
   size_t numPops_;
   size_t numDDStats_;
   size_t numDzStats_;
-  size_t numHetStats_;
+  size_t numHpStats_;
+  size_t numHqStats_;
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
@@ -48,7 +49,8 @@ public:
   numPops_(0),
   numDDStats_(0),
   numDzStats_(0),
-  numHetStats_(0),
+  numHpStats_(0),
+  numHqStats_(0),
   numPi2Stats_(0),
   popIndices_(0),
   moments_(0)
@@ -59,7 +61,8 @@ public:
   numPops_(popMap.size()),
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
-  numHetStats_(numPops_ * numPops_ + numPops_ * (numPops_ - 1)), // sorted H statistics (including within pops)
+  numHpStats_(numPops_ + (numPops_ * (numPops_ - 1)) / 2),
+  numHqStats_(numPops_ + (numPops_ * (numPops_ - 1)) / 2),
   numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
   popIndices_(0),
   moments_(0)
@@ -130,15 +133,27 @@ public:
     return moments_[focalMomIndex];
   }
 
-  const Moment& getHetMoment(size_t id1, size_t id2) const
+  const Moment& getHpMoment(size_t id1, size_t id2) const
   {
-    size_t focalMomIndex = findHetIndex(id1, id2);
+    size_t focalMomIndex = findHpIndex(id1, id2);
     return moments_[focalMomIndex];
   }
 
-  Moment& getHetMoment(size_t id1, size_t id2)
+  Moment& getHpMoment(size_t id1, size_t id2)
   {
-    size_t focalMomIndex = findHetIndex(id1, id2);
+    size_t focalMomIndex = findHpIndex(id1, id2);
+    return moments_[focalMomIndex];
+  }
+
+  const Moment& getHqMoment(size_t id1, size_t id2) const
+  {
+    size_t focalMomIndex = findHqIndex(id1, id2);
+    return moments_[focalMomIndex];
+  }
+
+  Moment& getHqMoment(size_t id1, size_t id2)
+  {
+    size_t focalMomIndex = findHqIndex(id1, id2);
     return moments_[focalMomIndex];
   }
 
@@ -164,26 +179,6 @@ public:
     return moments_[getDummyIndex()];
   }
 
-  void setDdMomentValue(size_t id1, size_t id2, double value)
-  {
-    getDdMoment(id1, id2).setValue(value);
-  }
-
-  void setDzMomentValue(size_t id1, size_t id2, size_t id3, double value)
-  {
-    getDzMoment(id1, id2, id3).setValue(value);
-  }
-
-  void setHetMomentValue(size_t id1, size_t id2, double value)
-  {
-    getHetMoment(id1, id2).setValue(value);
-  }
-
-  void setPi2MomentValue(size_t id1, size_t id2, size_t id3, size_t id4, double value)
-  {
-    getPi2Moment(id1, id2, id3, id4).setValue(value);
-  }
-
   size_t findPopIndexRank(size_t index) const // among all pop indices
   {
     return std::distance(std::begin(popIndices_), std::lower_bound(std::begin(popIndices_), std::end(popIndices_), index)); // indexed from 0
@@ -206,12 +201,25 @@ public:
     return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
   }
 
-  size_t findHetIndex(size_t id1, size_t id2) const // WARNING
+  size_t findHpIndex(size_t id1, size_t id2) const
   {
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
 
-    return numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2 * numPops_; // TODO correct for ordered stats
+    return numDDStats_ + numDzStats_ + rank1 * (rank1 + 1) / 2 + rank2;
+  }
+
+  size_t findHqIndex(size_t id1, size_t id2) const
+  {
+    size_t rank1 = findPopIndexRank(id1);
+    size_t rank2 = findPopIndexRank(id2);
+
+    return numDDStats_ + numDzStats_ + numHpStats_ + rank1 * numPops_ - rank1 * (rank1 - 1) / 2 + rank2 - rank1;
+  }
+
+  size_t getDummyIndex() const
+  {
+    return numDDStats_ + numDzStats_ + numHpStats_ + numHqStats_;
   }
 
   size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const
@@ -221,13 +229,8 @@ public:
     size_t rank3 = findPopIndexRank(id3);
     size_t rank4 = findPopIndexRank(id4);
 
-    // NOTE 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
-  }
-
-  size_t getDummyIndex() const
-  {
-    return numDDStats_ + numDzStats_ + numHetStats_;
+    // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
+    return 1 + numDDStats_ + numDzStats_ + numHpStats_ + numHqStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
   }
 
   std::string asString(size_t i)

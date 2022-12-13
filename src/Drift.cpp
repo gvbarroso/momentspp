@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 12/12/2022
+ * Last modified: 13/12/2022
  *
  */
 
@@ -108,7 +108,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
-      else if(it->getPrefix() == "H")
+      else if(it->getPrefix() == "Hp" || it->getPrefix() == "Hq")
         if(popIdCount == 2)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
     }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 12/12/2022
+ * Last modified: 13/12/2022
  *
  */
 
@@ -23,10 +23,10 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     int row = it - std::begin(sslib.getMoments()); // row index
     int col = -1; // inits column index to out-of-bounds
 
-    if(it->getPrefix() == "H") // introducing one-locus diversity
+    if(it->getPrefix() == "Hp" || it->getPrefix() == "Hq") // introducing one-locus diversity of the form p(1-p)
     {
-      col = sslib.getDummyMoment().getPosition(); // at column of Dummy Moment
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // homogeneous mutation model
+      col = sslib.getDummyMoment().getPosition(); // at column of Dummy Moment "I", for an homogeneous system
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
 
     else if(it->getPrefix() == "pi2")
@@ -36,10 +36,28 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       size_t p3 = it->getPopIndices()[2]; // k pop
       size_t p4 = it->getPopIndices()[3]; // l pop
 
-      col = sslib.findHetIndex(p1, p2); // introducing 2-locus het via mutation in right locus when left is already polymorphic
+      if(p1 == p2)
+        col = sslib.findHpIndex(p1, p2);
+
+      else if(p1 > p2)
+        col = sslib.findHpIndex(p1, p2);
+
+      else // p1 < p2
+        col = sslib.findHqIndex(p1, p2);
+
+      // introducing 2-locus Het via mutation in right locus when left Het = p(1-p)
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-      col = sslib.findHetIndex(p3, p4); // introducing 2-locus het via mutation in right locus when left is already polymorphic
+      if(p3 == p4)
+        col = sslib.findHpIndex(p3, p4);
+
+      else if(p1 > p2)
+        col = sslib.findHpIndex(p3, p4);
+
+      else // p3 < p4
+        col = sslib.findHqIndex(p3, p4);
+
+      // introducing 2-locus Het via mutation in left locus when right Het = p(1-p)
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
   }

@@ -74,7 +74,7 @@ void Model::linkMoments_()
     {
       if(it->getPrefix() == "DD")
       {
-        // indices of populations in parental DD** moment
+        // indices of populations in parental DD_** moment
         size_t prevP1 = 0;
         size_t prevP2 = 0;
 
@@ -126,28 +126,69 @@ void Model::linkMoments_()
         it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getDzMoment(prevP1, prevP2, prevP3)));
       }
 
-      else if(it->getPrefix() == "H")
+      // TODO check Hp and Hq cases
+      else if(it->getPrefix() == "Hp") // WARNING rank of i and j may change between focal Hp_ij and its parent in previous epoch making it an Hq_**?!
       {
-        // indices of populations in parental H** moment
+        // indices of populations in parental Hp_** moment
         size_t prevP1 = 0;
         size_t prevP2 = 0;
 
-        size_t focalP1 = it->getPopIndices()[0]; // i in H_i_j
+        size_t focalP1 = it->getPopIndices()[0]; // i in H_i_*
         size_t p1LeftParentId = epochs_[i]->getPops().at(focalP1)->getLeftParent()->getId();
         size_t p1RightParentId = epochs_[i]->getPops().at(focalP1)->getRightParent()->getId();
 
         if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
           prevP1 = p1LeftParentId;
 
-        size_t focalP2 = it->getPopIndices()[1]; // j in H_i_j
+        size_t focalP2 = it->getPopIndices()[1]; // j in H_*_j
         size_t p2LeftParentId = epochs_[i]->getPops().at(focalP2)->getLeftParent()->getId();
         size_t p2RightParentId = epochs_[i]->getPops().at(focalP2)->getRightParent()->getId();
 
         if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
           prevP2 = p2LeftParentId;
 
-        it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getHetMoment(prevP1, prevP2)));
+        // now sets parental moment
+        if(prevP1 > prevP2)
+          it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getHpMoment(prevP1, prevP2)));
+
+        else if(prevP1 < prevP2)
+          it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getHqMoment(prevP1, prevP2)));
+
+        else if(prevP1 == prevP2)
+          it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getHpMoment(prevP1, prevP2)));
       }
+
+      else if(it->getPrefix() == "Hq")
+      {
+        // indices of populations in parental Hp_** moment
+        size_t prevP1 = 0;
+        size_t prevP2 = 0;
+
+        size_t focalP1 = it->getPopIndices()[0]; // i in H_i_*
+        size_t p1LeftParentId = epochs_[i]->getPops().at(focalP1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i]->getPops().at(focalP1)->getRightParent()->getId();
+
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
+          prevP1 = p1LeftParentId;
+
+        size_t focalP2 = it->getPopIndices()[1]; // j in H_*_j
+        size_t p2LeftParentId = epochs_[i]->getPops().at(focalP2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i]->getPops().at(focalP2)->getRightParent()->getId();
+
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
+          prevP2 = p2LeftParentId;
+
+        // now sets parental moment
+        if(prevP1 > prevP2)
+          it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getHpMoment(prevP1, prevP2)));
+
+        else if(prevP1 < prevP2)
+          it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getHqMoment(prevP1, prevP2)));
+
+        else if(prevP1 == prevP2)
+          it->setParent(std::make_shared<Moment>(epochs_[i - 1]->getSslib().getHqMoment(prevP1, prevP2)));
+      }
+
 
       else if(it->getPrefix() == "pi2")
       {

@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 30/09/2022
+ * Last modified: 13/12/2022
  *
  */
 
@@ -49,25 +49,6 @@ public:
   position_(0),
   value_(value),
   parent_(nullptr)
-  {
-    std::vector<std::string> splitName(0);
-    boost::split(splitName, name, boost::is_any_of("_"));
-    prefix_ = splitName[0];
-
-    if(splitName.size() > 1)
-    {
-      for(size_t i = 1; i < splitName.size(); ++i)
-        popIndices_.push_back(std::stoul(splitName[i]));
-    }
-  }
-
-  Moment(const std::string& name, double value, std::shared_ptr<Moment> parent):
-  name_(name),
-  prefix_(""),
-  popIndices_(0),
-  position_(0),
-  value_(value),
-  parent_(parent)
   {
     std::vector<std::string> splitName(0);
     boost::split(splitName, name, boost::is_any_of("_"));

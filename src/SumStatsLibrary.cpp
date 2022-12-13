@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 12/12/2022
+ * Last modified: 13/12/2022
  *
  */
 
@@ -32,8 +32,19 @@ void SumStatsLibrary::initMoments_()
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
       moments_.push_back(Moment("DD_" + asString(*itI) + "_" + asString(*itJ), 0.));
-      moments_.push_back(Moment("H_" + asString(*itI) + "_" + asString(*itJ), 0.));
-      moments_.push_back(Moment("H_" + asString(*itI) + "_" + asString(*itJ), 0.)); // TODO
+
+      // introduce ordered heterozigosity statistics Hp_ij (when i > j), Hq_ij (when i < j), and Hp_ii as well as Hq_ii
+      if(*itI == *itJ) // if within population heterozigosity
+      {
+        moments_.push_back(Moment("Hp_" + asString(*itI) + "_" + asString(*itJ), 0.)); // p(1-p)
+        moments_.push_back(Moment("Hq_" + asString(*itI) + "_" + asString(*itJ), 0.)); // (1-p)p
+      }
+
+      else if(*itI > *itJ) // first pop index higher
+        moments_.push_back(Moment("Hp_" + asString(*itI) + "_" + asString(*itJ), 0.)); // p(1-p)
+
+      else if(*itI < *itJ)
+        moments_.push_back(Moment("Hq_" + asString(*itI) + "_" + asString(*itJ), 0.)); // (1-p)p
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {
@@ -53,4 +64,6 @@ void SumStatsLibrary::initMoments_()
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i].setPosition(i);
+
+  printMoments(std::cout); // NOTE
 }
