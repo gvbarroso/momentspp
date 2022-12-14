@@ -27,13 +27,16 @@ int main(int argc, char *argv[]) {
   std::cout << "******************************************************************" << std::endl;
   std::cout << "*                moments++  version 0.0.1                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
+  std::cout << "*                  \"Barrilete Cosmico\"                         *" << std::endl;
+  std::cout << "*                                                                *" << std::endl;
+  std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*            Two-site recursions                                 *" << std::endl;
   std::cout << "*            Unraveling history                                  *" << std::endl;
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 05/Dec/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 14/Dec/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << std::endl;

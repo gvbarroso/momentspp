@@ -64,6 +64,4 @@ void SumStatsLibrary::initMoments_()
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i].setPosition(i);
-
-  printMoments(std::cout); // NOTE
 }

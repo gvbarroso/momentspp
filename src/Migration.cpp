@@ -179,10 +179,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 {
                   // the Dz cols
                   col = sslib.findDzIndex(i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount / 2.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.findDzIndex(j, i, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount / 2.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // the pi2 cols
                   // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
@@ -216,20 +216,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
                 }
 
-                else if(p3 == j) // D_j_z_jj
+                else if(p3 == j) // D_j_z_jj WARNING check
                 {
                   // the Dz cols
-                  if(childPopIdCount > 0) // not to populate the sparse matrix with unnecessary zeros
-                  {
-                    col = sslib.findDzIndex(i, j, j);
-                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                  col = sslib.findDzIndex(i, j, j);
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); //
 
-                    col = sslib.findDzIndex(j, i, j);
-                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                  col = sslib.findDzIndex(j, i, j);
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); //
 
-                    col = sslib.findDzIndex(j, j, i);
-                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-                  }
+                  col = sslib.findDzIndex(j, j, i);
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); //
 
                   // the pi2 cols
                   // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
@@ -266,10 +263,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             int countRight = 0; // count of j after ';' in pi2(**;**)
 
             if(it->getPopIndices()[0] == j)
-             ++countLeft;
+              ++countLeft;
 
             if(it->getPopIndices()[1] == j)
-             ++countLeft;
+              ++countLeft;
 
             if(it->getPopIndices()[2] == j)
               ++countRight;
@@ -278,7 +275,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               ++countRight;
 
             // main diagonal
-            coeffs.emplace_back(Eigen::Triplet<double>(row, row, -(countLeft + countRight)));
+            if(countLeft + countRight > 0)  // not to populate the sparse matrix with unnecessary zeros
+              coeffs.emplace_back(Eigen::Triplet<double>(row, row, -(countLeft + countRight)));
 
             // updates off-diagonal entries from left perspective
             size_t p1 = i;
@@ -312,17 +310,20 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               }
             }
 
-            col = sslib.findPi2Index(p1, p2, p3, p4);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
+            if(countLeft > 0)  // not to populate the sparse matrix with unnecessary zeros
+            {
+              col = sslib.findPi2Index(p1, p2, p3, p4);
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
 
-            col = sslib.findPi2Index(p1, p2, p4, p3); // permutes
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
+              col = sslib.findPi2Index(p1, p2, p4, p3); // permutes
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
 
-            col = sslib.findPi2Index(p2, p1, p3, p4); // permutes
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
+              col = sslib.findPi2Index(p2, p1, p3, p4); // permutes
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
 
-            col = sslib.findPi2Index(p2, p1, p4, p3); // permutes
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
+              col = sslib.findPi2Index(p2, p1, p4, p3); // permutes
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countLeft / 4.));
+            }
 
             // updates off-diagonal entries from right perspective
             p1 = i;
@@ -356,17 +357,20 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               }
             }
 
-            col = sslib.findPi2Index(p1, p2, p3, p4);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
+            if(countRight > 0)  // not to populate the sparse matrix with unnecessary zeros
+            {
+              col = sslib.findPi2Index(p1, p2, p3, p4);
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
 
-            col = sslib.findPi2Index(p2, p1, p3, p4); // permutes
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
+              col = sslib.findPi2Index(p2, p1, p3, p4); // permutes
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
 
-            col = sslib.findPi2Index(p1, p2, p4, p3); // permutes
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
+              col = sslib.findPi2Index(p1, p2, p4, p3); // permutes
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
 
-            col = sslib.findPi2Index(p2, p1, p4, p3); // permutes
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
+              col = sslib.findPi2Index(p2, p1, p4, p3); // permutes
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, countRight / 4.));
+            }
           }
 
           else if(it->getPrefix() == "Hp")

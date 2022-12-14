@@ -45,7 +45,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       else // p1 < p2
         col = sslib.findHqIndex(p1, p2);
 
-      // introducing 2-locus Het via mutation in right locus when left Het = p(1-p)
+      // introducing 2-locus Het via mutation in right locus
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
       if(p3 == p4)
@@ -57,7 +57,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       else // p3 < p4
         col = sslib.findHqIndex(p3, p4);
 
-      // introducing 2-locus Het via mutation in left locus when right Het = p(1-p)
+      // introducing 2-locus Het via mutation in left locus
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
   }
