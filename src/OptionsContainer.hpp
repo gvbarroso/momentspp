@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/12/2022
+ * Last modified: 14/12/2022
  *
  */
 
@@ -22,9 +22,10 @@ class OptionsContainer
 {
 
 private:
+  std::string label_;
   std::string demesFilePath_;
   std::string dataFilePath_; // or observed sum stats
-  //std::string initParamsFilePath_;
+  //std::string initParamsFilePath_; // for creating multiple models
 
   std::string numericalOptimizer_;
 
@@ -44,6 +45,7 @@ private:
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
+  label_(bpp::ApplicationTools::getStringParameter("label", options, "my_model")),
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, "none")),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, "none")),
   //initParamsFilePath_(bpp::ApplicationTools::getAFilePath("params_file", options, "none")),
@@ -71,6 +73,11 @@ public:
   }
   
 public:
+  const std::string& getLabel() const
+  {
+    return label_;
+  }
+
   const std::string& getDemesFilePath() const
   {
     return demesFilePath_;

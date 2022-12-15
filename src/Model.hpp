@@ -38,7 +38,7 @@ class Model:
 {
 
 private:
-  std::string name_; // model id
+  std::string name_; // model label / id
   std::vector<std::shared_ptr<Epoch>> epochs_; // each epoch contains its own parameters and operators
   std::vector<std::string> frozenParams_;
 

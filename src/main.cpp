@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 31/10/2022
+ * Last modified: 14/12/2022
  * Source code for moments++
  *
  */
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
   std::cout << "******************************************************************" << std::endl;
   std::cout << "*                moments++  version 0.0.1                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "*                  \"Barrilete Cosmico\"                         *" << std::endl;
+  std::cout << "*                   \"Barrilete Cosmico\"                          *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
@@ -38,8 +38,12 @@ int main(int argc, char *argv[]) {
   std::cout << "*                                                                *" << std::endl;
   std::cout << "* Authors: G. Barroso                    Last Modif. 14/Dec/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
+  std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
-  std::cout << std::endl;
+
+  std::cout << "\nCompiled on: " << __DATE__ << std::endl;
+  std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
+
 
   /* TODO
   * Create Derived classes from Moment (DD, Dz, H, Pi2)?
@@ -61,19 +65,8 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  /*
-
-  if(mode == "compute")
-  {
-  }
-
-  else if(mode == "optimize")
-  {
-  }
-
-  */
-  //Demes demes;
-  //demes.parse(options.getDemesFilePath());
+  Demes demes;
+  demes.parse(options.getDemesFilePath());
 
   // 1. parse options.getPopsFilePath()
   // 2. create populations
@@ -107,16 +100,24 @@ int main(int argc, char *argv[]) {
 
   try
   {
-    std::cout << "Processing input data..."; std::cout.flush();
+    if(options.getDataFilePath() == "none") // default
+    {
+      // just compute moments for models specified in demes files
+    }
 
-    PolymorphismData data(options, popMaps); // input data, format = ?
-    //data.parse(options.getDataFilePath());
-    //data.computeSumStats();
+    else // there is a data file with observed summary statistics
+    {
+      std::cout << "Processing input data..."; std::cout.flush();
 
-    std::cout << "done." << std::endl;
+      PolymorphismData data(options, popMaps); // input data, format = ?
+      //data.parse(options.getDataFilePath());
+      //data.computeSumStats();
 
-    OptimizationWrapper optimizer(options);
-    optimizer.optimize(data);
+      std::cout << "done." << std::endl;
+
+      OptimizationWrapper optimizer(options);
+      optimizer.optimize(data);
+    }
   }
 
   catch(std::exception& e)

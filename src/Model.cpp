@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/11/2022
+ * Last modified: 14/12/2022
  *
  */
 
@@ -29,7 +29,7 @@ void Model::computeExpectedSumStats()
 
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
-  stats.open("steady_state.txt");
+  stats.open(name_ + "_steady_state.txt");
   epochs_[0]->getSslib().printMoments(stats);
   stats.close();
 
@@ -42,7 +42,7 @@ void Model::computeExpectedSumStats()
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_);
 
-  stats.open("final_moments.txt");
+  stats.open(name_ + "_final_moments.txt");
   epochs_.back()->getSslib().printMoments(stats);
   stats.close();
 }

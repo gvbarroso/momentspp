@@ -23,7 +23,7 @@
 void OptimizationWrapper::optimize(const PolymorphismData& data)
 {
   size_t numEpochs = data.getPopMaps().size();
-  std::string modelName = bpp::TextTools::toString(numEpochs) + "_epochs_model";
+  std::string modelName = options_.getLabel();
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
