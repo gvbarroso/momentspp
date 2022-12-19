@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 14/Dec/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 15/Dec/2022 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "To use moments++, please fill in the params file and simply call it from the command line: moments++ params=[params_file].bpp" << std::endl;
+    std::cout << "To use moments++, please fill in the params file and simply call it from the command line: momentspp params=[params_file].bpp" << std::endl;
     std::cout << "For more information, please email gvbarroso@gmail.com " << std::endl;
     return(0);
   }
