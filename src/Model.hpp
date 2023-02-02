@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/09/2022
+ * Last modified: 01/31/2023
  *
  */
 
@@ -30,7 +30,7 @@
 #include <Bpp/Numeric/Function/Functions.h>
 
 #include "Epoch.hpp"
-#include "PolymorphismData.hpp"
+#include "Data.hpp"
 
 class Model:
   public bpp::AbstractParameterAliasable,
@@ -42,13 +42,13 @@ private:
   std::vector<std::shared_ptr<Epoch>> epochs_; // each epoch contains its own parameters and operators
   std::vector<std::string> frozenParams_;
 
-  PolymorphismData data_;
+  Data data_;
   Eigen::VectorXd expected_;
 
   double compLogLikelihood_;
 
 public:
-  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, const PolymorphismData& data):
+  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, const Data& data):
   AbstractParameterAliasable(""),
   name_(name),
   epochs_(epochs),

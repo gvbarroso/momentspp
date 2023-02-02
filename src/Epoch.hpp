@@ -33,7 +33,7 @@ class Epoch:
 {
 
 private:
-  SumStatsLibrary ssl_;
+  SumStatsLibrary ssl_; // *this epoch has its own set of moments following *this population indices
 
   size_t startGen_; // we let the deepest point in relevant time be generation '0'
   size_t endGen_;

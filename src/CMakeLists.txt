@@ -5,7 +5,7 @@
 
 SET(momentspp_CPP
   Log.cpp
-  PolymorphismData.cpp
+  Data.cpp
   SumStatsLibrary.cpp
   Drift.cpp
   Migration.cpp

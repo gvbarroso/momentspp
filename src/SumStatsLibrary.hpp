@@ -41,7 +41,7 @@ private:
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
-  std::vector<Moment> moments_; // sorted lexicographically based on name_
+  std::vector<Moment> moments_; // sorted lexicographically based on their name_
 
 public:
   SumStatsLibrary():

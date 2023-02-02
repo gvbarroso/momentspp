@@ -30,7 +30,7 @@ private:
   std::shared_ptr<Population> rightParent_;
 
   size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
-  size_t startTime_; // in units of generations
+  size_t startTime_; // in units of generations (coming from past to present)
   size_t endTime_; // in units of generations
   size_t startSize_; // N_i in 1/N_i Drift parameters
   size_t endSize_; // must be equal to startSize

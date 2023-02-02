@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 31/10/2022
+ * Last modified: 01/02/2023
  *
  */
 
@@ -61,12 +61,17 @@ class Demes
 private:
   std::vector<Population> pops_;
   std::vector<Epoch> epochs_;
+  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps_; // pop-id -> Population*, one per epoch
 
 public:
-  Demes():
+  Demes(const std::vector<std::map<size_t, std::shared_ptr<Population>>>& popMaps, const std::string& file):
   pops_(0),
-  epochs_(0)
-  { }
+  epochs_(0),
+  popMaps_(popMaps)
+  {
+    parse_(file);
+    epochs_.resize(popMaps.size());
+  }
 
 public:
   const std::vector<Population>& getPops() const
@@ -79,7 +84,38 @@ public:
     return epochs_;
   }
 
-  void parse(const std::string& fileName);
+  const std::vector<std::map<size_t, std::shared_ptr<Population>>>& getPopMaps()
+  {
+    return popMaps_;
+  }
+
+  const std::vector<std::map<size_t, std::shared_ptr<Population>>>& getPopMaps() const
+  {
+    return popMaps_;
+  }
+
+  size_t getNumPops()
+  {
+    return pops_.size();
+  }
+
+  size_t getNumPops() const
+  {
+    return pops_.size();
+  }
+
+  size_t getNumEpochs()
+  {
+    return epochs_.size();
+  }
+
+  size_t getNumEpochs() const
+  {
+    return epochs_.size();
+  }
+
+private:
+  void parse_(const std::string& fileName);
 
 };
 

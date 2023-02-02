@@ -1,15 +1,15 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 02/10/2022
+ * Last modified: 01/02/2023
  *
  */
 
 #include "Demes.hpp"
 
-void Demes::parse(const std::string& fileName)
+void Demes::parse_(const std::string& fileName)
 {
-  std::cout << "parsing " << fileName << "\n";
+  /*std::cout << "parsing " << fileName << "\n";
   YAML::Node test = YAML::LoadFile(fileName);
 
   std::ofstream fout("test.yaml");
@@ -40,5 +40,5 @@ void Demes::parse(const std::string& fileName)
     }
 
     std::cout << "\n";
-  }
+  }*/
 }

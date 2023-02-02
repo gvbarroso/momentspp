@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/12/2022
+ * Last modified: 01/02/2023
  *
  */
 
@@ -14,7 +14,7 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
 
   computeExpectedSumStats();
-  computeCompositeLogLikelihood_(data_.getYvec(), data_.getCovarMatrix()); // e.g. for each rec. binx
+  computeCompositeLogLikelihood_(data_.getObsY(), data_.getCovarMatrix()); // e.g. for each rec. binx
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
