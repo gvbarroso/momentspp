@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/12/2022
+ * Last modified: 01/02/2023
  *
  */
 
@@ -20,9 +20,9 @@
 #include "Model.hpp"
 
 
-void OptimizationWrapper::optimize(const PolymorphismData& data)
+void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
 {
-  size_t numEpochs = data.getPopMaps().size();
+  size_t numEpochs = demes.getNumEpochs();
   std::string modelName = options_.getLabel();
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
@@ -40,24 +40,23 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     size_t start = i * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
     size_t end = (i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
 
-    SumStatsLibrary sslib(options_.getOrder(), data.getPopMaps()[i]); // utils class to manage moments from epoch i
+    SumStatsLibrary sslib(options_.getOrder(), demes.getPopMaps()[i]); // utils class to manage moments from epoch i
 
-    // Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
-    // must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
-    // even though we prob. want single r and mu params in Model
+    /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
+     * must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
+     * even though we prob. want single r and mu params in Model
+     */
 
-    std::vector<double> drift = options_.getInitPopSizes();
-    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes to drift parameters
+    std::vector<double> drift = options_.getInitPopSizes(); // TODO get this from Demes
+    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid)drift parameters
       drift[j] = 1. / (2. * drift[j]);
 
-    // WARNING ad-hockery
+    // WARNING ad-hockery for testing bottleneck
     if(i == 1)
     {
       for(size_t j = 0; j < drift.size(); ++j)
         drift[j] *= 10.;
     }
-
-    //std::cout << i << "\t" << "start: " << start << "; end: " << end << "\t" << drift[0] << "; " << drift[1] << std::endl;
 
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options_.getInitR(), ic, sslib);
@@ -67,7 +66,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
 
-    if(options_.getNumPops() > 1)
+    if(demes.getNumPops() > 1)
     {
       std::shared_ptr<Migration> migOp = std::make_shared<Migration>(options_.getInitMig(), ic, sslib);
       operators.emplace_back(migOp);
@@ -77,7 +76,7 @@ void OptimizationWrapper::optimize(const PolymorphismData& data)
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, data.getPopMaps()[i]));
+    epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, demes.getPopMaps()[i]));
   }
 
   Model* model = new Model(modelName, epochs, data);

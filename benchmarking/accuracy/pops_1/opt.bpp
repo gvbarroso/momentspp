@@ -1,5 +1,5 @@
 demes_file = ../pops.tsv
-stats_file = ../data.vcf
+stats_file = ../data.tsv
 
 optimizer = Powell
 tolerance = 1e-6

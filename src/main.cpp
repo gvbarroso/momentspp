@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 14/12/2022
+ * Last modified: 01/02/2023
  * Source code for moments++
  *
  */
@@ -18,7 +18,7 @@
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
-#include "PolymorphismData.hpp"
+#include "Data.hpp"
 #include "Demes.hpp"
 
 int main(int argc, char *argv[]) {
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 15/Dec/2022 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 02/Feb/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -46,10 +46,8 @@ int main(int argc, char *argv[]) {
 
 
   /* TODO
-  * Create Derived classes from Moment (DD, Dz, H, Pi2)?
   * Write Admixture operator as an AbstractOperator that has exponent 1!
   * Selection operator -> upon rejection, sample a replacement individual from the whole population with probaility proportional to the pop. fitness vector (which maybe can be obtained from allele frequencies?)
-  * Linked selection -> another angle at iSMC's results?
   */
 
   if(argc == 1)
@@ -65,14 +63,12 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  Demes demes;
-  demes.parse(options.getDemesFilePath());
-
+  // TODO
   // 1. parse options.getPopsFilePath()
   // 2. create populations
-  // 3. link populations (see Model::linkMoments())
+  // 3. link populations from different epochs (see Model::linkMoments())
   size_t numEpochs = options.getNumEpochs();
-  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // one per epoch
+  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // pop_id -> Population*, one per epoch
   popMaps.reserve(numEpochs);
 
   for(size_t i = 0; i < numEpochs; ++i)
@@ -98,6 +94,8 @@ int main(int argc, char *argv[]) {
     popMaps.emplace_back(map);
   }
 
+  Demes demes(popMaps, options.getDemesFilePath());
+
   try
   {
     if(options.getDataFilePath() == "none") // default
@@ -109,14 +107,14 @@ int main(int argc, char *argv[]) {
     {
       std::cout << "Processing input data..."; std::cout.flush();
 
-      PolymorphismData data(options, popMaps); // input data, format = ?
-      //data.parse(options.getDataFilePath());
+      Data data(options.getDataFilePath(), popMaps.back()); // input data, format = ?
       //data.computeSumStats();
 
       std::cout << "done." << std::endl;
 
+      // the optimizer builds the main objects, assembles the Models and optimizes them
       OptimizationWrapper optimizer(options);
-      optimizer.optimize(data);
+      optimizer.optimize(data, demes);
     }
   }
 
@@ -124,6 +122,7 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "moments++ terminated because of an error!" << std::endl;
     std::cout << e.what() << std::endl;
+
     return 1;
   }
 

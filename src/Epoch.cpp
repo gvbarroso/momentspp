@@ -111,7 +111,7 @@ void Epoch::computeSteadyState_()
 
   transitionMatrix_ = mat; // converts to dense format
 
-  // we find the eigenvector associated with (leading) eigenvalue == 1 in transitionMatrix_
+  // we find the eigenvector associated with thr leading eigenvalue (== 1) in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
 
   int idx = 0;
@@ -123,7 +123,7 @@ void Epoch::computeSteadyState_()
   }
 
   steadYstate_ = es.eigenvectors().col(idx).real();
-  steadYstate_ /= steadYstate_(ssl_.getDummyIndex()); // divide by I moment, which embodies constant used for Eigen decomposition
+  steadYstate_ /= steadYstate_(ssl_.getDummyIndex()); // divide by I moment, which embodies scaling constant used for Eigen decomposition
 
   updateMoments(steadYstate_);
 }

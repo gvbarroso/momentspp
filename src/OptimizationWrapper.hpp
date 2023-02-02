@@ -25,7 +25,8 @@
 #include <Bpp/Phyl/PseudoNewtonOptimizer.h>
 
 #include "Population.hpp"
-#include "PolymorphismData.hpp"
+#include "Data.hpp"
+#include "Demes.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
 
@@ -42,7 +43,7 @@ public:
   { }
   
 public:
-  void optimize(const PolymorphismData& data);
+  void optimize(const Data& data, const Demes& demes);
 
 private:
   void fitModel_(Model* model);
