@@ -23,6 +23,8 @@ knitr::opts_knit$set(root.dir = "~/Devel/momentspp/benchmarking/", engine.opts =
 
 # Setting up scenarios to test (parameter combinations)
 
+## TODO: write multiple models in the same YAML file using --- separator?
+
 ## 1_population parameters
 
 ```{r, message=FALSE, warning=FALSE}

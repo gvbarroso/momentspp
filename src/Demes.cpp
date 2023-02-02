@@ -16,6 +16,9 @@ void Demes::parse(const std::string& fileName)
   fout << test;
   fout.close();
 
+  if(test.IsSequence())
+    std::cout << "node is a sequece\n\n";
+
   for(YAML::const_iterator it = test.begin(); it != test.end(); ++it)
   {
     YAML::Node tmp = *it;
@@ -38,5 +41,4 @@ void Demes::parse(const std::string& fileName)
 
     std::cout << "\n";
   }
-
 }

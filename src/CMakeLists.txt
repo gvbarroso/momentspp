@@ -29,3 +29,4 @@ FOREACH (target ${momentspp-targets})
 ENDFOREACH (target)
 
 INSTALL(TARGETS ${momentspp-targets} DESTINATION ${CMAKE_INSTALL_BINDIR})
+
