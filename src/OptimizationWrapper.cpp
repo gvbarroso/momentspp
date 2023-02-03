@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/02/2023
+ * Last modified: 03/02/2023
  *
  */
 
@@ -234,7 +234,7 @@ void OptimizationWrapper::writeEstimatesToFile_(Model* model)
   std::ofstream file;
   file.open(model->getName() + "_estimates.txt");
 
-  file << "CLL = " << model->comLogLikelihood() << "\n\n";
+  file << "CLL = " << model->compLogLikelihood() << "\n\n";
 
   for(size_t i = 0; i < model->getEpochs().size(); ++i)
   {

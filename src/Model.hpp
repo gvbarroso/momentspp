@@ -83,7 +83,7 @@ public:
     return -compLogLikelihood_;
   }
   
-  double comLogLikelihood()
+  double compLogLikelihood()
   {
     return compLogLikelihood_;
   }

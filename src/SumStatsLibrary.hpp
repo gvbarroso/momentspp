@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 13/12/2022
+ * Last modified: 03/02/2023
  *
  */
 
@@ -23,11 +23,15 @@
 
 #include <Bpp/Text/TextTools.h>
 
-#include "Moment.hpp"
 #include "Population.hpp"
+#include "Moment.hpp"
+#include "DdMoment.hpp"
+#include "DzMoment.hpp"
+#include "HetMoment.hpp"
+#include "Pi2Moment.hpp"
 
 
-// intent is to have one instance of SumStatsLibrary per Epoch
+// intent is to have one instance of SumStatsLibrary per Epoch because each Epoch potentially has unique population sets
 class SumStatsLibrary
 {
 
@@ -36,12 +40,15 @@ private:
   size_t numPops_;
   size_t numDDStats_;
   size_t numDzStats_;
-  size_t numHpStats_;
-  size_t numHqStats_;
+  size_t numHetStats_;
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
   std::vector<Moment> moments_; // sorted lexicographically based on their name_
+
+  // after calling compressBasis_(), we need to know the status to find sum stats within the library
+  //bool areHetsPermuted_;
+  //bool arePi2sPermuted_;
 
 public:
   SumStatsLibrary():
@@ -49,8 +56,7 @@ public:
   numPops_(0),
   numDDStats_(0),
   numDzStats_(0),
-  numHpStats_(0),
-  numHqStats_(0),
+  numHetStats_(0),
   numPi2Stats_(0),
   popIndices_(0),
   moments_(0)
@@ -61,9 +67,8 @@ public:
   numPops_(popMap.size()),
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
-  numHpStats_(numPops_ + (numPops_ * (numPops_ - 1)) / 2),
-  numHqStats_(numPops_ + (numPops_ * (numPops_ - 1)) / 2),
-  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
+  numHetStats_(2 * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p
+  numPi2Stats_(4 * numPops_ * numPops_ * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p for each locus
   popIndices_(0),
   moments_(0)
   {
@@ -102,9 +107,29 @@ public:
     return moments_;
   }
 
+  size_t getNumDDStats() const
+  {
+    return numDDStats_;
+  }
+
+  size_t getNumDzStats() const
+  {
+    return numDzStats_;
+  }
+
+  size_t getNumHetStats() const
+  {
+    return numHetStats_;
+  }
+
+  size_t getNumPi2Stats() const
+  {
+    return numPi2Stats_;
+  }
+
   size_t getNumStats() const
   {
-    return moments_.size();
+    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + numPi2Stats_;
   }
 
   // these methods use pop-ids to track down moments' positions inside moments_ vector (see Model::linkMoments_())
@@ -214,12 +239,12 @@ public:
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
 
-    return numDDStats_ + numDzStats_ + numHpStats_ + rank1 * numPops_ - rank1 * (rank1 - 1) / 2 + rank2 - rank1;
+    return numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ - rank1 * (rank1 - 1) / 2 + rank2 - rank1;
   }
 
   size_t getDummyIndex() const
   {
-    return numDDStats_ + numDzStats_ + numHpStats_ + numHqStats_;
+    return numDDStats_ + numDzStats_ + numHetStats_;
   }
 
   size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const
@@ -230,7 +255,7 @@ public:
     size_t rank4 = findPopIndexRank(id4);
 
     // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-    return 1 + numDDStats_ + numDzStats_ + numHpStats_ + numHqStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
+    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
   }
 
   std::string asString(size_t i)
@@ -245,7 +270,8 @@ public:
 private:
   void initMoments_();
 
-  void compress_(); // exploits symmetry among statistics to reduce dimension of stats_
+  // exploits symmetry among statistics to reduce dimension of stats_, given constraints
+  void compressBasis_(const std::vector<size_t>& selectedPopIds);
 
 };
 

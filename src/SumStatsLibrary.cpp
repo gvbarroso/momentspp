@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 13/12/2022
+ * Last modified: 03/02/2023
  *
  */
 
@@ -22,46 +22,110 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
 void SumStatsLibrary::printMoments(std::ostream& stream)
 {
   for(size_t i = 0; i < moments_.size(); ++i)
-    stream << std::scientific << moments_[i].getPosition() << " | " << moments_[i].getName() << " = " << moments_[i].getValue() << "\n";
+  {
+    HetMoment* tmpHet = dynamic_cast<HetMoment*>(&moments_[i]);
+    Pi2Moment* tmpPi2 = dynamic_cast<Pi2Moment*>(&moments_[i]);
+
+    std::cout << tmpHet << "\t" << tmpPi2 << "\n";
+
+    if(tmpHet != nullptr)
+    {
+      tmpHet->printAttributes(stream);
+    }
+
+    else if(tmpPi2 != nullptr)
+    {
+      tmpPi2->printAttributes(stream);
+    }
+
+    else
+      moments_[i].printAttributes(stream);
+
+    delete tmpHet;
+    delete tmpPi2;
+  }
+
 }
 
 void SumStatsLibrary::initMoments_()
 {
+  moments_.reserve(getNumStats());
+
+  // first pass to include DD, Dz, H statistics
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
-      moments_.push_back(Moment("DD_" + asString(*itI) + "_" + asString(*itJ), 0.));
+      moments_.emplace_back(DdMoment("DD_" + asString(*itI) + "_" + asString(*itJ) + "_X", 0.));
 
-      // introduce ordered heterozigosity statistics Hp_ij (when i > j), Hq_ij (when i < j), and Hp_ii as well as Hq_ii
-      if(*itI == *itJ) // if within population heterozigosity
-      {
-        moments_.push_back(Moment("Hp_" + asString(*itI) + "_" + asString(*itJ), 0.)); // p(1-p)
-        moments_.push_back(Moment("Hq_" + asString(*itI) + "_" + asString(*itJ), 0.)); // (1-p)p
-      }
-
-      else if(*itI > *itJ) // first pop index higher
-        moments_.push_back(Moment("Hp_" + asString(*itI) + "_" + asString(*itJ), 0.)); // p(1-p)
-
-      else if(*itI < *itJ)
-        moments_.push_back(Moment("Hq_" + asString(*itI) + "_" + asString(*itJ), 0.)); // (1-p)p
+      moments_.emplace_back(HetMoment("H_" + asString(*itI) + "_" + asString(*itJ) + "_A", 0., true, false)); // H_ii p(1-p)
+      moments_.emplace_back(HetMoment("H_" + asString(*itI) + "_" + asString(*itJ) + "_B", 0., false, false)); // H_ii (1-p)p
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
-      {
-        moments_.push_back(Moment("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK), 0.));
+        moments_.emplace_back(DzMoment("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_X", 0.));
+    }
+  }
 
+  // second pass to include pi2 statistics, because they need pointers to H statistics
+  for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
+  {
+    for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
+    {
+      for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
+      {
         for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
-          moments_.push_back(Moment("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL), 0.));
+        {
+          std::shared_ptr<HetMoment> leftA;
+          std::shared_ptr<HetMoment> leftB;
+
+          std::shared_ptr<HetMoment> rightA;
+          std::shared_ptr<HetMoment> rightB;
+
+          // naive search for corresponding H stats because moments_ has not been finalized yet (indices should not be used yet)
+          for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
+          {
+            if(itMom->getName() == "H_" + asString(*itI) + "_" + asString(*itJ) + "_A") // left locus, p(1-p)
+              leftA.reset(dynamic_cast<HetMoment*>(&*itMom));
+
+            else if(itMom->getName() == "H_" + asString(*itI) + "_" + asString(*itJ) + "_B") // left locus, (1-p)p
+              leftB.reset(dynamic_cast<HetMoment*>(&*itMom));
+
+            else if(itMom->getName() == "H_" + asString(*itK) + "_" + asString(*itL) + "_A") // right locus, p(1-p)
+              rightA.reset(dynamic_cast<HetMoment*>(&*itMom));
+
+            else if(itMom->getName() == "H_" + asString(*itK) + "_" + asString(*itL) + "_B") // right locus, (1-p)p
+              rightB.reset(dynamic_cast<HetMoment*>(&*itMom));
+          }
+
+          moments_.emplace_back(Pi2Moment("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_A", 0., leftA, rightA));
+          moments_.emplace_back(Pi2Moment("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_B", 0., leftA, rightB));
+          moments_.emplace_back(Pi2Moment("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_C", 0., leftB, rightA));
+          moments_.emplace_back(Pi2Moment("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_D", 0., leftB, rightB));
+        }
       }
     }
   }
 
   // adds Dummy Moment lexicographically after H_ stats to convert into a homogeneous system (see Mutation::setUpMatrices_())
-  moments_.push_back(Moment("I", 1.));
+  moments_.emplace_back(Moment("I", 1.));
 
   // this determines the ascending lexicographical order of stats in the rows of transition matrices
   std::sort(std::begin(moments_), std::end(moments_), [](const Moment& a, const Moment& b) { return a.getName() < b.getName(); } );
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i].setPosition(i);
+
+  printMoments(std::cout);
+}
+
+// proposal: argument tells in which Populations (id) selection acts on the derived allele of left locus?
+void SumStatsLibrary::compressBasis_(const std::vector<size_t>& selectedPopIds)
+{
+  // ?
+  //for(size_t i = 0; i < selectedPopIds.size(); ++i)
+  //{
+  //  if()
+  //  areHetsPermuted_ = false;
+  //  arePi2sPermuted_ = true;
+  //}
 }
