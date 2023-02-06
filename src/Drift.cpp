@@ -39,7 +39,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           col = sslib.findDzIndex(i, i, i);
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-          col = sslib.findPi2Index(i, i, i, i);
+          col = sslib.findPi2Index(i, i, i, i); // NOTE DD_ii will get 1/4 contribution from pi2_(ii;ii)_A--D?
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 

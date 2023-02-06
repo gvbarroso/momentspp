@@ -32,11 +32,6 @@ public:
   { }
 
 public:
-  void printAttributes(std::ostream& stream) override
-  {
-    stream << std::scientific << position_ << " | " << name_ << " = " << value_ << "; 1st copy derived?: " << isFirstCopyDerived_ << "; constrained?: " << isPutativelySelected_ << ";\n";
-  }
-
   bool isFirstDerived()
   {
     return isFirstCopyDerived_;

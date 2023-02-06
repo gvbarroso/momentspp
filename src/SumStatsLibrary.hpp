@@ -44,6 +44,8 @@ private:
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
+  std::vector<std::string> hetSuffixes_;
+  std::vector<std::string> pi2Suffixes_;
   std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
 
 public:
@@ -55,6 +57,8 @@ public:
   numHetStats_(0),
   numPi2Stats_(0),
   popIndices_(0),
+  hetSuffixes_(0),
+  pi2Suffixes_(0),
   moments_(0)
   { }
 
@@ -66,12 +70,20 @@ public:
   numHetStats_(2 * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p
   numPi2Stats_(4 * numPops_ * numPops_ * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p for each locus
   popIndices_(0),
+  hetSuffixes_(0),
+  pi2Suffixes_(0),
   moments_(0)
   {
+    hetSuffixes_ = { "A", "B" };
+    pi2Suffixes_ = { "A", "B", "C", "D" };
+
     popIndices_.reserve(popMap.size());
 
     for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
+    {
+      assert(it->first == it->second->getId());
       popIndices_.emplace_back(it->first);
+    }
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
     initMoments_();
@@ -128,7 +140,21 @@ public:
     return 1 + numDDStats_ + numDzStats_ + numHetStats_ + numPi2Stats_;
   }
 
-  // these methods use pop-ids to track down moments' positions inside moments_ vector (see Model::linkMoments_())
+  // naive search
+  std::shared_ptr<Moment> getMoment(const std::string& name) const
+  {
+    std::shared_ptr<Moment> ptr = nullptr; // object slicing, can only get (base) Moment attributes
+    for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
+    {
+      if((*itMom)->getName() == name)
+        ptr = *itMom;
+    }
+
+    assert(ptr != nullptr);
+    return ptr;
+  }
+
+  // the following methods use pop-ids to track down moments' positions inside moments_ vector (see Model::linkMoments_())
 
   std::shared_ptr<Moment> getDdMoment(size_t id1, size_t id2) const
   {
@@ -142,15 +168,15 @@ public:
     return moments_[focalMomIndex];
   }
 
-  std::shared_ptr<Moment> getHetMoment(size_t id1, size_t id2) const
+  std::shared_ptr<Moment> getHetMoment(size_t id1, size_t id2, const std::string& suffix) const
   {
-    size_t focalMomIndex = findHetIndex(id1, id2);
+    size_t focalMomIndex = findHetIndex(id1, id2, suffix);
     return moments_[focalMomIndex];
   }
 
-  std::shared_ptr<Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
+  std::shared_ptr<Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, const std::string& suffix) const
   {
-    size_t focalMomIndex = findPi2Index(id1, id2, id3, id4);
+    size_t focalMomIndex = findPi2Index(id1, id2, id3, id4, suffix);
     return moments_[focalMomIndex];
   }
 
@@ -162,6 +188,16 @@ public:
   size_t findPopIndexRank(size_t index) const // among all pop indices
   {
     return std::distance(std::begin(popIndices_), std::lower_bound(std::begin(popIndices_), std::end(popIndices_), index)); // indexed from 0
+  }
+
+  size_t findHetSuffixRank(const std::string& suffix) const
+  {
+    return std::distance(std::begin(hetSuffixes_), std::lower_bound(std::begin(hetSuffixes_), std::end(hetSuffixes_), suffix)); // indexed from 0
+  }
+
+  size_t findPi2SuffixRank(const std::string& suffix) const
+  {
+    return std::distance(std::begin(pi2Suffixes_), std::lower_bound(std::begin(pi2Suffixes_), std::end(pi2Suffixes_), suffix)); // indexed from 0
   }
 
   size_t findDdIndex(size_t id1, size_t id2) const
@@ -181,12 +217,14 @@ public:
     return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
   }
 
-  size_t findHetIndex(size_t id1, size_t id2) const
+  size_t findHetIndex(size_t id1, size_t id2, const std::string& suffix) const
   {
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
 
-    return numDDStats_ + numDzStats_ + rank1 * (rank1 + 1) / 2 + rank2;
+    size_t suffixRank = findHetSuffixRank(suffix);
+
+    return numDDStats_ + numDzStats_ + rank1 * numPops_ * hetSuffixes_.size() + rank2 * hetSuffixes_.size() + suffixRank;
   }
 
   size_t getDummyIndex() const
@@ -194,15 +232,17 @@ public:
     return numDDStats_ + numDzStats_ + numHetStats_;
   }
 
-  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const
+  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, const std::string& suffix) const
   {
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
     size_t rank3 = findPopIndexRank(id3);
     size_t rank4 = findPopIndexRank(id4);
 
+    size_t suffixRank = findPi2SuffixRank(suffix);
+
     // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
+    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ * pi2Suffixes_.size() + rank2 * numPops_ * numPops_ * pi2Suffixes_.size() + rank3 * numPops_ * pi2Suffixes_.size() + rank4 * pi2Suffixes_.size() + suffixRank;
   }
 
   std::string asString(size_t i)
@@ -216,6 +256,8 @@ public:
 
 private:
   void initMoments_();
+
+  void linkPi2HetStats_();
 
   // exploits symmetry among statistics to reduce dimension of stats_, given constraints
   void compressBasis_(const std::vector<size_t>& selectedPopIds);

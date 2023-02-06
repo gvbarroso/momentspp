@@ -49,12 +49,12 @@ void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
   psuedoeigen.stop_timer();
 }
 
-void Epoch::transferStatistics(Eigen::VectorXd& y)
+void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoch
 {
   Eigen::VectorXd tmp(ssl_.getMoments().size()); // y and tmp have potentially different sizes
   tmp.setZero();
 
-  // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
+  // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
   for(int i = 0; i < tmp.size(); ++i)
   {
     int idx = ssl_.getMoments()[i]->getParent()->getPosition();
