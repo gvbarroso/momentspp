@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 03/02/2023
+ * Last modified: 06/02/2023
  *
  */
 
@@ -11,7 +11,7 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <memory>
 #include <algorithm>
 #include <cstring>
 #include <utility>
@@ -44,11 +44,7 @@ private:
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
-  std::vector<Moment> moments_; // sorted lexicographically based on their name_
-
-  // after calling compressBasis_(), we need to know the status to find sum stats within the library
-  //bool areHetsPermuted_;
-  //bool arePi2sPermuted_;
+  std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
 
 public:
   SumStatsLibrary():
@@ -97,12 +93,12 @@ public:
     return popIndices_;
   }
 
-  const std::vector<Moment>& getMoments() const
+  const std::vector<std::shared_ptr<Moment>>& getMoments() const
   {
     return moments_;
   }
 
-  std::vector<Moment>& getMoments()
+  std::vector<std::shared_ptr<Moment>>& getMoments()
   {
     return moments_;
   }
@@ -134,72 +130,31 @@ public:
 
   // these methods use pop-ids to track down moments' positions inside moments_ vector (see Model::linkMoments_())
 
-  const Moment& getDdMoment(size_t id1, size_t id2) const
+  std::shared_ptr<Moment> getDdMoment(size_t id1, size_t id2) const
   {
     size_t focalMomIndex = findDdIndex(id1, id2);
     return moments_[focalMomIndex];
   }
 
-  Moment& getDdMoment(size_t id1, size_t id2)
-  {
-    size_t focalMomIndex = findDdIndex(id1, id2);
-    return moments_[focalMomIndex];
-  }
-
-  const Moment& getDzMoment(size_t id1, size_t id2, size_t id3) const
+  std::shared_ptr<Moment> getDzMoment(size_t id1, size_t id2, size_t id3) const
   {
     size_t focalMomIndex = findDzIndex(id1, id2, id3);
     return moments_[focalMomIndex];
   }
 
-  Moment& getDzMoment(size_t id1, size_t id2, size_t id3)
+  std::shared_ptr<Moment> getHetMoment(size_t id1, size_t id2) const
   {
-    size_t focalMomIndex = findDzIndex(id1, id2, id3);
+    size_t focalMomIndex = findHetIndex(id1, id2);
     return moments_[focalMomIndex];
   }
 
-  const Moment& getHpMoment(size_t id1, size_t id2) const
-  {
-    size_t focalMomIndex = findHpIndex(id1, id2);
-    return moments_[focalMomIndex];
-  }
-
-  Moment& getHpMoment(size_t id1, size_t id2)
-  {
-    size_t focalMomIndex = findHpIndex(id1, id2);
-    return moments_[focalMomIndex];
-  }
-
-  const Moment& getHqMoment(size_t id1, size_t id2) const
-  {
-    size_t focalMomIndex = findHqIndex(id1, id2);
-    return moments_[focalMomIndex];
-  }
-
-  Moment& getHqMoment(size_t id1, size_t id2)
-  {
-    size_t focalMomIndex = findHqIndex(id1, id2);
-    return moments_[focalMomIndex];
-  }
-
-  const Moment& getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
+  std::shared_ptr<Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
   {
     size_t focalMomIndex = findPi2Index(id1, id2, id3, id4);
     return moments_[focalMomIndex];
   }
 
-  Moment& getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4)
-  {
-    size_t focalMomIndex = findPi2Index(id1, id2, id3, id4);
-    return moments_[focalMomIndex];
-  }
-
-  const Moment& getDummyMoment() const
-  {
-    return moments_[getDummyIndex()];
-  }
-
-  Moment& getDummyMoment()
+  std::shared_ptr<Moment> getDummyMoment() const
   {
     return moments_[getDummyIndex()];
   }
@@ -226,20 +181,12 @@ public:
     return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
   }
 
-  size_t findHpIndex(size_t id1, size_t id2) const
+  size_t findHetIndex(size_t id1, size_t id2) const
   {
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
 
     return numDDStats_ + numDzStats_ + rank1 * (rank1 + 1) / 2 + rank2;
-  }
-
-  size_t findHqIndex(size_t id1, size_t id2) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-
-    return numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ - rank1 * (rank1 - 1) / 2 + rank2 - rank1;
   }
 
   size_t getDummyIndex() const

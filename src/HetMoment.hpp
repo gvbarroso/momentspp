@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 03/02/2023
+ * Last modified: 06/02/2023
  *
  */
 
@@ -11,8 +11,7 @@
 #include "Moment.hpp"
 
 
-class HetMoment:
-  public Moment
+class HetMoment: public Moment
 {
 
 private:
@@ -33,7 +32,7 @@ public:
   { }
 
 public:
-  virtual void printAttributes(std::ostream& stream)
+  void printAttributes(std::ostream& stream) override
   {
     stream << std::scientific << position_ << " | " << name_ << " = " << value_ << "; 1st copy derived?: " << isFirstCopyDerived_ << "; constrained?: " << isPutativelySelected_ << ";\n";
   }

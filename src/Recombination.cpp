@@ -20,10 +20,10 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   {
     int row = it - std::begin(sslib.getMoments()); // recombination matrix only has entries in main diagonal
 
-    if(it->getPrefix() == "DD")
+    if((*it)->getPrefix() == "DD")
       coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
-    else if(it->getPrefix() == "Dz")
+    else if((*it)->getPrefix() == "Dz")
       coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
   }
 

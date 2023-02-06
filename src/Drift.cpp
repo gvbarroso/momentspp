@@ -28,9 +28,9 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     {
       int row = it - std::begin(sslib.getMoments()); // row index
       int col = -1; // inits column index to out-of-bounds
-      size_t popIdCount = it->countInstances(i); // count of i in moment's name
+      size_t popIdCount = (*it)->countInstances(i); // count of i in moment's name
 
-      if(it->getPrefix() == "DD")
+      if((*it)->getPrefix() == "DD")
       {
         if(popIdCount == 2)
         {
@@ -47,9 +47,9 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
-      else if(it->getPrefix() == "Dz")
+      else if((*it)->getPrefix() == "Dz")
       {
-        if(it->getPopIndices()[0] == i) // if D_i_z**
+        if((*it)->getPopIndices()[0] == i) // if D_i_z**
         {
           if(popIdCount == 3) // D_i_z_ii
           {
@@ -70,30 +70,30 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 2)  // D_x_z_ii
           {
-            col = sslib.findDdIndex(i, it->getPopIndices()[0]);
+            col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
-            col = sslib.findDdIndex(it->getPopIndices()[0], i);
+            col = sslib.findDdIndex((*it)->getPopIndices()[0], i);
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
           }
         }
       }
 
-      else if(it->getPrefix() == "pi2")
+      else if((*it)->getPrefix() == "pi2")
       {
         size_t countLeft = 0; // count of i before ';' character in pi2(**;**)
         size_t countRight = 0; // count of i after ';' character in pi2(**;**)
 
-        if(it->getPopIndices()[0] == i)
+        if((*it)->getPopIndices()[0] == i)
           ++countLeft;
 
-        if(it->getPopIndices()[1] == i)
+        if((*it)->getPopIndices()[1] == i)
           ++countLeft;
 
-        if(it->getPopIndices()[2] == i)
+        if((*it)->getPopIndices()[2] == i)
           ++countRight;
 
-        if(it->getPopIndices()[3] == i)
+        if((*it)->getPopIndices()[3] == i)
           ++countRight;
 
         if((countLeft + countRight) == 4)
@@ -108,7 +108,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
-      else if(it->getPrefix() == "Hp" || it->getPrefix() == "Hq")
+      else if((*it)->getPrefix() == "H")
         if(popIdCount == 2)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
     }

@@ -57,7 +57,7 @@ void Epoch::transferStatistics(Eigen::VectorXd& y)
   // for each Moment in *this epoch, we assign its value from its parental Moment from the previous epoch (from which y comes)
   for(int i = 0; i < tmp.size(); ++i)
   {
-    int idx = ssl_.getMoments()[i].getParent()->getPosition();
+    int idx = ssl_.getMoments()[i]->getParent()->getPosition();
     tmp(i) = y(idx);
   }
 
@@ -70,7 +70,7 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
     throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
 
   for(int i = 0; i < y.size(); ++i)
-    ssl_.getMoments()[i].setValue(y(i));
+    ssl_.getMoments()[i]->setValue(y(i));
 }
 
 void Epoch::computeSteadyState_()

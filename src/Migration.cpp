@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 12/12/2022
+ * Last modified: 06/02/2023
  *
  */
 
@@ -34,9 +34,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           int row = it - std::begin(sslib.getMoments()); // row index
           int col = -1; // inits column index to out-of-bounds
-          int childPopIdCount = static_cast<int>(it->countInstances(j)); // count of j in Moment's name
+          int childPopIdCount = static_cast<int>((*it)->countInstances(j)); // count of j in Moment's name
 
-          if(it->getPrefix() == "DD")
+          if((*it)->getPrefix() == "DD")
           {
             if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros
               coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount)); // main diagonal
@@ -57,14 +57,14 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if(it->getPrefix() == "Dz")
+          else if((*it)->getPrefix() == "Dz")
           {
             if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros
               coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount)); // main diagonal
 
-            size_t p1 = it->getPopIndices()[0]; // D pop
-            size_t p2 = it->getPopIndices()[1]; // first z pop
-            size_t p3 = it->getPopIndices()[2]; // second z pop
+            size_t p1 = (*it)->getPopIndices()[0]; // D pop
+            size_t p2 = (*it)->getPopIndices()[1]; // first z pop
+            size_t p3 = (*it)->getPopIndices()[2]; // second z pop
 
             if(p1 == i) // D_i_z_**
             {
@@ -257,21 +257,21 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if(it->getPrefix() == "pi2")
+          else if((*it)->getPrefix() == "pi2")
           {
             int countLeft = 0; // count of j before ';' in pi2(**;**)
             int countRight = 0; // count of j after ';' in pi2(**;**)
 
-            if(it->getPopIndices()[0] == j)
+            if((*it)->getPopIndices()[0] == j)
               ++countLeft;
 
-            if(it->getPopIndices()[1] == j)
+            if((*it)->getPopIndices()[1] == j)
               ++countLeft;
 
-            if(it->getPopIndices()[2] == j)
+            if((*it)->getPopIndices()[2] == j)
               ++countRight;
 
-            if(it->getPopIndices()[3] == j)
+            if((*it)->getPopIndices()[3] == j)
               ++countRight;
 
             // main diagonal
@@ -373,20 +373,20 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if(it->getPrefix() == "Hp")
+          else if((*it)->getPrefix() == "Hp")
           {
             if(childPopIdCount > 0) // not to populate the sparse matrix with unnecessary zeros
               coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount)); // main diagonal
 
             // Hp prefix implies p1 > p2
-            size_t p1 = it->getPopIndices()[0];
-            size_t p2 = it->getPopIndices()[1];
+            size_t p1 = (*it)->getPopIndices()[0];
+            size_t p2 = (*it)->getPopIndices()[1];
 
             if(childPopIdCount == 1)
             {
               if(p1 == i || p2 == i) // Hp_ij (when i < j) or Hp_ji (when j > i)
               {
-                col = sslib.findHpIndex(i, i);
+                col = sslib.findHetIndex(i, i);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
@@ -395,38 +395,38 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               if(i > j)
               {
-                col = sslib.findHpIndex(i, j);
+                col = sslib.findHetIndex(i, j);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-                col = sslib.findHqIndex(j, i);
+                col = sslib.findHetIndex(j, i);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
 
               else // i < j
               {
-                col = sslib.findHpIndex(j, i);
+                col = sslib.findHetIndex(j, i);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-                col = sslib.findHqIndex(i, j);
+                col = sslib.findHetIndex(i, j);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
           }
 
-          else if(it->getPrefix() == "Hq")
+          else if((*it)->getPrefix() == "Hq")
           {
             if(childPopIdCount > 0) // not to populate the sparse matrix with unnecessary zeros
               coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount)); // main diagonal
 
             // Hq prefix implies p1 < p2
-            size_t p1 = it->getPopIndices()[0];
-            size_t p2 = it->getPopIndices()[1];
+            size_t p1 = (*it)->getPopIndices()[0];
+            size_t p2 = (*it)->getPopIndices()[1];
 
             if(childPopIdCount == 1)
             {
               if(p1 == i || p2 == i) // Hq_ij (when i > j) or Hq_ji (when j < i)
               {
-                col = sslib.findHqIndex(i, i);
+                col = sslib.findHetIndex(i, i);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
@@ -435,19 +435,19 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               if(i > j)
               {
-                col = sslib.findHpIndex(i, j);
+                col = sslib.findHetIndex(i, j);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-                col = sslib.findHqIndex(j, i);
+                col = sslib.findHetIndex(j, i);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
 
               else // i < j
               {
-                col = sslib.findHpIndex(j, i);
+                col = sslib.findHetIndex(j, i);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-                col = sslib.findHqIndex(i, j);
+                col = sslib.findHetIndex(i, j);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }

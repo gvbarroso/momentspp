@@ -32,9 +32,7 @@
 #include "Epoch.hpp"
 #include "Data.hpp"
 
-class Model:
-  public bpp::AbstractParameterAliasable,
-  public bpp::Function
+class Model: public bpp::AbstractParameterAliasable, public bpp::Function
 {
 
 private:

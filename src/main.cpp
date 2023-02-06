@@ -13,8 +13,8 @@
 #include "Recombination.hpp"
 #include "Drift.hpp"
 #include "Migration.hpp"
-//#include "Selection.h"
-//#include "Admixture.h"
+//#include "Selection.hpp"
+//#include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 03/Feb/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 06/Feb/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
   * pop2 first, derived
   * pop2 first, ancestral
   *
-  * TODO -> figure out which H's contribute to which pi2's (also, are there extra pi2's to consider?)
+  * TODO -> figure how the H's contribute to the corresponding pi2's
   * start with 1-pop case, pi2(11;11)
   *
   */
@@ -115,12 +115,7 @@ int main(int argc, char *argv[]) {
 
     else // there is a data file with observed summary statistics
     {
-      std::cout << "Processing input data..."; std::cout.flush();
-
-      Data data(options.getDataFilePath(), popMaps.back()); // input data, format = ?
-      //data.computeSumStats();
-
-      std::cout << "done." << std::endl;
+      Data data(options.getDataFilePath(), popMaps.back()); // input summary statistics (observed), format = ?
 
       // the optimizer builds the main objects, assembles the Models and optimizes them
       OptimizationWrapper optimizer(options);

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 05/12/2022
+ * Last modified: 06/02/2023
  *
  */
 
@@ -130,12 +130,12 @@ public:
     return ssl_;
   }
 
-  const std::vector<Moment>& getMoments() const
+  const std::vector<std::shared_ptr<Moment>>& getMoments() const
   {
     return ssl_.getMoments();
   }
 
-  std::vector<Moment>& getMoments()
+  std::vector<std::shared_ptr<Moment>>& getMoments()
   {
     return ssl_.getMoments();
   }

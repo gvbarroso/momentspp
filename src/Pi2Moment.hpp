@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 02/02/2023
+ * Last modified: 06/02/2023
  *
  */
 
@@ -13,8 +13,7 @@
 #include "Moment.hpp"
 #include "HetMoment.hpp"
 
-class Pi2Moment:
-  public Moment
+class Pi2Moment: public Moment
 {
 
 private:
@@ -35,9 +34,13 @@ public:
   { }
 
 public:
-  virtual void printAttributes(std::ostream& stream)
+  void printAttributes(std::ostream& stream) override
   {
-    stream << std::scientific << position_ << " | " << name_ << " = " << value_ << "; leftHet: " << left_->getName() << "; rightHet: " << right_->getName() << ";\n";
+    stream << std::scientific << position_ << " | " << name_ << " = " << value_ << "\nleftHet: ";
+    left_->printAttributes(stream);
+    stream << "rightHet: ";
+    right_->printAttributes(stream);
+    stream << "\n\n";
   }
 
   std::shared_ptr<HetMoment> getLeftHetStat()

@@ -11,8 +11,7 @@
 #include "Moment.hpp"
 
 
-class DdMoment:
-  public Moment
+class DdMoment: public Moment
 {
 
 private:
@@ -26,9 +25,6 @@ public:
   DdMoment(const std::string& name, double value):
   Moment(name, value)
   { }
-
-public:
-  // ?
 
 };
 
