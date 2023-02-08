@@ -57,14 +57,14 @@ void SumStatsLibrary::initMoments_()
   // adds Dummy Moment lexicographically after H_ stats to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.emplace_back(std::make_shared<Moment>("I", 1.));
 
-  // this determines the ascending lexicographical order of stats in the rows of transition matrices
+  // determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
   std::sort(std::begin(moments_), std::end(moments_), [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b) { return a->getName() < b->getName(); } );
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);
 
+  linkPi2HetStats_();
   printMoments(std::cout);
-  //linkPi2HetStats_();
 }
 
 // for each Pi2Moment, sets the two pointers corresponding to HetMoments (left and right loci)
@@ -72,10 +72,48 @@ void SumStatsLibrary::linkPi2HetStats_()
 {
   for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
   {
-    if(std::dynamic_pointer_cast<Pi2Moment>(*itMom) != nullptr)
+    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*itMom);
+
+    if(tmpPi2 != nullptr)
     {
-      (*itMom)->printAttributes(std::cout);
-      // TODO
+      size_t p1 = tmpPi2->getPopIndices()[0];
+      size_t p2 = tmpPi2->getPopIndices()[1];
+      size_t p3 = tmpPi2->getPopIndices()[2];
+      size_t p4 = tmpPi2->getPopIndices()[3];
+
+      std::string suffix = tmpPi2->getSuffix();
+
+      if(suffix == "A")
+      {
+        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
+        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
+        tmpPi2->setLeftHetStat(tmpHetLeft);
+        tmpPi2->setRightHetStat(tmpHetRight);
+      }
+
+      else if(suffix == "B")
+      {
+        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
+        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "B"));
+        tmpPi2->setLeftHetStat(tmpHetLeft);
+        tmpPi2->setRightHetStat(tmpHetRight);
+      }
+
+      else if(suffix == "C")
+      {
+        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "B"));
+        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
+        tmpPi2->setLeftHetStat(tmpHetLeft);
+        tmpPi2->setRightHetStat(tmpHetRight);
+      }
+
+      else if(suffix == "D")
+      {
+        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "B"));
+        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "B"));
+        tmpPi2->setLeftHetStat(tmpHetLeft);
+        tmpPi2->setRightHetStat(tmpHetRight);
+      }
     }
   }
 }

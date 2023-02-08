@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 03/02/2023
+ * Last modified: 07/02/2023
  *
  */
 
@@ -28,7 +28,7 @@ protected:
   std::string prefix_; // e.g. "Dz"
   std::string suffix_; // e.g. "A" -> refers to the permutation of sampling order of derived/ancestral
   std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}, may be relevant ir Order is high
-  size_t position_; // within the Y vector, in SumStatsLibrary
+  size_t position_; // within the Y vector, in SumStatsLibrary, same as row/col in AbstractOperator matrix(ces)
   double value_;
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry (via popIndices_)
@@ -140,10 +140,11 @@ private:
     std::vector<std::string> splitName(0);
     boost::split(splitName, name, boost::is_any_of("_"));
     prefix_ = splitName[0];
-    suffix_ = splitName[splitName.size() - 1];
 
     if(splitName.size() > 1)
     {
+      suffix_ = splitName.back();
+
       for(size_t i = 1; i < splitName.size() - 1; ++i)
         popIndices_.emplace_back(std::stoul(splitName[i]));
     }

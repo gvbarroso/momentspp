@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 06/02/2023
+ * Last modified: 07/02/2023
  *
  */
 
@@ -74,8 +74,8 @@ public:
   pi2Suffixes_(0),
   moments_(0)
   {
-    hetSuffixes_ = { "A", "B" };
-    pi2Suffixes_ = { "A", "B", "C", "D" };
+    hetSuffixes_ = { "A", "B" }; // p(1-p), (1-p)p
+    pi2Suffixes_ = { "A", "B", "C", "D" }; // p(1-p)*(1-q)q, p(1-p)*q(1-q), (1-p)1*(1-q)q, (1-p)p*q(1-q)
 
     popIndices_.reserve(popMap.size());
 
@@ -156,28 +156,52 @@ public:
 
   // the following methods use pop-ids to track down moments' positions inside moments_ vector (see Model::linkMoments_())
 
-  std::shared_ptr<Moment> getDdMoment(size_t id1, size_t id2) const
+  std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2) const
   {
     size_t focalMomIndex = findDdIndex(id1, id2);
-    return moments_[focalMomIndex];
+    auto ret = std::dynamic_pointer_cast<DdMoment>(moments_[focalMomIndex]);
+
+    if(ret != nullptr)
+      return ret;
+
+    else
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
   }
 
-  std::shared_ptr<Moment> getDzMoment(size_t id1, size_t id2, size_t id3) const
+  std::shared_ptr<DzMoment> getDzMoment(size_t id1, size_t id2, size_t id3) const
   {
     size_t focalMomIndex = findDzIndex(id1, id2, id3);
-    return moments_[focalMomIndex];
+    auto ret = std::dynamic_pointer_cast<DzMoment>(moments_[focalMomIndex]);
+
+    if(ret != nullptr)
+      return ret;
+
+    else
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
   }
 
-  std::shared_ptr<Moment> getHetMoment(size_t id1, size_t id2, const std::string& suffix) const
+  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2, const std::string& suffix) const
   {
     size_t focalMomIndex = findHetIndex(id1, id2, suffix);
-    return moments_[focalMomIndex];
+    auto ret = std::dynamic_pointer_cast<HetMoment>(moments_[focalMomIndex]);
+
+    if(ret != nullptr)
+      return ret;
+
+    else
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
   }
 
-  std::shared_ptr<Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, const std::string& suffix) const
+  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, const std::string& suffix) const
   {
     size_t focalMomIndex = findPi2Index(id1, id2, id3, id4, suffix);
-    return moments_[focalMomIndex];
+    auto ret = std::dynamic_pointer_cast<Pi2Moment>(moments_[focalMomIndex]);
+
+    if(ret != nullptr)
+      return ret;
+
+    else
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
   }
 
   std::shared_ptr<Moment> getDummyMoment() const
@@ -187,17 +211,26 @@ public:
 
   size_t findPopIndexRank(size_t index) const // among all pop indices
   {
-    return std::distance(std::begin(popIndices_), std::lower_bound(std::begin(popIndices_), std::end(popIndices_), index)); // indexed from 0
+    auto it = std::lower_bound(std::begin(popIndices_), std::end(popIndices_), index);
+    assert(it != std::end(popIndices_));
+
+    return std::distance(std::begin(popIndices_), it); // indexed from 0
   }
 
   size_t findHetSuffixRank(const std::string& suffix) const
   {
-    return std::distance(std::begin(hetSuffixes_), std::lower_bound(std::begin(hetSuffixes_), std::end(hetSuffixes_), suffix)); // indexed from 0
+    auto it = std::lower_bound(std::begin(hetSuffixes_), std::end(hetSuffixes_), suffix);
+    assert(it != std::end(hetSuffixes_));
+
+    return std::distance(std::begin(hetSuffixes_), it); // indexed from 0
   }
 
   size_t findPi2SuffixRank(const std::string& suffix) const
   {
-    return std::distance(std::begin(pi2Suffixes_), std::lower_bound(std::begin(pi2Suffixes_), std::end(pi2Suffixes_), suffix)); // indexed from 0
+    auto it = std::lower_bound(std::begin(pi2Suffixes_), std::end(pi2Suffixes_), suffix);
+    assert(it != std::end(pi2Suffixes_));
+
+    return std::distance(std::begin(pi2Suffixes_), it); // indexed from 0
   }
 
   size_t findDdIndex(size_t id1, size_t id2) const
@@ -257,6 +290,7 @@ public:
 private:
   void initMoments_();
 
+  // assign two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();
 
   // exploits symmetry among statistics to reduce dimension of stats_, given constraints
