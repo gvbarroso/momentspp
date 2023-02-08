@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 07/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -275,10 +275,7 @@ public:
     size_t suffixRank = findPi2SuffixRank(suffix);
 
     // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-    size_t ret = 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ * pi2Suffixes_.size() + rank2 * numPops_ * numPops_ * pi2Suffixes_.size() + rank3 * numPops_ * pi2Suffixes_.size() + rank4 * pi2Suffixes_.size() + suffixRank;
-
-    //std::cout << "pi2(" << id1 << id2 << id3 << id4 << ")_" << suffix << "\t" << rank1 << "," << rank2 << "," << rank3 << "," << rank4 << "," << suffixRank << std::endl;
-    return ret;
+    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ * pi2Suffixes_.size() + rank2 * numPops_ * numPops_ * pi2Suffixes_.size() + rank3 * numPops_ * pi2Suffixes_.size() + rank4 * pi2Suffixes_.size() + suffixRank;
   }
 
   std::string asString(size_t i)
@@ -290,14 +287,14 @@ public:
 
   void printMoments(std::ostream& stream);
 
+  // exploits symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection operator
+  std::vector<std::shared_ptr<Moment>> fetchCompressedBasis(const Eigen::VectorXd& steadyState);
+
 private:
   void initMoments_();
 
   // assign two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();
-
-  // exploits symmetry among statistics to reduce dimension of stats_, given constraints
-  void compressBasis_(const std::vector<size_t>& selectedPopIds);
 
 };
 

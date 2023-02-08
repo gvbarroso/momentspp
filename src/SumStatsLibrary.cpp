@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 06/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -23,6 +23,64 @@ void SumStatsLibrary::printMoments(std::ostream& stream)
 {
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->printAttributes(stream);
+}
+
+std::vector<std::shared_ptr<Moment>> SumStatsLibrary::fetchCompressedBasis(const Eigen::VectorXd& steadyState)
+{
+  assert(steadyState.size() == static_cast<int>(moments_.size()));
+
+  std::vector<std::shared_ptr<Moment>> newBasis(0);
+  std::map<std::string, std::vector<std::string>> equivalentMoments;
+  std::vector<double> vals(0);
+
+  // our quick and dirty strategy is to search the steady state distribution for moments with the same expectation...
+  for(auto itF = std::begin(moments_); itF != std::end(moments_);)
+  {
+    std::vector<std::string> aliases(0);
+    std::string focalName = (*itF)->getName();
+    double focalVal = (*itF)->getValue();
+    double sumEqVals = focalVal;
+
+    auto itS = std::begin(moments_);
+    std::advance(itS, std::distance(std::begin(moments_), itF) + 1);
+
+    (*itF)->printAttributes(std::cout);
+
+    std::string compName = (*itS)->getName();
+    double compVal = (*itS)->getValue();
+
+    while(std::abs(compVal - focalVal) < 1e-6)
+    {
+      std::cout << "\t\tfound alias:";
+      (*itS)->printAttributes(std::cout);
+
+      sumEqVals += compVal;
+      aliases.push_back(compName);
+
+      ++itS;
+      compVal = (*itS)->getValue();
+    }
+
+    vals.push_back(sumEqVals);
+
+    std::advance(itF, std::distance(std::begin(moments_), itS));
+    equivalentMoments.try_emplace(focalName, aliases);
+  }
+
+  assert(equivalentMoments.size() == vals.size());
+
+  std::cout << "Compressed Basis:\n";
+
+  for(auto it = std::begin(equivalentMoments); it != std::end(equivalentMoments); ++it)
+    newBasis.push_back(std::make_shared<Moment>(it->first, 0.));
+
+  for(size_t i = 0; i < newBasis.size(); ++i)
+  {
+    newBasis[i]->setValue(vals[i]);
+    newBasis[i]->printAttributes(std::cout);
+  }
+
+  return newBasis;
 }
 
 void SumStatsLibrary::initMoments_()
@@ -115,16 +173,4 @@ void SumStatsLibrary::linkPi2HetStats_()
       }
     }
   }
-}
-
-// proposal: argument tells in which Populations (id) selection acts on the derived allele of left locus?
-void SumStatsLibrary::compressBasis_(const std::vector<size_t>& selectedPopIds)
-{
-  // ?
-  //for(size_t i = 0; i < selectedPopIds.size(); ++i)
-  //{
-  //  if()
-  //  areHetsPermuted_ = false;
-  //  arePi2sPermuted_ = true;
-  //}
 }

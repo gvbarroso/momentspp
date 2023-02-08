@@ -45,6 +45,8 @@ void Model::computeExpectedSumStats()
   stats.open(name_ + "_final_moments.txt");
   epochs_.back()->getSslib().printMoments(stats);
   stats.close();
+
+  std::vector<std::shared_ptr<Moment>> basis = epochs_.back()->getSslib().fetchCompressedBasis(epochs_.back()->getSteadyState());
 }
 
 void Model::popAdmix_()
