@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 07/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -26,7 +26,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     if((*it)->getPrefix() == "H") // introducing one-locus diversity of the form p(1-p)
     {
       col = sslib.getDummyMoment()->getPosition(); // at column of Dummy Moment "I", for an homogeneous system
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1/2)); // 1/2 because of HetMoment permutations
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.)); // 1/2 because of HetMoment permutations
     }
 
     else if((*it)->getPrefix() == "pi2")
@@ -46,6 +46,9 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
       }
     }
+
+    else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dz")
+      throw bpp::Exception("Mutation::mis-specified Moment prefix: " + (*it)->getPrefix());
   }
 
   Eigen::SparseMatrix<double> mat(numStats, numStats);

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 07/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -42,16 +42,16 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           // Pi2Moment permutations:
 
           col = sslib.findPi2Index(i, i, i, i, "A");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1/4));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
 
           col = sslib.findPi2Index(i, i, i, i, "B");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1/4));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
 
           col = sslib.findPi2Index(i, i, i, i, "C");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1/4));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
 
           col = sslib.findPi2Index(i, i, i, i, "D");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1/4));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
         }
 
         else if(popIdCount == 1)
@@ -120,8 +120,13 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       }
 
       else if((*it)->getPrefix() == "H")
+      {
         if(popIdCount == 2)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+      }
+
+      else if((*it)->getPrefix() != "I")
+        throw bpp::Exception("Drift::mis-specified Moment prefix: " + (*it)->getPrefix());
     }
 
     Eigen::SparseMatrix<double> mat(numStats, numStats);

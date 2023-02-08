@@ -34,13 +34,13 @@ public:
   { }
 
 public:
-  void printAttributes(std::ostream& stream) override
+  /*void printAttributes(std::ostream& stream) override
   {
     stream << std::scientific << position_ << " | " << name_ << " = " << value_ << "\n\t\t";
     left_->printAttributes(stream);
     stream << "\t\t";
     right_->printAttributes(stream);
-  }
+  }*/
 
   std::shared_ptr<HetMoment> getLeftHetStat()
   {

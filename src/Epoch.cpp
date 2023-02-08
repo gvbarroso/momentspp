@@ -91,16 +91,16 @@ void Epoch::computeSteadyState_()
       bpp::ParameterList pl;
       pl.addParameter(operators_[i]->getParameters()[j]);
       pl.printParameters(logger.getLogFile());
-      logger.getLogFile() << /*std::setprecision(1e-12) << std::scientific <<*/ operators_[i]->getMatrices()[j] << "\n";
+      logger.getLogFile() << std::setprecision(1e-12) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries = " << /*std::setprecision(1e-12) << std::scientific <<*/ tmp.sum() << "\n";
+    logger.getLogFile() << "\n\nsum of entries = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
     logger.getLogFile() << operators_[i]->fetchCombinedMatrix() << "\n\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";
     test = operators_[i]->fetchCombinedMatrix() * test;
-    logger.getLogFile() << /*std::setprecision(1e-12) <<*/ test << "\n";
+    logger.getLogFile() << std::setprecision(1e-12) << test << "\n";
   }
   #endif
 

@@ -275,7 +275,10 @@ public:
     size_t suffixRank = findPi2SuffixRank(suffix);
 
     // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ * pi2Suffixes_.size() + rank2 * numPops_ * numPops_ * pi2Suffixes_.size() + rank3 * numPops_ * pi2Suffixes_.size() + rank4 * pi2Suffixes_.size() + suffixRank;
+    size_t ret = 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ * pi2Suffixes_.size() + rank2 * numPops_ * numPops_ * pi2Suffixes_.size() + rank3 * numPops_ * pi2Suffixes_.size() + rank4 * pi2Suffixes_.size() + suffixRank;
+
+    //std::cout << "pi2(" << id1 << id2 << id3 << id4 << ")_" << suffix << "\t" << rank1 << "," << rank2 << "," << rank3 << "," << rank4 << "," << suffixRank << std::endl;
+    return ret;
   }
 
   std::string asString(size_t i)

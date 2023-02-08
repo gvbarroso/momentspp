@@ -64,7 +64,6 @@ void SumStatsLibrary::initMoments_()
     moments_[i]->setPosition(i);
 
   linkPi2HetStats_();
-  printMoments(std::cout);
 }
 
 // for each Pi2Moment, sets the two pointers corresponding to HetMoments (left and right loci)
