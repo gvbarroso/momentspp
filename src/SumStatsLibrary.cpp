@@ -124,7 +124,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds)
           {
             if(left1 != left2)
             {
-              if(left1->getAliases()[k] != left2->getAliases()[k])
+              if(left1->getAliases()[k] != left2) // H's are potential aliases of each other
                 testLeft = 0;
             }
           }
@@ -141,7 +141,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds)
           {
             if(right1 != right2)
             {
-              if(right1->getAliases()[k] != right2->getAliases()[k])
+              if(right1->getAliases()[k] != right2) // H's are potential aliases of each other
                 testRight = 0;
             }
           }
