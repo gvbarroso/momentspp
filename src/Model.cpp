@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 07/02/2023
+ * Last modified: 09/02/2023
  *
  */
 
@@ -45,8 +45,13 @@ void Model::computeExpectedSumStats()
   stats.open(name_ + "_final_moments.txt");
   epochs_.back()->getSslib().printMoments(stats);
   stats.close();
+}
 
-  std::vector<std::shared_ptr<Moment>> basis = epochs_.back()->getSslib().fetchCompressedBasis(epochs_.back()->getSteadyState());
+void Model::aliasMoments()
+{
+  // epochs have their own Population container, and Population objects tell if the left derived allele is suject to selection in that epoch/pop
+  for(size_t i = 0; i < epochs_.size(); ++i)
+    epochs_[i]->getSslib().aliasMoments(epochs_[i]->fetchSelectedPopIds());
 }
 
 void Model::popAdmix_()

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 08/02/2023
+ * Last modified: 09/02/2023
  *
  */
 
@@ -287,8 +287,8 @@ public:
 
   void printMoments(std::ostream& stream);
 
-  // exploits symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection operator
-  std::vector<std::shared_ptr<Moment>> fetchCompressedBasis(const Eigen::VectorXd& steadyState);
+  // exploits symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection
+  void aliasMoments(const std::vector<size_t>& selectedPopIds);
 
 private:
   void initMoments_();

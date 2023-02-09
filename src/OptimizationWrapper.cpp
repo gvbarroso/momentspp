@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/02/2023
+ * Last modified: 09/02/2023
  *
  */
 
@@ -29,26 +29,24 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
   epochs.reserve(numEpochs);
 
   // the range of values that our "small" rates are allowed to take in
-  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-0, true, true);
+  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-3, true, true);
 
-  // for now, all epochs share recombination and mutation parameters
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
     std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
 
-    // define start and end of epochs as quantiles of the exp dist?
-    size_t start = i * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
-    size_t end = (i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs); // in units of generations
+    size_t start = i * (options_.getTotalNumberOfGenerations() / numEpochs);
+    size_t end = (i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs);
 
-    SumStatsLibrary sslib(options_.getOrder(), demes.getPopMaps()[i]); // utils class to manage moments from epoch i
+    SumStatsLibrary sslib(options_.getOrder(), demes.getPopMaps()[i]);
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
-     * even though we prob. want single r and mu params in Model
+     * even though we prob. want single r and mu params in Model --> alias r and mu across epochs?
      */
 
-    std::vector<double> drift = options_.getInitPopSizes(); // TODO get this from Demes
-    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid)drift parameters
+    std::vector<double> drift = options_.getInitPopSizes(); // should get this from Demes instead
+    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
       drift[j] = 1. / (2. * drift[j]);
 
     // WARNING ad-hockery for testing bottleneck
@@ -62,7 +60,6 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options_.getInitR(), ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options_.getInitMu(), ic, sslib);
 
-    // include operators in the "correct" order for matrix operations
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
 
@@ -72,6 +69,7 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
       operators.emplace_back(migOp);
     }
 
+    // include operators in the "correct" order for matrix operations
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
@@ -80,8 +78,8 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
   }
 
   Model* model = new Model(modelName, epochs, data);
+  model->aliasMoments();
   model->computeExpectedSumStats();
-  // TODO alias r and mu among epochs
 
   //fitModel_(model);
   //writeEstimatesToFile_(model);

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 08/02/2023
+ * Last modified: 09/02/2023
  *
  */
 
@@ -146,6 +146,20 @@ public:
   std::vector<std::shared_ptr<Moment>>& getMoments()
   {
     return ssl_.getMoments();
+  }
+
+  std::vector<size_t> fetchSelectedPopIds()
+  {
+    std::vector<size_t> ret(0);
+    ret.reserve(pops_.size());
+
+    for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+    {
+      if(it->second->hasSelection())
+        ret.emplace_back(it->first);
+    }
+
+    return ret;
   }
 
   void computeExpectedSumStats(Eigen::VectorXd& y);

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 06/Feb/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 09/Feb/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -50,6 +50,8 @@ int main(int argc, char *argv[]) {
   * Selection operator -> upon rejection, sample a replacement individual from the whole population with probaility proportional to the pop. fitness vector (which maybe can be obtained from allele frequencies?)
   *
   * selection constrained to a particular epoch
+  *
+  * define start and end of epochs as quantiles of the exp dist?
   *
   */
 
@@ -66,7 +68,6 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  // TODO
   // 1. parse options.getPopsFilePath()
   // 2. create populations
   // 3. link populations from different epochs (see Model::linkMoments())
@@ -78,10 +79,12 @@ int main(int argc, char *argv[]) {
   {
     std::map<size_t, std::shared_ptr<Population>> map;
 
-    for(size_t j = 0; j < options.getNumPops(); ++j)
+    for(size_t j = 0; j < options.getNumPops(); ++j) // simplification: for now, every epoch has same number of populations; use Demes class to change that
     {
-      //Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize):
-      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, 500000, 0, 10000, 10000);
+      bool hasSelection = j == 0;
+
+      //Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize, bool hasSelection):
+      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, 500000, 0, 10000, 10000, hasSelection);
       map.try_emplace(j, pop);
     }
 

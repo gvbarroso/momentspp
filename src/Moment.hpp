@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 08/02/2023
+ * Last modified: 09/02/2023
  *
  */
 
@@ -71,6 +71,16 @@ public:
 
     else
       stream << "\n";
+
+    if(aliases_.size() > 0)
+    {
+      stream << "\taliases: ";
+
+      for(auto it = std::begin(aliases_); it != std::end(aliases_); ++it)
+        stream << (*it)->getName() << ",";
+
+      stream << "\n";
+    }
   }
 
   const std::string& getName() const
@@ -135,11 +145,11 @@ public:
 
   void insertAlias(std::shared_ptr<Moment> mom)
   {
-    if(std::find(std::begin(aliases_), std::end(aliases_), mom) == std::end(aliases_));
+    if(std::find(std::begin(aliases_), std::end(aliases_), mom) == std::end(aliases_))
       aliases_.push_back(mom);
 
     else
-      throw bpp::Exception("SumStatsLibrary::attempted to duplicate alias " + mom->getName());
+      throw bpp::Exception("Moment::attempted to duplicate alias " + name_ + "->" + mom->getName());
   }
 
   bool hasPopIndex(size_t index)

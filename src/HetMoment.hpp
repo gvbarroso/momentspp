@@ -42,7 +42,7 @@ public:
     return !isFirstCopyDerived_;
   }
 
-  bool isSelected()
+  bool isConstrained()
   {
     return isPutativelySelected_;
   }

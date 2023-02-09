@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 02/11/2022
+ * Last modified: 09/02/2023
  *
  */
 
@@ -21,6 +21,7 @@
 
 class Population
 {
+
 private:
   std::string name_; // human label, e.g. "Yoruba"
   std::string description_;
@@ -33,7 +34,9 @@ private:
   size_t startTime_; // in units of generations (coming from past to present)
   size_t endTime_; // in units of generations
   size_t startSize_; // N_i in 1/N_i Drift parameters
-  size_t endSize_; // must be equal to startSize
+  size_t endSize_; // must be equal to startSize because we assume constant pop sizes within each epoch
+
+  bool isDerivedLeftSelected_; // tells q
 
 public:
   Population():
@@ -45,10 +48,11 @@ public:
   startTime_(0),
   endTime_(0),
   startSize_(0),
-  endSize_(0)
+  endSize_(0),
+  isDerivedLeftSelected_(0)
   { }
 
-  Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize):
+  Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize, bool hasSelection):
   name_(name),
   description_(description),
   leftParent_(nullptr),
@@ -57,10 +61,11 @@ public:
   startTime_(startTime),
   endTime_(endTime),
   startSize_(startSize),
-  endSize_(endSize)
+  endSize_(endSize),
+  isDerivedLeftSelected_(hasSelection)
   {
     if(startSize_ != endSize_)
-      throw bpp::Exception("Population::invalid parameters: start and end sizes specified in YAML file are not equal!");
+      throw bpp::Exception("Population::start and end sizes for population " + bpp::TextTools::toString(id) + " specified in YAML file are not equal!");
   }
 
 public:
@@ -107,6 +112,11 @@ public:
   size_t getEndTime()
   {
     return endTime_;
+  }
+
+  bool hasSelection()
+  {
+    return isDerivedLeftSelected_;
   }
 
 };

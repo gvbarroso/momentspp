@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/31/2023
+ * Last modified: 09/02/2023
  *
  */
 
@@ -141,6 +141,8 @@ public:
   }
 
   void computeExpectedSumStats();
+
+  void aliasMoments();
 
 private:
   void linkMoments_();
