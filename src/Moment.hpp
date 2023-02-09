@@ -61,7 +61,13 @@ public:
 
   virtual void printAttributes(std::ostream& stream)
   {
-    stream << std::scientific << position_ << " | " << name_ << " = " << value_ << "\n";
+    stream << std::scientific << position_ << " | " << name_ << " = " << value_;
+
+    if(parent_ != nullptr)
+      stream << "; parent = " << parent_->getName() << "\n";
+
+    else
+      stream << "\n";
   }
 
   const std::string& getName() const

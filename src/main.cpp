@@ -58,6 +58,8 @@ int main(int argc, char *argv[]) {
   * TODO -> figure how the H's contribute to the corresponding pi2's
   * start with 1-pop case, pi2(11;11)
   *
+  * selection constrained to a particular epoch
+  *
   */
 
   if(argc == 1)
