@@ -49,15 +49,6 @@ int main(int argc, char *argv[]) {
   * Write Admixture operator as an AbstractOperator that has exponent 1!
   * Selection operator -> upon rejection, sample a replacement individual from the whole population with probaility proportional to the pop. fitness vector (which maybe can be obtained from allele frequencies?)
   *
-  * cross-pop H's have an extra permutaiton possible. 4 cases:
-  * sample pop1 frist, it is derived - pop2 must be ancestral to be included in the H stat
-  * pop1 first, ancestral
-  * pop2 first, derived
-  * pop2 first, ancestral
-  *
-  * TODO -> figure how the H's contribute to the corresponding pi2's
-  * start with 1-pop case, pi2(11;11)
-  *
   * selection constrained to a particular epoch
   *
   */

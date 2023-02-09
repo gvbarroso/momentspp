@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 13/12/2022
+ * Last modified: 08/02/2023
  *
  */
 
@@ -17,13 +17,13 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
   matrices_.reserve(numPops);
 
-  // for each population
+  // for each focal population (and cross-population terms involving it)
   for(size_t i = 0; i < numPops; ++i)
   {
     std::vector<Eigen::Triplet<double>> coeffs(0);
     coeffs.reserve(numStats);
 
-    // for each stat in vector Y (going by rows of matrices_)
+    // for each stat in vector Y (going by rows of matrices_[i])
     for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
     {
       int row = it - std::begin(sslib.getMoments()); // row index
@@ -39,8 +39,19 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           col = sslib.findDzIndex(i, i, i);
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-          col = sslib.findPi2Index(i, i, i, i); // NOTE DD_ii will get 1/4 contribution from pi2_(ii;ii)_A--D?
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+          // Pi2Moment permutations:
+
+          col = sslib.findPi2Index(i, i, i, i, "A");
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
+
+          col = sslib.findPi2Index(i, i, i, i, "B");
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
+
+          col = sslib.findPi2Index(i, i, i, i, "C");
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
+
+          col = sslib.findPi2Index(i, i, i, i, "D");
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
         }
 
         else if(popIdCount == 1)
@@ -66,9 +77,9 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
         }
 
-        else // if D_x_z** WARNING check this
+        else // if D_x_z**
         {
-          if(popIdCount == 2)  // D_x_z_ii
+          if(popIdCount == 2) // D_x_z_ii
           {
             col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
@@ -109,8 +120,13 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       }
 
       else if((*it)->getPrefix() == "H")
+      {
         if(popIdCount == 2)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+      }
+
+      else if((*it)->getPrefix() != "I")
+        throw bpp::Exception("Drift::mis-specified Moment prefix: " + (*it)->getPrefix());
     }
 
     Eigen::SparseMatrix<double> mat(numStats, numStats);

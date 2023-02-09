@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 01/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -71,6 +71,8 @@ public:
   {
     parse_(file);
     epochs_.resize(popMaps.size());
+
+    pops_.resize(popMaps_.back().size()); // WARNING
   }
 
 public:

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 05/12/2022
+ * Last modified: 08/02/2023
  *
  */
 
@@ -66,8 +66,7 @@ void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoc
 
 void Epoch::updateMoments(const Eigen::VectorXd& y)
 {
-  if(y.size() != ssl_.getMoments().size())
-    throw bpp::Exception("Epoch::attempted to update moments from vector of different size!");
+  assert(y.size() == static_cast<int>(ssl_.getMoments().size()));
 
   for(int i = 0; i < y.size(); ++i)
     ssl_.getMoments()[i]->setValue(y(i));
@@ -77,7 +76,7 @@ void Epoch::computeSteadyState_()
 {
   #ifdef VERBOSE
   Log logger;
-  logger.openFile("matrices.txt");
+  logger.openFile(getName() + "_matrices.txt");
   Eigen::SparseMatrix<double> test(ssl_.getNumStats(), ssl_.getNumStats());
   test.setIdentity();
 
@@ -91,16 +90,16 @@ void Epoch::computeSteadyState_()
       bpp::ParameterList pl;
       pl.addParameter(operators_[i]->getParameters()[j]);
       pl.printParameters(logger.getLogFile());
-      logger.getLogFile() << /*std::setprecision(1e-12) << std::scientific <<*/ operators_[i]->getMatrices()[j] << "\n";
+      logger.getLogFile() << std::setprecision(1e-12) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries = " << /*std::setprecision(1e-12) << std::scientific <<*/ tmp.sum() << "\n";
+    logger.getLogFile() << "\n\nsum of entries = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
     logger.getLogFile() << operators_[i]->fetchCombinedMatrix() << "\n\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";
     test = operators_[i]->fetchCombinedMatrix() * test;
-    logger.getLogFile() << /*std::setprecision(1e-12) <<*/ test << "\n";
+    logger.getLogFile() << std::setprecision(1e-12) << test << "\n";
   }
   #endif
 

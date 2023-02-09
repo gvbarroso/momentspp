@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 03/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -76,7 +76,7 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(sslib, start, end, id, operators, demes.getPopMaps()[i]));
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopMaps()[i]));
   }
 
   Model* model = new Model(modelName, epochs, data);

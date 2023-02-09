@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 12/10/2022
+ * Last modified: 08/02/2023
  *
  */
 
@@ -25,6 +25,9 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 
     else if((*it)->getPrefix() == "Dz")
       coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+
+    else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "H" && (*it)->getPrefix() != "pi2")
+      throw bpp::Exception("Recombination::mis-specified Moment prefix: " + (*it)->getPrefix());
   }
 
   Eigen::SparseMatrix<double> mat(numStats, numStats);

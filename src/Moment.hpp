@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 03/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -26,12 +26,13 @@ class Moment
 protected:
   std::string name_; // e.g. "Dz_12_A"
   std::string prefix_; // e.g. "Dz"
-  std::string suffix_; // e.g. "A" -> refers to the permutation of sampling order of derived/ancestral
-  std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}, may be relevant ir Order is high
-  size_t position_; // within the Y vector, in SumStatsLibrary
+  std::string suffix_; // e.g. "A", refers to the permutation of sampling order of derived/ancestral (H and Pi2 stats)
+  std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}, may be relevant if Order and numPops are high
+  size_t position_; // within the Y vector, in SumStatsLibrary, same as row/col in AbstractOperator matrix(ces)
   double value_;
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry (via popIndices_)
+  std::vector<std::shared_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations) under a given scenario (eg selection against derived allele in left locus)
 
 public:
   Moment():
@@ -41,7 +42,8 @@ public:
   popIndices_(0),
   position_(0),
   value_(0.),
-  parent_(nullptr)
+  parent_(nullptr),
+  aliases_(0)
   { }
 
   Moment(const std::string& name, double value):
@@ -51,7 +53,8 @@ public:
   popIndices_(0),
   position_(0),
   value_(value),
-  parent_(nullptr)
+  parent_(nullptr),
+  aliases_(0)
   {
     parseName_(name);
   }
@@ -105,6 +108,11 @@ public:
     return parent_;
   }
 
+  const std::vector<std::shared_ptr<Moment>>& getAliases()
+  {
+    return aliases_;
+  }
+
   void setValueFromParent()
   {
     value_ = parent_->getValue();
@@ -123,6 +131,15 @@ public:
   void setPosition(size_t pos)
   {
     position_ = pos;
+  }
+
+  void insertAlias(std::shared_ptr<Moment> mom)
+  {
+    if(std::find(std::begin(aliases_), std::end(aliases_), mom) == std::end(aliases_));
+      aliases_.push_back(mom);
+
+    else
+      throw bpp::Exception("SumStatsLibrary::attempted to duplicate alias " + mom->getName());
   }
 
   bool hasPopIndex(size_t index)
@@ -146,10 +163,11 @@ private:
     std::vector<std::string> splitName(0);
     boost::split(splitName, name, boost::is_any_of("_"));
     prefix_ = splitName[0];
-    suffix_ = splitName[splitName.size() - 1];
 
     if(splitName.size() > 1)
     {
+      suffix_ = splitName.back();
+
       for(size_t i = 1; i < splitName.size() - 1; ++i)
         popIndices_.emplace_back(std::stoul(splitName[i]));
     }

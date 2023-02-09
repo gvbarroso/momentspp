@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 06/02/2023
+ * Last modified: 08/02/2023
  *
  */
 
@@ -33,6 +33,7 @@ class Epoch:
 {
 
 private:
+  std::string name_;
   SumStatsLibrary ssl_; // *this epoch has its own set of moments following *this population indices
 
   size_t startGen_; // we let the deepest point in relevant time be generation '0'
@@ -48,6 +49,7 @@ private:
 public:
   Epoch():
   bpp::AbstractParameterAliasable(""),
+  name_(),
   ssl_(),
   startGen_(0),
   endGen_(0),
@@ -57,10 +59,11 @@ public:
   steadYstate_()
   { }
 
-  Epoch(const SumStatsLibrary& ssl, size_t start, size_t end, const std::string& name,
+  Epoch(const std::string& name, SumStatsLibrary& ssl, size_t start, size_t end,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
         const std::map<size_t, std::shared_ptr<Population>>& pops):
   bpp::AbstractParameterAliasable(""), // set namespace TODO use name somehow
+  name_(name),
   ssl_(ssl),
   startGen_(start),
   endGen_(end),
@@ -88,6 +91,11 @@ public:
   void setParameters(const bpp::ParameterList& params)
   {
     bpp::AbstractParameterAliasable::setParametersValues(params);
+  }
+
+  const std::string& getName()
+  {
+    return name_;
   }
 
   size_t start()
