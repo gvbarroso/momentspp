@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 09/02/2023
+ * Last modified: 10/02/2023
  *
  */
 
@@ -289,6 +289,8 @@ public:
 
   // exploits symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection
   void aliasMoments(const std::vector<size_t>& selectedPopIds);
+
+  std::vector<std::shared_ptr<Moment>> fetchCompressedBasis();
 
 private:
   void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap);

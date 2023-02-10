@@ -148,7 +148,7 @@ public:
     return ssl_.getMoments();
   }
 
-  std::vector<size_t> fetchSelectedPopIds()
+  std::vector<size_t> fetchSelectedPopIds() // for *this epoch
   {
     std::vector<size_t> ret(0);
     ret.reserve(pops_.size());

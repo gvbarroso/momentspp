@@ -51,7 +51,14 @@ void Model::aliasMoments()
 {
   // epochs have their own Population container, and Population objects tell if the left derived allele is suject to selection in that epoch/pop
   for(size_t i = 0; i < epochs_.size(); ++i)
+  {
     epochs_[i]->getSslib().aliasMoments(epochs_[i]->fetchSelectedPopIds());
+    auto tmp = epochs_[i]->getSslib().fetchCompressedBasis();
+
+    std::cout << epochs_[i]->getName() << "'s Moments w/ unique expectations:\n";
+    for(auto& m : tmp)
+      std::cout << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+  }
 }
 
 void Model::popAdmix_()

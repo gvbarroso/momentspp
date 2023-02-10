@@ -25,9 +25,8 @@ void SumStatsLibrary::printMoments(std::ostream& stream)
     moments_[i]->printAttributes(stream);
 }
 
-void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds)
+void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) // we assume selection acts on the left locus
 {
-  // NOTE selection acts on the left locus and may be epoch-specific
   // DD stats are aliased independently of the selection model
   for(size_t i = 0; i < numDDStats_; ++i)
   {
@@ -37,10 +36,23 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds)
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
     if(pop1 != pop2) // cross-pop D covar
-      moments_[i]->insertAlias(getDdMoment(pop1, pop2)); // searching for alias, flip order
+      moments_[i]->insertAlias(getDdMoment(pop2, pop1)); // searching for alias, flip order
   }
 
-  // Dz stats [D(1-2p)(1-2q)] are never aliased
+  // Dz stats [D(1-2p)(1-2q)]
+  /* NOTE check in the operators why Dz_i_j_k is always giving the same expectation as Dz_i_k_j (Ragsdale & Gravel don't alias those) WARNING
+   * for(size_t i = numDDStats_; i < (numDDStats_ + numDzStats_); ++i)
+  {
+    assert(moments_[i]->getPrefix() == "Dz");
+
+    size_t pop1 = moments_[i]->getPopIndices()[0];
+    size_t pop2 = moments_[i]->getPopIndices()[1];
+    size_t pop3 = moments_[i]->getPopIndices()[2];
+
+    if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) == std::end(selectedPopIds)) // left locus is NOT under selection in pop2
+      moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
+  }*/
+
   // H stats are aliased if
   for(size_t i = (numDDStats_ + numDzStats_); i < (numDDStats_ + numDzStats_ + numHetStats_); ++i)
   {
@@ -76,21 +88,6 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds)
         {
           if(suffix == "B") // pop2 carries derived allele in this HetMoment
             moments_[i]->insertAlias(getHetMoment(pop2, pop1, "A"));
-        }
-
-        else // none of the populations represented has selection against the derived allele, alias p(1-p) and (1-p)p
-        {
-          if(suffix == "A")
-          {
-            moments_[i]->insertAlias(getHetMoment(pop2, pop1, "B"));
-            moments_[i]->insertAlias(getHetMoment(pop1, pop2, "B")); /**/
-          }
-
-          else if(suffix == "B")
-          {
-            moments_[i]->insertAlias(getHetMoment(pop2, pop1, "A"));
-            moments_[i]->insertAlias(getHetMoment(pop1, pop2, "A")); /**/
-          }
         }
       }
 
@@ -189,6 +186,28 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds)
   }
 }
 
+std::vector<std::shared_ptr<Moment>> SumStatsLibrary::fetchCompressedBasis()
+{
+  std::vector<std::shared_ptr<Moment>> ret(0);
+  ret.reserve(moments_.size());
+
+  for(size_t i = 0; i < moments_.size(); ++i)
+  {
+    bool hasUniqueExpectation = 1;
+
+    for(size_t j = 0; j < ret.size(); ++j)
+    {
+      if(std::find(std::begin(ret[j]->getAliases()), std::end(ret[j]->getAliases()), moments_[i]) != std::end(ret[j]->getAliases()))
+        hasUniqueExpectation = 0;
+    }
+
+    if(hasUniqueExpectation)
+      ret.emplace_back(moments_[i]);
+  }
+
+  return ret;
+}
+
 void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap)
 {
   moments_.reserve(getNumStats());
@@ -204,6 +223,8 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
       moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ) + "_B", 0., false, false)); // H_ii (1-p)p
 
       // NOTE insert H moments with isPutativelySelected_ == true based on popMap
+      // maybe give them suffixes C and D?
+      // also, do we want to include the "special" H's C and D if they concern populations not in popMap?
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {

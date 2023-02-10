@@ -70,7 +70,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
 
-          else if(popIdCount == 2) // D_i_z_ix or D_i_z_xi
+          else if(popIdCount == 2) // D_i_z_i* or D_i_z_*i
             coeffs.emplace_back(Eigen::Triplet<double>(row, row, -3.));
 
           else if(popIdCount == 1) // if D_i_z_xx
