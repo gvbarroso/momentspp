@@ -86,7 +86,7 @@ public:
     }
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
-    initMoments_();
+    initMoments_(popMap);
   }
 
 public:
@@ -291,7 +291,7 @@ public:
   void aliasMoments(const std::vector<size_t>& selectedPopIds);
 
 private:
-  void initMoments_();
+  void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap);
 
   // assign two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();

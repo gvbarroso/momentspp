@@ -36,7 +36,7 @@ private:
   size_t startSize_; // N_i in 1/N_i Drift parameters
   size_t endSize_; // must be equal to startSize because we assume constant pop sizes within each epoch
 
-  bool isDerivedLeftSelected_; // tells q
+  bool isDerivedLeftSelected_; // ... in this population
 
 public:
   Population():
