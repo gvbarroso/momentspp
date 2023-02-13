@@ -75,7 +75,7 @@ public:
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       shareParameters_((*it)->getParameters());
 
-    computeSteadyState_(); // updates moments inside ssl_
+    computeSteadyState_(); // and updates moments inside ssl_
   }
 
   ~Epoch()

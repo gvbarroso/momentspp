@@ -78,8 +78,9 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
   }
 
   Model* model = new Model(modelName, epochs, data);
-  model->aliasMoments();
   model->computeExpectedSumStats();
+  model->aliasMoments();
+  model->printAliasedMoments();
 
   //fitModel_(model);
   //writeEstimatesToFile_(model);

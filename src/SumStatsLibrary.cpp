@@ -27,7 +27,6 @@ void SumStatsLibrary::printMoments(std::ostream& stream)
 
 void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) // we assume selection acts on the left locus
 {
-  // DD stats are aliased independently of the selection model
   for(size_t i = 0; i < numDDStats_; ++i)
   {
     assert(moments_[i]->getPrefix() == "DD");
@@ -35,12 +34,10 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
-    if(pop1 != pop2) // cross-pop D covar
-      moments_[i]->insertAlias(getDdMoment(pop2, pop1)); // searching for alias, flip order
+    if(pop1 != pop2) // cross-pop DD stats are aliased independently of the selection model
+      moments_[i]->insertAlias(getDdMoment(pop2, pop1));
   }
 
-  // Dz stats [D(1-2p)(1-2q)]
-  /* NOTE check in the operators why Dz_i_j_k is always giving the same expectation as Dz_i_k_j (Ragsdale & Gravel don't alias those) WARNING they seem to be treated the same y Drift and Migration */
   for(size_t i = numDDStats_; i < (numDDStats_ + numDzStats_); ++i)
   {
     assert(moments_[i]->getPrefix() == "Dz");
@@ -53,19 +50,17 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
       moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
   }
 
-  // H stats are aliased if
   for(size_t i = (numDDStats_ + numDzStats_); i < (numDDStats_ + numDzStats_ + numHetStats_); ++i)
   {
     assert(moments_[i]->getPrefix() == "H");
 
     auto tmp = std::dynamic_pointer_cast<HetMoment>(moments_[i]);
 
-    // pop ids concerning allele frequencies:
     size_t pop1 = tmp->getPopIndices()[0]; // left locus, potentially under selection
-    size_t pop2 = tmp->getPopIndices()[1]; // right locus, always neutral (by construction of summary statistics stored in Data class)
+    size_t pop2 = tmp->getPopIndices()[1]; // right locus, always neutral by construction of summary statistics stored in Data class
     std::string suffix = tmp->getSuffix();
 
-    if(pop1 == pop2) // within-population H's always alias
+    if(pop1 == pop2) // within-population H's are always aliased
     {
       if(suffix == "A")
         moments_[i]->insertAlias(getHetMoment(pop1, pop2, "B"));
@@ -97,14 +92,14 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
         {
           moments_[i]->insertAlias(getHetMoment(pop2, pop1, "A"));
           moments_[i]->insertAlias(getHetMoment(pop2, pop1, "B"));
-          moments_[i]->insertAlias(getHetMoment(pop1, pop2, "B")); /**/
+          moments_[i]->insertAlias(getHetMoment(pop1, pop2, "B"));
         }
 
         else if(suffix == "B")
         {
           moments_[i]->insertAlias(getHetMoment(pop2, pop1, "B"));
           moments_[i]->insertAlias(getHetMoment(pop2, pop1, "A"));
-          moments_[i]->insertAlias(getHetMoment(pop1, pop2, "A")); /**/
+          moments_[i]->insertAlias(getHetMoment(pop1, pop2, "A"));
         }
       }
     }
@@ -179,8 +174,8 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
             testRight = 0;
         }
 
-        bool permutable = 0;
-        if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained())) // permutations share selective status
+        bool permutable = 0; // permutations share selective status
+        if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained()))
         {
           if(left1->hasSamePopIds(right2) && left2->hasSamePopIds(right1))
             permutable = 1;
@@ -204,7 +199,7 @@ std::vector<std::shared_ptr<Moment>> SumStatsLibrary::fetchCompressedBasis()
 
     for(size_t j = 0; j < ret.size(); ++j)
     {
-      if(std::find(std::begin(ret[j]->getAliases()), std::end(ret[j]->getAliases()), moments_[i]) != std::end(ret[j]->getAliases()))
+      if(ret[j]->hasAlias(moments_[i]))
         hasUniqueExpectation = 0;
     }
 

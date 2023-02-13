@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 08/02/2023
+ * Last modified: 13/02/2023
  *
  */
 
@@ -26,27 +26,13 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 // this method is where the heavier Eigen3 linear algebra takes place
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
-  Eigen::EigenSolver<Eigen::MatrixXd> es;
-
-  Log dir;
-  dir.openFile("timing_direct.txt");
-  dir.start_timer();
   y = transitionMatrix_.pow(duration()) * y;
-  dir.stop_timer();
 
-  Log eigen;
-  eigen.openFile("timing_eigen.txt");
-  eigen.start_timer();
-  es.compute(transitionMatrix_);
-  auto tmp1 = es.eigenvectors().real() * es.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es.eigenvectors().real().inverse() * y;
-  eigen.stop_timer();
-
-  Log psuedoeigen;
-  psuedoeigen.openFile("timing_pseudo-eigen.txt");
-  psuedoeigen.start_timer();
-  es.compute(transitionMatrix_);
-  auto tmp2 = es.pseudoEigenvectors() * es.pseudoEigenvalueMatrix().pow(duration()) * es.pseudoEigenvectors().inverse() * y;
-  psuedoeigen.stop_timer();
+  /* NOTE slower alternatives, especially when duration of each epoch is < 1e+4 generations
+  Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
+  y = es.eigenvectors().real() * es.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es.eigenvectors().real().inverse() * y;
+  y = es.pseudoEigenvectors() * es.pseudoEigenvalueMatrix().pow(duration()) * es.pseudoEigenvectors().inverse() * y;
+  */
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoch

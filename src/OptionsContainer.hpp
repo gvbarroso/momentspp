@@ -26,11 +26,11 @@ private:
   std::string demesFilePath_;
   std::string dataFilePath_; // or observed sum stats
   //std::string initParamsFilePath_; // for creating multiple models
-
   std::string numericalOptimizer_;
 
   std::vector<double> initMij_;
   std::vector<double> initPopSizes_;
+
   double initMu_;
   double initR_;
   double tolerance_; // for numerical optimization

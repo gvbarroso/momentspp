@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 09/02/2023
+ * Last modified: 13/02/2023
  *
  */
 
@@ -23,41 +23,52 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
     (*it)->fireParameterChanged(params);
 }
 
-void Model::computeExpectedSumStats()
+void Model::computeExpectedSumStats() // NOTE ATM this uses the full basis
 {
-  std::ofstream stats;
-
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
-
-  stats.open(name_ + "_steady_state.txt");
-  epochs_[0]->getSslib().printMoments(stats);
-  stats.close();
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs (pass expected_ by ref)
-    epochs_[i + 1]->transferStatistics(expected_); // copying values into epoch i + 1 according to population ancestry (pass expected_ by ref)
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs (pass expected_ by non-const ref)
+    epochs_[i + 1]->transferStatistics(expected_); // copying values into epoch i + 1 according to population ancestry (pass expected_ by non-const ref)
   }
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
-  epochs_.back()->updateMoments(expected_);
-
-  stats.open(name_ + "_final_moments.txt");
-  epochs_.back()->getSslib().printMoments(stats);
-  stats.close();
+  epochs_.back()->updateMoments(expected_); // updates inside sslib
 }
 
 void Model::aliasMoments()
 {
-  // epochs have their own Population container, and Population objects tell if the left derived allele is suject to selection in that epoch/pop
+  // Epochs have their own Populations, and Population objects tell if the left derived allele is suject to selection in that epoch/pop
   for(size_t i = 0; i < epochs_.size(); ++i)
   {
     epochs_[i]->getSslib().aliasMoments(epochs_[i]->fetchSelectedPopIds());
     auto tmp = epochs_[i]->getSslib().fetchCompressedBasis();
 
-    std::cout << epochs_[i]->getName() << "'s Moments w/ unique expectations:\n";
+    std::ofstream out;
+    out.open(epochs_[i]->getName() + "_unsorted.txt");
+
     for(auto& m : tmp)
-      std::cout << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+      out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+
+    out.close();
+  }
+}
+
+void Model::printAliasedMoments()
+{
+  for(size_t i = 0; i < epochs_.size(); ++i)
+  {
+    epochs_[i]->getSslib().printMoments(std::cout); //
+    auto tmp = epochs_[i]->getSslib().fetchCompressedBasis();
+
+    std::ofstream out;
+    out.open(name_ + "_" + epochs_[i]->getName() + "_unsorted.txt");
+
+    for(auto& m : tmp)
+      out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+
+    out.close();
   }
 }
 
