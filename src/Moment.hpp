@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 09/02/2023
+ * Last modified: 13/02/2023
  *
  */
 
@@ -165,6 +165,11 @@ public:
   size_t countInstances(size_t index)
   {
     return std::count(std::begin(popIndices_), std::end(popIndices_), index);
+  }
+
+  bool hasAlias(std::shared_ptr<Moment> mom)
+  {
+    return std::find(std::begin(aliases_), std::end(aliases_), mom) != std::end(aliases_);
   }
 
 private:

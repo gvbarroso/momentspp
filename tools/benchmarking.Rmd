@@ -82,9 +82,7 @@ c <- c("low_r", "mid_r", "high_r")
 for(x in 1:length(a)) {
   for(y in 1:length(b)) {
     for(z in 1:length(c)) {
-      
       mkdir a[x]
-      
     }
   }
 }

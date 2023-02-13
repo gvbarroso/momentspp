@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 10/02/2023
+ * Last modified: 13/02/2023
  *
  */
 
@@ -40,8 +40,8 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
   }
 
   // Dz stats [D(1-2p)(1-2q)]
-  /* NOTE check in the operators why Dz_i_j_k is always giving the same expectation as Dz_i_k_j (Ragsdale & Gravel don't alias those) WARNING
-   * for(size_t i = numDDStats_; i < (numDDStats_ + numDzStats_); ++i)
+  /* NOTE check in the operators why Dz_i_j_k is always giving the same expectation as Dz_i_k_j (Ragsdale & Gravel don't alias those) WARNING they seem to be treated the same y Drift and Migration */
+  for(size_t i = numDDStats_; i < (numDDStats_ + numDzStats_); ++i)
   {
     assert(moments_[i]->getPrefix() == "Dz");
 
@@ -51,7 +51,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
 
     if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) == std::end(selectedPopIds)) // left locus is NOT under selection in pop2
       moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
-  }*/
+  }
 
   // H stats are aliased if
   for(size_t i = (numDDStats_ + numDzStats_); i < (numDDStats_ + numDzStats_ + numHetStats_); ++i)
@@ -110,7 +110,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
     }
   }
 
-  // Pi2 stats are aliased if both their left and right H's are aliased
+  // Pi2 stats are aliased if both their left and right H's are aliased OR if focal pops don't experience selection and there's a left-right permutation
   for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
   {
     assert(moments_[i]->getPrefix() == "pi2");
@@ -127,7 +127,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
         auto left2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getLeftHetStat();
         auto right2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getRightHetStat();
 
-        bool testLeft = 1; // inits boolean to true
+        bool testLeft = 1; // are the left H stats the same between pi2(i) and pi2(j)?
 
         if(left1 != left2)
         {
@@ -135,14 +135,14 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
           {
             for(size_t k = 0; k < left1->getAliases().size(); ++k)
             {
-              if(std::find(std::begin(left1->getAliases()), std::end(left1->getAliases()), left2) == std::end(left1->getAliases()))
+              if(!left1->hasAlias(left2))
                 testLeft = 0;
 
               else
               {
                 for(size_t l = 0; l < left2->getAliases().size(); ++l)
                 {
-                  if(std::find(std::begin(left1->getAliases()), std::end(left1->getAliases()), left2->getAliases()[k]) == std::end(left1->getAliases()) && left1 != left2->getAliases()[k])
+                  if(!left1->hasAlias(left2->getAliases()[k]) && left1 != left2->getAliases()[k])
                     testLeft = 0;
                 }
               }
@@ -153,7 +153,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
             testLeft = 0;
         }
 
-        bool testRight = 1; // inits boolean to true
+        bool testRight = 1; // are the right H stats the same between pi2(i) and pi2(j)?
 
         if(right1 != right2)
         {
@@ -161,15 +161,15 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
           {
             for(size_t k = 0; k < right1->getAliases().size(); ++k)
             {
-              if(std::find(std::begin(right1->getAliases()), std::end(right1->getAliases()), right2) == std::end(right1->getAliases()))
-                testRight = 0;
+              if(!right1->hasAlias(right2))
+                testLeft = 0;
 
               else
               {
                 for(size_t l = 0; l < right2->getAliases().size(); ++l)
                 {
-                  if(std::find(std::begin(right1->getAliases()), std::end(right1->getAliases()), right2->getAliases()[k]) == std::end(right1->getAliases()) && right1 != right2->getAliases()[k])
-                    testRight = 0;
+                  if(!right1->hasAlias(right2->getAliases()[k]) && right1 != right2->getAliases()[k])
+                    testLeft = 0;
                 }
               }
             }
@@ -179,7 +179,14 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
             testRight = 0;
         }
 
-        if(testLeft && testRight)
+        bool permutable = 0;
+        if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained())) // permutations share selective status
+        {
+          if(left1->hasSamePopIds(right2) && left2->hasSamePopIds(right1))
+            permutable = 1;
+        }
+
+        if((testLeft && testRight) || permutable)
           moments_[i]->insertAlias(std::dynamic_pointer_cast<Pi2Moment>(moments_[j]));
       }
     }

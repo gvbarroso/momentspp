@@ -9,7 +9,6 @@
 #include "Migration.hpp"
 
 
-// WARNING this operator seems to work only for numPops == 2 because we only consider moments involving i and j (in m_ij)
 void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // m_ij is the forward migration rate from pop i to pop j (backwards, the prob that lineage in j has parent in i)
@@ -35,8 +34,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           int row = it - std::begin(sslib.getMoments()); // row index
           int col = -1; // inits column index to out-of-bounds
-          int childPopIdCount = static_cast<int>((*it)->countInstances(j)); // count of j in Moment's name
-
+          int childPopIdCount = static_cast<int>((*it)->countInstances(j));
           if((*it)->getPrefix() == "DD")
           {
             if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros

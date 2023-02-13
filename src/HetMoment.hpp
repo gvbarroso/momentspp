@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 07/02/2023
+ * Last modified: 13/02/2023
  *
  */
 
@@ -60,6 +60,19 @@ public:
   void setConstraintStatus(bool isSelected)
   {
     isPutativelySelected_ = isSelected;
+  }
+
+  bool hasSamePopIds(std::shared_ptr<HetMoment> mom)
+  {
+    bool test = 0;
+
+    if(mom->getPopIndices() == popIndices_)
+      test = 1;
+
+    else if(mom->getPopIndices()[1] == popIndices_[0] && mom->getPopIndices()[0] == popIndices_[1])
+      test = 1;
+
+    return test;
   }
 
 };
