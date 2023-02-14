@@ -226,7 +226,7 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
 
       // NOTE insert H moments with isPutativelySelected_ == true based on popMap
       // maybe give them suffixes C and D?
-      // also, do we want to include the "special" H's C and D if they concern populations not in popMap?
+      // also, do we want to include the "special" H's C and D if they concern populations not in popMap of *this epoch?
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {
@@ -253,6 +253,14 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
     moments_[i]->setPosition(i);
 
   linkPi2HetStats_();
+
+  /* NOTE proposal:
+   *
+   * assemple std::vector<size_t> selectedPopIds from popMap
+   * call aliasMoments(selectedPopIds); [also make aliasMoments private?]
+   *
+   *
+   */
 }
 
 // for each Pi2Moment, sets the two pointers corresponding to HetMoments (left and right loci)
