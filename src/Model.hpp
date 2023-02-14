@@ -149,7 +149,7 @@ public:
 private:
   void linkMoments_();
 
-  void popAdmix_();
+  void admixture_();
 
   void updateEpochs_(const bpp::ParameterList& params);
 

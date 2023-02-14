@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 13/02/2023
+ * Last modified: 14/02/2023
  *
  */
 
@@ -41,38 +41,28 @@ void Model::aliasMoments()
 {
   // Epochs have their own Populations, and Population objects tell if the left derived allele is suject to selection in that epoch/pop
   for(size_t i = 0; i < epochs_.size(); ++i)
-  {
     epochs_[i]->getSslib().aliasMoments(epochs_[i]->fetchSelectedPopIds());
-    auto tmp = epochs_[i]->getSslib().fetchCompressedBasis();
-
-    std::ofstream out;
-    out.open(epochs_[i]->getName() + "_unsorted.txt");
-
-    for(auto& m : tmp)
-      out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
-
-    out.close();
-  }
 }
 
 void Model::printAliasedMoments()
 {
-  for(size_t i = 0; i < epochs_.size(); ++i)
-  {
-    epochs_[i]->getSslib().printMoments(std::cout); //
-    auto tmp = epochs_[i]->getSslib().fetchCompressedBasis();
+  #ifdef VERBOSE
+  for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
+    (*it)->getSslib().printMoments(std::cout); //
+  #endif
 
-    std::ofstream out;
-    out.open(name_ + "_" + epochs_[i]->getName() + "_unsorted.txt");
+  auto tmp = epochs_.back()->getSslib().fetchCompressedBasis(); // expectations at present time
 
-    for(auto& m : tmp)
-      out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+  std::ofstream out;
+  out.open(name_ + "_final_unsorted.txt");
 
-    out.close();
-  }
+  for(auto& m : tmp)
+    out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+
+  out.close();
 }
 
-void Model::popAdmix_()
+void Model::admixture_()
 {
   // TODO
 }
