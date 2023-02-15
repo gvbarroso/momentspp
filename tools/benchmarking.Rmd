@@ -103,7 +103,7 @@ id=1 # line counter, scenario_id
 # Running moments.LD
 ## 1 population
 
-```{python run-momentsLD, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+```{python run-momentsLD-1pop, message=FALSE, warning=FALSE}
 
 import moments.LD
 
@@ -123,13 +123,13 @@ with open("moments_LD_1_pop_out.csv", "w+") as fout:
         u = float(p_list[p_names.index('mu')])
         r = float(p_list[p_names.index('r')])
         y = moments.LD.Demographics1D.snm(rho = 4 * N * r, theta = 4 * N * u)
-        l = ",".join([str(_) for _ in y.LD()[0]]) + "\n"
+        l = ",".join([str(_) for _ in y.LD()[0]]) + "," + str(y.H()[0]) + "\n"
         fout.write(l)
 ```
 
 ## 2 populations
 
-```{python run-momentsLD-1pop, message=FALSE, warning=FALSE}
+```{python run-momentsLD-2pops, message=FALSE, warning=FALSE}
 
 import moments.LD
 

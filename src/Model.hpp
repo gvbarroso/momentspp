@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 13/02/2023
+ * Last modified: 15/02/2023
  *
  */
 
@@ -144,7 +144,7 @@ public:
 
   void aliasMoments();
 
-  void printAliasedMoments();
+  void printAliasedMoments(std::ostream& stream);
 
 private:
   void linkMoments_();

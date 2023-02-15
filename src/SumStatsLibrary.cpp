@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 13/02/2023
+ * Last modified: 15/02/2023
  *
  */
 
@@ -34,7 +34,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
-    if(pop1 != pop2) // cross-pop DD stats are aliased independently of the selection model
+    if(pop1 != pop2) // cross-pop DD stats are aliased independently of the selection model? D^2 under selection, left and right
       moments_[i]->insertAlias(getDdMoment(pop2, pop1));
   }
 
@@ -46,8 +46,11 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
     size_t pop2 = moments_[i]->getPopIndices()[1];
     size_t pop3 = moments_[i]->getPopIndices()[2];
 
-    if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) == std::end(selectedPopIds)) // left locus is NOT under selection in pop2
-      moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
+    if(pop2 != pop3)
+    {
+      if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) == std::end(selectedPopIds)) // left locus is NOT under selection in pop2
+        moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
+    }
   }
 
   for(size_t i = (numDDStats_ + numDzStats_); i < (numDDStats_ + numDzStats_ + numHetStats_); ++i)

@@ -111,7 +111,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
           col = sslib.findDzIndex(i, i, i);
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.)); // (1 / # of Pi2(iiii)_*)
         }
 
         else if((countLeft == 2) || (countRight == 2))

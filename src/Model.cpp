@@ -44,7 +44,7 @@ void Model::aliasMoments()
     epochs_[i]->getSslib().aliasMoments(epochs_[i]->fetchSelectedPopIds());
 }
 
-void Model::printAliasedMoments()
+void Model::printAliasedMoments(std::ostream& stream)
 {
   #ifdef VERBOSE
   for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
@@ -54,16 +54,17 @@ void Model::printAliasedMoments()
   // expectations at present time:
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().fetchCompressedBasis();
 
-  std::ofstream out;
-  out.open(name_ + "_final_unsorted.txt");
-
   for(auto& m : tmp)
   {
     if(m->getPrefix() != "I")
-      out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
-  }
+    {
+      #ifdef VERBOSE
+      std::cout << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+      #endif
 
-  out.close();
+      stream << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+    }
+  }
 }
 
 void Model::admixture_()
