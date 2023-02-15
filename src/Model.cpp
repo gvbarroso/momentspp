@@ -51,13 +51,17 @@ void Model::printAliasedMoments()
     (*it)->getSslib().printMoments(std::cout); //
   #endif
 
-  auto tmp = epochs_.back()->getSslib().fetchCompressedBasis(); // expectations at present time
+  // expectations at present time:
+  std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().fetchCompressedBasis();
 
   std::ofstream out;
   out.open(name_ + "_final_unsorted.txt");
 
   for(auto& m : tmp)
-    out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+  {
+    if(m->getPrefix() != "I")
+      out << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+  }
 
   out.close();
 }

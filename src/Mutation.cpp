@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 08/02/2023
+ * Last modified: 15/02/2023
  *
  */
 
@@ -26,25 +26,26 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     if((*it)->getPrefix() == "H") // introducing one-locus diversity of the form p(1-p)
     {
       col = sslib.getDummyMoment()->getPosition(); // at column of Dummy Moment "I", for an homogeneous system
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.)); // 1/2 because of HetMoment permutations
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
 
     else if((*it)->getPrefix() == "pi2")
     {
       auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*it);
-      //std::cout << tmp << "\t" << tmp->getName() << std::endl;
-      //tmp->printAttributes(std::cout);
 
       if(tmp != nullptr)
       {
-        // introducing 2-locus Het via mutation in left locus
+        // introducing 2-locus Het via mutation in right locus (when left already polymorphic)
         col = tmp->getLeftHetStat()->getPosition();
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-        // introducing 2-locus Het via mutation in right locus
+        // introducing 2-locus Het via mutation in left locus (when right already polymorphic)
         col = tmp->getRightHetStat()->getPosition();
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
       }
+
+      else
+        throw bpp::Exception("Mutation::could not downcast pi2 moment: " + (*it)->getPrefix());
     }
 
     else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dz")

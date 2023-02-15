@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/02/2023
+ * Last modified: 15/02/2023
  *
  */
 
@@ -28,7 +28,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     {
       int row = it - std::begin(sslib.getMoments()); // row index
       int col = -1; // inits column index to out-of-bounds
-      size_t popIdCount = (*it)->countInstances(i); // count of i in moment's name
+      size_t popIdCount = (*it)->countInstances(i); // count of i (focal pop ID) in moment's name
 
       if((*it)->getPrefix() == "DD")
       {
@@ -40,18 +40,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
           // Pi2Moment permutations:
-
           col = sslib.findPi2Index(i, i, i, i, "A");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
           col = sslib.findPi2Index(i, i, i, i, "B");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
           col = sslib.findPi2Index(i, i, i, i, "C");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
           col = sslib.findPi2Index(i, i, i, i, "D");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
         else if(popIdCount == 1)
@@ -82,10 +81,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(popIdCount == 2) // D_x_z_ii
           {
             col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
 
             col = sslib.findDdIndex((*it)->getPopIndices()[0], i);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
         }
       }

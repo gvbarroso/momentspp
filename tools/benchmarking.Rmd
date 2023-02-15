@@ -19,7 +19,7 @@ library(scales)
 library(reticulate)
 use_python("/usr/bin/python3")
 
-knitr::opts_knit$set(root.dir = "~/Devel/momentspp/benchmarking/")
+knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
 
 # Setting up scenarios to test (parameter combinations)
@@ -32,7 +32,7 @@ mu <- c(1e-8, 1e-7, 1e-6)
 N <- c(1e+3, 1e+4, 1e+5)
 
 params_1_pop <- crossing(N, mu, r) %>% arrange(N, mu, r)
-write.csv(params_1_pop, "params_1_pop.csv", quote = F, sep = ",", row.names = F)
+write.csv(params_1_pop, "params_1_pop.csv", quote=F, sep=",", row.names=F)
 ```
 
 ## 2_populations parameters
@@ -53,17 +53,17 @@ N_1_epoch_2 <- N_1 / 10
 
 params_2_pop <- crossing(num_epochs, mu, r , m_01, m_10, N_0, N_1) 
 params_2_pop <- mutate(params_2_pop, 
-                       N_0_epoch_2 = case_when(num_epochs == 1 ~ NA_real_,
-                                               num_epochs == 2 ~ (N_0 / 10)))
+                       N_0_epoch_2 = case_when(num_epochs==1 ~ NA_real_,
+                                               num_epochs==2 ~ (N_0 / 10)))
 params_2_pop <- mutate(params_2_pop, 
-                       N_1_epoch_2 = case_when(num_epochs == 1 ~ NA_real_,
-                                               num_epochs == 2 ~ (N_1 / 10)))
+                       N_1_epoch_2 = case_when(num_epochs==1 ~ NA_real_,
+                                               num_epochs==2 ~ (N_1 / 10)))
 params_2_pop <- mutate(params_2_pop, 
-                       num_gen_epoch_2 = case_when(num_epochs == 1 ~ NA_real_, 
-                                                   num_epochs == 2 ~ 5000))
+                       num_gen_epoch_2 = case_when(num_epochs==1 ~ NA_real_, 
+                                                   num_epochs==2 ~ 5000))
 
-write.csv(params_2_pop, "params_2_pops.csv", sep = ",", 
-          quote = F, row.names = F, col.names = T)
+write.csv(params_2_pop, "params_2_pops.csv", sep=",", 
+          quote=F, row.names=F, col.names=T)
 ```
 
 # Running moments++
@@ -92,6 +92,7 @@ id=1 # line counter, scenario_id
   read # ignores header 
   while IFS=, read -r a b c d e f g h i j
   do
+    echo $a; echo $f; echo $g; echo $d; echo $e; echo $b; echo $c;
     momentspp params=opt_2.bpp i=$id epochs=$a N0=$f N1=$g m01=$d m10=$e u=$b r=$c
     ((id=id+1))
   done 
@@ -100,7 +101,6 @@ id=1 # line counter, scenario_id
 ```
 
 # Running moments.LD
-
 ## 1 population
 
 ```{python run-momentsLD, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
@@ -108,7 +108,7 @@ id=1 # line counter, scenario_id
 import moments.LD
 
 # 1 population
-with open("fuck.txt") as fin:
+with open("params_1_pop.csv") as fin:
     params = fin.readlines()
   
 p_names = params[0].strip().split(",")
@@ -118,6 +118,7 @@ with open("moments_LD_1_pop_out.csv", "w+") as fout:
     l = ",".join(stats[0] + stats[1]) + "\n"
     fout.write(l)
     for p_list in params[1:]:
+        p_list = p_list.split(",")
         N = float(p_list[p_names.index('N')])
         u = float(p_list[p_names.index('mu')])
         r = float(p_list[p_names.index('r')])
@@ -146,8 +147,8 @@ with open("moments_LD_2_pops_out.csv", "w+") as fout:
         p_list = p_list.split(",")
         u = eval(p_list[p_names.index('mu')])
         r = eval(p_list[p_names.index('r')])
-        m01 = eval(p_list[p_names.index('m_01')])
-        m10 = eval(p_list[p_names.index('m_10')])
+        m01 = eval(p_list[p_names.index('m_01')]) 
+        m10 = eval(p_list[p_names.index('m_10')]) 
         N0 = eval(p_list[p_names.index('N_0')])
         N1 = eval(p_list[p_names.index('N_1')])
         rho = 4 * N0 * r
@@ -172,7 +173,6 @@ with open("moments_LD_2_pops_out.csv", "w+") as fout:
 ```
 
 # 1-population plots
-
 ## moments++
 
 ```{r}
@@ -195,7 +195,7 @@ for(i in 1:num_scenarios) {
 }
 
 stats <- bind_cols(momspp, params_1_pop)
-write.table(stats, "bench_1_pop_momentspp.csv", sep=",", row.names=F, quote=F)
+write.table(stats, "moments++_1_pop_stats.csv", sep=",", row.names=F, quote=F)
 
 dat_stats <- pivot_longer(stats, cols=all_of(stats_1_pop), names_to="variable")
 
@@ -218,7 +218,6 @@ ggsave("moments++_1_pop.png", p, device="png", width=12, height=12)
 Todo
 
 # 2-populations plots
-
 ## moments++
 
 ```{r}
