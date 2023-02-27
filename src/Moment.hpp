@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 13/02/2023
+ * Last modified: 27/02/2023
  *
  */
 
@@ -14,6 +14,8 @@
 #include <vector>
 #include <cstdlib>
 #include <iostream>
+#include <cassert>
+#include <memory>
 
 #include <boost/algorithm/string.hpp>
 
@@ -26,7 +28,6 @@ class Moment
 protected:
   std::string name_; // e.g. "Dz_12_A"
   std::string prefix_; // e.g. "Dz"
-  std::string suffix_; // e.g. "A", refers to the permutation of sampling order of derived/ancestral (H and Pi2 stats)
   std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}, may be relevant if Order and numPops are high
   size_t position_; // within the Y vector, in SumStatsLibrary, same as row/col in AbstractOperator matrix(ces)
   double value_;
@@ -82,6 +83,8 @@ public:
       stream << "\n";
     }
   }
+
+  virtual bool hasSamePopIds(std::shared_ptr<Moment> mom) = 0;
 
   const std::string& getName() const
   {

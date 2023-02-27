@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 13/02/2023
+ * Last modified: 27/02/2023
  *
  */
 
@@ -17,6 +17,7 @@ class HetMoment: public Moment
 private:
   bool isFirstCopyDerived_;
   bool isPutativelySelected_;
+  std::string suffix_; // "A" for p(1-p) and "B for (1-p)p
 
 public:
   HetMoment():
@@ -62,8 +63,10 @@ public:
     isPutativelySelected_ = isSelected;
   }
 
-  bool hasSamePopIds(std::shared_ptr<HetMoment> mom)
+  bool hasSamePopIds(std::shared_ptr<Moment> mom) override
   {
+    assert(std::dynamic_pointer_cast<HetMoment>(mom) != nullptr);
+
     bool test = 0;
 
     if(mom->getPopIndices() == popIndices_)

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 10/02/2023
+ * Last modified: 27/02/2023
  *
  */
 
@@ -16,6 +16,7 @@
 #include <cstring>
 #include <utility>
 #include <ostream>
+#include <cassert>
 
 #include <Eigen/Core>
 
