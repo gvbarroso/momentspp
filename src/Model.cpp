@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/02/2023
+ * Last modified: 28/02/2023
  *
  */
 
@@ -54,15 +54,19 @@ void Model::printAliasedMoments(std::ostream& stream)
   // expectations at present time:
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().fetchCompressedBasis();
 
+  #ifdef VERBOSE
+  std::cout << "\n\nCompressed basis:\n";
+  #endif
+
   for(auto& m : tmp)
   {
     if(m->getPrefix() != "I")
     {
       #ifdef VERBOSE
-      std::cout << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+      std::cout << m->getName() << " = " << m->getValue() * (m->getNumberOfAliases() + 1) << "\n";
       #endif
 
-      stream << m->getName() << " = " << m->getValue() * (m->getAliases().size() + 1) << "\n";
+      stream << m->getName() << " = " << m->getValue() * (m->getNumberOfAliases() + 1) << "\n";
     }
   }
 }
@@ -242,7 +246,7 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        (*it)->setParent(epochs_[i - 1]->getSslib().getPi2Moment(prevP1, prevP2, prevP3, prevP4, suffix));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getPi2Moment(prevP1, prevP2, prevP3, prevP4));
       }
 
       else if((*it)->getPrefix() == "I")

@@ -45,7 +45,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       }
 
       else
-        throw bpp::Exception("Mutation::could not downcast pi2 moment: " + (*it)->getPrefix());
+        throw bpp::Exception("Mutation::could not downcast pi2 moment: " + (*it)->getName());
     }
 
     else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dz")

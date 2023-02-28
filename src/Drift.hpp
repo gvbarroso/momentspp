@@ -12,8 +12,7 @@
 #include "AbstractOperator.hpp"
 #include "SumStatsLibrary.hpp"
 
-class Drift:
-  public AbstractOperator
+class Drift: public AbstractOperator
 {
 
 public:

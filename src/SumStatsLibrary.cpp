@@ -34,7 +34,7 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
-    if(pop1 != pop2) // cross-pop DD stats are aliased independently of the selection model? D^2 under selection, left and right
+    if(pop1 != pop2) // cross-pop DD stats are aliased independently of the selection model? check D^2 under selection, left and right
       moments_[i]->insertAlias(getDdMoment(pop2, pop1));
   }
 
@@ -236,12 +236,7 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
         moments_.emplace_back(std::make_shared<DzMoment>("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_X", 0.));
 
         for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
-        {
-          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_A", 0., nullptr, nullptr));
-          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_B", 0., nullptr, nullptr));
-          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_C", 0., nullptr, nullptr));
-          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_D", 0., nullptr, nullptr));
-        }
+          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_X", 0., nullptr, nullptr));
       }
     }
   }
@@ -280,39 +275,11 @@ void SumStatsLibrary::linkPi2HetStats_()
       size_t p3 = tmpPi2->getPopIndices()[2];
       size_t p4 = tmpPi2->getPopIndices()[3];
 
-      std::string suffix = tmpPi2->getSuffix();
+      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
+      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
 
-      if(suffix == "A")
-      {
-        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
-        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
-        tmpPi2->setLeftHetStat(tmpHetLeft);
-        tmpPi2->setRightHetStat(tmpHetRight);
-      }
-
-      else if(suffix == "B")
-      {
-        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
-        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "B"));
-        tmpPi2->setLeftHetStat(tmpHetLeft);
-        tmpPi2->setRightHetStat(tmpHetRight);
-      }
-
-      else if(suffix == "C")
-      {
-        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "B"));
-        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
-        tmpPi2->setLeftHetStat(tmpHetLeft);
-        tmpPi2->setRightHetStat(tmpHetRight);
-      }
-
-      else if(suffix == "D")
-      {
-        auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "B"));
-        auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "B"));
-        tmpPi2->setLeftHetStat(tmpHetLeft);
-        tmpPi2->setRightHetStat(tmpHetRight);
-      }
+      tmpPi2->setLeftHetStat(tmpHetLeft);
+      tmpPi2->setRightHetStat(tmpHetRight);
     }
   }
 }

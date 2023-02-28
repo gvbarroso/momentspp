@@ -175,13 +175,19 @@ with open("moments_LD_2_pops_out.csv", "w+") as fout:
 # 1-population plots
 ## moments++
 
-```{r}
+```{r 1-population-plots}
 
 params_1_pop <- read.csv("params_1_pop.csv", header=T, sep=",")
 num_scenarios <- nrow(params_1_pop)
 
 # extracting names of moments
 stats_1_pop <- read.table("1-pop_scenario_1_final_unsorted.txt")[,1]
+suffixes <- c("A", "B", "X") # from sorting in moments++
+
+# convert to unsorted moments as presented in moments.LD
+for(i in 1:length(suffixes)) {
+  stats_1_pop <- str_remove(stats_1_pop, paste("_", suffixes[i], sep=""))
+}
 num_stats <- length(stats_1_pop)
 
 momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
@@ -195,7 +201,7 @@ for(i in 1:num_scenarios) {
 }
 
 stats <- bind_cols(momspp, params_1_pop)
-write.table(stats, "moments++_1_pop_stats.csv", sep=",", row.names=F, quote=F)
+write.table(momspp, "moments++_1_pop_stats.csv", sep=",", row.names=F, quote=F)
 
 dat_stats <- pivot_longer(stats, cols=all_of(stats_1_pop), names_to="variable")
 
@@ -220,14 +226,15 @@ Todo
 # 2-populations plots
 ## moments++
 
-```{r}
+```{r 2-population-plots}
 
 params_2_pops <- read.csv("params_2_pops.csv", header=T, sep=",")
 num_scenarios <- nrow(params_2_pops)
 
 # extracting names of moments
 stats_2_pops <- read.table("2-pops_scenario_1_final_unsorted.txt")[,1]
-suffixes <- c("A", "B", "C", "D", "X") # from sorting in moments++
+suffixes <- c("A", "B", "X") # from sorting in moments++
+
 # convert to unsorted moments as presented in moments.LD
 for(i in 1:length(suffixes)) {
   stats_2_pops <- str_remove(stats_2_pops, paste("_", suffixes[i], sep=""))
@@ -245,7 +252,7 @@ for(i in 1:num_scenarios) {
 }
 
 stats <- bind_cols(momspp, params_2_pops)
-write.table(stats, "moments++_2_pops_stats.csv", sep=",", row.names=F, quote=F)
+write.table(momspp, "moments++_2_pops_stats.csv", sep=",", row.names=F, quote=F)
 
 dat_stats <- pivot_longer(stats, cols=all_of(stats_2_pops), names_to="variable")
 
@@ -282,7 +289,7 @@ ggsave("moments++_2_pops_2_epochs.png", p2, device="png", width=12, height=12)
 
 ## Comparison with moments.LD 
 
-```{r}
+```{r 2-population-LDx++}
 
 py_moments <- read.csv("moments_LD_2_pops_out.csv") # out from python chunk 
 

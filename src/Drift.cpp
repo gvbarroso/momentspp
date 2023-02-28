@@ -39,17 +39,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           col = sslib.findDzIndex(i, i, i);
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-          // Pi2Moment permutations:
-          col = sslib.findPi2Index(i, i, i, i, "A");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-          col = sslib.findPi2Index(i, i, i, i, "B");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-          col = sslib.findPi2Index(i, i, i, i, "C");
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-          col = sslib.findPi2Index(i, i, i, i, "D");
+          col = sslib.findPi2Index(i, i, i, i);
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -111,7 +101,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
           col = sslib.findDzIndex(i, i, i);
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./4.)); // (1 / # of Pi2(iiii)_*)
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
         else if((countLeft == 2) || (countRight == 2))

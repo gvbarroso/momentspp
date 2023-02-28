@@ -123,6 +123,11 @@ public:
     return aliases_;
   }
 
+  size_t getNumberOfAliases()
+  {
+    return aliases_.size();
+  }
+
   void setValueFromParent()
   {
     value_ = parent_->getValue();

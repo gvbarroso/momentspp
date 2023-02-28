@@ -60,7 +60,7 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
 
 void Epoch::computeSteadyState_()
 {
-  #ifdef VERBOSE
+  #ifdef VERBOSE // NOTE DEBUG
   Log logger;
   logger.openFile(getName() + "_matrices.txt");
   Eigen::SparseMatrix<double> test(ssl_.getNumStats(), ssl_.getNumStats());

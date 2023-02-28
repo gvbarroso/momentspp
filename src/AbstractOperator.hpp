@@ -31,8 +31,7 @@
 #include "SumStatsLibrary.hpp"
 #include "Log.hpp"
 
-class AbstractOperator:
-  public bpp::AbstractParameterAliasable
+class AbstractOperator: public bpp::AbstractParameterAliasable
 {
 
 protected:

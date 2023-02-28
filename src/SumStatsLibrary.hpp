@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 10/02/2023
+ * Last modified: 28/02/2023
  *
  */
 
@@ -45,7 +45,6 @@ private:
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
   std::vector<std::string> hetSuffixes_;
-  std::vector<std::string> pi2Suffixes_;
   std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
 
 public:
@@ -58,7 +57,6 @@ public:
   numPi2Stats_(0),
   popIndices_(0),
   hetSuffixes_(0),
-  pi2Suffixes_(0),
   moments_(0)
   { }
 
@@ -68,15 +66,12 @@ public:
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
   numHetStats_(2 * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p
-  numPi2Stats_(4 * numPops_ * numPops_ * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p for each locus
+  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p for each locus
   popIndices_(0),
   hetSuffixes_(0),
-  pi2Suffixes_(0),
   moments_(0)
   {
     hetSuffixes_ = { "A", "B" }; // p(1-p), (1-p)p
-    pi2Suffixes_ = { "A", "B", "C", "D" }; // p(1-p)*(1-q)q, p(1-p)*q(1-q), (1-p)1*(1-q)q, (1-p)p*q(1-q)
-
     popIndices_.reserve(popMap.size());
 
     for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
@@ -192,9 +187,9 @@ public:
       throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
   }
 
-  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, const std::string& suffix) const
+  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
   {
-    size_t focalMomIndex = findPi2Index(id1, id2, id3, id4, suffix);
+    size_t focalMomIndex = findPi2Index(id1, id2, id3, id4);
     auto ret = std::dynamic_pointer_cast<Pi2Moment>(moments_[focalMomIndex]);
 
     if(ret != nullptr)
@@ -223,14 +218,6 @@ public:
     assert(it != std::end(hetSuffixes_));
 
     return std::distance(std::begin(hetSuffixes_), it); // indexed from 0
-  }
-
-  size_t findPi2SuffixRank(const std::string& suffix) const
-  {
-    auto it = std::lower_bound(std::begin(pi2Suffixes_), std::end(pi2Suffixes_), suffix);
-    assert(it != std::end(pi2Suffixes_));
-
-    return std::distance(std::begin(pi2Suffixes_), it); // indexed from 0
   }
 
   size_t findDdIndex(size_t id1, size_t id2) const
@@ -265,17 +252,15 @@ public:
     return numDDStats_ + numDzStats_ + numHetStats_;
   }
 
-  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, const std::string& suffix) const
+  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const
   {
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
     size_t rank3 = findPopIndexRank(id3);
     size_t rank4 = findPopIndexRank(id4);
 
-    size_t suffixRank = findPi2SuffixRank(suffix);
-
     // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ * pi2Suffixes_.size() + rank2 * numPops_ * numPops_ * pi2Suffixes_.size() + rank3 * numPops_ * pi2Suffixes_.size() + rank4 * pi2Suffixes_.size() + suffixRank;
+    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
   }
 
   std::string asString(size_t i)
