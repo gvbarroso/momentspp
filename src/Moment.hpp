@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 13/02/2023
+ * Last modified: 28/02/2023
  *
  */
 
@@ -14,6 +14,8 @@
 #include <vector>
 #include <cstdlib>
 #include <iostream>
+#include <cassert>
+#include <memory>
 
 #include <boost/algorithm/string.hpp>
 
@@ -26,7 +28,7 @@ class Moment
 protected:
   std::string name_; // e.g. "Dz_12_A"
   std::string prefix_; // e.g. "Dz"
-  std::string suffix_; // e.g. "A", refers to the permutation of sampling order of derived/ancestral (H and Pi2 stats)
+  std::string suffix_; // "A": p(1-p) "B": (1-p)p in HetMoments
   std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}, may be relevant if Order and numPops are high
   size_t position_; // within the Y vector, in SumStatsLibrary, same as row/col in AbstractOperator matrix(ces)
   double value_;
@@ -83,6 +85,11 @@ public:
     }
   }
 
+  virtual bool hasSamePopIds(std::shared_ptr<Moment> mom)
+  {
+    return mom->getPopIndices() == popIndices_; // default for DummyMoment "I" (Base)
+  }
+
   const std::string& getName() const
   {
     return name_;
@@ -91,11 +98,6 @@ public:
   const std::string& getPrefix() const
   {
     return prefix_;
-  }
-
-  const std::string& getSuffix() const
-  {
-    return suffix_;
   }
 
   const std::vector<size_t>& getPopIndices() const
@@ -111,6 +113,11 @@ public:
   double getValue() const
   {
     return value_;
+  }
+
+  const std::string& getSuffix() const
+  {
+    return suffix_;
   }
 
   const std::shared_ptr<Moment> getParent()

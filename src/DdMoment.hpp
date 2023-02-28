@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 07/02/2023
+ * Last modified: 27/02/2023
  *
  */
 
@@ -25,6 +25,21 @@ public:
   DdMoment(const std::string& name, double value):
   Moment(name, value)
   { }
+
+  bool hasSamePopIds(std::shared_ptr<Moment> mom) override
+  {
+    assert(std::dynamic_pointer_cast<DdMoment>(mom) != nullptr);
+
+    bool test = 0;
+
+    if(mom->getPopIndices() == popIndices_)
+      test = 1;
+
+    else if(mom->getPopIndices()[1] == popIndices_[0] && mom->getPopIndices()[0] == popIndices_[1])
+      test = 1;
+
+    return test;
+  }
 
 };
 

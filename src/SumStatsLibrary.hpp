@@ -2,7 +2,7 @@
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
  * Last modified: 28/02/2023
- *
+
  */
 
 
@@ -16,6 +16,7 @@
 #include <cstring>
 #include <utility>
 #include <ostream>
+#include <cassert>
 
 #include <Eigen/Core>
 
@@ -66,7 +67,7 @@ public:
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
   numHetStats_(2 * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p
-  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p for each locus
+  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
   popIndices_(0),
   hetSuffixes_(0),
   moments_(0)
