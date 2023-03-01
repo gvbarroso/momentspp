@@ -25,7 +25,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 
     if((*it)->getPrefix() == "H") // introducing one-locus diversity of the form p(1-p)
     {
-      col = sslib.getDummyMoment()->getPosition(); // at column of Dummy Moment "I", for an homogeneous system
+      col = sslib.getDummyMoment()->getPosition(); // for a homogeneous system
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
 

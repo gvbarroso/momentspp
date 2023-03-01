@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 15/02/2023
+ * Last modified: 01/03/2023
  *
  */
 
@@ -25,7 +25,82 @@ void SumStatsLibrary::printMoments(std::ostream& stream)
     moments_[i]->printAttributes(stream);
 }
 
-void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) // we assume selection acts on the left locus
+void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap)
+{
+  moments_.reserve(getNumStats());
+
+  // first pass to include DD, Dz, H statistics
+  for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
+  {
+    for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
+    {
+      moments_.emplace_back(std::make_shared<DdMoment>("DD_" + asString(*itI) + "_" + asString(*itJ) + "_X", 0.));
+
+      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ) + "_A", 0., true, false)); // H_ii p(1-p)
+      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ) + "_B", 0., false, false)); // H_ii (1-p)p
+
+      // NOTE insert H moments with isPutativelySelected_ == true based on popMap
+      // maybe give them suffixes C and D?
+      // also, do we want to include the "special" H's C and D if they concern populations not in popMap of *this epoch?
+
+      for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
+      {
+        moments_.emplace_back(std::make_shared<DzMoment>("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_X", 0.));
+
+        for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
+          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_X", 0., nullptr, nullptr));
+      }
+    }
+  }
+
+  // adds Dummy Moment lexicographically after H_ stats to convert into a homogeneous system (see Mutation::setUpMatrices_())
+  moments_.emplace_back(std::make_shared<Moment>("I", 1.));
+
+  // determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
+  std::sort(std::begin(moments_), std::end(moments_), [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b) { return a->getName() < b->getName(); } );
+
+  for(size_t i = 0; i < moments_.size(); ++i)
+    moments_[i]->setPosition(i);
+
+  linkPi2HetStats_();
+
+  // fetches ids of populations where derived allele for left locus is under selection
+  std::vector<size_t> selectedPopIds(0);
+  selectedPopIds.reserve(popMap.size());
+  for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
+  {
+    if(it->second->hasSelection())
+      selectedPopIds.emplace_back(it->second->getId());
+  }
+
+  aliasMoments_(selectedPopIds);
+  compressBasis_();
+}
+
+// for each Pi2Moment, sets the two pointers corresponding to HetMoments (left and right loci)
+void SumStatsLibrary::linkPi2HetStats_()
+{
+  for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
+  {
+    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*itMom);
+
+    if(tmpPi2 != nullptr)
+    {
+      size_t p1 = tmpPi2->getPopIndices()[0];
+      size_t p2 = tmpPi2->getPopIndices()[1];
+      size_t p3 = tmpPi2->getPopIndices()[2];
+      size_t p4 = tmpPi2->getPopIndices()[3];
+
+      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
+      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
+
+      tmpPi2->setLeftHetStat(tmpHetLeft);
+      tmpPi2->setRightHetStat(tmpHetRight);
+    }
+  }
+}
+
+void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) // we assume selection acts on the left locus
 {
   for(size_t i = 0; i < numDDStats_; ++i)
   {
@@ -191,95 +266,21 @@ void SumStatsLibrary::aliasMoments(const std::vector<size_t>& selectedPopIds) //
   }
 }
 
-std::vector<std::shared_ptr<Moment>> SumStatsLibrary::fetchCompressedBasis()
+void SumStatsLibrary::compressBasis_()
 {
-  std::vector<std::shared_ptr<Moment>> ret(0);
-  ret.reserve(moments_.size());
+  compressedBasis_.reserve(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
   {
     bool hasUniqueExpectation = 1;
 
-    for(size_t j = 0; j < ret.size(); ++j)
+    for(size_t j = 0; j < compressedBasis_.size(); ++j)
     {
-      if(ret[j]->hasAlias(moments_[i]))
+      if(compressedBasis_[j]->hasAlias(moments_[i]))
         hasUniqueExpectation = 0;
     }
 
     if(hasUniqueExpectation)
-      ret.emplace_back(moments_[i]);
-  }
-
-  return ret;
-}
-
-void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap)
-{
-  moments_.reserve(getNumStats());
-
-  // first pass to include DD, Dz, H statistics
-  for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
-  {
-    for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
-    {
-      moments_.emplace_back(std::make_shared<DdMoment>("DD_" + asString(*itI) + "_" + asString(*itJ) + "_X", 0.));
-
-      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ) + "_A", 0., true, false)); // H_ii p(1-p)
-      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ) + "_B", 0., false, false)); // H_ii (1-p)p
-
-      // NOTE insert H moments with isPutativelySelected_ == true based on popMap
-      // maybe give them suffixes C and D?
-      // also, do we want to include the "special" H's C and D if they concern populations not in popMap of *this epoch?
-
-      for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
-      {
-        moments_.emplace_back(std::make_shared<DzMoment>("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_X", 0.));
-
-        for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
-          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_X", 0., nullptr, nullptr));
-      }
-    }
-  }
-
-  // adds Dummy Moment lexicographically after H_ stats to convert into a homogeneous system (see Mutation::setUpMatrices_())
-  moments_.emplace_back(std::make_shared<Moment>("I", 1.));
-
-  // determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
-  std::sort(std::begin(moments_), std::end(moments_), [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b) { return a->getName() < b->getName(); } );
-
-  for(size_t i = 0; i < moments_.size(); ++i)
-    moments_[i]->setPosition(i);
-
-  linkPi2HetStats_();
-
-  /* NOTE proposal:
-   *
-   * assemple std::vector<size_t> selectedPopIds from popMap
-   * call aliasMoments(selectedPopIds); [also make aliasMoments private?]
-   *
-   *
-   */
-}
-
-// for each Pi2Moment, sets the two pointers corresponding to HetMoments (left and right loci)
-void SumStatsLibrary::linkPi2HetStats_()
-{
-  for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
-  {
-    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*itMom);
-
-    if(tmpPi2 != nullptr)
-    {
-      size_t p1 = tmpPi2->getPopIndices()[0];
-      size_t p2 = tmpPi2->getPopIndices()[1];
-      size_t p3 = tmpPi2->getPopIndices()[2];
-      size_t p4 = tmpPi2->getPopIndices()[3];
-
-      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
-      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
-
-      tmpPi2->setLeftHetStat(tmpHetLeft);
-      tmpPi2->setRightHetStat(tmpHetRight);
-    }
+      compressedBasis_.emplace_back(moments_[i]);
   }
 }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 28/02/2023
+ * Last modified: 01/03/2023
  *
  */
 
@@ -37,26 +37,18 @@ void Model::computeExpectedSumStats() // NOTE ATM this uses the full basis
   epochs_.back()->updateMoments(expected_); // updates inside sslib
 }
 
-void Model::aliasMoments()
-{
-  // Epochs have their own Populations, and Population objects tell if the left derived allele is suject to selection in that epoch/pop
-  for(size_t i = 0; i < epochs_.size(); ++i)
-    epochs_[i]->getSslib().aliasMoments(epochs_[i]->fetchSelectedPopIds());
-}
-
 void Model::printAliasedMoments(std::ostream& stream)
 {
   #ifdef VERBOSE
+  std::cout << "\n\nSplit moments:\n";
   for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
     (*it)->getSslib().printMoments(std::cout); //
+
+  std::cout << "\n\nCompressed basis:\n";
   #endif
 
   // expectations at present time:
-  std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().fetchCompressedBasis();
-
-  #ifdef VERBOSE
-  std::cout << "\n\nCompressed basis:\n";
-  #endif
+  std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getCompressedBasis();
 
   for(auto& m : tmp)
   {

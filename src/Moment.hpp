@@ -87,7 +87,7 @@ public:
 
   virtual bool hasSamePopIds(std::shared_ptr<Moment> mom)
   {
-    return mom->getPopIndices() == popIndices_; // default for DummyMoment "I" (Base)
+    return mom->getPopIndices() == popIndices_; // default, needed for DummyMoment "I" (Base)
   }
 
   const std::string& getName() const

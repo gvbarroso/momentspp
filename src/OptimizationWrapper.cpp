@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/02/2023
+ * Last modified: 01/03/2023
  *
  */
 
@@ -79,7 +79,6 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
 
   Model* model = new Model(modelName, epochs, data);
   model->computeExpectedSumStats();
-  model->aliasMoments();
 
   std::ofstream fout(modelName + "_final_unsorted.txt");
   model->printAliasedMoments(fout);

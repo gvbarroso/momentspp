@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/02/2023
+ * Last modified: 01/03/2023
  *
  */
 
@@ -141,8 +141,6 @@ public:
   }
 
   void computeExpectedSumStats();
-
-  void aliasMoments();
 
   void printAliasedMoments(std::ostream& stream);
 

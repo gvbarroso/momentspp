@@ -73,7 +73,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
 
-            col = sslib.findDdIndex((*it)->getPopIndices()[0], i);
+            col = sslib.findDdIndex((*it)->getPopIndices()[0], i); // WARNING
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
         }

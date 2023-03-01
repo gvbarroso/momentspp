@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 28/02/2023
+ * Last modified: 01/03/2023
 
  */
 
@@ -47,7 +47,7 @@ private:
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
   std::vector<std::string> hetSuffixes_;
   std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
-
+  std::vector<std::shared_ptr<Moment>> compressedBasis_; // reduced # of moments, based on symmetries
 public:
   SumStatsLibrary():
   order_(0),
@@ -58,7 +58,8 @@ public:
   numPi2Stats_(0),
   popIndices_(0),
   hetSuffixes_(0),
-  moments_(0)
+  moments_(0),
+  compressedBasis_(0)
   { }
 
   SumStatsLibrary(size_t order, const std::map<size_t, std::shared_ptr<Population>>& popMap):
@@ -70,7 +71,8 @@ public:
   numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
   popIndices_(0),
   hetSuffixes_(0),
-  moments_(0)
+  moments_(0),
+  compressedBasis_(0)
   {
     hetSuffixes_ = { "A", "B" }; // p(1-p), (1-p)p
     popIndices_.reserve(popMap.size());
@@ -109,6 +111,16 @@ public:
   std::vector<std::shared_ptr<Moment>>& getMoments()
   {
     return moments_;
+  }
+
+  std::vector<std::shared_ptr<Moment>>& getCompressedBasis()
+  {
+    return compressedBasis_;
+  }
+
+  const std::vector<std::shared_ptr<Moment>>& getCompressedBasis() const
+  {
+    return compressedBasis_;
   }
 
   size_t getNumDDStats() const
@@ -273,16 +285,16 @@ public:
 
   void printMoments(std::ostream& stream);
 
-  // exploits symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection
-  void aliasMoments(const std::vector<size_t>& selectedPopIds);
-
-  std::vector<std::shared_ptr<Moment>> fetchCompressedBasis();
-
 private:
   void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap);
 
   // assign two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();
+
+  // the next two method exploit symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection:
+  void aliasMoments_(const std::vector<size_t>& selectedPopIds);
+
+  void compressBasis_();
 
 };
 
