@@ -80,7 +80,7 @@ void Epoch::computeSteadyState_()
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
+    logger.getLogFile() << "\n\nsum of entries (delta matrix) = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
     logger.getLogFile() << operators_[i]->fetchCombinedMatrix() << "\n\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";

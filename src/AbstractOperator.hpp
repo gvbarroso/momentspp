@@ -73,12 +73,12 @@ public:
 
   const std::vector<Eigen::SparseMatrix<double>>& getMatrices()
   {
-    return matrices_;
+    return matrices_; // delta matrices
   }
 
   const Eigen::SparseMatrix<double>& getMatrix(size_t index)
   {
-    return matrices_[index]; // population index for Drift; population-pair index for Migration etc
+    return matrices_[index]; // delta matrix; population index for Drift, population-pair index for Migration etc
   }
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
