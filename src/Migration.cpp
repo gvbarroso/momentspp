@@ -44,7 +44,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             if(childPopIdCount == 1)
             {
               col = sslib.findDdIndex(i, i);
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.)); // WARNING 1 or 1/2 ?
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 1/2 ?
             }
 
             else if(childPopIdCount == 2)
@@ -143,10 +143,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.findDzIndex(i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 2.)); // WARNING
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-                  col = sslib.findDzIndex(i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 2.)); // WARNING
+                  //col = sslib.findDzIndex(i, j, i);
+                  //coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // NOTE
 
                   // the pi2 cols
                   // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**) -> [i*;*j]
@@ -199,10 +199,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.findDzIndex(i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 2.)); // WARNING
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-                  col = sslib.findDzIndex(i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 2.)); // WARNING
+                  //col = sslib.findDzIndex(i, i, j);
+                  //coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // NOTE
 
                   // the pi2 cols
                   // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
@@ -460,6 +460,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             size_t p1 = (*it)->getPopIndices()[0];
             size_t p2 = (*it)->getPopIndices()[1];
 
+            (*it)->printAttributes(std::cout); // NOTE DEBUG
+            std::cout << p1 << "+" << p2 << "-->" << childPopIdCount << "\n";
+
             if(childPopIdCount == 1)
             {
               if(p1 == i || p2 == i) // H_ij_A, H_ij_B, H_ji_A, H_ji_B
@@ -467,13 +470,13 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                 if((*it)->getSuffix() == "A")
                 {
                   col = sslib.findHetIndex(i, i, "A");
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
                 }
 
                 else if((*it)->getSuffix() == "B")
                 {
                   col = sslib.findHetIndex(i, i, "B");
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
                 }
               }
             }

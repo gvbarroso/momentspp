@@ -70,12 +70,11 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 2) // D_x_z_ii
           {
-            // NOTE get 4 of each DD_ix and DD_xi because they are each half of their compressed version
             col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 4
 
             col = sslib.findDdIndex((*it)->getPopIndices()[0], i);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 4
           }
         }
       }

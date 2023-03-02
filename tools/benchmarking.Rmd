@@ -206,7 +206,7 @@ p <- p + labs(title="1-Pop Moments x r (rows) and u (cols)",
               x="Moment", y="Value", shape="N")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_1_pop.png", p, device="png", width=12, height=12)
@@ -236,7 +236,7 @@ dat_matched <- pivot_longer(full_tbl,
 write.table(dat_matched, "LD_++_1-pop.csv", sep=",", row.names=F, quote=F)
 
 p <- ggplot(data=dat_matched,
-            aes(x=variable, y=value, color=method, shape=method))
+            aes(x=variable, y=value, shape=method))
 p <- p + geom_point(size=3) + theme_bw()
 p <- p + labs(title="1-Pop moments++ vs moments.LD",
                 x="Moment", y="Value")
@@ -244,7 +244,7 @@ p <- p + scale_y_continuous(trans="log10")
 p <- p + scale_shape_manual(values=c(1,2))
 p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle = 90, vjust = 0.5, hjust=1),
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p
 ggsave("moments++_vs_moments.LD_1-pop_all_stats.png",
@@ -285,7 +285,7 @@ for(i in 1:num_scenarios) {
                 x="Moment", y="Value")
   p <- p + theme(axis.title=element_text(size=12), 
                  axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   print(p)
   ggsave(paste("scenario", i, "moments++_vs_moments.LD_1-pop.png", sep="_"),
@@ -337,7 +337,7 @@ p <- p + labs(title = "1-Epoch Moments x N_0 (rows) and m_01 (cols)",
 p <- p + scale_y_continuous(trans="log10")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position = "bottom")
 p
 ggsave("moments++_2_pops_1_epoch.png", p, device="png", width=12, height=12)
@@ -352,7 +352,7 @@ p <- p + labs(title="2-Epoch Moments x N_0 (rows) and m_01 (cols)",
 p <- p + scale_y_continuous(trans="log10")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10), 
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_2_pops_2_epochs.png", p, device="png", width=12, height=12)
@@ -389,7 +389,7 @@ p <- p + labs(title="2-Pops moments++ (triangles) vs moments.LD (circles)",
 p <- p + scale_y_continuous(trans="log10")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
-               axis.text.x=element_text(angle = 90, vjust = 0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="none")
 print(p)
 ggsave("moments++_vs_momentsLD_all_stats_2-pops.png",
@@ -405,7 +405,7 @@ p <- p + labs(title = "Moments (m_01 == 0) x N_0 (rows) and r (cols)",
               x="Moment", y="Value", shape="Method")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_vs_moments.LD_2-pops_m01_zero.png",
@@ -420,7 +420,7 @@ p <- p + labs(title="Moments (m_01 > 0) x N_0 (rows) and r (cols)",
               x="Moment", y="Value", shape="Method")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10), 
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_vs_moments.LD_2-pops_m01_non-zero.png",
@@ -436,7 +436,7 @@ p <- p + labs(title = "Moments (r == 0) x N_0 (rows) and m_01 (cols)",
               x="Moment", y="Value", shape="Method")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_vs_moments.LD_2-pops_r_zero.png",
@@ -451,7 +451,7 @@ p <- p + labs(title="Moments (r > 0) x N_0 (rows) and m_01 (cols)",
               x="Moment", y="Value", shape="Method")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10), 
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_vs_moments.LD_2-pops_r_non-zero.png",
@@ -467,7 +467,7 @@ p <- p + labs(title="Moments (1-epoch) x N_0 (rows) and m_01 (cols)",
               x="Moment", y="Value", shape="Method")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_vs_moments.LD_2-pops_1-epoch.png",
@@ -482,7 +482,7 @@ p <- p + labs(title="Moments (2-epochs) x N_0 (rows) and m_01 (cols)",
               x="Moment", y="Value", shape="Method")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
 ggsave("moments++_vs_moments.LD_2-pops_2-epochs.png", 
@@ -522,7 +522,7 @@ for(i in 1:num_scenarios) {
                 x="Moment", y="Value", shape="Method")
   p <- p + theme(axis.title=element_text(size=12), 
                  axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   print(p)
   ggsave(paste("scenario", i, "moments++_vs_moments.LD_2-pops.png", sep="_"),
