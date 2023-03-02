@@ -105,35 +105,35 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                   // switch right appendix to j
                   col = sslib.findPi2Index(i, i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(i, i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // switch left appendix to j
                   col = sslib.findPi2Index(i, j, i, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // permute pop in left locus
                   col = sslib.findPi2Index(j, i, i, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // switch both
                   col = sslib.findPi2Index(i, j, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(i, j, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // permute pop in left locus
                   col = sslib.findPi2Index(j, i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // permute pops in both loci
                   col = sslib.findPi2Index(j, i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
                 }
 
                 else if(p3 == j) // D_j_z_ij
@@ -154,11 +154,11 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                   // as is
                   col = sslib.findPi2Index(i, i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(i, i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
                   // switch right appendix to j
                   col = sslib.findPi2Index(i, i, j, j);
@@ -166,27 +166,27 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                   // switch left appendix to j
                   col = sslib.findPi2Index(i, j, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(i, j, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // permute pops in left locus
                   col = sslib.findPi2Index(j, i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // permute pop in both loci
                   col = sslib.findPi2Index(j, i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // switch both apendices
                   col = sslib.findPi2Index(i, j, j, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
                   // permute pop in left locus
                   col = sslib.findPi2Index(j, i, j, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
                 }
               }
 
@@ -210,27 +210,27 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                   // as is
                   col = sslib.findPi2Index(i, j, i, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
                   // permute pop in left locus
                   col = sslib.findPi2Index(j, i, i, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
                   // switch right appendix to j
                   col = sslib.findPi2Index(i, j, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(i, j, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // permute pop in left locus
                   col = sslib.findPi2Index(j, i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // permute pops in both loci
                   col = sslib.findPi2Index(j, i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
 
                   // switch left appendix to j
                   col = sslib.findPi2Index(j, j, i, i);
@@ -238,11 +238,11 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                   // switch both appendices
                   col = sslib.findPi2Index(j, j, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(j, j, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
                 }
 
                 else if(p3 == j) // D_j_z_jj
@@ -263,35 +263,35 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                   // as is
                   col = sslib.findPi2Index(i, j, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // permute pop in left locus
                   col = sslib.findPi2Index(j, i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(i, j, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // permute pops in both loci
                   col = sslib.findPi2Index(j, i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   // switch right appendix to j
                   col = sslib.findPi2Index(i, j, j, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // permute pop in left locus
                   col = sslib.findPi2Index(j, i, j, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // switch left appendix to j
                   col = sslib.findPi2Index(j, j, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // permute pop in right locus
                   col = sslib.findPi2Index(j, j, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
 
                   // switch both appendices
                   col = sslib.findPi2Index(j, j, j, j);
@@ -333,11 +333,11 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               else if(countRight == 1)
               {
                 col = sslib.findPi2Index(i, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(i, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
               }
 
               else if(countRight == 2)
@@ -352,37 +352,37 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               if(countRight == 0)
               {
                 col = sslib.findPi2Index(i, j, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(j, i, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
 
               else if(countRight == 1)
               {
                 col = sslib.findPi2Index(i, j, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(i, j, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 col = sslib.findPi2Index(j, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 col = sslib.findPi2Index(j, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
               }
 
               else if(countRight == 2)
               {
                 col = sslib.findPi2Index(i, j, j, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(j, i, j, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
 
@@ -398,11 +398,11 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               else if(countLeft == 1)
               {
                 col = sslib.findPi2Index(i, j, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(j, i, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
               }
 
               else if(countLeft == 2)
@@ -417,37 +417,37 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               if(countLeft == 0)
               {
                 col = sslib.findPi2Index(i, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(i, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
 
               else if(countLeft == 1)
               {
                 col = sslib.findPi2Index(i, j, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(i, j, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 col = sslib.findPi2Index(j, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
                 col = sslib.findPi2Index(j, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
               }
 
               else if(countLeft == 2)
               {
                 col = sslib.findPi2Index(j, j, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                 // permute pops indices
                 col = sslib.findPi2Index(j, j, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
           }
