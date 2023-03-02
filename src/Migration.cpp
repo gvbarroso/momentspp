@@ -26,7 +26,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         std::vector<Eigen::Triplet<double>> coeffs(0); // init sparse matrix coeffs
         coeffs.reserve(3 * numStats);
 
-        // although we have pi2(i,j;k,l) moments, we need only to loop over pops twice because the loop over stats takes care of the k,l pop indices
+        // although we have pi2(i,j;k,l) moments, we need only to loop over pops twice because we take care of the k,l pop indices in this loop over stats
         // for each stat in vector Y (rows of focal matrix), lexicographically sorted based on Moments names
         for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
         {
@@ -44,17 +44,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             if(childPopIdCount == 1)
             {
               col = sslib.findDdIndex(i, i);
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.)); // WARNING 1 or 1/2 ?
             }
 
             else if(childPopIdCount == 2)
             {
               // look for covariance in D w.r.t to parent population (index i)
               col = sslib.findDdIndex(i, j);
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 1 or 2? is sorted_E[DD_12] = sorted_E[DD_21] = unsorted_E[DD_12]? or = 1/2 unsorted_E[DD_12]?
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 2? is sorted_E[DD_12] = sorted_E[DD_21] = unsorted_E[DD_12]? or = 1/2 unsorted_E[DD_12]?
 
               col = sslib.findDdIndex(j, i);
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 1 or 2? is sorted_E[DD_12] = sorted_E[DD_21] = unsorted_E[DD_12]? or = 1/2 unsorted_E[DD_12]?
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 2? is sorted_E[DD_12] = sorted_E[DD_21] = unsorted_E[DD_12]? or = 1/2 unsorted_E[DD_12]?
             }
           }
 
