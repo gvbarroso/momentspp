@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 28/02/2023
+ * Last modified: 03/03/2023
  *
  */
 
@@ -28,7 +28,6 @@ class Moment
 protected:
   std::string name_; // e.g. "Dz_12_A"
   std::string prefix_; // e.g. "Dz"
-  std::string suffix_; // "A": p(1-p) "B": (1-p)p in HetMoments
   std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}, may be relevant if Order and numPops are high
   size_t position_; // within the Y vector, in SumStatsLibrary, same as row/col in AbstractOperator matrix(ces)
   double value_;
@@ -40,7 +39,6 @@ public:
   Moment():
   name_(""),
   prefix_(""),
-  suffix_(""),
   popIndices_(0),
   position_(0),
   value_(0.),
@@ -51,7 +49,6 @@ public:
   Moment(const std::string& name, double value):
   name_(name),
   prefix_(""),
-  suffix_(""),
   popIndices_(0),
   position_(0),
   value_(value),
@@ -115,11 +112,6 @@ public:
     return value_;
   }
 
-  const std::string& getSuffix() const
-  {
-    return suffix_;
-  }
-
   const std::shared_ptr<Moment> getParent()
   {
     return parent_;
@@ -133,6 +125,11 @@ public:
   size_t getNumberOfAliases()
   {
     return aliases_.size();
+  }
+
+  bool isCrossPop() // tells if moment involves samples from more than 1 population
+  {
+    return std::adjacent_find(std::begin(popIndices_), std::end(popIndices_), std::not_equal_to<size_t>()) != std::end(popIndices_);
   }
 
   void setValueFromParent()
@@ -193,9 +190,7 @@ private:
 
     if(splitName.size() > 1)
     {
-      suffix_ = splitName.back();
-
-      for(size_t i = 1; i < splitName.size() - 1; ++i)
+      for(size_t i = 1; i < splitName.size(); ++i)
         popIndices_.emplace_back(std::stoul(splitName[i]));
     }
   }

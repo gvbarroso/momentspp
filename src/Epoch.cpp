@@ -60,7 +60,7 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
 
 void Epoch::computeSteadyState_()
 {
-  #ifdef VERBOSE // NOTE DEBUG
+  #ifdef VERBOSE
   Log logger;
   logger.openFile(getName() + "_matrices.txt");
   Eigen::SparseMatrix<double> test(ssl_.getNumStats(), ssl_.getNumStats());
@@ -72,6 +72,7 @@ void Epoch::computeSteadyState_()
     tmp.setZero();
     for(size_t j = 0; j < operators_[i]->getMatrices().size(); ++j)
     {
+      logger.getLogFile() << "\n\nsum of entries (delta matrix " << j << ") = " << std::setprecision(1e-12) << std::scientific << operators_[i]->getMatrices()[j].sum() << "\n";
       tmp += operators_[i]->getMatrices()[j];
       bpp::ParameterList pl;
       pl.addParameter(operators_[i]->getParameters()[j]);
@@ -80,7 +81,9 @@ void Epoch::computeSteadyState_()
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries (delta matrix) = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
+    logger.getLogFile() << "\n\nsum of entries (operator combined delta matrix) = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
+    logger.getLogFile() << std::setprecision(1e-12) << tmp << "\n";
+    logger.getLogFile() << "operator transition matrix:\n";
     logger.getLogFile() << operators_[i]->fetchCombinedMatrix() << "\n\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";

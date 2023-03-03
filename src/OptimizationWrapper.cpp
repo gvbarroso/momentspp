@@ -29,7 +29,7 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
   epochs.reserve(numEpochs);
 
   // the range of values that our "small" rates are allowed to take in
-  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-3, true, true);
+  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true); // WARNING
 
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 01/03/2023
+ * Last modified: 03/03/2023
  *
  */
 
@@ -452,7 +452,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if((*it)->getPrefix() == "H") // WARNING
+          else if((*it)->getPrefix() == "H")
           {
             if(childPopIdCount > 0) // not to populate the sparse matrix with unnecessary zeros
               coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
@@ -460,46 +460,22 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             size_t p1 = (*it)->getPopIndices()[0];
             size_t p2 = (*it)->getPopIndices()[1];
 
-            (*it)->printAttributes(std::cout); // NOTE DEBUG
-            std::cout << p1 << "+" << p2 << "-->" << childPopIdCount << "\n";
-
             if(childPopIdCount == 1)
             {
-              if(p1 == i || p2 == i) // H_ij_A, H_ij_B, H_ji_A, H_ji_B
+              if(p1 == i || p2 == i) // H_ij, H_ji
               {
-                if((*it)->getSuffix() == "A")
-                {
-                  col = sslib.findHetIndex(i, i, "A");
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-                }
-
-                else if((*it)->getSuffix() == "B")
-                {
-                  col = sslib.findHetIndex(i, i, "B");
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-                }
+                col = sslib.findHetIndex(i, i);
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
 
-            else if(childPopIdCount == 2) // H_jj_A or H_jj_B
+            else if(childPopIdCount == 2) // H_jj
             {
-              if((*it)->getSuffix() == "A")
-              {
-                col = sslib.findHetIndex(i, j, "A");
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+              col = sslib.findHetIndex(i, j);
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-                col = sslib.findHetIndex(j, i, "A");
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-
-              if((*it)->getSuffix() == "B")
-              {
-                col = sslib.findHetIndex(i, j, "B");
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                col = sslib.findHetIndex(j, i, "B");
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
+              col = sslib.findHetIndex(j, i);
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
             }
           }
 

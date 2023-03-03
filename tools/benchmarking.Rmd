@@ -46,8 +46,8 @@ r <- c(0, 1e-6)
 N_0 <- c(1e+4, 1e+5)
 N_1 <- 1e+5
 m_01 <- c(0, 1e-4)
-m_10 <- 1e-4
-num_epochs <- c(1, 2)
+m_10 <- c(1e-4, 1e-8, 1e-12)
+num_epochs <- c(1)
 
 num_gen_epoch_2 <- 5000
 N_0_epoch_2 <- N_0 / 10
@@ -227,19 +227,30 @@ match_moments$scenario <- rep(seq(1:num_scenarios), 2)
 match_moments$method <- c(rep("moments++", num_scenarios),
                           rep("moments.LD", num_scenarios))
 match_moments$scenario <- rep(seq(1:num_scenarios), 2)
+
 full_tbl <- bind_cols(match_moments, 
                       bind_rows(params_1_pop, params_1_pop)) 
 
+# following lines help visualization in raw table
+full_tbl$sep_moments <- paste(full_tbl$scenario, full_tbl$method, sep="_")
+
 dat_matched <- pivot_longer(full_tbl,
-                            cols=all_of(common_moments), 
-                            names_to="variable")
+                            cols=all_of(common_moments),
+                            names_to="variable") 
+
+dat_matched$matched_moments <- paste(dat_matched$variable, 
+                                     dat_matched$sep_moments, 
+                                     sep="_")
+
+dat_matched <- arrange(dat_matched, scenario, matched_moments)
+dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
 write.table(dat_matched, "LD_++_1-pop.csv", sep=",", row.names=F, quote=F)
 
-p <- ggplot(data=dat_matched,
-            aes(x=variable, y=value, shape=method))
+p <- ggplot(data=dat_matched, aes(x=variable, y=value, 
+                                  shape=method, color=as.factor(scenario)))
 p <- p + geom_point(size=3) + theme_bw()
 p <- p + labs(title="1-Pop moments++ vs moments.LD",
-                x="Moment", y="Value")
+                x="Moment", y="Value", shape="method", color="scenario")
 p <- p + scale_y_continuous(trans="log10")
 p <- p + scale_shape_manual(values=c(1,2))
 p <- p + theme(axis.title=element_text(size=12),
@@ -326,36 +337,6 @@ stats <- bind_cols(momspp, params_2_pops)
 write.table(momspp, "moments++_2_pops_stats.csv", sep=",", row.names=F, quote=F)
 
 dat_stats <- pivot_longer(stats, cols=all_of(stats_2_pops), names_to="variable")
-
-# 1-epoch plot
-p <- ggplot(data=filter(dat_stats, num_epochs==1), 
-            aes(x=variable, y=value, shape=as.factor(r))) 
-p <- p + geom_point(size=5) + theme_bw() + facet_grid(N_0~m_01)
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title = "1-Epoch Moments x N_0 (rows) and m_01 (cols)",
-              x="Moment", y="Value", shape="r")
-p <- p + scale_y_continuous(trans="log10")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position = "bottom")
-p
-ggsave("moments++_2_pops_1_epoch.png", p, device="png", width=12, height=12)
-
-# two epochs plot
-p <- ggplot(data=filter(dat_stats, num_epochs==2),
-            aes(x=variable, y=value, shape=as.factor(r)))
-p <- p + geom_point(size=5) + theme_bw() + facet_grid(N_0~m_01)
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title="2-Epoch Moments x N_0 (rows) and m_01 (cols)",
-              x="Moment", y="Value", shape="r")
-p <- p + scale_y_continuous(trans="log10")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10), 
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-ggsave("moments++_2_pops_2_epochs.png", p, device="png", width=12, height=12)
 ```
 
 ## Comparison with moments.LD 
@@ -375,9 +356,21 @@ match_moments$method <- c(rep("moments++", num_scenarios),
 full_tbl <- bind_cols(match_moments, 
                       bind_rows(params_2_pop, params_2_pop)) 
 
+# following lines help visualization in raw table
+full_tbl$sep_moments <- paste(full_tbl$scenario, full_tbl$method, sep="_")
+
 dat_matched <- pivot_longer(full_tbl,
-                            cols=all_of(common_moments), 
-                            names_to="variable")
+                            cols=all_of(common_moments),
+                            names_to="variable") 
+
+dat_matched$matched_moments <- paste(dat_matched$variable, 
+                                     dat_matched$sep_moments, 
+                                     sep="_")
+
+dat_matched <- arrange(dat_matched, scenario, matched_moments)
+dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
+
+write.table(dat_matched, "LD_++_2-pops.csv", sep=",", row.names=F, quote=F)
 
 # NOTE: log10 transform may throw away some Dz stats
 p <- ggplot(data=dat_matched,
@@ -396,6 +389,21 @@ ggsave("moments++_vs_momentsLD_all_stats_2-pops.png",
        p, device="png", width=12, height=12)
 
 # check migration rates
+p <- ggplot(data=filter(dat_matched, r > 0),
+            aes(x=variable, y=value, shape=method, color=as.factor(N_0))) 
+p <- p + geom_point(size=3) + theme_bw() + facet_grid(m_01~m_10)
+p <- p + scale_y_continuous(trans="log10")
+p <- p + scale_shape_manual(values=c(1, 2))
+p <- p + labs(title="Moments m_01 (rows) x m_10 (cols) for r > 0",
+              x="Moment", y="Value", shape="Method", color="N_0")
+p <- p + theme(axis.title=element_text(size=12),
+               axis.text=element_text(size=10), 
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+               legend.position="bottom")
+p
+ggsave("moments++_vs_moments.LD_2-pops_mig.png",
+       p, device="png", width=12, height=12)
+
 p <- ggplot(data=filter(dat_matched, m_01==0),
              aes(x=variable, y=value, shape=method)) 
 p <- p + geom_point(size=3) + theme_bw() + facet_grid(N_0~r)
@@ -456,37 +464,6 @@ p <- p + theme(axis.title=element_text(size=12),
 p
 ggsave("moments++_vs_moments.LD_2-pops_r_non-zero.png",
        p, device="png", width=12, height=12)
-
-# check number of epochs
-p <- ggplot(data=filter(dat_matched, num_epochs==1),
-            aes(x=variable, y=value, shape=method)) 
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(N_0~m_01)
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title="Moments (1-epoch) x N_0 (rows) and m_01 (cols)",
-              x="Moment", y="Value", shape="Method")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-ggsave("moments++_vs_moments.LD_2-pops_1-epoch.png",
-       p, device="png", width=12, height=12)
-
-p <- ggplot(data=filter(dat_matched, num_epochs==2),
-            aes(x=variable, y=value, shape=method)) 
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(N_0~m_01)
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title="Moments (2-epochs) x N_0 (rows) and m_01 (cols)",
-              x="Moment", y="Value", shape="Method")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-ggsave("moments++_vs_moments.LD_2-pops_2-epochs.png", 
-       p, device="png", width=12, height=12)
 ```
 
 ### for each moment/scenario separately
@@ -498,11 +475,11 @@ for(i in 1:length(common_moments)) {
   mom <- common_moments[i]
   
   p <- ggplot(data=filter(dat_matched, variable==mom),
-              aes(x=scenario, y=value, shape=method, color=as.factor(num_epochs)))
+              aes(x=scenario, y=value, shape=method))
   p <- p + geom_point(size=5) + theme_bw()
   p <- p + scale_shape_manual(values=c(1, 2))
   p <- p + labs(title=paste(mom, "moments++ vs moments.LD (2-pops)", sep=" "),
-                x="Scenario", y="Value", shape="Method", color="# epochs")
+                x="Scenario", y="Value", shape="Method")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  legend.position="bottom")

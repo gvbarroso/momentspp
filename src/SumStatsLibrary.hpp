@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 01/03/2023
+ * Last modified: 03/03/2023
 
  */
 
@@ -45,7 +45,6 @@ private:
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
-  std::vector<std::string> hetSuffixes_;
   std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
   std::vector<std::shared_ptr<Moment>> compressedBasis_; // reduced # of moments, based on symmetries
 public:
@@ -57,7 +56,6 @@ public:
   numHetStats_(0),
   numPi2Stats_(0),
   popIndices_(0),
-  hetSuffixes_(0),
   moments_(0),
   compressedBasis_(0)
   { }
@@ -67,14 +65,12 @@ public:
   numPops_(popMap.size()),
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
-  numHetStats_(2 * numPops_ * numPops_), // inits with all sampling permutations p(1-p), (1-p)p
+  numHetStats_(numPops_ * numPops_),
   numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
   popIndices_(0),
-  hetSuffixes_(0),
   moments_(0),
   compressedBasis_(0)
   {
-    hetSuffixes_ = { "A", "B" }; // p(1-p), (1-p)p
     popIndices_.reserve(popMap.size());
 
     for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
@@ -173,7 +169,7 @@ public:
       return ret;
 
     else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: DD" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2));
   }
 
   std::shared_ptr<DzMoment> getDzMoment(size_t id1, size_t id2, size_t id3) const
@@ -185,19 +181,19 @@ public:
       return ret;
 
     else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dz" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2) + bpp::TextTools::toString(id3));
   }
 
-  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2, const std::string& suffix) const
+  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2) const
   {
-    size_t focalMomIndex = findHetIndex(id1, id2, suffix);
+    size_t focalMomIndex = findHetIndex(id1, id2);
     auto ret = std::dynamic_pointer_cast<HetMoment>(moments_[focalMomIndex]);
 
     if(ret != nullptr)
       return ret;
 
     else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: H" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2));
   }
 
   std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
@@ -209,7 +205,7 @@ public:
       return ret;
 
     else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt!");
+      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Pi2" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2) + bpp::TextTools::toString(id3) + bpp::TextTools::toString(id3));
   }
 
   std::shared_ptr<Moment> getDummyMoment() const
@@ -223,14 +219,6 @@ public:
     assert(it != std::end(popIndices_));
 
     return std::distance(std::begin(popIndices_), it); // indexed from 0
-  }
-
-  size_t findHetSuffixRank(const std::string& suffix) const
-  {
-    auto it = std::lower_bound(std::begin(hetSuffixes_), std::end(hetSuffixes_), suffix);
-    assert(it != std::end(hetSuffixes_));
-
-    return std::distance(std::begin(hetSuffixes_), it); // indexed from 0
   }
 
   size_t findDdIndex(size_t id1, size_t id2) const
@@ -250,14 +238,12 @@ public:
     return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
   }
 
-  size_t findHetIndex(size_t id1, size_t id2, const std::string& suffix) const
+  size_t findHetIndex(size_t id1, size_t id2) const
   {
     size_t rank1 = findPopIndexRank(id1);
     size_t rank2 = findPopIndexRank(id2);
 
-    size_t suffixRank = findHetSuffixRank(suffix);
-
-    return numDDStats_ + numDzStats_ + rank1 * numPops_ * hetSuffixes_.size() + rank2 * hetSuffixes_.size() + suffixRank;
+    return numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2 ;
   }
 
   size_t getDummyIndex() const

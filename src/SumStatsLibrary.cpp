@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 01/03/2023
+ * Last modified: 03/03/2023
  *
  */
 
@@ -34,21 +34,18 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
   {
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
-      moments_.emplace_back(std::make_shared<DdMoment>("DD_" + asString(*itI) + "_" + asString(*itJ) + "_X", 0.));
+      moments_.emplace_back(std::make_shared<DdMoment>("DD_" + asString(*itI) + "_" + asString(*itJ), 0.));
+      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ), 0., false));
 
-      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ) + "_A", 0., true, false)); // H_ii p(1-p)
-      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ) + "_B", 0., false, false)); // H_ii (1-p)p
-
-      // NOTE insert H moments with isPutativelySelected_ == true based on popMap
-      // maybe give them suffixes C and D?
-      // also, do we want to include the "special" H's C and D if they concern populations not in popMap of *this epoch?
+      // NOTE: H_01 = p_0(1-p_1); H_10 = p_1(1-p_0)
+      // insert H moments with isPutativelySelected_ == true based on popMap
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {
-        moments_.emplace_back(std::make_shared<DzMoment>("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_X", 0.));
+        moments_.emplace_back(std::make_shared<DzMoment>("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK), 0.));
 
         for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
-          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_X", 0., nullptr, nullptr));
+          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL), 0., nullptr, nullptr));
       }
     }
   }
@@ -91,8 +88,8 @@ void SumStatsLibrary::linkPi2HetStats_()
       size_t p3 = tmpPi2->getPopIndices()[2];
       size_t p4 = tmpPi2->getPopIndices()[3];
 
-      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, "A"));
-      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, "A"));
+      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2));
+      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4));
 
       tmpPi2->setLeftHetStat(tmpHetLeft);
       tmpPi2->setRightHetStat(tmpHetRight);
@@ -109,7 +106,7 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
-    if(pop1 != pop2) // cross-pop DD stats are aliased independently of the selection model? check D^2 under selection, left and right
+    if(pop1 != pop2) // NOTE cross-pop DD stats are aliased independently of the selection model? check D^2 under selection, left and right
       moments_[i]->insertAlias(getDdMoment(pop2, pop1));
   }
 
@@ -123,7 +120,8 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
 
     if(pop2 != pop3)
     {
-      if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) == std::end(selectedPopIds)) // left locus is NOT under selection in pop2
+      // if left locus is NOT under selection in pop2 (right locus is neutral by construction)
+      if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) == std::end(selectedPopIds))
         moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
     }
   }
@@ -136,50 +134,20 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
 
     size_t pop1 = tmp->getPopIndices()[0]; // left locus, potentially under selection
     size_t pop2 = tmp->getPopIndices()[1]; // right locus, always neutral by construction of summary statistics stored in Data class
-    std::string suffix = tmp->getSuffix();
 
-    if(pop1 == pop2) // within-population H's are always aliased
+    if(pop1 != pop2)
     {
-      if(suffix == "A")
-        moments_[i]->insertAlias(getHetMoment(pop1, pop2, "B"));
-
-      else if(suffix == "B")
-        moments_[i]->insertAlias(getHetMoment(pop1, pop2, "A"));
-    }
-
-    else // cross-population H's
-    {
-      if(tmp->isConstrained())
+      if(tmp->isConstrained()) // H moment concerns left locus, under selection in at least 1 pop
       {
-        if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds)) // locus is under selection in pop1
-        {
-          if(suffix == "A") // pop1 carries derived allele in this HetMoment
-            moments_[i]->insertAlias(getHetMoment(pop2, pop1, "B"));
-        }
+        bool pop1Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
+        bool pop2Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
 
-        else if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) != std::end(selectedPopIds)) // locus is under selection in pop2
-        {
-          if(suffix == "B") // pop2 carries derived allele in this HetMoment
-            moments_[i]->insertAlias(getHetMoment(pop2, pop1, "A"));
-        }
+        if(pop1Sel == pop2Sel) // if pop1 and pop2 share status of constraint
+          moments_[i]->insertAlias(getHetMoment(pop2, pop1));
       }
 
-      else // the locus concerning this HetMoment is not putatively under selection, alias p(1-p) and (1-p)p
-      {
-        if(suffix == "A")
-        {
-          moments_[i]->insertAlias(getHetMoment(pop2, pop1, "A"));
-          moments_[i]->insertAlias(getHetMoment(pop2, pop1, "B"));
-          moments_[i]->insertAlias(getHetMoment(pop1, pop2, "B"));
-        }
-
-        else if(suffix == "B")
-        {
-          moments_[i]->insertAlias(getHetMoment(pop2, pop1, "B"));
-          moments_[i]->insertAlias(getHetMoment(pop2, pop1, "A"));
-          moments_[i]->insertAlias(getHetMoment(pop1, pop2, "A"));
-        }
-      }
+      else // the locus concerning this HetMoment is not putatively under selection
+        moments_[i]->insertAlias(getHetMoment(pop2, pop1));
     }
   }
 
@@ -200,18 +168,18 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
         auto left2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getLeftHetStat();
         auto right2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getRightHetStat();
 
-        bool testLeft = 1; // are the left H stats the same between pi2(i) and pi2(j)?
+        bool testLeft = 1; // are the left H stats equivalent between pi2(i) and pi2(j)?
 
         if(left1 != left2)
         {
           if(left1->getAliases().size() == left2->getAliases().size())
           {
-            for(size_t k = 0; k < left1->getAliases().size(); ++k)
-            {
-              if(!left1->hasAlias(left2))
-                testLeft = 0;
+            if(!left1->hasAlias(left2))
+              testLeft = 0;
 
-              else
+            else
+            {
+              for(size_t k = 0; k < left1->getAliases().size(); ++k)
               {
                 for(size_t l = 0; l < left2->getAliases().size(); ++l)
                 {
@@ -232,17 +200,17 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
         {
           if(right1->getAliases().size() == right2->getAliases().size())
           {
-            for(size_t k = 0; k < right1->getAliases().size(); ++k)
-            {
-              if(!right1->hasAlias(right2))
-                testLeft = 0;
+            if(!right1->hasAlias(right2))
+              testRight = 0;
 
-              else
+            else
+            {
+              for(size_t k = 0; k < right1->getAliases().size(); ++k)
               {
                 for(size_t l = 0; l < right2->getAliases().size(); ++l)
                 {
                   if(!right1->hasAlias(right2->getAliases()[k]) && right1 != right2->getAliases()[k])
-                    testLeft = 0;
+                    testRight = 0;
                 }
               }
             }
@@ -258,6 +226,14 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
           if(left1->hasSamePopIds(right2) && left2->hasSamePopIds(right1))
             permutable = 1;
         }
+
+        /*moments_[i]->printAttributes(std::cout);
+        moments_[j]->printAttributes(std::cout);
+        left1->printAttributes(std::cout);
+        left2->printAttributes(std::cout);
+        right1->printAttributes(std::cout);
+        right2->printAttributes(std::cout);
+        std::cout << testLeft << "," << testRight << "," << permutable << std::endl;*/
 
         if((testLeft && testRight) || permutable)
           moments_[i]->insertAlias(std::dynamic_pointer_cast<Pi2Moment>(moments_[j]));

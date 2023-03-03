@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/03/2023
+ * Last modified: 03/03/2023
  *
  */
 
@@ -159,8 +159,6 @@ void Model::linkMoments_()
 
       else if((*it)->getPrefix() == "H")
       {
-        std::string suffix = (*it)->getSuffix();
-
         // indices of populations in parental H_**_* moment
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
@@ -185,13 +183,11 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        (*it)->setParent(epochs_[i - 1]->getSslib().getHetMoment(prevP1, prevP2, suffix));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getHetMoment(prevP1, prevP2));
       }
 
       else if((*it)->getPrefix() == "pi2")
       {
-        std::string suffix = (*it)->getSuffix();
-
         // indices of populations in parental pi2**** moment
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds

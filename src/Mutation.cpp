@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 15/02/2023
+ * Last modified: 03/03/2023
  *
  */
 
@@ -26,7 +26,12 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     if((*it)->getPrefix() == "H") // introducing one-locus diversity of the form p(1-p)
     {
       col = sslib.getDummyMoment()->getPosition(); // for a homogeneous system
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+      if((*it)->isCrossPop()) // eg H_ij (1-p_i)pj, H_ji (1-p_j)p_i, i != j
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+      else // H_xx
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
     }
 
     else if((*it)->getPrefix() == "pi2")
