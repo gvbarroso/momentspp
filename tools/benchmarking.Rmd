@@ -14,13 +14,14 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
-library(scales)
 
 # for running moments.LD:
 library(reticulate)
 use_python("/usr/bin/python3")
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
+
+save_plots <- FALSE # ggsave?
 ```
 
 # Setting up scenarios to test (parameter combinations)
@@ -45,8 +46,8 @@ mu <- 1e-7
 r <- c(0, 1e-6)
 N_0 <- c(1e+4, 1e+5)
 N_1 <- 1e+5
-m_01 <- c(0, 1e-4)
-m_10 <- c(1e-4, 1e-8, 1e-12)
+m_01 <- c(0, 1e-5)
+m_10 <- c(1e-3, 1e-5)
 num_epochs <- c(1)
 
 num_gen_epoch_2 <- 5000
@@ -94,7 +95,6 @@ id=1 # line counter, scenario_id
   read # ignores header 
   while IFS=, read -r a b c d e f g h i j
   do
-    echo $a; echo $f; echo $g; echo $d; echo $e; echo $b; echo $c;
     momentspp params=opt_2.bpp i=$id epochs=$a N0=$f N1=$g m01=$d m10=$e u=$b r=$c
     ((id=id+1))
   done 
@@ -141,8 +141,8 @@ with open("moments_LD_2_pops_out.csv", "w+") as fout:
         p_list = p_list.split(",")
         u = eval(p_list[p_names.index('mu')])
         r = eval(p_list[p_names.index('r')])
-        m01 = eval(p_list[p_names.index('m_01')]) 
-        m10 = eval(p_list[p_names.index('m_10')]) 
+        m01 = eval(p_list[p_names.index('m_10')]) # invert ids w.r.t. moments++
+        m10 = eval(p_list[p_names.index('m_01')]) # invert ids w.r.t. moments++
         N0 = eval(p_list[p_names.index('N_0')])
         N1 = eval(p_list[p_names.index('N_1')])
         rho = 4 * N0 * r
@@ -199,7 +199,7 @@ stats <- bind_cols(momspp, params_1_pop)
 dat_stats <- pivot_longer(stats, cols=all_of(stats_1_pop), names_to="variable")
 
 p <- ggplot(data=dat_stats, aes(x=variable, y=value, shape=as.factor(N)))
-p <- p + geom_point(size=5) + theme_bw() + facet_grid(r~mu)
+p <- p + geom_point(size=3) + theme_bw() + facet_grid(r~mu)
 p <- p + scale_shape_manual(values=c(0, 1, 2, 3, 4))
 p <- p + scale_y_continuous(trans="log10")
 p <- p + labs(title="1-Pop Moments x r (rows) and u (cols)",
@@ -209,7 +209,10 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
-#ggsave("moments++_1_pop.png", p, device="png", width=12, height=12)
+
+if(save_plots) {
+  ggsave("moments++_1_pop.png", p, device="png", width=12, height=12)
+}
 ```
 
 ## Comparison with moments.LD 
@@ -256,9 +259,12 @@ p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-p
-#ggsave("moments++_vs_moments.LD_1-pop_all_stats.png",
-#       p, device="png", width=12, height=12)
+print(p)
+
+if(save_plots) {
+  ggsave("moments++_vs_moments.LD_1-pop_all_stats.png",
+          p, device="png", width=12, height=12)
+}
 ```
 
 ### for each moment/scenario separately
@@ -280,8 +286,11 @@ for(i in 1:length(common_moments)) {
                  axis.text=element_text(size=10),
                  legend.position="bottom")
   print(p)
-  #ggsave(paste(mom, "_moments++_vs_moments.LD_1-pop.png", sep=""),
-  #       p, device="png", width=12, height=12)
+  
+  if(save_plots) {
+    ggsave(paste(mom, "_moments++_vs_moments.LD_1-pop.png", sep=""),
+           p, device="png", width=12, height=12)
+  }
 }
 
 for(i in 1:num_scenarios) {
@@ -298,13 +307,15 @@ for(i in 1:num_scenarios) {
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   print(p)
-  #ggsave(paste("scenario", i, "moments++_vs_moments.LD_1-pop.png", sep="_"),
-  #       p, device="png", width=12, height=12)
+  
+  if(save_plots) {
+    ggsave(paste("scenario", i, "moments++_vs_moments.LD_1-pop.png", sep="_"),
+           p, device="png", width=12, height=12)
+  }
 }
 ```
 
 # 2-populations plots
-
 ## moments++
 
 ```{r 2-population-plots, message=FALSE, warning=FALSE}
@@ -374,7 +385,7 @@ write.table(dat_matched, "LD_++_2-pops.csv", sep=",", row.names=F, quote=F)
 # NOTE: log10 transform may throw away some Dz stats
 p <- ggplot(data=dat_matched,
             aes(x=variable, y=value, shape=method, color=as.factor(scenario)))
-p <- p + geom_point(size=3) + theme_bw()
+p <- p + geom_point(size=2) + theme_bw()
 p <- p + scale_shape_manual(values=c(1, 2))
 p <- p + labs(title="2-Pops moments++ (triangles) vs moments.LD (circles)",
               x="Moment", y="Value")
@@ -384,85 +395,91 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="none")
 print(p)
-#ggsave("moments++_vs_momentsLD_all_stats_2-pops.png",
-#       p, device="png", width=12, height=12)
 
-# check migration rates
-p <- ggplot(data=filter(dat_matched, r > 0),
-            aes(x=variable, y=value, shape=method, color=as.factor(N_0))) 
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(m_01~m_10)
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title="Moments m_01 (rows) x m_10 (cols) for r > 0",
-              x="Moment", y="Value", shape="Method", color="N_0")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10), 
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-#ggsave("moments++_vs_moments.LD_2-pops_mig.png",
-#       p, device="png", width=12, height=12)
+if(save_plots) {
+  ggsave("moments++_vs_momentsLD_all_stats_2-pops.png",
+         p, device="png", width=12, height=12)
+}
 
-p <- ggplot(data=filter(dat_matched, m_01==0),
-             aes(x=variable, y=value, shape=method)) 
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(N_0~r)
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title = "Moments (m_01 == 0) x N_0 (rows) and r (cols)",
-              x="Moment", y="Value", shape="Method")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-#ggsave("moments++_vs_moments.LD_2-pops_m01_zero.png",
-#       p, device="png", width=12, height=12)
+if(any(dat_matched$m_01 == 0)) {
+  p <- ggplot(data=filter(dat_matched, m_01==0),
+              aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
+  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
+  p <- p + scale_y_continuous(trans="log10")
+  p <- p + scale_shape_manual(values=c(1, 2))
+  p <- p + labs(title = "Moments (m_01 == 0) x N_0 (rows) and r (cols)",
+                x="Moment", y="Value", shape="Method", color="Scenario")
+  p <- p + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+  print(p)
+  
+  if(save_plots) {
+    ggsave("moments++_vs_moments.LD_2-pops_m01_zero.png",
+           p, device="png", width=12, height=12)
+  }
+}
 
-p <- ggplot(data=filter(dat_matched, m_01 > 0),
-            aes(x=variable, y=value, shape=method)) 
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(N_0~r)
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title="Moments (m_01 > 0) x N_0 (rows) and r (cols)",
-              x="Moment", y="Value", shape="Method")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10), 
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-#ggsave("moments++_vs_moments.LD_2-pops_m01_non-zero.png",
-#       p, device="png", width=12, height=12)
+if(any(dat_matched$m_01 > 0)) {
+  p <- ggplot(data=filter(dat_matched, m_01 > 0),
+              aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
+  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
+  p <- p + scale_y_continuous(trans="log10")
+  p <- p + scale_shape_manual(values=c(1, 2))
+  p <- p + labs(title="Moments (m_01 > 0) x N_0 (rows) and r (cols)",
+                x="Moment", y="Value", shape="Method", color="Scenario")
+  p <- p + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10), 
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+  print(p)
+  
+  if(save_plots) {
+    ggsave("moments++_vs_moments.LD_2-pops_m01_non-zero.png",
+           p, device="png", width=12, height=12)
+  }
+}
 
-# check recombination rates
-p <- ggplot(data=filter(dat_matched, r==0),
-             aes(x=variable, y=value, shape=method)) 
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(N_0~m_01)
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title = "Moments (r == 0) x N_0 (rows) and m_01 (cols)",
-              x="Moment", y="Value", shape="Method")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-#ggsave("moments++_vs_moments.LD_2-pops_r_zero.png",
-#       p, device="png", width=12, height=12)
+if(any(dat_matched$r == 0)) {
+  p <- ggplot(data=filter(dat_matched, r==0),
+               aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
+  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~m_01)
+  p <- p + scale_y_continuous(trans="log10")
+  p <- p + scale_shape_manual(values=c(1, 2))
+  p <- p + labs(title = "Moments (r == 0) x N_0 (rows) and m_01 (cols)",
+                x="Moment", y="Value", shape="Method", color="Scenario")
+  p <- p + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+  print(p)
+  
+  if(save_plots) {
+    ggsave("moments++_vs_moments.LD_2-pops_r_zero.png",
+           p, device="png", width=12, height=12)
+  }
+}
 
-p <- ggplot(data=filter(dat_matched, r > 0),
-            aes(x=variable, y=value, shape=method)) 
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(N_0~m_01)
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title="Moments (r > 0) x N_0 (rows) and m_01 (cols)",
-              x="Moment", y="Value", shape="Method")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10), 
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-#ggsave("moments++_vs_moments.LD_2-pops_r_non-zero.png",
-#       p, device="png", width=12, height=12)
+if(any(dat_matched$r > 0)) {
+  p <- ggplot(data=filter(dat_matched, r > 0),
+              aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
+  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~m_01)
+  p <- p + scale_y_continuous(trans="log10")
+  p <- p + scale_shape_manual(values=c(1, 2))
+  p <- p + labs(title="Moments (r > 0) x N_0 (rows) and m_01 (cols)",
+                x="Moment", y="Value", shape="Method", color="Scenario")
+  p <- p + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10), 
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+  print(p)
+  
+  if(save_plots) {
+    ggsave("moments++_vs_moments.LD_2-pops_r_non-zero.png",
+           p, device="png", width=12, height=12)
+  }
+}
 ```
 
 ### for each moment/scenario separately
@@ -475,23 +492,27 @@ for(i in 1:length(common_moments)) {
   
   p <- ggplot(data=filter(dat_matched, variable==mom),
               aes(x=scenario, y=value, shape=method))
-  p <- p + geom_point(size=5) + theme_bw()
+  p <- p + geom_point(size=3) + theme_bw()
   p <- p + scale_shape_manual(values=c(1, 2))
+  p <- p + scale_x_continuous(breaks=seq(1, num_scenarios))
   p <- p + labs(title=paste(mom, "moments++ vs moments.LD (2-pops)", sep=" "),
                 x="Scenario", y="Value", shape="Method")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  legend.position="bottom")
   print(p)
-  #ggsave(paste(mom, "_moments++_vs_moments.LD_2-pops.png", sep=""),
-  #       p, device="png", width=12, height=12)
+  
+  if(save_plots) {
+    ggsave(paste(mom, "_moments++_vs_moments.LD_2-pops.png", sep=""),
+           p, device="png", width=12, height=12)
+  }
 }
 
 for(i in 1:num_scenarios) {
   
   p <- ggplot(data=filter(dat_matched, scenario==i), 
               aes(x=variable, y=value, shape=method))
-  p <- p + geom_point(size=5) + theme_bw()
+  p <- p + geom_point(size=3) + theme_bw()
   p <- p + scale_shape_manual(values=c(1, 2))
   p <- p + scale_y_continuous(trans="log10")
   p <- p + labs(title=paste("scenario", i, "(moments++ vs moments.LD)", sep=" "),
@@ -501,7 +522,19 @@ for(i in 1:num_scenarios) {
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   print(p)
-  #ggsave(paste("scenario", i, "moments++_vs_moments.LD_2-pops.png", sep="_"),
-  #       p, device="png", width=12, height=12)
+  
+  if(save_plots) {
+    ggsave(paste("scenario", i, "moments++_vs_moments.LD_2-pops.png", sep="_"),
+           p, device="png", width=12, height=12)
+  }
 }
+```
+
+# Clean-up
+
+```{bash clean-up, engine.opts='-i', include=FALSE}
+
+source ~/.bashrc
+
+rm *txt
 ```

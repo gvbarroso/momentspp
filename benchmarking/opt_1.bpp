@@ -1,0 +1,15 @@
+label = 1-pop_scenario_$(i)
+demes_file = pops.tsv
+stats_file = data.tsv
+
+optimizer = Powell
+tolerance = 1e-6
+ci = false
+order = 2
+num_epochs = 1
+num_pops = 1
+total_gen = 10000
+number_threads = 1
+
+params=pops_1.bpp
+
