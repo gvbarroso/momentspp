@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 01/Mar/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 06/Mar/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
     for(size_t j = 0; j < options.getNumPops(); ++j) // simplification: for now, every epoch has same number of populations; use Demes class to change that
     {
-      bool hasSelection = 0; //j == 0;
+      bool hasSelection = 0; //j % 2 == 0;
 
       //Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize, bool hasSelection):
       std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, 500000, 0, 10000, 10000, hasSelection);

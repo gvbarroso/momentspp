@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 03/03/2023
+ * Last modified: 06/03/2023
  *
  */
 
@@ -27,7 +27,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     {
       col = sslib.getDummyMoment()->getPosition(); // for a homogeneous system
 
-      if((*it)->isCrossPop()) // eg H_ij (1-p_i)pj, H_ji (1-p_j)p_i, i != j
+      if((*it)->isCrossPop()) // H_ij => p_i(1-p_j), i != j
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
       else // H_xx
@@ -42,11 +42,21 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       {
         // introducing 2-locus Het via mutation in right locus (when left already polymorphic)
         col = tmp->getLeftHetStat()->getPosition();
-        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+        if(tmp->getRightHetStat()->isCrossPop())
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+        else // if within-pop, then H_ii => 2p_i(1-p_i) and only half of those contribute to pi2 => p(1-p)q(1-q)
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
         // introducing 2-locus Het via mutation in left locus (when right already polymorphic)
         col = tmp->getRightHetStat()->getPosition();
-        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+        if(tmp->getLeftHetStat()->isCrossPop())
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+
+        else // if within-pop, then H_ii => 2p_i(1-p_i) and only half of those contribute to pi2 => p(1-p)q(1-q)
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
       }
 
       else

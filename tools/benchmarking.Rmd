@@ -209,7 +209,7 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
-ggsave("moments++_1_pop.png", p, device="png", width=12, height=12)
+#ggsave("moments++_1_pop.png", p, device="png", width=12, height=12)
 ```
 
 ## Comparison with moments.LD 
@@ -246,11 +246,10 @@ dat_matched <- arrange(dat_matched, scenario, matched_moments)
 dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
 write.table(dat_matched, "LD_++_1-pop.csv", sep=",", row.names=F, quote=F)
 
-p <- ggplot(data=dat_matched, aes(x=variable, y=value, 
-                                  shape=method, color=as.factor(scenario)))
+p <- ggplot(data=dat_matched, aes(x=variable, y=value, shape=method))
 p <- p + geom_point(size=3) + theme_bw()
 p <- p + labs(title="1-Pop moments++ vs moments.LD",
-                x="Moment", y="Value", shape="method", color="scenario")
+                x="Moment", y="Value", shape="method")
 p <- p + scale_y_continuous(trans="log10")
 p <- p + scale_shape_manual(values=c(1,2))
 p <- p + theme(axis.title=element_text(size=12),
@@ -258,8 +257,8 @@ p <- p + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p
-ggsave("moments++_vs_moments.LD_1-pop_all_stats.png",
-       p, device="png", width=12, height=12)
+#ggsave("moments++_vs_moments.LD_1-pop_all_stats.png",
+#       p, device="png", width=12, height=12)
 ```
 
 ### for each moment/scenario separately
@@ -281,8 +280,8 @@ for(i in 1:length(common_moments)) {
                  axis.text=element_text(size=10),
                  legend.position="bottom")
   print(p)
-  ggsave(paste(mom, "_moments++_vs_moments.LD_1-pop.png", sep=""),
-         p, device="png", width=12, height=12)
+  #ggsave(paste(mom, "_moments++_vs_moments.LD_1-pop.png", sep=""),
+  #       p, device="png", width=12, height=12)
 }
 
 for(i in 1:num_scenarios) {
@@ -299,8 +298,8 @@ for(i in 1:num_scenarios) {
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   print(p)
-  ggsave(paste("scenario", i, "moments++_vs_moments.LD_1-pop.png", sep="_"),
-         p, device="png", width=12, height=12)
+  #ggsave(paste("scenario", i, "moments++_vs_moments.LD_1-pop.png", sep="_"),
+  #       p, device="png", width=12, height=12)
 }
 ```
 
@@ -385,8 +384,8 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="none")
 print(p)
-ggsave("moments++_vs_momentsLD_all_stats_2-pops.png",
-       p, device="png", width=12, height=12)
+#ggsave("moments++_vs_momentsLD_all_stats_2-pops.png",
+#       p, device="png", width=12, height=12)
 
 # check migration rates
 p <- ggplot(data=filter(dat_matched, r > 0),
@@ -401,8 +400,8 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
-ggsave("moments++_vs_moments.LD_2-pops_mig.png",
-       p, device="png", width=12, height=12)
+#ggsave("moments++_vs_moments.LD_2-pops_mig.png",
+#       p, device="png", width=12, height=12)
 
 p <- ggplot(data=filter(dat_matched, m_01==0),
              aes(x=variable, y=value, shape=method)) 
@@ -416,8 +415,8 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
-ggsave("moments++_vs_moments.LD_2-pops_m01_zero.png",
-       p, device="png", width=12, height=12)
+#ggsave("moments++_vs_moments.LD_2-pops_m01_zero.png",
+#       p, device="png", width=12, height=12)
 
 p <- ggplot(data=filter(dat_matched, m_01 > 0),
             aes(x=variable, y=value, shape=method)) 
@@ -431,8 +430,8 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
-ggsave("moments++_vs_moments.LD_2-pops_m01_non-zero.png",
-       p, device="png", width=12, height=12)
+#ggsave("moments++_vs_moments.LD_2-pops_m01_non-zero.png",
+#       p, device="png", width=12, height=12)
 
 # check recombination rates
 p <- ggplot(data=filter(dat_matched, r==0),
@@ -447,8 +446,8 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
-ggsave("moments++_vs_moments.LD_2-pops_r_zero.png",
-       p, device="png", width=12, height=12)
+#ggsave("moments++_vs_moments.LD_2-pops_r_zero.png",
+#       p, device="png", width=12, height=12)
 
 p <- ggplot(data=filter(dat_matched, r > 0),
             aes(x=variable, y=value, shape=method)) 
@@ -462,8 +461,8 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
 p
-ggsave("moments++_vs_moments.LD_2-pops_r_non-zero.png",
-       p, device="png", width=12, height=12)
+#ggsave("moments++_vs_moments.LD_2-pops_r_non-zero.png",
+#       p, device="png", width=12, height=12)
 ```
 
 ### for each moment/scenario separately
@@ -484,8 +483,8 @@ for(i in 1:length(common_moments)) {
                  axis.text=element_text(size=10),
                  legend.position="bottom")
   print(p)
-  ggsave(paste(mom, "_moments++_vs_moments.LD_2-pops.png", sep=""),
-         p, device="png", width=12, height=12)
+  #ggsave(paste(mom, "_moments++_vs_moments.LD_2-pops.png", sep=""),
+  #       p, device="png", width=12, height=12)
 }
 
 for(i in 1:num_scenarios) {
@@ -502,7 +501,7 @@ for(i in 1:num_scenarios) {
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   print(p)
-  ggsave(paste("scenario", i, "moments++_vs_moments.LD_2-pops.png", sep="_"),
-         p, device="png", width=12, height=12)
+  #ggsave(paste("scenario", i, "moments++_vs_moments.LD_2-pops.png", sep="_"),
+  #       p, device="png", width=12, height=12)
 }
 ```

@@ -36,7 +36,6 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
     {
       moments_.emplace_back(std::make_shared<DdMoment>("DD_" + asString(*itI) + "_" + asString(*itJ), 0.));
       moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ), 0., false));
-
       // NOTE: H_01 = p_0(1-p_1); H_10 = p_1(1-p_0)
       // insert H moments with isPutativelySelected_ == true based on popMap
 
