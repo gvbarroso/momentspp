@@ -42,10 +42,10 @@ write.csv(params_1_pop, "params_1_pop.csv", quote=F, sep=",", row.names=F)
 
 ```{r 2-pops-params, message=FALSE, warning=FALSE}
 
-mu <- 1e-7
+mu <- c(1e-7)
 r <- c(0, 1e-6)
 N_0 <- c(1e+4, 1e+5)
-N_1 <- 1e+5
+N_1 <- c(1e+5)
 m_01 <- c(0, 1e-5)
 m_10 <- c(1e-3, 1e-5)
 num_epochs <- c(1)

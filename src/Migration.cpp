@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 03/03/2023
+ * Last modified: 07/03/2023
  *
  */
 
@@ -454,9 +454,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if((*it)->getPrefix() == "H")
           {
-            if(childPopIdCount > 0) // not to populate the sparse matrix with unnecessary zeros
-              coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
-
             size_t p1 = (*it)->getPopIndices()[0];
             size_t p2 = (*it)->getPopIndices()[1];
 
@@ -464,13 +461,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               if(p1 == i || p2 == i) // H_ij, H_ji
               {
+                coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
+
                 col = sslib.findHetIndex(i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 1/2?
               }
             }
 
             else if(childPopIdCount == 2) // H_jj
             {
+              coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
+
               col = sslib.findHetIndex(i, j);
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
