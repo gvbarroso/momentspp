@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 03/03/2023
+ * Last modified: 07/03/2023
 
  */
 
@@ -206,6 +206,27 @@ public:
 
     else
       throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Pi2" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2) + bpp::TextTools::toString(id3) + bpp::TextTools::toString(id3));
+  }
+
+  std::shared_ptr<Pi2Moment> getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const
+  {
+    assert(left != nullptr && right != nullptr);
+    std::shared_ptr<Pi2Moment> ret = nullptr;
+
+    for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
+    {
+      auto tmp = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
+      assert(tmp != nullptr);
+
+      if(left == tmp->getLeftHetStat() && right == tmp->getRightHetStat())
+        ret = tmp;
+    }
+
+    if(ret != nullptr)
+      return ret;
+
+    else
+      throw bpp::Exception("SumStatsLibrary::could not find pi2 stat for " + left->getName() + " + " + right->getName());
   }
 
   std::shared_ptr<Moment> getDummyMoment() const

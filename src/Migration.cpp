@@ -36,11 +36,11 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
           int col = -1; // inits column index to out-of-bounds
           int childPopIdCount = static_cast<int>((*it)->countInstances(j));
 
+          if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros
+            coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
+
           if((*it)->getPrefix() == "DD")
           {
-            if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros
-              coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
-
             if(childPopIdCount == 1)
             {
               col = sslib.findDdIndex(i, i);
@@ -60,9 +60,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if((*it)->getPrefix() == "Dz")
           {
-            if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros
-              coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
-
             size_t p1 = (*it)->getPopIndices()[0]; // D pop
             size_t p2 = (*it)->getPopIndices()[1]; // first z pop
             size_t p3 = (*it)->getPopIndices()[2]; // second z pop
@@ -301,153 +298,18 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if((*it)->getPrefix() == "pi2") // WARNING check for numPops > 2
+          else if((*it)->getPrefix() == "pi2")
           {
-            int countLeft = 0; // count of j (childPopID) before ';' in pi2(**;**)
-            int countRight = 0; // count of j (childPopID) after ';' in pi2(**;**)
+            std::vector<size_t> popIds = (*it)->getPopIndices();
 
-            if((*it)->getPopIndices()[0] == j)
-              ++countLeft;
-
-            if((*it)->getPopIndices()[1] == j)
-              ++countLeft;
-
-            if((*it)->getPopIndices()[2] == j)
-              ++countRight;
-
-            if((*it)->getPopIndices()[3] == j)
-              ++countRight;
-
-            if((countLeft + countRight) > 0)  // not to populate the sparse matrix with unnecessary zeros
-              coeffs.emplace_back(Eigen::Triplet<double>(row, row, -(countLeft + countRight)));
-
-            // updates off-diagonal entries from LEFT perspective
-            if(countLeft == 1)
+            for(size_t l = 0; l < popIds.size(); ++ l) // l -> 0:3
             {
-              if(countRight == 0)
+              if(popIds[l] == j) // if entry matches childPopId
               {
-                col = sslib.findPi2Index(i, i, i, i);
+                popIds[l] = i; // assign to focal parentPopId
+                col = sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-
-              else if(countRight == 1)
-              {
-                col = sslib.findPi2Index(i, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(i, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-              }
-
-              else if(countRight == 2)
-              {
-                col = sslib.findPi2Index(i, i, j, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-            }
-
-            else if(countLeft == 2)
-            {
-              if(countRight == 0)
-              {
-                col = sslib.findPi2Index(i, j, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(j, i, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-
-              else if(countRight == 1)
-              {
-                col = sslib.findPi2Index(i, j, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(i, j, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                col = sslib.findPi2Index(j, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                col = sslib.findPi2Index(j, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-              }
-
-              else if(countRight == 2)
-              {
-                col = sslib.findPi2Index(i, j, j, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(j, i, j, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-            }
-
-            // updates off-diagonal entries from RIGHT perspective
-            if(countRight == 1)
-            {
-              if(countLeft == 0)
-              {
-                col = sslib.findPi2Index(i, i, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-
-              else if(countLeft == 1)
-              {
-                col = sslib.findPi2Index(i, j, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(j, i, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-              }
-
-              else if(countLeft == 2)
-              {
-                col = sslib.findPi2Index(j, j, i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-            }
-
-            else if(countRight == 2)
-            {
-              if(countLeft == 0)
-              {
-                col = sslib.findPi2Index(i, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(i, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-
-              else if(countLeft == 1)
-              {
-                col = sslib.findPi2Index(i, j, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(i, j, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                col = sslib.findPi2Index(j, i, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-                col = sslib.findPi2Index(j, i, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-              }
-
-              else if(countLeft == 2)
-              {
-                col = sslib.findPi2Index(j, j, i, j);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                // permute pops indices
-                col = sslib.findPi2Index(j, j, j, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                popIds[l] = j; // recycle
               }
             }
           }
@@ -461,8 +323,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               if(p1 == i || p2 == i) // H_ij, H_ji
               {
-                coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
-
                 col = sslib.findHetIndex(i, i);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 1/2?
               }
@@ -470,8 +330,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             else if(childPopIdCount == 2) // H_jj
             {
-              coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
-
               col = sslib.findHetIndex(i, j);
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
