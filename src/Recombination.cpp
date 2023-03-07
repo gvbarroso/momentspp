@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/02/2023
+ * Last modified: 07/03/2023
  *
  */
 
@@ -35,6 +35,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   mat.makeCompressed();
   mat *= getParameterValue("r_0");
   matrices_.emplace_back(mat);
+  assembleTransitionMatrix_();
 }
 
 void Recombination::updateMatrices_()
@@ -43,5 +44,6 @@ void Recombination::updateMatrices_()
   double newVal = getParameterValue("r_0");
 
   matrices_[0] *= newVal / prevVal;
+  assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
 }

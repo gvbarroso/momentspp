@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 13/02/2023
+ * Last modified: 07/03/2023
  *
  */
 
@@ -15,24 +15,17 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   if(matchParametersValues(params))
     updateOperators_(params);
 
-  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
+  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
 
   for(size_t i = 1; i < operators_.size(); ++i)
-    mat = mat * operators_[i]->fetchCombinedMatrix();
+    mat = mat * operators_[i]->getTransitionMatrix();
 
   transitionMatrix_ = mat; // converts to dense format
 }
 
-// this method is where the heavier Eigen3 linear algebra takes place
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
-  y = transitionMatrix_.pow(duration()) * y;
-
-  /* NOTE slower alternatives, especially when duration of each epoch is < 1e+4 generations
-  Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
-  y = es.eigenvectors().real() * es.eigenvalues().real().array().pow(duration()).matrix().asDiagonal() * es.eigenvectors().real().inverse() * y;
-  y = es.pseudoEigenvectors() * es.pseudoEigenvalueMatrix().pow(duration()) * es.pseudoEigenvectors().inverse() * y;
-  */
+  y = transitionMatrix_.pow(duration()) * y; // heavier Eigen3 linear algebra takes place
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoch
@@ -56,6 +49,20 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
 
   for(int i = 0; i < y.size(); ++i)
     ssl_.getMoments()[i]->setValue(y(i));
+}
+
+void Epoch::printRecursions(std::ostream& stream)
+{
+  for(int i = 0; i < ssl_.getMoments().size(); ++i)
+  {
+    int pos = ssl_.getMoments()[i]->getPosition();
+    stream << ssl_.getMoments()[i]->getName() << " = ";
+
+    for(size_t j = 0; j < operators_.size(); ++j)
+    {
+      stream << "TODO";
+    }
+  }
 }
 
 void Epoch::computeSteadyState_()
@@ -84,18 +91,18 @@ void Epoch::computeSteadyState_()
     logger.getLogFile() << "\n\nsum of entries (operator combined delta matrix) = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
     logger.getLogFile() << std::setprecision(1e-12) << tmp << "\n";
     logger.getLogFile() << "operator transition matrix:\n";
-    logger.getLogFile() << operators_[i]->fetchCombinedMatrix() << "\n\n";
+    logger.getLogFile() << operators_[i]->getTransitionMatrix() << "\n\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";
-    test = operators_[i]->fetchCombinedMatrix() * test;
+    test = operators_[i]->getTransitionMatrix() * test;
     logger.getLogFile() << std::setprecision(1e-12) << test << "\n";
   }
   #endif
 
-  Eigen::SparseMatrix<double> mat = operators_[0]->fetchCombinedMatrix(); // init mat
+  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
 
   for(size_t i = 1; i < operators_.size(); ++i)
-    mat = operators_[i]->fetchCombinedMatrix() * mat;
+    mat = operators_[i]->getTransitionMatrix() * mat;
 
   transitionMatrix_ = mat; // converts to dense format
 
@@ -105,7 +112,7 @@ void Epoch::computeSteadyState_()
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {
-    // finding the maximum value (should be == 1., but searching for equality is problematic due to precision issues)
+    // finding the maximum value (should be == 1., but searching for equality is problematic due to precision)
     if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
       idx = i;
   }

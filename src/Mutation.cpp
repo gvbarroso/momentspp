@@ -72,6 +72,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   mat.makeCompressed();
   mat *= getParameterValue("mu_0");
   matrices_.emplace_back(mat);
+  assembleTransitionMatrix_();
 }
 
 void Mutation::updateMatrices_()
@@ -80,6 +81,7 @@ void Mutation::updateMatrices_()
   double newVal = getParameterValue("mu_0");
 
   matrices_[0] *= newVal / prevVal;
+  assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
 }
 

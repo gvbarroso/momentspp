@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 12/12/2022
+ * Last modified: 07/03/2022
  *
  */
 
@@ -11,8 +11,7 @@
 
 #include "AbstractOperator.hpp"
 
-class Recombination:
-  public AbstractOperator
+class Recombination: public AbstractOperator
 {
 
 public:

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 09/02/2023
+ * Last modified: 07/03/2023
  *
  */
 
@@ -28,13 +28,12 @@
 #include "SumStatsLibrary.hpp"
 #include "Population.hpp"
 
-class Epoch:
-  public bpp::AbstractParameterAliasable
+class Epoch: public bpp::AbstractParameterAliasable
 {
 
 private:
   std::string name_;
-  SumStatsLibrary ssl_; // *this epoch has its own set of moments following *this population indices
+  SumStatsLibrary ssl_; // *this epoch has its own set of moments using its population indices
 
   size_t startGen_; // we let the deepest point in relevant time be generation '0'
   size_t endGen_;
@@ -168,7 +167,7 @@ public:
 
   void updateMoments(const Eigen::VectorXd& y);
 
-  void timeTest(size_t g);
+  void printRecursions(std::ostream& stream);
 
 private:
   void computeSteadyState_();

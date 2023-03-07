@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 05/12/2022
+ * Last modified: 07/03/2022
  *
  */
 
@@ -11,8 +11,7 @@
 
 #include "AbstractOperator.hpp"
 
-class Migration:
-  public AbstractOperator
+class Migration: public AbstractOperator
 {
 
 public:

@@ -350,6 +350,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
       } // ends if(i != j)
     }
   }
+
+  assembleTransitionMatrix_();
 }
 
 void Migration::updateMatrices_()
@@ -376,6 +378,7 @@ void Migration::updateMatrices_()
     }
   }
 
+  assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
 }
 

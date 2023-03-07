@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 15/02/2023
+ * Last modified: 07/03/2023
  *
  */
 
@@ -124,6 +124,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     mat *= (getParameterValue("1/2N_" + bpp::TextTools::toString(i))); // scales because of updateMatrices_()
     matrices_.emplace_back(mat); // at the i-th position of vector, where i index the population
   }
+
+  assembleTransitionMatrix_();
 }
 
 void Drift::updateMatrices_()
@@ -140,5 +142,6 @@ void Drift::updateMatrices_()
     matrices_[i] *= (newVal / prevVal);
   }
 
+  assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
 }

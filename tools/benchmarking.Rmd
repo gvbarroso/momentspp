@@ -199,7 +199,7 @@ stats <- bind_cols(momspp, params_1_pop)
 dat_stats <- pivot_longer(stats, cols=all_of(stats_1_pop), names_to="variable")
 
 p <- ggplot(data=dat_stats, aes(x=variable, y=value, shape=as.factor(N)))
-p <- p + geom_point(size=3) + theme_bw() + facet_grid(r~mu)
+p <- p + geom_point(size=1) + theme_bw() + facet_grid(r~mu)
 p <- p + scale_shape_manual(values=c(0, 1, 2, 3, 4))
 p <- p + scale_y_continuous(trans="log10")
 p <- p + labs(title="1-Pop Moments x r (rows) and u (cols)",
