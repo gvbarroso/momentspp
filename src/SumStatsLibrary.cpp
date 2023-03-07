@@ -76,23 +76,22 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
 // for each Pi2Moment, sets the two pointers corresponding to HetMoments (left and right loci)
 void SumStatsLibrary::linkPi2HetStats_()
 {
-  for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
+  for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
   {
-    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*itMom);
+    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
+    assert(tmpPi2 != nullptr);
 
-    if(tmpPi2 != nullptr)
-    {
-      size_t p1 = tmpPi2->getPopIndices()[0];
-      size_t p2 = tmpPi2->getPopIndices()[1];
-      size_t p3 = tmpPi2->getPopIndices()[2];
-      size_t p4 = tmpPi2->getPopIndices()[3];
+    size_t p1 = tmpPi2->getPopIndices()[0];
+    size_t p2 = tmpPi2->getPopIndices()[1];
+    size_t p3 = tmpPi2->getPopIndices()[2];
+    size_t p4 = tmpPi2->getPopIndices()[3];
 
-      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2));
-      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4));
+    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2));
+    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4));
+    assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
-      tmpPi2->setLeftHetStat(tmpHetLeft);
-      tmpPi2->setRightHetStat(tmpHetRight);
-    }
+    tmpPi2->setLeftHetStat(tmpHetLeft);
+    tmpPi2->setRightHetStat(tmpHetRight);
   }
 }
 

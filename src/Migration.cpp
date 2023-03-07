@@ -51,10 +51,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               // look for covariance in D w.r.t to parent population (index i)
               col = sslib.findDdIndex(i, j);
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 2? is sorted_E[DD_12] = sorted_E[DD_21] = unsorted_E[DD_12]? or = 1/2 unsorted_E[DD_12]?
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 2?
 
               col = sslib.findDdIndex(j, i);
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 2? is sorted_E[DD_12] = sorted_E[DD_21] = unsorted_E[DD_12]? or = 1/2 unsorted_E[DD_12]?
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 2?
             }
           }
 
@@ -321,19 +321,19 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             if(childPopIdCount == 1)
             {
-              if(p1 == i || p2 == i) // H_ij, H_ji
+              if(p1 == i || p2 == i) // H_ij or H_ji, i = parentPopId
               {
                 col = sslib.findHetIndex(i, i);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 1/2?
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
               }
             }
 
             else if(childPopIdCount == 2) // H_jj
             {
-              col = sslib.findHetIndex(i, j);
+              col = sslib.findHetIndex(i, j); // i = parentPopId
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-              col = sslib.findHetIndex(j, i);
+              col = sslib.findHetIndex(j, i); // i = parentPopId
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
             }
           }
