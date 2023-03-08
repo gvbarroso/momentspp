@@ -33,15 +33,15 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   Eigen::SparseMatrix<double> mat(numStats, numStats);
   mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
   mat.makeCompressed();
-  mat *= getParameterValue("r_0");
+  mat *= getParameterValue("r");
   matrices_.emplace_back(mat);
   assembleTransitionMatrix_();
 }
 
 void Recombination::updateMatrices_()
 {
-  double prevVal = prevParams_.getParameterValue("r_0");
-  double newVal = getParameterValue("r_0");
+  double prevVal = prevParams_.getParameterValue("r");
+  double newVal = getParameterValue("r");
 
   matrices_[0] *= newVal / prevVal;
   assembleTransitionMatrix_();

@@ -70,15 +70,15 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   Eigen::SparseMatrix<double> mat(numStats, numStats);
   mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
   mat.makeCompressed();
-  mat *= getParameterValue("mu_0");
+  mat *= getParameterValue("u");
   matrices_.emplace_back(mat);
   assembleTransitionMatrix_();
 }
 
 void Mutation::updateMatrices_()
 {
-  double prevVal = prevParams_.getParameterValue("mu_0");
-  double newVal = getParameterValue("mu_0");
+  double prevVal = prevParams_.getParameterValue("u");
+  double newVal = getParameterValue("u");
 
   matrices_[0] *= newVal / prevVal;
   assembleTransitionMatrix_();

@@ -20,7 +20,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   for(size_t i = 1; i < operators_.size(); ++i)
     mat = mat * operators_[i]->getTransitionMatrix();
 
-  transitionMatrix_ = mat; // converts to dense format
+  transitionMatrix_ = mat; // converts from sparse to dense format
 }
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
@@ -58,7 +58,7 @@ void Epoch::printRecursions(std::ostream& stream)
     if(ssl_.getMoments()[i]->getName() != "I")
     {
       int pos = static_cast<int>(ssl_.getMoments()[i]->getPosition()); // row in delta matrix
-      stream << "delta_" << ssl_.getMoments()[i]->getName() << " = ";
+      stream << "\u0394[" << ssl_.getMoments()[i]->getName() << "] = ";
 
       for(size_t j = 0; j < operators_.size(); ++j)
       {
@@ -126,9 +126,9 @@ void Epoch::computeSteadyState_()
   for(size_t i = 1; i < operators_.size(); ++i)
     mat = operators_[i]->getTransitionMatrix() * mat;
 
-  transitionMatrix_ = mat; // converts to dense format
+  transitionMatrix_ = mat; // converts from sparse to dense format
 
-  // we find the eigenvector associated with thr leading eigenvalue (== 1) in transitionMatrix_
+  // we find the eigenvector associated with the leading eigenvalue (== 1) in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
 
   int idx = 0;

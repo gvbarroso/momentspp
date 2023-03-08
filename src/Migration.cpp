@@ -30,8 +30,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         // for each stat in vector Y (rows of focal matrix), lexicographically sorted based on Moments names
         for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
         {
-          //(*it)->printAttributes(std::cout); // NOTE DEBUG
-
           int row = it - std::begin(sslib.getMoments()); // row index
           int col = -1; // inits column index to out-of-bounds
           int childPopIdCount = static_cast<int>((*it)->countInstances(j));
@@ -298,7 +296,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if((*it)->getPrefix() == "pi2")
+          else if((*it)->getPrefix() == "pi2") // finds pi2 moments that are a single migration away (1-hop neighbors)
           {
             std::vector<size_t> popIds = (*it)->getPopIndices();
 
@@ -316,25 +314,17 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if((*it)->getPrefix() == "H")
           {
-            size_t p1 = (*it)->getPopIndices()[0];
-            size_t p2 = (*it)->getPopIndices()[1];
+            std::vector<size_t> popIds = (*it)->getPopIndices();
 
-            if(childPopIdCount == 1)
+            for(size_t l = 0; l < popIds.size(); ++ l) // l -> 0:1
             {
-              if(p1 == i || p2 == i) // H_ij or H_ji, i = parentPopId
+              if(popIds[l] == j) // if entry matches childPopId
               {
-                col = sslib.findHetIndex(i, i);
+                popIds[l] = i; // assign to focal parentPopId
+                col = sslib.findHetIndex(popIds[0], popIds[1]);
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                popIds[l] = j; // recycle
               }
-            }
-
-            else if(childPopIdCount == 2) // H_jj
-            {
-              col = sslib.findHetIndex(i, j); // i = parentPopId
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-              col = sslib.findHetIndex(j, i); // i = parentPopId
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
             }
           }
 

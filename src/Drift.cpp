@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 07/03/2023
+ * Last modified: 08/03/2023
  *
  */
 
@@ -23,7 +23,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     std::vector<Eigen::Triplet<double>> coeffs(0);
     coeffs.reserve(numStats);
 
-    // for each stat in vector Y (going by rows of matrices_[i])
+    // for each stat in vector Y (rows of matrices_[i])
     for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
     {
       int row = it - std::begin(sslib.getMoments()); // row index
@@ -81,20 +81,11 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
       else if((*it)->getPrefix() == "pi2")
       {
-        size_t countLeft = 0; // count of i before ';' character in pi2(**;**)
-        size_t countRight = 0; // count of i after ';' character in pi2(**;**)
+        auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*it);
+        assert(tmpPi2 != nullptr);
 
-        if((*it)->getPopIndices()[0] == i)
-          ++countLeft;
-
-        if((*it)->getPopIndices()[1] == i)
-          ++countLeft;
-
-        if((*it)->getPopIndices()[2] == i)
-          ++countRight;
-
-        if((*it)->getPopIndices()[3] == i)
-          ++countRight;
+        size_t countLeft = tmpPi2->getLeftHetStat()->countInstances(i);
+        size_t countRight = tmpPi2->getRightHetStat()->countInstances(i);
 
         if((countLeft + countRight) == 4)
         {
@@ -121,8 +112,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     Eigen::SparseMatrix<double> mat(numStats, numStats);
     mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
     mat.makeCompressed();
-    mat *= (getParameterValue("1/2N_" + bpp::TextTools::toString(i))); // scales because of updateMatrices_()
-    matrices_.emplace_back(mat); // at the i-th position of vector, where i index the population
+    mat *= (getParameterValue("1/2N_" + bpp::TextTools::toString(i)));
+    matrices_.emplace_back(mat);
   }
 
   assembleTransitionMatrix_();

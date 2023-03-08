@@ -37,8 +37,8 @@ class AbstractOperator: public bpp::AbstractParameterAliasable
 protected:
   // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
-  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into combinedMatrix_
-  // this way the matrices_ need not be rebuilt during optimization when parameters change (see update_() inside each derived class)
+  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into transition_
+  // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)
   std::vector<Eigen::SparseMatrix<double>> matrices_; // "delta" matrix(ces)
   Eigen::SparseMatrix<double> identity_; // helper matrix to convert from "delta" to "transition" matrix
   Eigen::SparseMatrix<double> transition_; // "transition" matrix
