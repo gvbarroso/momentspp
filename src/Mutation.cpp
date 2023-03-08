@@ -8,29 +8,27 @@
 
 #include "Mutation.hpp"
 
-
+// assumes both the infinite sites model as well as equal mutation rates across pops.
 void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numStats = sslib.getNumStats();
-
-  // for now, this method assumes both the infinite sites model as well as equal mutation rates across pops.
   matrices_.reserve(1);
   std::vector<Eigen::Triplet<double>> coeffs(0);
   coeffs.reserve(numStats);
 
   for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
-    int row = it - std::begin(sslib.getMoments()); // row index
-    int col = -1; // inits column index to out-of-bounds
+    int row = it - std::begin(sslib.getMoments());
+    int col = -1;
 
-    if((*it)->getPrefix() == "H") // introducing one-locus diversity of the form p(1-p)
+    if((*it)->getPrefix() == "H")
     {
       col = sslib.getDummyMoment()->getPosition(); // for a homogeneous system
 
-      if((*it)->isCrossPop()) // H_ij => p_i(1-p_j), i != j, p = freq(derived)
+      if((*it)->isCrossPop()) // H_ij => p_i(1-p_j), i != j
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-      else // H_xx
+      else // H_ii => p_i(1-p_j) + (1-p_j)p_i = 2p_i(1-p_i)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
     }
 

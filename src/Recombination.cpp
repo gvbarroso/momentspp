@@ -8,17 +8,17 @@
 
 #include "Recombination.hpp"
 
+// assumes equal recombination rates across pops.
 void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numStats = sslib.getNumStats();
-  // for now, this method assumes equal recombination rates across pops.
   matrices_.reserve(1);
   std::vector<Eigen::Triplet<double>> coeffs(0);
   coeffs.reserve(numStats);
 
   for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
   {
-    int row = it - std::begin(sslib.getMoments()); // recombination matrix only has entries in main diagonal
+    int row = it - std::begin(sslib.getMoments());
 
     if((*it)->getPrefix() == "DD")
       coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));

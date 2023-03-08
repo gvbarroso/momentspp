@@ -14,20 +14,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters().size();
   size_t numStats = sslib.getNumStats();
-
   matrices_.reserve(numPops);
 
-  // for each focal population (and cross-population terms involving it)
   for(size_t i = 0; i < numPops; ++i)
   {
     std::vector<Eigen::Triplet<double>> coeffs(0);
     coeffs.reserve(numStats);
 
-    // for each stat in vector Y (rows of matrices_[i])
     for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
     {
-      int row = it - std::begin(sslib.getMoments()); // row index
-      int col = -1; // inits column index to out-of-bounds
+      int row = it - std::begin(sslib.getMoments());
+      int col = -1;
       size_t popIdCount = (*it)->countInstances(i); // count of i (focal pop ID) in moment's name
 
       if((*it)->getPrefix() == "DD")
@@ -71,10 +68,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(popIdCount == 2) // D_x_z_ii
           {
             col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 4
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 2 or 4
 
             col = sslib.findDdIndex((*it)->getPopIndices()[0], i);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 4
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 2 or 4
           }
         }
       }

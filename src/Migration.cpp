@@ -14,20 +14,18 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
   // m_ij is the forward migration rate from pop i to pop j (backwards, the prob that lineage in j has parent in i)
   size_t numPops = fetchNumPops();
   size_t numStats = sslib.getNumStats();
-
   matrices_.reserve(numPops * (numPops - 1));
 
   for(size_t i = 0; i < numPops; ++i) // for i in m_ij (i => parent pop ID)
   {
     for(size_t j = 0; j < numPops; ++j) // for j in m_ij (j => child pop ID)
     {
-      if(i != j) // if populations in pair are not the same, fills in coefficients in focal matrix
+      if(i != j)
       {
-        std::vector<Eigen::Triplet<double>> coeffs(0); // init sparse matrix coeffs
+        std::vector<Eigen::Triplet<double>> coeffs(0);
         coeffs.reserve(3 * numStats);
 
         // although we have pi2(i,j;k,l) moments, we need only to loop over pops twice because we take care of the k,l pop indices in this loop over stats
-        // for each stat in vector Y (rows of focal matrix), lexicographically sorted based on Moments names
         for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
         {
           int row = it - std::begin(sslib.getMoments()); // row index
@@ -47,7 +45,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             else if(childPopIdCount == 2)
             {
-              // look for covariance in D w.r.t to parent population (index i)
               col = sslib.findDdIndex(i, j);
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // WARNING 1 or 2?
 
