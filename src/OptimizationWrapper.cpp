@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/03/2023
+ * Last modified: 08/03/2023
  *
  */
 
@@ -49,13 +49,6 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
     for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
       drift[j] = 1. / (2. * drift[j]);
 
-    // WARNING ad-hockery for testing bottleneck
-    if(i == 1)
-    {
-      for(size_t j = 0; j < drift.size(); ++j)
-        drift[j] *= 10.;
-    }
-
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options_.getInitR(), ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options_.getInitMu(), ic, sslib);
@@ -75,6 +68,13 @@ void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
     operators.emplace_back(mutOp);
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopMaps()[i]));
+
+    #ifdef VERBOSE
+    std::ofstream recOut;
+    recOut.open(epochs.back()->getName() + "_recursions.txt");
+    epochs.back()->printRecursions(recOut);
+    recOut.close();
+    #endif
   }
 
   Model* model = new Model(modelName, epochs, data);

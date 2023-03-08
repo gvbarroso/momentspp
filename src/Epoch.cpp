@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 07/03/2023
+ * Last modified: 08/03/2023
  *
  */
 
@@ -53,14 +53,36 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
 
 void Epoch::printRecursions(std::ostream& stream)
 {
-  for(int i = 0; i < ssl_.getMoments().size(); ++i)
+  for(size_t i = 0; i < ssl_.getMoments().size(); ++i)
   {
-    int pos = ssl_.getMoments()[i]->getPosition();
-    stream << ssl_.getMoments()[i]->getName() << " = ";
-
-    for(size_t j = 0; j < operators_.size(); ++j)
+    if(ssl_.getMoments()[i]->getName() != "I")
     {
-      stream << "TODO";
+      int pos = static_cast<int>(ssl_.getMoments()[i]->getPosition()); // row in delta matrix
+      stream << "delta_" << ssl_.getMoments()[i]->getName() << " = ";
+
+      for(size_t j = 0; j < operators_.size(); ++j)
+      {
+        for(size_t k = 0; k < operators_[j]->getParameters().size(); ++k)
+        {
+          bpp::Parameter param = operators_[j]->getParameters()[k];
+          std::string name = param.getName();
+          auto mat = operators_[j]->getMatrix(k); // hard copy delta matrix
+          mat = mat / param.getValue(); // convert back to coefficients
+
+          for(int l = 0; l < mat.cols(); ++l)
+          {
+            if(mat.coeffRef(pos, l) != 0)
+            {
+              if(mat.coeffRef(pos, l) > 0)
+                stream << "+";
+
+              stream << bpp::TextTools::toString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getMoments()[l]->getName() + " ";
+            }
+          }
+        }
+      }
+
+      stream << "\n";
     }
   }
 }

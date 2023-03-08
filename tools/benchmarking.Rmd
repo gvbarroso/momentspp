@@ -21,7 +21,7 @@ use_python("/usr/bin/python3")
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 
-save_plots <- FALSE # ggsave?
+save_plots <- FALSE # should this script ggsave plots to root.dir?
 ```
 
 # Setting up scenarios to test (parameter combinations)
