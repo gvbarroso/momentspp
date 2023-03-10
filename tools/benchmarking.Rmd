@@ -456,27 +456,27 @@ if(any(dat_matched$r > 0)) {
   }
 }
 
-# visualizing the relative difference in each moment
-diff <- (filter(full_tbl, method=="moments++") %>% select(common_moments) - 
-         filter(full_tbl, method=="moments.LD") %>% select(common_moments)) / 
+# visualizing the ratio in each moment
+ratio <- filter(full_tbl, method=="moments++") %>% select(common_moments) / 
          filter(full_tbl, method=="moments.LD") %>% select(common_moments) 
 
-diff_tbl <- bind_cols(diff, select(filter(full_tbl, method=="moments++"),
-                                   -common_moments)) %>% select(-c("method",
-                                                                   "sep_moments"))
+ratio_tbl <- bind_cols(ratio, select(filter(full_tbl, method=="moments++"),
+                                     -common_moments)) %>% select(-c("method",
+                                                                     "sep_moments"))
 
-dat_diff <- pivot_longer(diff_tbl, cols=all_of(common_moments), names_to="variable") 
+dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="variable") 
 
-if(any(dat_diff$m_01 == 0)) {
-  p <- ggplot(data=filter(dat_diff, m_01==0),
+if(any(dat_ratio$m_01 == 0)) {
+  p <- ggplot(data=filter(dat_ratio, m_01==0),
               aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
-  p <- p + labs(title = "Rel. diff. (m_01 == 0) x N_0 (rows) and r (cols)",
+  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
+  p <- p + labs(title = "Ratio (m_01 == 0) x N_0 (rows) and r (cols)",
                 x="Moment", y="Value", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
+  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
   print(p)
   
   if(save_plots) {
@@ -485,16 +485,17 @@ if(any(dat_diff$m_01 == 0)) {
   }
 }
 
-if(any(dat_diff$m_01 > 0)) {
-  p <- ggplot(data=filter(dat_diff, m_01 > 0),
+if(any(dat_ratio$m_01 > 0)) {
+  p <- ggplot(data=filter(dat_ratio, m_01 > 0),
               aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
-  p <- p + labs(title="Rel. diff. (m_01 > 0) x N_0 (rows) and r (cols)",
+  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
+  p <- p + labs(title="Ratio (m_01 > 0) x N_0 (rows) and r (cols)",
                 x="Moment", y="Value", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10), 
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
+  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
   print(p)
   
   if(save_plots) {
@@ -503,16 +504,17 @@ if(any(dat_diff$m_01 > 0)) {
   }
 }
 
-if(any(dat_diff$r == 0)) {
-  p <- ggplot(data=filter(dat_diff, r==0),
+if(any(dat_ratio$r == 0)) {
+  p <- ggplot(data=filter(dat_ratio, r==0),
                aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + labs(title = "Rel. diff. (r == 0) x N_0 (rows) and m_01 (cols)",
+  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~m_01)
+  p <- p + labs(title = "Ratio (r == 0) x N_0 (rows) and m_01 (cols)",
                 x="Moment", y="Value", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
+  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
   print(p)
   
   if(save_plots) {
@@ -521,16 +523,17 @@ if(any(dat_diff$r == 0)) {
   }
 }
 
-if(any(dat_diff$r > 0)) {
-  p <- ggplot(data=filter(dat_diff, r > 0),
+if(any(dat_ratio$r > 0)) {
+  p <- ggplot(data=filter(dat_ratio, r > 0),
               aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + labs(title="Rel. diff. (r > 0) x N_0 (rows) and m_01 (cols)",
+  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~m_01)
+  p <- p + labs(title="Ratio (r > 0) x N_0 (rows) and m_01 (cols)",
                 x="Moment", y="Value", shape="Method", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10), 
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
+  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
   print(p)
   
   if(save_plots) {

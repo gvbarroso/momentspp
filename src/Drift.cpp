@@ -68,10 +68,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(popIdCount == 2) // D_x_z_ii
           {
             col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 2 or 4
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
             col = sslib.findDdIndex((*it)->getPopIndices()[0], i);
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.)); // WARNING 2 or 4
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
           }
         }
       }
