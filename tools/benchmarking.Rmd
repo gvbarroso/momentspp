@@ -47,7 +47,7 @@ r <- c(0, 1e-6)
 N_0 <- c(1e+4, 1e+5)
 N_1 <- c(1e+5)
 m_01 <- c(0, 1e-5)
-m_10 <- c(1e-3, 1e-5)
+m_10 <- c(1e-6, 1e-5)
 num_epochs <- c(1)
 
 num_gen_epoch_2 <- 5000
@@ -104,9 +104,16 @@ id=1 # line counter, scenario_id
 
 # Running moments.LD
 
-```{python run-momentsLD-1pop, include=FALSE}
+```{python run-momentsLD-1pop, include=TRUE}
 
 import moments.LD
+import numpy as np
+
+moments.LD.Matrices.migration_ld(2, [[0, 1], [0, 0]]).todense()
+moments.LD.Matrices.migration_ld(2, [[0, 0], [1, 0]]).todense()
+
+moments.LD.Matrices.drift_ld(2, [1, np.inf]).todense()
+moments.LD.Matrices.drift_ld(2, [np.inf, 1]).todense()
 
 # 1 population
 with open("params_1_pop.csv") as fin:
@@ -470,7 +477,7 @@ if(any(dat_ratio$m_01 == 0)) {
   p <- ggplot(data=filter(dat_ratio, m_01==0),
               aes(x=variable, y=value, color=as.factor(scenario))) 
   p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
-  p <- p + labs(title = "Ratio (m_01 == 0) x N_0 (rows) and r (cols)",
+  p <- p + labs(title = "Ratio ++/LD (m_01 == 0) x N_0 (rows) and r (cols)",
                 x="Moment", y="Value", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -489,7 +496,7 @@ if(any(dat_ratio$m_01 > 0)) {
   p <- ggplot(data=filter(dat_ratio, m_01 > 0),
               aes(x=variable, y=value, color=as.factor(scenario))) 
   p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
-  p <- p + labs(title="Ratio (m_01 > 0) x N_0 (rows) and r (cols)",
+  p <- p + labs(title="Ratio ++/LD (m_01 > 0) x N_0 (rows) and r (cols)",
                 x="Moment", y="Value", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10), 
@@ -508,7 +515,7 @@ if(any(dat_ratio$r == 0)) {
   p <- ggplot(data=filter(dat_ratio, r==0),
                aes(x=variable, y=value, color=as.factor(scenario))) 
   p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + labs(title = "Ratio (r == 0) x N_0 (rows) and m_01 (cols)",
+  p <- p + labs(title = "Ratio ++/LD (r == 0) x N_0 (rows) and m_01 (cols)",
                 x="Moment", y="Value", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -527,7 +534,7 @@ if(any(dat_ratio$r > 0)) {
   p <- ggplot(data=filter(dat_ratio, r > 0),
               aes(x=variable, y=value, color=as.factor(scenario))) 
   p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + labs(title="Ratio (r > 0) x N_0 (rows) and m_01 (cols)",
+  p <- p + labs(title="Ratio ++/LD (r > 0) x N_0 (rows) and m_01 (cols)",
                 x="Moment", y="Value", shape="Method", color="Scenario")
   p <- p + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10), 

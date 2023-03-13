@@ -55,10 +55,10 @@ void Model::printAliasedMoments(std::ostream& stream)
     if(m->getPrefix() != "I")
     {
       #ifdef VERBOSE
-      std::cout << m->getName() << " = " << m->getValue() * (m->getNumberOfAliases() + 1) << "\n";
+      std::cout << m->getName() << " = " << m->getValue() /* * (m->getNumberOfAliases() + 1) */ << "\n";
       #endif
 
-      stream << m->getName() << " = " << m->getValue() * (m->getNumberOfAliases() + 1) << "\n";
+      stream << m->getName() << " = " << m->getValue() /** (m->getNumberOfAliases() + 1) */<< "\n";
     }
   }
 }

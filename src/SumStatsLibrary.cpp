@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 03/03/2023
+ * Last modified: 13/03/2023
  *
  */
 
@@ -124,30 +124,7 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
     }
   }
 
-  for(size_t i = (numDDStats_ + numDzStats_); i < (numDDStats_ + numDzStats_ + numHetStats_); ++i)
-  {
-    assert(moments_[i]->getPrefix() == "H");
-
-    auto tmp = std::dynamic_pointer_cast<HetMoment>(moments_[i]);
-
-    size_t pop1 = tmp->getPopIndices()[0]; // left locus, potentially under selection
-    size_t pop2 = tmp->getPopIndices()[1]; // right locus, always neutral by construction of summary statistics stored in Data class
-
-    if(pop1 != pop2)
-    {
-      if(tmp->isConstrained()) // H moment concerns left locus, under selection in at least 1 pop
-      {
-        bool pop1Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
-        bool pop2Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
-
-        if(pop1Sel == pop2Sel) // if pop1 and pop2 share status of constraint
-          moments_[i]->insertAlias(getHetMoment(pop2, pop1));
-      }
-
-      else // the locus concerning this HetMoment is not putatively under selection
-        moments_[i]->insertAlias(getHetMoment(pop2, pop1));
-    }
-  }
+  // H statistics [p_i(1-p_j) for all i,j] are never aliased
 
   // Pi2 stats are aliased if both their left and right H's are aliased OR if focal pops don't experience selection and there's a left-right permutation
   for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
@@ -166,74 +143,17 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
         auto left2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getLeftHetStat();
         auto right2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getRightHetStat();
 
-        bool testLeft = 1; // are the left H stats equivalent between pi2(i) and pi2(j)?
+        bool leftEq = left1 == left2 || left1->hasSamePopIds(left2);
+        bool rightEq = right1 == right2 || right1->hasSamePopIds(right2);
 
-        if(left1 != left2)
-        {
-          if(left1->getAliases().size() == left2->getAliases().size())
-          {
-            if(!left1->hasAlias(left2))
-              testLeft = 0;
-
-            else
-            {
-              for(size_t k = 0; k < left1->getAliases().size(); ++k)
-              {
-                for(size_t l = 0; l < left2->getAliases().size(); ++l)
-                {
-                  if(!left1->hasAlias(left2->getAliases()[k]) && left1 != left2->getAliases()[k])
-                    testLeft = 0;
-                }
-              }
-            }
-          }
-
-          else
-            testLeft = 0;
-        }
-
-        bool testRight = 1; // are the right H stats the same between pi2(i) and pi2(j)?
-
-        if(right1 != right2)
-        {
-          if(right1->getAliases().size() == right2->getAliases().size())
-          {
-            if(!right1->hasAlias(right2))
-              testRight = 0;
-
-            else
-            {
-              for(size_t k = 0; k < right1->getAliases().size(); ++k)
-              {
-                for(size_t l = 0; l < right2->getAliases().size(); ++l)
-                {
-                  if(!right1->hasAlias(right2->getAliases()[k]) && right1 != right2->getAliases()[k])
-                    testRight = 0;
-                }
-              }
-            }
-          }
-
-          else
-            testRight = 0;
-        }
-
-        bool permutable = 0; // permutations share selective status
+        bool leftRightPermut = 0; // permutations share selective status
         if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained()))
         {
           if(left1->hasSamePopIds(right2) && left2->hasSamePopIds(right1))
-            permutable = 1;
+            leftRightPermut = 1;
         }
 
-        /*moments_[i]->printAttributes(std::cout);
-        moments_[j]->printAttributes(std::cout);
-        left1->printAttributes(std::cout);
-        left2->printAttributes(std::cout);
-        right1->printAttributes(std::cout);
-        right2->printAttributes(std::cout);
-        std::cout << testLeft << "," << testRight << "," << permutable << std::endl;*/
-
-        if((testLeft && testRight) || permutable)
+        if((leftEq && rightEq) || leftRightPermut)
           moments_[i]->insertAlias(std::dynamic_pointer_cast<Pi2Moment>(moments_[j]));
       }
     }
