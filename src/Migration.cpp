@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 07/03/2023
+ * Last modified: 13/03/2023
  *
  */
 
@@ -52,10 +52,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                 if((pop1 == i) && ((pop2 == i || pop2 == j) && (pop3 == i || pop3 == j)))
                 {
-                  double f = static_cast<double>(pop2 == pop3);
-
+                  double f = static_cast<double>(pop2 == pop3) / 2. - 0.25;
                   col = sslib.getMoments()[k]->getPosition();
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, f / 2. - 0.25));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
                 }
               }
             }
@@ -78,10 +77,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
                 if((pop1 == j) && ((pop2 == i || pop2 == j) && (pop3 == i || pop3 == j)))
                 {
-                  double f = static_cast<double>(pop2 == pop3);
-
+                  double f = static_cast<double>(pop2 == pop3) / 2. - 0.25;
                   col = sslib.getMoments()[k]->getPosition();
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, f - 0.5));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
                 }
               }
             }
@@ -169,10 +167,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.findDzIndex(i, i, j);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
 
-                  //col = sslib.findDzIndex(i, j, i);
-                  //coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // NOTE
+                  col = sslib.findDzIndex(i, j, i);
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
 
                   // the pi2 cols
                   // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**) -> [i*;*j]
@@ -225,10 +223,10 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
                   coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
                   col = sslib.findDzIndex(i, j, i);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
 
-                  //col = sslib.findDzIndex(i, i, j);
-                  //coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.)); // NOTE
+                  col = sslib.findDzIndex(i, i, j);
+                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
 
                   // the pi2 cols
                   // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
