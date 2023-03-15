@@ -93,7 +93,36 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         }
 
         else if((countLeft == 2) || (countRight == 2))
+        {
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+
+          if((countLeft + countRight) == 3)
+          {
+            for(size_t j = 0; j < numPops; ++j)
+            {
+              if(i != j)
+              {
+                col = sslib.findDzIndex(i, i, j);
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
+
+                col = sslib.findDzIndex(i, j, i);
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
+              }
+            }
+          }
+        }
+
+        else if(countLeft == 1 && countRight == 1)
+        {
+          for(size_t j = 0; j < numPops; ++j)
+          {
+            if(i != j)
+            {
+              col = sslib.findDzIndex(i, j, j);
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
+            }
+          }
+        }
       }
 
       else if((*it)->getPrefix() == "H")
@@ -120,12 +149,12 @@ void Drift::updateMatrices_()
 {
   std::string paramName = "";
 
-  for(size_t i = 0; i < matrices_.size(); ++i) // one matrix / eigensolver per population (within each Epoch)
+  for(size_t i = 0; i < matrices_.size(); ++i) // TODO check if 1/N_i has been changed by the optimizer before re-scaling focal matrix i?
   {
     paramName = "1/2N_" + bpp::TextTools::toString(i);
 
-    double prevVal = prevParams_.getParameterValue(paramName); // old
-    double newVal = getParameterValue(paramName); // new
+    double prevVal = prevParams_.getParameterValue(paramName);
+    double newVal = getParameterValue(paramName);
 
     matrices_[i] *= (newVal / prevVal);
   }

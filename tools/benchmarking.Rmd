@@ -104,7 +104,7 @@ id=1 # line counter, scenario_id
 
 # Running moments.LD
 
-```{python run-momentsLD-1pop, include=TRUE}
+```{python run-momentsLD-1pop, include=FALSE}
 
 import moments.LD
 import numpy as np
@@ -115,7 +115,6 @@ moments.LD.Matrices.migration_ld(2, [[0, 0], [1, 0]]).todense()
 moments.LD.Matrices.drift_ld(2, [1, np.inf]).todense()
 moments.LD.Matrices.drift_ld(2, [np.inf, 1]).todense()
 
-# 1 population
 with open("params_1_pop.csv") as fin:
     params = fin.readlines()
   
@@ -134,7 +133,6 @@ with open("moments_LD_1_pop_out.csv", "w+") as fout:
         l = ",".join([str(_) for _ in y.LD()[0]]) + "," + str(y.H()[0]) + "\n"
         fout.write(l)
 
-# 2 populations
 with open("params_2_pops.csv") as fin:
     params = fin.readlines()
 
