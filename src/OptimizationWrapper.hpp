@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 28/09/2022
+ * Last modified: 16/03/2023
  *
  */
 
@@ -43,11 +43,9 @@ public:
   { }
   
 public:
-  void optimize(const Data& data, const Demes& demes);
+  void fitModel(Model* model);
 
 private:
-  void fitModel_(Model* model);
-
   void writeEstimatesToFile_(Model* model);
   
 };

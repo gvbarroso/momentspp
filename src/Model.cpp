@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 03/03/2023
+ * Last modified: 16/03/2023
  *
  */
 
@@ -10,11 +10,12 @@
 
 void Model::fireParameterChanged(const bpp::ParameterList& params)
 {
+  assert(data_ != nullptr);
+
   matchParametersValues(params);
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
-
   computeExpectedSumStats();
-  computeCompositeLogLikelihood_(data_.getObsY(), data_.getCovarMatrix()); // e.g. for each rec. binx
+  computeCompositeLogLikelihood_(); // e.g. for each rec. binx
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -63,17 +64,13 @@ void Model::printAliasedMoments(std::ostream& stream)
   }
 }
 
-void Model::admixture_()
-{
-  // TODO
-}
-
-void Model::computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat)
+void Model::computeCompositeLogLikelihood_()
 {
   double cll = 0.;
-
   /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
   {
+    Eigen::VectorXd obsMeans = data_->getY();
+    Eigen::MatrixXd obsCovarMat = data_->getCovarMatrix();
     cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected_ - means).transpose() * covarMat^(-1)*(expected_ - means);
   }*/
 
@@ -240,6 +237,6 @@ void Model::linkMoments_()
       else if((*it)->getPrefix() == "I")
         (*it)->setParent(epochs_[i - 1]->getSslib().getDummyMoment());
 
-    } // ends for loop over moments
-  } // ends for loop over epochs
+    } // ends loop over moments
+  } // ends loop over epochs
 }

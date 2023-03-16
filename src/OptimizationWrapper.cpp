@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/03/2023
+ * Last modified: 16/03/2023
  *
  */
 
@@ -19,78 +19,7 @@
 #include "Epoch.hpp"
 #include "Model.hpp"
 
-
-void OptimizationWrapper::optimize(const Data& data, const Demes& demes)
-{
-  size_t numEpochs = demes.getNumEpochs();
-  std::string modelName = options_.getLabel();
-
-  std::vector<std::shared_ptr<Epoch>> epochs(0);
-  epochs.reserve(numEpochs);
-
-  // the range of values that our "small" rates are allowed to take in
-  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true); // WARNING
-
-  for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
-  {
-    std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
-
-    size_t start = i * (options_.getTotalNumberOfGenerations() / numEpochs);
-    size_t end = (i + 1) * (options_.getTotalNumberOfGenerations() / numEpochs);
-
-    SumStatsLibrary sslib(options_.getOrder(), demes.getPopMaps()[i]);
-
-    /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
-     * must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
-     * even though we prob. want single r and mu params in Model --> alias r and mu across epochs?
-     */
-
-    std::vector<double> drift = options_.getInitPopSizes(); // should get this from Demes instead
-    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
-      drift[j] = 1. / (2. * drift[j]);
-
-    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options_.getInitR(), ic, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options_.getInitMu(), ic, sslib);
-
-    std::vector<std::shared_ptr<AbstractOperator>> operators(0);
-    operators.reserve(4);
-
-    if(demes.getNumPops() > 1)
-    {
-      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(options_.getInitMig(), ic, sslib);
-      operators.emplace_back(migOp);
-    }
-
-    // include operators in the "correct" order for matrix operations
-    operators.emplace_back(driftOp);
-    operators.emplace_back(recOp);
-    operators.emplace_back(mutOp);
-
-    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopMaps()[i]));
-
-    #ifdef VERBOSE
-    std::ofstream recOut;
-    recOut.open(epochs.back()->getName() + "_recursions.txt");
-    epochs.back()->printRecursions(recOut);
-    recOut.close();
-    #endif
-  }
-
-  Model* model = new Model(modelName, epochs, data);
-  model->computeExpectedSumStats();
-
-  std::ofstream fout(modelName + "_final_unsorted.txt");
-  model->printAliasedMoments(fout);
-  fout.close();
-
-  //fitModel_(model);
-  //writeEstimatesToFile_(model);
-
-  delete model;
-}
-
-void OptimizationWrapper::fitModel_(Model* model)
+void OptimizationWrapper::fitModel(Model* model)
 {
   std::cout << "\nOptimizing model with the following parameters:\n";
   model->getUnfrozenParameters().printParameters(std::cout);
@@ -235,7 +164,7 @@ void OptimizationWrapper::writeEstimatesToFile_(Model* model)
   std::ofstream file;
   file.open(model->getName() + "_estimates.txt");
 
-  file << "CLL = " << model->compLogLikelihood() << "\n\n";
+  file << "CLL = " << - model->getValue() << "\n\n";
 
   for(size_t i = 0; i < model->getEpochs().size(); ++i)
   {

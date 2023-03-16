@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/03/2023
+ * Last modified: 16/03/2023
  *
  */
 
@@ -37,21 +37,35 @@ class Model: public bpp::AbstractParameterAliasable, public bpp::Function
 
 private:
   std::string name_; // model label / id
-  std::vector<std::shared_ptr<Epoch>> epochs_; // each epoch contains its own parameters and operators
   std::vector<std::string> frozenParams_;
+  std::vector<std::shared_ptr<Epoch>> epochs_; // each epoch contains its own parameters and operators
+  std::shared_ptr<Data> data_;
 
-  Data data_;
   Eigen::VectorXd expected_;
-
   double compLogLikelihood_;
 
 public:
-  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, const Data& data):
+  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, std::shared_ptr<Data> data):
   AbstractParameterAliasable(""),
   name_(name),
-  epochs_(epochs),
   frozenParams_(0),
+  epochs_(epochs),
   data_(data),
+  expected_(),
+  compLogLikelihood_(-1.)
+  {
+    for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
+      shareParameters_((*it)->getParameters());
+
+    linkMoments_();
+  }
+
+  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs):
+  AbstractParameterAliasable(""),
+  name_(name),
+  frozenParams_(0),
+  epochs_(epochs),
+  data_(nullptr),
   expected_(),
   compLogLikelihood_(-1.)
   {
@@ -81,11 +95,6 @@ public:
     return -compLogLikelihood_;
   }
   
-  double compLogLikelihood()
-  {
-    return compLogLikelihood_;
-  }
-
   const std::string& getName()
   {
     return name_;
@@ -147,11 +156,9 @@ public:
 private:
   void linkMoments_();
 
-  void admixture_();
-
   void updateEpochs_(const bpp::ParameterList& params);
 
-  void computeCompositeLogLikelihood_(const Eigen::VectorXd& obsMeans, const Eigen::MatrixXd& obsCovarMat);
+  void computeCompositeLogLikelihood_();
 
 };
 

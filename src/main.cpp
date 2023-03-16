@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 01/02/2023
+ * Last modified: 16/03/2023
  * Source code for moments++
  *
  */
@@ -102,20 +102,73 @@ int main(int argc, char *argv[]) {
 
   Demes demes(popMaps, options.getDemesFilePath());
 
+  std::vector<std::shared_ptr<Epoch>> epochs(0);
+  epochs.reserve(numEpochs);
+
+  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true); // WARNING
+
+  for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
+  {
+    std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
+
+    size_t start = i * (options.getTotalNumberOfGenerations() / numEpochs);
+    size_t end = (i + 1) * (options.getTotalNumberOfGenerations() / numEpochs);
+
+    SumStatsLibrary sslib(options.getOrder(), demes.getPopMaps()[i]);
+
+    /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
+     * must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
+     * even though we prob. want single r and mu params in Model --> alias r and mu across epochs?
+     */
+
+    std::vector<double> drift = options.getInitPopSizes(); // should get this from Demes instead
+    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
+      drift[j] = 1. / (2. * drift[j]);
+
+    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options.getInitR(), ic, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options.getInitMu(), ic, sslib);
+
+    std::vector<std::shared_ptr<AbstractOperator>> operators(0);
+    operators.reserve(4);
+
+    if(demes.getNumPops() > 1)
+    {
+      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(options.getInitMig(), ic, sslib);
+      operators.emplace_back(migOp);
+    }
+
+    operators.emplace_back(driftOp);
+    operators.emplace_back(recOp);
+    operators.emplace_back(mutOp);
+
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopMaps()[i]));
+
+    #ifdef VERBOSE
+    std::ofstream recOut;
+    recOut.open(epochs.back()->getName() + "_recursions.txt");
+    epochs.back()->printRecursions(recOut);
+    recOut.close();
+    #endif
+  }
+
   try
   {
     if(options.getDataFilePath() == "none") // default
     {
-      // just compute moments for models specified in demes files
+      std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
+      model->computeExpectedSumStats();
+      std::ofstream fout(model->getName() + "_final_unsorted.txt");
+      model->printAliasedMoments(fout);
+      fout.close();
     }
 
     else // there is a data file with observed summary statistics
     {
-      Data data(options.getDataFilePath(), popMaps.back()); // input summary statistics (observed), format = ?
-
-      // the optimizer builds the main objects, assembles the Models and optimizes them
+      std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back()); // input summary statistics (observed), format = ?
+      std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
       OptimizationWrapper optimizer(options);
-      optimizer.optimize(data, demes);
+      optimizer.fitModel(model.get());
     }
   }
 

@@ -61,7 +61,7 @@ public:
     return covar_;
   }
 
-  Eigen::VectorXd getObsY()
+  Eigen::VectorXd getY()
   {
     return ssl_.fetchYvec();
   }
