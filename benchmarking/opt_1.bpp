@@ -1,6 +1,6 @@
 label = 1-pop_scenario_$(i)
 demes_file = pops.tsv
-stats_file = data.tsv
+stats_file =
 
 optimizer = Powell
 tolerance = 1e-6

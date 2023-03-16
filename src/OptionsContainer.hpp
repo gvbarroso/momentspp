@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/12/2022
+ * Last modified: 16/03/2023
  *
  */
 
@@ -25,7 +25,6 @@ private:
   std::string label_;
   std::string demesFilePath_;
   std::string dataFilePath_; // or observed sum stats
-  //std::string initParamsFilePath_; // for creating multiple models
   std::string numericalOptimizer_;
 
   std::vector<double> initMij_;
@@ -47,8 +46,7 @@ public:
   OptionsContainer(const std::map<std::string, std::string>& options):
   label_(bpp::ApplicationTools::getStringParameter("label", options, "my_model")),
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, "none")),
-  dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, "none")),
-  //initParamsFilePath_(bpp::ApplicationTools::getAFilePath("params_file", options, "none")),
+  dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, false, true, "", false, "none", 0)),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
   initPopSizes_(bpp::ApplicationTools::getVectorParameter<double>("Ni", options, ',', "none")),

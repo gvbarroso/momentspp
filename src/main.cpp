@@ -45,15 +45,17 @@ int main(int argc, char *argv[]) {
   std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
 
 
-  /* NOTE s
-  * Write Admixture operator as an AbstractOperator that has exponent 1!
-  * Selection operator -> upon rejection, sample a replacement individual from the whole population with probaility proportional to the pop. fitness vector (which maybe can be obtained from allele frequencies?)
-  *
-  * selection constrained to a particular epoch
-  *
-  * define start and end of epochs as quantiles of the exp dist?
-  *
-  */
+  /* NOTE
+   * IDEAS:
+   * Selection operator -> upon rejection, sample a replacement individual from the whole population with probaility proportional to the pop. fitness vector (which maybe can be obtained from allele frequencies?)
+   * selection constrained to a particular epoch
+   * define start and end of epochs as quantiles of the exp dist?
+   *
+   * TODO
+   * Write Admixture operator as an AbstractOperator that has exponent 1!
+   * > 2 pops
+   * use compressed basis for matrices
+   */
 
   if(argc == 1)
   {
@@ -83,7 +85,6 @@ int main(int argc, char *argv[]) {
     {
       bool hasSelection = 0; //j % 2 == 0;
 
-      //Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize, bool hasSelection):
       std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, 500000, 0, 10000, 10000, hasSelection);
       map.try_emplace(j, pop);
     }
@@ -105,7 +106,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true); // WARNING
+  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true); // NOTE
 
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
@@ -165,7 +166,7 @@ int main(int argc, char *argv[]) {
 
     else // there is a data file with observed summary statistics
     {
-      std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back()); // input summary statistics (observed), format = ?
+      std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
       OptimizationWrapper optimizer(options);
       optimizer.fitModel(model.get());

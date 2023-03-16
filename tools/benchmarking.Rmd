@@ -27,7 +27,7 @@ save_plots <- FALSE # should this script ggsave plots to root.dir?
 # Setting up scenarios to test (parameter combinations)
 ## 1 population parameters
 
-```{r 1-pop-params, message=FALSE, warning=FALSE}
+```{r 1-pop-params, include=FALSE, message=FALSE, warning=FALSE}
 
 r <- c(1e-8, 1e-7, 1e-6)
 mu <- c(1e-8, 1e-7, 1e-6)
@@ -40,7 +40,7 @@ write.csv(params_1_pop, "params_1_pop.csv", quote=F, sep=",", row.names=F)
 
 ## 2 populations parameters
 
-```{r 2-pops-params, message=FALSE, warning=FALSE}
+```{r 2-pops-params, include=FALSE, message=FALSE, warning=FALSE}
 
 mu <- c(1e-7)
 r <- c(0, 1e-6)
@@ -104,7 +104,7 @@ id=1 # line counter, scenario_id
 
 # Running moments.LD
 
-```{python run-momentsLD-1pop, include=FALSE}
+```{python run-momentsLD, include=FALSE}
 
 import moments.LD
 import numpy as np
@@ -174,7 +174,7 @@ with open("moments_LD_2_pops_out.csv", "w+") as fout:
 # 1-population plots
 ## moments++
 
-```{r 1-population-plots, message=FALSE, warning=FALSE}
+```{r 1-population-plots, include=FALSE, message=FALSE, warning=FALSE}
 
 params_1_pop <- read.csv("params_1_pop.csv", header=T, sep=",")
 num_scenarios <- nrow(params_1_pop)
@@ -224,7 +224,7 @@ if(save_plots) {
 
 ### moments/scenarios together
 
-```{r 1-population-LDx++A}
+```{r 1-population-LDx++A, include=TRUE}
 
 py_moments <- read.csv("moments_LD_1_pop_out.csv") # out from python chunk 
 
@@ -261,9 +261,9 @@ p <- p + labs(title="1-Pop moments++ vs moments.LD",
 p <- p + scale_y_continuous(trans="log10")
 p <- p + scale_shape_manual(values=c(1,2))
 p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
+               axis.text=element_text(size=10),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+               legend.position="bottom")
 print(p)
 
 if(save_plots) {
@@ -309,7 +309,7 @@ for(i in 1:num_scenarios) {
                 x="Moment", y="Value")
   p <- p + theme(axis.title=element_text(size=12), 
                  axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+                 axis.text.x=element_text(angle=90, size=10, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   print(p)
   
@@ -323,7 +323,7 @@ for(i in 1:num_scenarios) {
 # 2-populations plots
 ## moments++
 
-```{r 2-population-plots, message=FALSE, warning=FALSE}
+```{r 2-population-prep, include=FALSE, message=FALSE, warning=FALSE}
 
 params_2_pops <- read.csv("params_2_pops.csv", header=T, sep=",")
 num_scenarios <- nrow(params_2_pops)
@@ -352,7 +352,7 @@ dat_stats <- pivot_longer(stats, cols=all_of(stats_2_pops), names_to="variable")
 
 ### moments/scenarios together
 
-```{r 2-population-LDx++A, message=FALSE, warning=FALSE}
+```{r 2-population-LDx++A, include=TRUE, message=FALSE, warning=FALSE}
 
 py_moments <- read.csv("moments_LD_2_pops_out.csv") # out from python chunk 
 
@@ -550,7 +550,7 @@ if(any(dat_ratio$r > 0)) {
 
 ### for each moment/scenario separately
 
-```{r 2-population-LDx++B, message=FALSE, warning=FALSE}
+```{r 2-population-LDx++B, include=FALSE, message=FALSE, warning=FALSE}
 
 for(i in 1:length(common_moments)) {
   
