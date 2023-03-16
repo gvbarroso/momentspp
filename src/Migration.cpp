@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 13/03/2023
+ * Last modified: 16/03/2023
  *
  */
 
@@ -390,7 +390,8 @@ void Migration::updateMatrices_()
         double prevVal = prevParams_.getParameterValue(paramName);
         double newVal = getParameterValue(paramName);
 
-        matrices_[index] *= (newVal / prevVal);
+        if(newVal != prevVal)
+          matrices_[index] *= (newVal / prevVal);
 
         ++index;
       }

@@ -104,16 +104,19 @@ id=1 # line counter, scenario_id
 
 # Running moments.LD
 
-```{python run-momentsLD, include=FALSE}
+```{python run-momentsLD, include=TRUE}
 
 import moments.LD
 import numpy as np
 
-moments.LD.Matrices.migration_ld(2, [[0, 1], [0, 0]]).todense()
-moments.LD.Matrices.migration_ld(2, [[0, 0], [1, 0]]).todense()
+moments.LD.Util.moment_names(3)
+moments.LD.Matrices.admix_ld(3, 0, 1, 0.3)
 
-moments.LD.Matrices.drift_ld(2, [1, np.inf]).todense()
-moments.LD.Matrices.drift_ld(2, [np.inf, 1]).todense()
+#moments.LD.Matrices.migration_ld(2, [[0, 1], [0, 0]]).todense()
+#moments.LD.Matrices.migration_ld(2, [[0, 0], [1, 0]]).todense()
+
+#moments.LD.Matrices.drift_ld(2, [1, np.inf]).todense()
+#moments.LD.Matrices.drift_ld(2, [np.inf, 1]).todense()
 
 with open("params_1_pop.csv") as fin:
     params = fin.readlines()

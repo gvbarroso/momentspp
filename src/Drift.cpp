@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/03/2023
+ * Last modified: 16/03/2023
  *
  */
 
@@ -149,14 +149,15 @@ void Drift::updateMatrices_()
 {
   std::string paramName = "";
 
-  for(size_t i = 0; i < matrices_.size(); ++i) // TODO check if 1/N_i has been changed by the optimizer before re-scaling focal matrix i?
+  for(size_t i = 0; i < matrices_.size(); ++i)
   {
     paramName = "1/2N_" + bpp::TextTools::toString(i);
 
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName);
 
-    matrices_[i] *= (newVal / prevVal);
+    if(newVal != prevVal)
+      matrices_[i] *= (newVal / prevVal);
   }
 
   assembleTransitionMatrix_();
