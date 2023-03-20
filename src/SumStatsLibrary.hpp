@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 07/03/2023
+ * Last modified: 20/03/2023
 
  */
 
@@ -37,7 +37,7 @@ class SumStatsLibrary
 {
 
 private:
-  size_t order_; // of moments
+  size_t order_; // sample-size order of moments
   size_t numPops_;
   size_t numDDStats_;
   size_t numDzStats_;
@@ -144,7 +144,11 @@ public:
     return 1 + numDDStats_ + numDzStats_ + numHetStats_ + numPi2Stats_;
   }
 
-  // naive search
+  size_t getNumCompressedStats() const
+  {
+    return compressedBasis_.size();
+  }
+
   std::shared_ptr<Moment> getMoment(const std::string& name) const
   {
     std::shared_ptr<Moment> ptr = nullptr; // object slicing, can only get (base) Moment attributes
@@ -157,8 +161,6 @@ public:
     assert(ptr != nullptr);
     return ptr;
   }
-
-  // the following methods use pop-ids to track down moments' positions inside moments_ vector (see Model::linkMoments_())
 
   std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2) const
   {
@@ -231,7 +233,12 @@ public:
 
   std::shared_ptr<Moment> getDummyMoment() const
   {
-    return moments_[getDummyIndex()];
+    return moments_[getDummyIndexUncompressed()];
+  }
+
+  std::shared_ptr<Moment> getDummyMomentCompressed() const
+  {
+    return compressedBasis_[findCompressedIndex(getDummyIndexUncompressed())];
   }
 
   size_t findPopIndexRank(size_t index) const // among all pop indices
@@ -267,7 +274,7 @@ public:
     return numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2 ;
   }
 
-  size_t getDummyIndex() const
+  size_t getDummyIndexUncompressed() const
   {
     return numDDStats_ + numDzStats_ + numHetStats_;
   }
@@ -286,6 +293,24 @@ public:
   std::string asString(size_t i)
   {
     return bpp::TextTools::toString(i);
+  }
+
+  size_t findCompressedIndex(size_t uncompressedIndex) const
+  {
+    size_t ret = getNumStats(); // init to out-of-bounds
+    auto mom = moments_[uncompressedIndex];
+
+    for(size_t j = 0; j < compressedBasis_.size(); ++j)
+    {
+      if(compressedBasis_[j] == mom || compressedBasis_[j]->hasAlias(mom))
+        ret = j;
+    }
+
+    if(ret < getNumStats())
+      return ret;
+
+    else
+      throw bpp::Exception("SumStatsLibrary::could not find compressed index for " + mom->getName());
   }
 
   Eigen::VectorXd fetchYvec();

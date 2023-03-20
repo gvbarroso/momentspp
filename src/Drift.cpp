@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 16/03/2023
+ * Last modified: 20/03/2023
  *
  */
 
@@ -13,17 +13,17 @@
 void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters().size();
-  size_t numStats = sslib.getNumStats();
+  size_t numCompressedStats = sslib.getNumCompressedStats();
   matrices_.reserve(numPops);
 
   for(size_t i = 0; i < numPops; ++i)
   {
     std::vector<Eigen::Triplet<double>> coeffs(0);
-    coeffs.reserve(numStats);
+    coeffs.reserve(numCompressedStats);
 
-    for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
+    for(auto it = std::begin(sslib.getCompressedBasis()); it != std::end(sslib.getCompressedBasis()); ++it)
     {
-      int row = it - std::begin(sslib.getMoments());
+      int row = it - std::begin(sslib.getCompressedBasis());
       int col = -1;
       size_t popIdCount = (*it)->countInstances(i); // count of i (focal pop ID) in moment's name
 
@@ -33,10 +33,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -3.));
 
-          col = sslib.findDzIndex(i, i, i);
+          col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, i));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-          col = sslib.findPi2Index(i, i, i, i);
+          col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, i, i));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -52,7 +52,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             coeffs.emplace_back(Eigen::Triplet<double>(row, row, -5.));
 
-            col = sslib.findDdIndex(i, i);
+            col = sslib.findCompressedIndex(sslib.findDdIndex(i, i));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
 
@@ -67,10 +67,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 2) // D_x_z_ii
           {
-            col = sslib.findDdIndex(i, (*it)->getPopIndices()[0]);
+            col = sslib.findCompressedIndex(sslib.findDdIndex(i, (*it)->getPopIndices()[0]));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
-            col = sslib.findDdIndex((*it)->getPopIndices()[0], i);
+            col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], i));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
           }
         }
@@ -88,7 +88,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
-          col = sslib.findDzIndex(i, i, i);
+          col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, i));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -102,10 +102,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               if(i != j)
               {
-                col = sslib.findDzIndex(i, i, j);
+                col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, j));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
 
-                col = sslib.findDzIndex(i, j, i);
+                col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, i));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
               }
             }
@@ -118,7 +118,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             if(i != j)
             {
-              col = sslib.findDzIndex(i, j, j);
+              col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, j));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
             }
           }
@@ -135,13 +135,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         throw bpp::Exception("Drift::mis-specified Moment prefix: " + (*it)->getPrefix());
     }
 
-    Eigen::SparseMatrix<double> mat(numStats, numStats);
+    Eigen::SparseMatrix<double> mat(numCompressedStats, numCompressedStats);
     mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
     mat.makeCompressed();
     mat *= (getParameterValue("1/2N_" + bpp::TextTools::toString(i)));
     matrices_.emplace_back(mat);
   }
 
+  setIdentity_(numCompressedStats);
   assembleTransitionMatrix_();
 }
 

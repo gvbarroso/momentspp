@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 07/03/2022
+ * Last modified: 20/03/2022
  *
  */
 
@@ -16,7 +16,7 @@ class Migration: public AbstractOperator
 
 public:
   Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getNumStats())
+  AbstractOperator()
   {
     includeParameters_(migParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
@@ -24,7 +24,7 @@ public:
   }
 
   Migration(const std::vector<double>& initValues, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getNumStats())
+  AbstractOperator()
   {
     size_t idx = 0;
     for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI) // for each population modeled in epoch i

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 13/03/2023
+ * Last modified: 20/03/2023
  *
  */
 
@@ -21,8 +21,8 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
 
 void SumStatsLibrary::printMoments(std::ostream& stream)
 {
-  for(size_t i = 0; i < moments_.size(); ++i)
-    moments_[i]->printAttributes(stream);
+  for(size_t i = 0; i < compressedBasis_.size(); ++i)
+    compressedBasis_[i]->printAttributes(stream);
 }
 
 void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap)
@@ -124,7 +124,30 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
     }
   }
 
-  // H statistics [p_i(1-p_j) for all i,j] are never aliased
+  for(size_t i = (numDDStats_ + numDzStats_); i < (numDDStats_ + numDzStats_ + numHetStats_); ++i)
+  {
+    assert(moments_[i]->getPrefix() == "H");
+
+    auto tmp = std::dynamic_pointer_cast<HetMoment>(moments_[i]);
+
+    size_t pop1 = tmp->getPopIndices()[0]; // left locus, potentially under selection
+    size_t pop2 = tmp->getPopIndices()[1]; // right locus, always neutral by construction of summary statistics stored in Data class
+
+    if(pop1 != pop2)
+    {
+      if(tmp->isConstrained()) // HetMoment concerns left locus, under selection in at least 1 pop
+      {
+        bool pop1Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
+        bool pop2Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
+
+        if(pop1Sel == pop2Sel) // if pop1 and pop2 share status of constraint
+          moments_[i]->insertAlias(getHetMoment(pop2, pop1));
+      }
+
+      else // the locus concerning this HetMoment is not putatively under selection
+        moments_[i]->insertAlias(getHetMoment(pop2, pop1));
+    }
+  }
 
   // Pi2 stats are aliased if both their left and right H's are aliased OR if focal pops don't experience selection and there's a left-right permutation
   for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
@@ -177,4 +200,8 @@ void SumStatsLibrary::compressBasis_()
     if(hasUniqueExpectation)
       compressedBasis_.emplace_back(moments_[i]);
   }
+
+  for(size_t i = 0; i < compressedBasis_.size(); ++i)
+    compressedBasis_[i]->setPosition(i);
 }
+

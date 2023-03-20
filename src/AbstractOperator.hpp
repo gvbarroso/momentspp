@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 07/03/2022
+ * Last modified: 20/03/2022
  *
  */
 
@@ -45,15 +45,13 @@ protected:
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
 
 public:
-  AbstractOperator(size_t numStats):
+  AbstractOperator():
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   identity_(),
   transition_(),
   prevParams_()
-  {
-    setIdentity_(numStats);
-  }
+  { }
 
 public:
   virtual ~AbstractOperator()

@@ -109,14 +109,14 @@ id=1 # line counter, scenario_id
 import moments.LD
 import numpy as np
 
-moments.LD.Util.moment_names(3)
-moments.LD.Matrices.admix_ld(3, 0, 1, 0.3)
+#moments.LD.Util.moment_names(3)
+#moments.LD.Matrices.admix_ld(3, 0, 1, 0.3)
 
-#moments.LD.Matrices.migration_ld(2, [[0, 1], [0, 0]]).todense()
-#moments.LD.Matrices.migration_ld(2, [[0, 0], [1, 0]]).todense()
+moments.LD.Matrices.migration_ld(2, [[0, 1], [0, 0]]).todense()
+moments.LD.Matrices.migration_ld(2, [[0, 0], [1, 0]]).todense()
 
-#moments.LD.Matrices.drift_ld(2, [1, np.inf]).todense()
-#moments.LD.Matrices.drift_ld(2, [np.inf, 1]).todense()
+moments.LD.Matrices.drift_ld(2, [1, np.inf]).todense()
+moments.LD.Matrices.drift_ld(2, [np.inf, 1]).todense()
 
 with open("params_1_pop.csv") as fin:
     params = fin.readlines()
@@ -184,12 +184,6 @@ num_scenarios <- nrow(params_1_pop)
 
 # extracting names of moments
 stats_1_pop <- read.table("1-pop_scenario_1_final_unsorted.txt")[,1]
-suffixes <- c("A", "B", "X") # from sorting in moments++ (SumStatsLibrary class)
-
-# convert to unsorted moments as presented in moments.LD
-for(i in 1:length(suffixes)) {
-  stats_1_pop <- str_remove(stats_1_pop, paste("_", suffixes[i], sep=""))
-}
 num_stats <- length(stats_1_pop)
 
 momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")

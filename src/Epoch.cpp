@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 08/03/2023
+ * Last modified: 20/03/2023
  *
  */
 
@@ -25,18 +25,32 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
-  y = transitionMatrix_.pow(duration()) * y; // heavier Eigen3 linear algebra takes place
+  y = transitionMatrix_.pow(duration()) * y;
+}
+
+std::vector<size_t> Epoch::fetchSelectedPopIds()
+{
+  std::vector<size_t> ret(0);
+  ret.reserve(pops_.size());
+
+  for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+  {
+    if(it->second->hasSelection())
+      ret.emplace_back(it->first);
+  }
+
+  return ret;
 }
 
 void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoch
 {
-  Eigen::VectorXd tmp(ssl_.getMoments().size()); // y and tmp have potentially different sizes
+  Eigen::VectorXd tmp(ssl_.getCompressedBasis().size()); // y and tmp have potentially different sizes
   tmp.setZero();
 
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
   for(int i = 0; i < tmp.size(); ++i)
   {
-    int idx = ssl_.getMoments()[i]->getParent()->getPosition();
+    int idx = ssl_.getCompressedBasis()[i]->getParent()->getPosition();
     tmp(i) = y(idx);
   }
 
@@ -45,20 +59,20 @@ void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoc
 
 void Epoch::updateMoments(const Eigen::VectorXd& y)
 {
-  assert(y.size() == static_cast<int>(ssl_.getMoments().size()));
+  assert(y.size() == static_cast<int>(ssl_.getCompressedBasis().size()));
 
   for(int i = 0; i < y.size(); ++i)
-    ssl_.getMoments()[i]->setValue(y(i));
+    ssl_.getCompressedBasis()[i]->setValue(y(i));
 }
 
 void Epoch::printRecursions(std::ostream& stream)
 {
-  for(size_t i = 0; i < ssl_.getMoments().size(); ++i)
+  for(size_t i = 0; i < ssl_.getCompressedBasis().size(); ++i)
   {
-    if(ssl_.getMoments()[i]->getName() != "I")
+    if(ssl_.getCompressedBasis()[i]->getName() != "I")
     {
-      int pos = static_cast<int>(ssl_.getMoments()[i]->getPosition()); // row in delta matrix
-      stream << "\u0394[" << ssl_.getMoments()[i]->getName() << "] = ";
+      int pos = static_cast<int>(ssl_.getCompressedBasis()[i]->getPosition()); // row in delta matrix
+      stream << "\u0394[" << ssl_.getCompressedBasis()[i]->getName() << "] = ";
 
       for(size_t j = 0; j < operators_.size(); ++j)
       {
@@ -76,7 +90,7 @@ void Epoch::printRecursions(std::ostream& stream)
               if(mat.coeffRef(pos, l) > 0)
                 stream << "+";
 
-              stream << bpp::TextTools::toString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getMoments()[l]->getName() + " ";
+              stream << bpp::TextTools::toString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getCompressedBasis()[l]->getName() + " ";
             }
           }
         }
@@ -92,12 +106,12 @@ void Epoch::computeSteadyState_()
   #ifdef VERBOSE
   Log logger;
   logger.openFile(getName() + "_matrices.txt");
-  Eigen::SparseMatrix<double> test(ssl_.getNumStats(), ssl_.getNumStats());
+  Eigen::SparseMatrix<double> test(ssl_.getNumCompressedStats(), ssl_.getNumCompressedStats());
   test.setIdentity();
 
   for(size_t i = 0; i < operators_.size(); ++i)
   {
-    Eigen::SparseMatrix<double> tmp(ssl_.getNumStats(), ssl_.getNumStats());
+    Eigen::SparseMatrix<double> tmp(ssl_.getNumCompressedStats(), ssl_.getNumCompressedStats());
     tmp.setZero();
     for(size_t j = 0; j < operators_[i]->getMatrices().size(); ++j)
     {
@@ -140,7 +154,7 @@ void Epoch::computeSteadyState_()
   }
 
   steadYstate_ = es.eigenvectors().col(idx).real();
-  steadYstate_ /= steadYstate_(ssl_.getDummyIndex()); // divide by I moment, which embodies scaling constant used for Eigen decomposition
+  steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getDummyIndexUncompressed())); // I moment embodies scaling constant used by Eigen
 
   updateMoments(steadYstate_);
 }

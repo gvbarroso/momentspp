@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 16/03/2023
+ * Last modified: 20/03/2023
  * Source code for moments++
  *
  */
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 15/Mar/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 20/Mar/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -52,9 +52,8 @@ int main(int argc, char *argv[]) {
    * define start and end of epochs as quantiles of the exp dist?
    *
    * TODO
-   * Write Admixture operator as an AbstractOperator that has exponent 1!
+   * Write Admixture operator as an AbstractOperator that has exponent 1
    * > 2 pops
-   * use compressed basis for matrices
    */
 
   if(argc == 1)
@@ -110,7 +109,7 @@ int main(int argc, char *argv[]) {
 
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
-    std::string id = "e_" + bpp::TextTools::toString(i); // for setting the namespace for params within each epoch
+    std::string id = "e_" + bpp::TextTools::toString(i);
 
     size_t start = i * (options.getTotalNumberOfGenerations() / numEpochs);
     size_t end = (i + 1) * (options.getTotalNumberOfGenerations() / numEpochs);
@@ -155,7 +154,7 @@ int main(int argc, char *argv[]) {
 
   try
   {
-    if(options.getDataFilePath() == "none") // default
+    if(options.getDataFilePath() == "none") // no data file (default), we just compute expectations for given input parameters
     {
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
       model->computeExpectedSumStats();
@@ -164,7 +163,7 @@ int main(int argc, char *argv[]) {
       fout.close();
     }
 
-    else // there is a data file with observed summary statistics
+    else // there is a data file with observed summary statistics, thus we optimize
     {
       std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);

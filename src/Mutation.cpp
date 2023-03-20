@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 13/03/2023
+ * Last modified: 20/03/2023
  *
  */
 
@@ -11,19 +11,19 @@
 // assumes both the infinite sites model as well as equal mutation rates across pops.
 void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-  size_t numStats = sslib.getNumStats();
+  size_t numCompressedStats = sslib.getNumCompressedStats();
   matrices_.reserve(1);
   std::vector<Eigen::Triplet<double>> coeffs(0);
-  coeffs.reserve(numStats);
+  coeffs.reserve(numCompressedStats);
 
-  for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
+  for(auto it = std::begin(sslib.getCompressedBasis()); it != std::end(sslib.getCompressedBasis()); ++it)
   {
-    int row = it - std::begin(sslib.getMoments());
+    int row = it - std::begin(sslib.getCompressedBasis());
     int col = -1;
 
     if((*it)->getPrefix() == "H")
     {
-      col = sslib.getDummyMoment()->getPosition(); // for a homogeneous system
+      col = sslib.findCompressedIndex(sslib.getDummyIndexUncompressed()); // for a homogeneous system
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
 
@@ -50,11 +50,12 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       throw bpp::Exception("Mutation::mis-specified Moment prefix: " + (*it)->getPrefix());
   }
 
-  Eigen::SparseMatrix<double> mat(numStats, numStats);
+  Eigen::SparseMatrix<double> mat(numCompressedStats, numCompressedStats);
   mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
   mat.makeCompressed();
   mat *= getParameterValue("u");
   matrices_.emplace_back(mat);
+  setIdentity_(numCompressedStats);
   assembleTransitionMatrix_();
 }
 

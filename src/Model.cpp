@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/03/2023
+ * Last modified: 20/03/2023
  *
  */
 
@@ -24,7 +24,7 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
     (*it)->fireParameterChanged(params);
 }
 
-void Model::computeExpectedSumStats() // NOTE ATM this uses the full basis
+void Model::computeExpectedSumStats()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
@@ -40,27 +40,15 @@ void Model::computeExpectedSumStats() // NOTE ATM this uses the full basis
 
 void Model::printAliasedMoments(std::ostream& stream)
 {
-  #ifdef VERBOSE
-  std::cout << "\n\nSplit moments:\n";
-  for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
-    (*it)->getSslib().printMoments(std::cout); //
-
-  std::cout << "\n\nCompressed basis:\n";
-  #endif
-
-  // expectations at present time:
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getCompressedBasis();
 
   for(auto& m : tmp)
   {
-    if(m->getPrefix() != "I")
-    {
-      #ifdef VERBOSE
-      std::cout << m->getName() << " = " << m->getValue() /* * (m->getNumberOfAliases() + 1) */ << "\n";
-      #endif
+    #ifdef VERBOSE
+    std::cout << m->getName() << " = " << m->getValue() << "\n";
+    #endif
 
-      stream << m->getName() << " = " << m->getValue() /** (m->getNumberOfAliases() + 1) */<< "\n";
-    }
+    stream << m->getName() << " = " << m->getValue() << "\n";
   }
 }
 
