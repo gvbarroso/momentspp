@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
     for(size_t j = 0; j < options.getNumPops(); ++j) // simplification: for now, every epoch has same number of populations; use Demes class to change that
     {
-      bool hasSelection = 0; //j % 2 == 0;
+      bool hasSelection = j % 2 == 0;
 
       std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, 500000, 0, 10000, 10000, hasSelection);
       map.try_emplace(j, pop);

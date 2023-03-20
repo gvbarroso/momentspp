@@ -29,7 +29,15 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
 {
   moments_.reserve(getNumStats());
 
-  // first pass to include DD, Dz, H statistics
+  // fetches ids of populations where derived allele for left locus is under selection
+  std::vector<size_t> selectedPopIds(0);
+  selectedPopIds.reserve(popMap.size());
+  for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
+  {
+    if(it->second->hasSelection())
+      selectedPopIds.emplace_back(it->second->getId());
+  }
+
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
@@ -59,16 +67,6 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
     moments_[i]->setPosition(i);
 
   linkPi2HetStats_();
-
-  // fetches ids of populations where derived allele for left locus is under selection
-  std::vector<size_t> selectedPopIds(0);
-  selectedPopIds.reserve(popMap.size());
-  for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
-  {
-    if(it->second->hasSelection())
-      selectedPopIds.emplace_back(it->second->getId());
-  }
-
   aliasMoments_(selectedPopIds);
   compressBasis_();
 }
@@ -104,7 +102,7 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
-    if(pop1 != pop2) // NOTE cross-pop DD stats are aliased independently of the selection model? check D^2 under selection, left and right
+    if(pop1 != pop2) // NOTE check D^2 under selection, left and right
       moments_[i]->insertAlias(getDdMoment(pop2, pop1));
   }
 
