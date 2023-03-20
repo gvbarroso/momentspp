@@ -41,22 +41,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               col = sslib.findCompressedIndex(sslib.findDdIndex(i, i));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-              for(size_t k = sslib.getNumDDStats(); k < (sslib.getNumDDStats() + sslib.getNumDzStats()); ++k)
-              {
-                assert(sslib.getMoments()[k]->getPrefix() == "Dz");
-
-                size_t pop1 = sslib.getMoments()[k]->getPopIndices()[0];
-                size_t pop2 = sslib.getMoments()[k]->getPopIndices()[1];
-                size_t pop3 = sslib.getMoments()[k]->getPopIndices()[2];
-
-                if((pop1 == i) && ((pop2 == i || pop2 == j) && (pop3 == i || pop3 == j)))
-                {
-                  double f = static_cast<double>(pop2 == pop3) / 2. - 0.25;
-                  col = sslib.findCompressedIndex(k);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
-                }
-              }
             }
 
             else if(childPopIdCount == 2)
@@ -66,21 +50,21 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
               col = sslib.findCompressedIndex(sslib.findDdIndex(j, i));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+            }
 
-              for(size_t k = sslib.getNumDDStats(); k < (sslib.getNumDDStats() + sslib.getNumDzStats()); ++k)
+            for(size_t k = sslib.getNumDDStats(); k < (sslib.getNumDDStats() + sslib.getNumDzStats()); ++k)
+            {
+              assert(sslib.getMoments()[k]->getPrefix() == "Dz");
+
+              size_t pop1 = sslib.getMoments()[k]->getPopIndices()[0];
+              size_t pop2 = sslib.getMoments()[k]->getPopIndices()[1];
+              size_t pop3 = sslib.getMoments()[k]->getPopIndices()[2];
+
+              if(((pop1 == i && childPopIdCount == 1) || (pop1 == j && childPopIdCount == 2)) && ((pop2 == i || pop2 == j) && (pop3 == i || pop3 == j)))
               {
-                assert(sslib.getMoments()[k]->getPrefix() == "Dz");
-
-                size_t pop1 = sslib.getMoments()[k]->getPopIndices()[0];
-                size_t pop2 = sslib.getMoments()[k]->getPopIndices()[1];
-                size_t pop3 = sslib.getMoments()[k]->getPopIndices()[2];
-
-                if((pop1 == j) && ((pop2 == i || pop2 == j) && (pop3 == i || pop3 == j)))
-                {
-                  double f = static_cast<double>(pop2 == pop3) / 2. - 0.25;
-                  col = sslib.findCompressedIndex(k);
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
-                }
+                double f = static_cast<double>(pop2 == pop3) / 2. - 0.25;
+                col = sslib.findCompressedIndex(k);
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
               }
             }
           }
