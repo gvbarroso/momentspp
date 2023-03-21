@@ -21,7 +21,7 @@ use_python("/usr/bin/python3")
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 
-save_plots <- FALSE # should this script ggsave plots to root.dir?
+save_plots <- TRUE # should this script ggsave plots to root.dir?
 ```
 
 # Setting up scenarios to test (parameter combinations)
@@ -213,7 +213,7 @@ p <- p + theme(axis.title=element_text(size=12),
 p
 
 if(save_plots) {
-  ggsave("moments++_1_pop.png", p, device="png", width=12, height=12)
+  ggsave("moments++_1_pop.png", p, device="png", width=7, height=7)
 }
 ```
 
@@ -265,7 +265,7 @@ print(p)
 
 if(save_plots) {
   ggsave("moments++_vs_moments.LD_1-pop_all_stats.png",
-          p, device="png", width=12, height=12)
+          p, device="png", width=7, height=7)
 }
 ```
 
@@ -291,7 +291,7 @@ for(i in 1:length(common_moments)) {
   
   if(save_plots) {
     ggsave(paste(mom, "_moments++_vs_moments.LD_1-pop.png", sep=""),
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -312,7 +312,7 @@ for(i in 1:num_scenarios) {
   
   if(save_plots) {
     ggsave(paste("scenario", i, "moments++_vs_moments.LD_1-pop.png", sep="_"),
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 ```
@@ -394,7 +394,7 @@ if(any(dat_matched$m_01 == 0)) {
   
   if(save_plots) {
     ggsave("expect_moments++_vs_moments.LD_2-pops_m01_zero.png",
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -414,7 +414,7 @@ if(any(dat_matched$m_01 > 0)) {
   
   if(save_plots) {
     ggsave("expect_moments++_vs_moments.LD_2-pops_m01_non-zero.png",
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -434,7 +434,7 @@ if(any(dat_matched$r == 0)) {
   
   if(save_plots) {
     ggsave("expect_moments++_vs_moments.LD_2-pops_r_zero.png",
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -454,7 +454,7 @@ if(any(dat_matched$r > 0)) {
   
   if(save_plots) {
     ggsave("expect_moments++_vs_moments.LD_2-pops_r_non-zero.png",
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -482,8 +482,8 @@ if(any(dat_ratio$m_01 == 0)) {
   print(p)
   
   if(save_plots) {
-    ggsave("diff_moments++_vs_moments.LD_2-pops_m01_zero.png",
-           p, device="png", width=12, height=12)
+    ggsave("ratio_moments++_vs_moments.LD_2-pops_m01_zero.png",
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -501,8 +501,8 @@ if(any(dat_ratio$m_01 > 0)) {
   print(p)
   
   if(save_plots) {
-    ggsave("diff_moments++_vs_moments.LD_2-pops_m01_non-zero.png",
-           p, device="png", width=12, height=12)
+    ggsave("ratio_moments++_vs_moments.LD_2-pops_m01_non-zero.png",
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -520,8 +520,8 @@ if(any(dat_ratio$r == 0)) {
   print(p)
   
   if(save_plots) {
-    ggsave("diff_moments++_vs_moments.LD_2-pops_r_zero.png",
-           p, device="png", width=12, height=12)
+    ggsave("ratio_moments++_vs_moments.LD_2-pops_r_zero.png",
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -539,8 +539,8 @@ if(any(dat_ratio$r > 0)) {
   print(p)
   
   if(save_plots) {
-    ggsave("diff_moments++_vs_moments.LD_2-pops_r_non-zero.png",
-           p, device="png", width=12, height=12)
+    ggsave("ratio_moments++_vs_moments.LD_2-pops_r_non-zero.png",
+           p, device="png", width=7, height=7)
   }
 }
 ```
@@ -567,7 +567,7 @@ for(i in 1:length(common_moments)) {
   
   if(save_plots) {
     ggsave(paste(mom, "_moments++_vs_moments.LD_2-pops.png", sep=""),
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 
@@ -588,7 +588,7 @@ for(i in 1:num_scenarios) {
   
   if(save_plots) {
     ggsave(paste("scenario", i, "moments++_vs_moments.LD_2-pops.png", sep="_"),
-           p, device="png", width=12, height=12)
+           p, device="png", width=7, height=7)
   }
 }
 ```

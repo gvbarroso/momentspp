@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
  * Source code for moments++
  *
  */
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 20/Mar/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Mar/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -58,7 +58,24 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "To use moments++, please fill in the params file and simply call it from the command line: momentspp params=[params_file].bpp" << std::endl;
+    std::cout << "To use moments++, please fill in the params file and simply call it from the command line: momentspp params=[params_file].bpp\n\n";
+
+    std::cout << "label = \n";
+    std::cout << "demes_file = \n";
+    std::cout << "stats_file = \n\n";
+
+    std::cout << "optimizer = \n";
+    std::cout << "tolerance = \n";
+    std::cout << "compress_moments = \n";
+    std::cout << "ci = \n";
+    std::cout << "order = \n";
+    std::cout << "num_epochs = \n";
+    std::cout << "num_pops = \n";
+    std::cout << "total_gen = \n";
+    std::cout << "number_threads = \n\n";
+
+    std::cout << "params=init_params.bpp \n\n";
+
     std::cout << "For more information, please email gvbarroso@gmail.com " << std::endl;
     return(0);
   }
@@ -82,9 +99,9 @@ int main(int argc, char *argv[]) {
 
     for(size_t j = 0; j < options.getNumPops(); ++j) // simplification: for now, every epoch has same number of populations; use Demes class to change that
     {
-      bool hasSelection = j % 2 == 0;
+      bool hasSelection = 0;//j % 2 != 0;
 
-      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test population", j, 500000, 0, 10000, 10000, hasSelection);
+      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test", j, 500000, 0, 10000, 10000, hasSelection);
       map.try_emplace(j, pop);
     }
 
@@ -105,7 +122,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true); // NOTE
+  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
 
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {

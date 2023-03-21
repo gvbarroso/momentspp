@@ -54,7 +54,7 @@ public:
   initMu_(bpp::ApplicationTools::getDoubleParameter("mu", options, 1e-8)),
   initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-9)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
-  compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, false)),
+  compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
   order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2)),
   numEpochs_(bpp::ApplicationTools::getParameter<size_t>("num_epochs", options, 1)),
@@ -87,11 +87,6 @@ public:
   {
     return dataFilePath_;
   }
-  /*
-  const std::string& getParamsFilePath() const
-  {
-    return initParamsFilePath_;
-  }*/
 
   const std::string& getOptimMethod() const
   {

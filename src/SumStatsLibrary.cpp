@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
  *
  */
 
@@ -262,8 +262,10 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
 
     if(pop2 != pop3)
     {
-      // if left locus is NOT under selection in pop2 (right locus is neutral by construction)
-      if(std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) == std::end(selectedPopIds))
+      bool pop2Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) != std::end(selectedPopIds);
+      bool pop3Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop3) != std::end(selectedPopIds);
+
+      if(pop2Sel == pop3Sel) // if pop2 and pop3 share status of constraint
         moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
     }
   }
@@ -329,6 +331,8 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
 
 void SumStatsLibrary::compressBasis_()
 {
+  std::cout << "\nCompressing basis..."; std::cout.flush();
+  compressedBasis_.clear();
   compressedBasis_.reserve(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
@@ -347,5 +351,7 @@ void SumStatsLibrary::compressBasis_()
 
   for(size_t i = 0; i < compressedBasis_.size(); ++i)
     compressedBasis_[i]->setPosition(i);
+
+  std::cout << "done.\n\n";
 }
 

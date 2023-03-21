@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
  *
  */
 
@@ -16,12 +16,6 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
   computeExpectedSumStats();
   computeCompositeLogLikelihood_(); // e.g. for each rec. binx
-}
-
-void Model::updateEpochs_(const bpp::ParameterList& params)
-{
-  for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
-    (*it)->fireParameterChanged(params);
 }
 
 void Model::computeExpectedSumStats()
@@ -40,6 +34,10 @@ void Model::computeExpectedSumStats()
 
 void Model::printAliasedMoments(std::ostream& stream)
 {
+  #ifdef VERBOSE
+  std::cout << "Final model expectations:" << "\n\n";
+  #endif
+
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getCompressedBasis();
 
   for(auto& m : tmp)
@@ -50,6 +48,12 @@ void Model::printAliasedMoments(std::ostream& stream)
 
     stream << m->getName() << " = " << m->getValue() << "\n";
   }
+}
+
+void Model::updateEpochs_(const bpp::ParameterList& params)
+{
+  for(auto it = std::begin(epochs_); it != std::end(epochs_); ++it)
+    (*it)->fireParameterChanged(params);
 }
 
 void Model::computeCompositeLogLikelihood_()

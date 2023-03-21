@@ -4,7 +4,8 @@ stats_file =
 
 optimizer = Powell
 tolerance = 1e-6
-ci = false
+compress_moments = 1
+ci = 1
 order = 2
 num_epochs = $(epochs)
 num_pops = 2
