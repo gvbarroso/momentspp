@@ -60,7 +60,7 @@ public:
   compressedBasis_(0)
   { }
 
-  SumStatsLibrary(size_t order, const std::map<size_t, std::shared_ptr<Population>>& popMap):
+  SumStatsLibrary(size_t order, const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments):
   order_(order),
   numPops_(popMap.size()),
   numDDStats_(numPops_ * numPops_),
@@ -80,10 +80,15 @@ public:
     }
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
-    initMoments_(popMap);
+    initMoments_(popMap, compressMoments);
   }
 
 public:
+  std::string asString(size_t i)
+  {
+    return bpp::TextTools::toString(i);
+  }
+
   size_t getNumPops()
   {
     return numPops_;
@@ -149,87 +154,17 @@ public:
     return compressedBasis_.size();
   }
 
-  std::shared_ptr<Moment> getMoment(const std::string& name) const
-  {
-    std::shared_ptr<Moment> ptr = nullptr; // object slicing, can only get (base) Moment attributes
-    for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
-    {
-      if((*itMom)->getName() == name)
-        ptr = *itMom;
-    }
+  std::shared_ptr<Moment> getMoment(const std::string& name) const;
 
-    assert(ptr != nullptr);
-    return ptr;
-  }
+  std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2) const;
 
-  std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2) const
-  {
-    size_t focalMomIndex = findDdIndex(id1, id2);
-    auto ret = std::dynamic_pointer_cast<DdMoment>(moments_[focalMomIndex]);
+  std::shared_ptr<DzMoment> getDzMoment(size_t id1, size_t id2, size_t id3) const;
 
-    if(ret != nullptr)
-      return ret;
+  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2) const;
 
-    else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: DD" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2));
-  }
+  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const;
 
-  std::shared_ptr<DzMoment> getDzMoment(size_t id1, size_t id2, size_t id3) const
-  {
-    size_t focalMomIndex = findDzIndex(id1, id2, id3);
-    auto ret = std::dynamic_pointer_cast<DzMoment>(moments_[focalMomIndex]);
-
-    if(ret != nullptr)
-      return ret;
-
-    else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dz" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2) + bpp::TextTools::toString(id3));
-  }
-
-  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2) const
-  {
-    size_t focalMomIndex = findHetIndex(id1, id2);
-    auto ret = std::dynamic_pointer_cast<HetMoment>(moments_[focalMomIndex]);
-
-    if(ret != nullptr)
-      return ret;
-
-    else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: H" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2));
-  }
-
-  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
-  {
-    size_t focalMomIndex = findPi2Index(id1, id2, id3, id4);
-    auto ret = std::dynamic_pointer_cast<Pi2Moment>(moments_[focalMomIndex]);
-
-    if(ret != nullptr)
-      return ret;
-
-    else
-      throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Pi2" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2) + bpp::TextTools::toString(id3) + bpp::TextTools::toString(id3));
-  }
-
-  std::shared_ptr<Pi2Moment> getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const
-  {
-    assert(left != nullptr && right != nullptr);
-    std::shared_ptr<Pi2Moment> ret = nullptr;
-
-    for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
-    {
-      auto tmp = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
-      assert(tmp != nullptr);
-
-      if(left == tmp->getLeftHetStat() && right == tmp->getRightHetStat())
-        ret = tmp;
-    }
-
-    if(ret != nullptr)
-      return ret;
-
-    else
-      throw bpp::Exception("SumStatsLibrary::could not find pi2 stat for " + left->getName() + " + " + right->getName());
-  }
+  std::shared_ptr<Pi2Moment> getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const;
 
   std::shared_ptr<Moment> getDummyMoment() const
   {
@@ -241,84 +176,29 @@ public:
     return compressedBasis_[findCompressedIndex(getDummyIndexUncompressed())];
   }
 
-  size_t findPopIndexRank(size_t index) const // among all pop indices
-  {
-    auto it = std::lower_bound(std::begin(popIndices_), std::end(popIndices_), index);
-    assert(it != std::end(popIndices_));
+  size_t findPopIndexRank(size_t index) const;
 
-    return std::distance(std::begin(popIndices_), it); // indexed from 0
-  }
+  size_t findDdIndex(size_t id1, size_t id2) const;
 
-  size_t findDdIndex(size_t id1, size_t id2) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
+  size_t findDzIndex(size_t id1, size_t id2, size_t id3) const;
 
-    return rank1 * numPops_ + rank2;
-  }
-
-  size_t findDzIndex(size_t id1, size_t id2, size_t id3) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t rank3 = findPopIndexRank(id3);
-
-    return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
-  }
-
-  size_t findHetIndex(size_t id1, size_t id2) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-
-    return numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2 ;
-  }
+  size_t findHetIndex(size_t id1, size_t id2) const;
 
   size_t getDummyIndexUncompressed() const
   {
     return numDDStats_ + numDzStats_ + numHetStats_;
   }
 
-  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const
-  {
-    size_t rank1 = findPopIndexRank(id1);
-    size_t rank2 = findPopIndexRank(id2);
-    size_t rank3 = findPopIndexRank(id3);
-    size_t rank4 = findPopIndexRank(id4);
+  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const;
 
-    // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
-  }
-
-  std::string asString(size_t i)
-  {
-    return bpp::TextTools::toString(i);
-  }
-
-  size_t findCompressedIndex(size_t uncompressedIndex) const
-  {
-    size_t ret = getNumStats(); // init to out-of-bounds
-    auto mom = moments_[uncompressedIndex];
-
-    for(size_t j = 0; j < compressedBasis_.size(); ++j)
-    {
-      if(compressedBasis_[j] == mom || compressedBasis_[j]->hasAlias(mom))
-        ret = j;
-    }
-
-    if(ret < getNumStats())
-      return ret;
-
-    else
-      throw bpp::Exception("SumStatsLibrary::could not find compressed index for " + mom->getName());
-  }
+  size_t findCompressedIndex(size_t uncompressedIndex) const;
 
   Eigen::VectorXd fetchYvec();
 
   void printMoments(std::ostream& stream);
 
 private:
-  void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap);
+  void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments);
 
   // assign two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();

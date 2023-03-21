@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     size_t start = i * (options.getTotalNumberOfGenerations() / numEpochs);
     size_t end = (i + 1) * (options.getTotalNumberOfGenerations() / numEpochs);
 
-    SumStatsLibrary sslib(options.getOrder(), demes.getPopMaps()[i]);
+    SumStatsLibrary sslib(options.getOrder(), demes.getPopMaps()[i], options.compressMoments());
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
