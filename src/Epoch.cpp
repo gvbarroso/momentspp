@@ -50,11 +50,11 @@ void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoc
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
   for(int i = 0; i < tmp.size(); ++i)
   {
-    int idx = ssl_.getBasis()[i]->getParent()->getPosition(); // WARNING
+    int idx = ssl_.getBasis()[i]->getParent()->getPosition(); // NOTE check under complex scenarios of admixture
     tmp(i) = y(idx);
   }
 
-  y = tmp; // swap
+  y = tmp;
 }
 
 void Epoch::updateMoments(const Eigen::VectorXd& y)

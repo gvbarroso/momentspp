@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/03/2023
+ * Last modified: 22/03/2023
  *
  */
 
@@ -35,20 +35,14 @@ void Model::computeExpectedSumStats()
 void Model::printAliasedMoments(std::ostream& stream)
 {
   #ifdef VERBOSE
+  std::cout << "\n\nFinal model expectations (detailed info):" << "\n\n";
   epochs_.back()->getSslib().printBasis(std::cout);
-  std::cout << "\nFinal model expectations:" << "\n\n";
   #endif
 
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getBasis();
 
   for(auto& m : tmp)
-  {
-    #ifdef VERBOSE
-    std::cout << m->getName() << " = " << m->getValue() << "\n";
-    #endif
-
     stream << m->getName() << " = " << m->getValue() << "\n";
-  }
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -104,7 +98,8 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        (*it)->setParent(epochs_[i - 1]->getSslib().getDdMoment(prevP1, prevP2));
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDdIndex(prevP1, prevP2));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
       else if((*it)->getPrefix() == "Dz")
@@ -144,7 +139,8 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        (*it)->setParent(epochs_[i - 1]->getSslib().getDzMoment(prevP1, prevP2, prevP3));
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDzIndex(prevP1, prevP2, prevP3));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
       else if((*it)->getPrefix() == "H")
@@ -173,7 +169,8 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        (*it)->setParent(epochs_[i - 1]->getSslib().getHetMoment(prevP1, prevP2));
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetIndex(prevP1, prevP2));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
       else if((*it)->getPrefix() == "pi2")
@@ -224,11 +221,12 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        (*it)->setParent(epochs_[i - 1]->getSslib().getPi2Moment(prevP1, prevP2, prevP3, prevP4));
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findPi2Index(prevP1, prevP2, prevP3, prevP4));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
       else if((*it)->getPrefix() == "I")
-        (*it)->setParent(epochs_[i - 1]->getSslib().getDummyMoment());
+        (*it)->setParent(epochs_[i - 1]->getSslib().getDummyMomentCompressed());
 
     } // ends loop over moments
   } // ends loop over epochs

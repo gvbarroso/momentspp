@@ -223,7 +223,6 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
     compressBasis_();
 }
 
-// for each Pi2Moment, sets the two pointers corresponding to HetMoments (left and right loci)
 void SumStatsLibrary::linkPi2HetStats_()
 {
   for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
@@ -358,6 +357,6 @@ void SumStatsLibrary::compressBasis_()
   for(size_t i = 0; i < basis_.size(); ++i)
     basis_[i]->setPosition(i);
 
-  std::cout << "done.\n\n";
+  std::cout << "done.";
 }
 

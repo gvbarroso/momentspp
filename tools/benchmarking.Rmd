@@ -54,10 +54,10 @@ num_gen_epoch_2 <- 5000
 params_2_pop <- crossing(num_epochs, mu, r , m_01, m_10, N_0, N_1) 
 params_2_pop <- mutate(params_2_pop, 
                        N_0_epoch_2 = case_when(num_epochs==1 ~ NA_real_,
-                                               num_epochs==2 ~ (N_0 / 10)))
+                                               num_epochs==2 ~ (N_0)))
 params_2_pop <- mutate(params_2_pop, 
                        N_1_epoch_2 = case_when(num_epochs==1 ~ NA_real_,
-                                               num_epochs==2 ~ (N_1 / 10)))
+                                               num_epochs==2 ~ (N_1)))
 params_2_pop <- mutate(params_2_pop, 
                        num_gen_epoch_2 = case_when(num_epochs==1 ~ NA_real_, 
                                                    num_epochs==2 ~ 5000))
