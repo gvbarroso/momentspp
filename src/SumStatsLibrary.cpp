@@ -140,9 +140,9 @@ size_t SumStatsLibrary::findCompressedIndex(size_t uncompressedIndex) const
   size_t ret = getNumStats(); // init to out-of-bounds
   auto mom = moments_[uncompressedIndex];
 
-  for(size_t j = 0; j < compressedBasis_.size(); ++j)
+  for(size_t j = 0; j < basis_.size(); ++j)
   {
-    if(compressedBasis_[j] == mom || compressedBasis_[j]->hasAlias(mom))
+    if(basis_[j] == mom || basis_[j]->hasAlias(mom))
       ret = j;
   }
 
@@ -165,8 +165,14 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
 
 void SumStatsLibrary::printMoments(std::ostream& stream)
 {
-  for(size_t i = 0; i < compressedBasis_.size(); ++i)
-    compressedBasis_[i]->printAttributes(stream);
+  for(size_t i = 0; i < moments_.size(); ++i)
+    moments_[i]->printAttributes(stream);
+}
+
+void SumStatsLibrary::printBasis(std::ostream& stream)
+{
+  for(size_t i = 0; i < basis_.size(); ++i)
+    basis_[i]->printAttributes(stream);
 }
 
 void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments)
@@ -212,7 +218,7 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
 
   linkPi2HetStats_();
   aliasMoments_(selectedPopIds);
-  compressedBasis_ = moments_; // default
+  basis_ = moments_; // default
   if(compressMoments)
     compressBasis_();
 }
@@ -248,7 +254,7 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
-    if(pop1 != pop2) // NOTE check D^2 under selection, left and right
+    if(pop1 != pop2) // NOTE check D* under selection, left and right
       moments_[i]->insertAlias(getDdMoment(pop2, pop1));
   }
 
@@ -332,25 +338,25 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
 void SumStatsLibrary::compressBasis_()
 {
   std::cout << "\nCompressing basis..."; std::cout.flush();
-  compressedBasis_.clear();
-  compressedBasis_.reserve(moments_.size());
+  basis_.clear();
+  basis_.reserve(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
   {
     bool hasUniqueExpectation = 1;
 
-    for(size_t j = 0; j < compressedBasis_.size(); ++j)
+    for(size_t j = 0; j < basis_.size(); ++j)
     {
-      if(compressedBasis_[j]->hasAlias(moments_[i]))
+      if(basis_[j]->hasAlias(moments_[i]))
         hasUniqueExpectation = 0;
     }
 
     if(hasUniqueExpectation)
-      compressedBasis_.emplace_back(moments_[i]);
+      basis_.emplace_back(moments_[i]);
   }
 
-  for(size_t i = 0; i < compressedBasis_.size(); ++i)
-    compressedBasis_[i]->setPosition(i);
+  for(size_t i = 0; i < basis_.size(); ++i)
+    basis_[i]->setPosition(i);
 
   std::cout << "done.\n\n";
 }

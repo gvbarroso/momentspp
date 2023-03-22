@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
  *
  */
 
@@ -13,7 +13,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // m_ij is the forward migration rate from pop i to pop j (backwards, the prob that lineage in j has parent in i)
   size_t numPops = fetchNumPops();
-  size_t numCompressedStats = sslib.getNumCompressedStats();
+  size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(numPops * (numPops - 1));
 
   for(size_t i = 0; i < numPops; ++i) // for i in m_ij (i => parent pop ID)
@@ -23,12 +23,12 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
       if(i != j)
       {
         std::vector<Eigen::Triplet<double>> coeffs(0);
-        coeffs.reserve(3 * numCompressedStats);
+        coeffs.reserve(3 * sizeOfBasis);
 
         // although we have pi2(i,j;k,l) moments, we need only to loop over pops twice because we take care of the k,l pop indices in this loop over stats
-        for(auto it = std::begin(sslib.getCompressedBasis()); it != std::end(sslib.getCompressedBasis()); ++it)
+        for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
         {
-          int row = it - std::begin(sslib.getCompressedBasis()); // row index
+          int row = it - std::begin(sslib.getBasis()); // row index
           int col = -1; // inits column index to out-of-bounds
           int childPopIdCount = static_cast<int>((*it)->countInstances(j));
 
@@ -345,7 +345,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
             throw bpp::Exception("Migration::mis-specified Moment prefix: " + (*it)->getPrefix());
         }
 
-        Eigen::SparseMatrix<double> mat(numCompressedStats, numCompressedStats);
+        Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
         mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
         mat.makeCompressed();
         mat *= getParameterValue("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j));
@@ -354,7 +354,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
     }
   }
 
-  setIdentity_(numCompressedStats);
+  setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
 }
 

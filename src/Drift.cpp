@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
  *
  */
 
@@ -13,17 +13,17 @@
 void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters().size();
-  size_t numCompressedStats = sslib.getNumCompressedStats();
+  size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(numPops);
 
   for(size_t i = 0; i < numPops; ++i)
   {
     std::vector<Eigen::Triplet<double>> coeffs(0);
-    coeffs.reserve(numCompressedStats);
+    coeffs.reserve(sizeOfBasis);
 
-    for(auto it = std::begin(sslib.getCompressedBasis()); it != std::end(sslib.getCompressedBasis()); ++it)
+    for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
     {
-      int row = it - std::begin(sslib.getCompressedBasis());
+      int row = it - std::begin(sslib.getBasis());
       int col = -1;
       size_t popIdCount = (*it)->countInstances(i); // count of i (focal pop ID) in moment's name
 
@@ -135,14 +135,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         throw bpp::Exception("Drift::mis-specified Moment prefix: " + (*it)->getPrefix());
     }
 
-    Eigen::SparseMatrix<double> mat(numCompressedStats, numCompressedStats);
+    Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
     mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
     mat.makeCompressed();
     mat *= (getParameterValue("1/2N_" + bpp::TextTools::toString(i)));
     matrices_.emplace_back(mat);
   }
 
-  setIdentity_(numCompressedStats);
+  setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
 }
 

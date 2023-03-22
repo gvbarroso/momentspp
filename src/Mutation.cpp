@@ -11,14 +11,14 @@
 // assumes both the infinite sites model as well as equal mutation rates across pops.
 void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-  size_t numCompressedStats = sslib.getNumCompressedStats();
+  size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(1);
   std::vector<Eigen::Triplet<double>> coeffs(0);
-  coeffs.reserve(numCompressedStats);
+  coeffs.reserve(sizeOfBasis);
 
-  for(auto it = std::begin(sslib.getCompressedBasis()); it != std::end(sslib.getCompressedBasis()); ++it)
+  for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
   {
-    int row = it - std::begin(sslib.getCompressedBasis());
+    int row = it - std::begin(sslib.getBasis());
     int col = -1;
 
     if((*it)->getPrefix() == "H")
@@ -50,12 +50,12 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
       throw bpp::Exception("Mutation::mis-specified Moment prefix: " + (*it)->getPrefix());
   }
 
-  Eigen::SparseMatrix<double> mat(numCompressedStats, numCompressedStats);
+  Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
   mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
   mat.makeCompressed();
   mat *= getParameterValue("u");
   matrices_.emplace_back(mat);
-  setIdentity_(numCompressedStats);
+  setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
 }
 

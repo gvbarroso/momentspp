@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
  *
  */
 
@@ -44,13 +44,13 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
 
 void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoch
 {
-  Eigen::VectorXd tmp(ssl_.getCompressedBasis().size()); // y and tmp have potentially different sizes
+  Eigen::VectorXd tmp(ssl_.getBasis().size()); // y and tmp have potentially different sizes
   tmp.setZero();
 
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
   for(int i = 0; i < tmp.size(); ++i)
   {
-    int idx = ssl_.getCompressedBasis()[i]->getParent()->getPosition();
+    int idx = ssl_.getBasis()[i]->getParent()->getPosition(); // WARNING
     tmp(i) = y(idx);
   }
 
@@ -59,20 +59,20 @@ void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoc
 
 void Epoch::updateMoments(const Eigen::VectorXd& y)
 {
-  assert(y.size() == static_cast<int>(ssl_.getCompressedBasis().size()));
+  assert(y.size() == static_cast<int>(ssl_.getBasis().size()));
 
   for(int i = 0; i < y.size(); ++i)
-    ssl_.getCompressedBasis()[i]->setValue(y(i));
+    ssl_.getBasis()[i]->setValue(y(i));
 }
 
 void Epoch::printRecursions(std::ostream& stream)
 {
-  for(size_t i = 0; i < ssl_.getCompressedBasis().size(); ++i)
+  for(size_t i = 0; i < ssl_.getBasis().size(); ++i)
   {
-    if(ssl_.getCompressedBasis()[i]->getName() != "I")
+    if(ssl_.getBasis()[i]->getName() != "I")
     {
-      int pos = static_cast<int>(ssl_.getCompressedBasis()[i]->getPosition()); // row in delta matrix
-      stream << "\u0394[" << ssl_.getCompressedBasis()[i]->getName() << "] = ";
+      int pos = static_cast<int>(ssl_.getBasis()[i]->getPosition()); // row in delta matrix
+      stream << "\u0394[" << ssl_.getBasis()[i]->getName() << "] = ";
 
       for(size_t j = 0; j < operators_.size(); ++j)
       {
@@ -90,7 +90,7 @@ void Epoch::printRecursions(std::ostream& stream)
               if(mat.coeffRef(pos, l) > 0)
                 stream << "+";
 
-              stream << bpp::TextTools::toString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getCompressedBasis()[l]->getName() + " ";
+              stream << bpp::TextTools::toString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getBasis()[l]->getName() + " ";
             }
           }
         }
@@ -106,32 +106,32 @@ void Epoch::computeSteadyState_()
   #ifdef VERBOSE
   Log logger;
   logger.openFile(getName() + "_matrices.txt");
-  Eigen::SparseMatrix<double> test(ssl_.getNumCompressedStats(), ssl_.getNumCompressedStats());
+  Eigen::SparseMatrix<double> test(ssl_.getSizeOfBasis(), ssl_.getSizeOfBasis());
   test.setIdentity();
 
   for(size_t i = 0; i < operators_.size(); ++i)
   {
-    Eigen::SparseMatrix<double> tmp(ssl_.getNumCompressedStats(), ssl_.getNumCompressedStats());
+    Eigen::SparseMatrix<double> tmp(ssl_.getSizeOfBasis(), ssl_.getSizeOfBasis());
     tmp.setZero();
     for(size_t j = 0; j < operators_[i]->getMatrices().size(); ++j)
     {
-      logger.getLogFile() << "\n\nsum of entries (delta matrix " << j << ") = " << std::setprecision(1e-12) << std::scientific << operators_[i]->getMatrices()[j].sum() << "\n";
+      logger.getLogFile() << "\n\nsum of entries (delta matrix " << j << ") = " << std::setprecision(6) << std::scientific << operators_[i]->getMatrices()[j].sum() << "\n";
       tmp += operators_[i]->getMatrices()[j];
       bpp::ParameterList pl;
       pl.addParameter(operators_[i]->getParameters()[j]);
       pl.printParameters(logger.getLogFile());
-      logger.getLogFile() << std::setprecision(1e-12) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
+      logger.getLogFile() << std::setprecision(6) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
     }
 
     operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries (operator combined delta matrix) = " << std::setprecision(1e-12) << std::scientific << tmp.sum() << "\n";
-    logger.getLogFile() << std::setprecision(1e-12) << tmp << "\n";
+    logger.getLogFile() << "\n\nsum of entries (operator combined delta matrix) = " << std::setprecision(6) << std::scientific << tmp.sum() << "\n";
+    logger.getLogFile() << std::setprecision(6) << tmp << "\n";
     logger.getLogFile() << "operator transition matrix:\n";
     logger.getLogFile() << operators_[i]->getTransitionMatrix() << "\n\n";
 
     logger.getLogFile() << "accumulated transition matrix:\n";
     test = operators_[i]->getTransitionMatrix() * test;
-    logger.getLogFile() << std::setprecision(1e-12) << test << "\n";
+    logger.getLogFile() << std::setprecision(6) << test << "\n";
   }
   #endif
 

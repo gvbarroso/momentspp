@@ -35,10 +35,11 @@ void Model::computeExpectedSumStats()
 void Model::printAliasedMoments(std::ostream& stream)
 {
   #ifdef VERBOSE
-  std::cout << "Final model expectations:" << "\n\n";
+  epochs_.back()->getSslib().printBasis(std::cout);
+  std::cout << "\nFinal model expectations:" << "\n\n";
   #endif
 
-  std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getCompressedBasis();
+  std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getBasis();
 
   for(auto& m : tmp)
   {

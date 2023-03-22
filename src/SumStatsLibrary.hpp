@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
 
  */
 
@@ -46,7 +46,7 @@ private:
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
   std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
-  std::vector<std::shared_ptr<Moment>> compressedBasis_; // reduced # of moments, based on symmetries
+  std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, based on symmetries
 public:
   SumStatsLibrary():
   order_(0),
@@ -57,7 +57,7 @@ public:
   numPi2Stats_(0),
   popIndices_(0),
   moments_(0),
-  compressedBasis_(0)
+  basis_(0)
   { }
 
   SumStatsLibrary(size_t order, const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments):
@@ -69,7 +69,7 @@ public:
   numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
   popIndices_(0),
   moments_(0),
-  compressedBasis_(0)
+  basis_(0)
   {
     popIndices_.reserve(popMap.size());
 
@@ -114,14 +114,14 @@ public:
     return moments_;
   }
 
-  std::vector<std::shared_ptr<Moment>>& getCompressedBasis()
+  std::vector<std::shared_ptr<Moment>>& getBasis()
   {
-    return compressedBasis_;
+    return basis_;
   }
 
-  const std::vector<std::shared_ptr<Moment>>& getCompressedBasis() const
+  const std::vector<std::shared_ptr<Moment>>& getBasis() const
   {
-    return compressedBasis_;
+    return basis_;
   }
 
   size_t getNumDDStats() const
@@ -149,9 +149,9 @@ public:
     return 1 + numDDStats_ + numDzStats_ + numHetStats_ + numPi2Stats_;
   }
 
-  size_t getNumCompressedStats() const
+  size_t getSizeOfBasis() const
   {
-    return compressedBasis_.size();
+    return basis_.size();
   }
 
   std::shared_ptr<Moment> getMoment(const std::string& name) const;
@@ -173,7 +173,7 @@ public:
 
   std::shared_ptr<Moment> getDummyMomentCompressed() const
   {
-    return compressedBasis_[findCompressedIndex(getDummyIndexUncompressed())];
+    return basis_[findCompressedIndex(getDummyIndexUncompressed())];
   }
 
   size_t findPopIndexRank(size_t index) const;
@@ -196,6 +196,8 @@ public:
   Eigen::VectorXd fetchYvec();
 
   void printMoments(std::ostream& stream);
+
+  void printBasis(std::ostream& stream);
 
 private:
   void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments);

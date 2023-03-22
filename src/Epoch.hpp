@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/03/2023
  *
  */
 
@@ -147,14 +147,14 @@ public:
     return ssl_.getMoments();
   }
 
-  const std::vector<std::shared_ptr<Moment>>& getCompressedBasis() const
+  const std::vector<std::shared_ptr<Moment>>& getBasis() const
   {
-    return ssl_.getCompressedBasis();
+    return ssl_.getBasis();
   }
 
-  std::vector<std::shared_ptr<Moment>>& getCompressedBasis()
+  std::vector<std::shared_ptr<Moment>>& getBasis()
   {
-    return ssl_.getCompressedBasis();
+    return ssl_.getBasis();
   }
 
   std::vector<size_t> fetchSelectedPopIds(); // for *this epoch
