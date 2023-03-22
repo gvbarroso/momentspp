@@ -191,7 +191,7 @@ private:
     if(splitName.size() > 1)
     {
       for(size_t i = 1; i < splitName.size(); ++i)
-        popIndices_.emplace_back(std::stoul(splitName[i]));
+        popIndices_.push_back(std::stoul(splitName[i]));
     }
   }
 };
