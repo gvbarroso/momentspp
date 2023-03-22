@@ -141,14 +141,12 @@ void Epoch::computeSteadyState_()
     mat = operators_[i]->getTransitionMatrix() * mat;
 
   transitionMatrix_ = mat; // converts from sparse to dense format
-
-  // we find the eigenvector associated with the leading eigenvalue (== 1) in transitionMatrix_
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
 
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {
-    // finding the maximum value (should be == 1., but searching for equality is problematic due to precision)
+    // finding the leading eigenvalue (should be == 1., but searching for equality is problematic due to precision)
     if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
       idx = i;
   }
