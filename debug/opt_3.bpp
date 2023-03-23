@@ -1,0 +1,16 @@
+label = 3_pops
+demes_file = pops.tsv
+stats_file =
+
+optimizer = Powell
+tolerance = 1e-6
+compress_moments = 0
+ci = 1
+order = 2
+num_epochs = 1
+num_pops = 3
+total_gen = 10000
+number_threads = 1
+
+# additional file with initial parameter values
+params=pops_3.bpp

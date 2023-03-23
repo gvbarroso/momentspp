@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 03/03/2023
+ * Last modified: 22/03/2023
  *
  */
 
@@ -33,7 +33,7 @@ protected:
   double value_;
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry (via popIndices_)
-  std::vector<std::shared_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations) under a given scenario (eg selection against derived allele in left locus)
+  std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations) under a given scenario (eg selection against derived allele in left locus)
 
 public:
   Moment():
@@ -73,9 +73,10 @@ public:
 
     if(aliases_.size() > 0)
     {
+      auto tmp = getAliases();
       stream << "\taliases: ";
 
-      for(auto it = std::begin(aliases_); it != std::end(aliases_); ++it)
+      for(auto it = std::begin(tmp); it != std::end(tmp); ++it)
         stream << (*it)->getName() << ",";
 
       stream << "\n";
@@ -117,9 +118,15 @@ public:
     return parent_;
   }
 
-  const std::vector<std::shared_ptr<Moment>>& getAliases()
+  std::vector<std::shared_ptr<Moment>> getAliases()
   {
-    return aliases_;
+    std::vector<std::shared_ptr<Moment>> tmp(0);
+    tmp.reserve(aliases_.size());
+
+    for(auto it = std::begin(aliases_); it != std::end(aliases_); ++it)
+      tmp.emplace_back((*it).lock());
+
+    return tmp;
   }
 
   size_t getNumberOfAliases()
@@ -154,8 +161,11 @@ public:
 
   void insertAlias(std::shared_ptr<Moment> mom)
   {
-    if(std::find(std::begin(aliases_), std::end(aliases_), mom) == std::end(aliases_))
-      aliases_.push_back(mom);
+    if(!hasAlias(mom))
+    {
+      std::weak_ptr<Moment> tmp = mom;
+      aliases_.push_back(tmp);
+    }
 
     else
       throw bpp::Exception("Moment::attempted to duplicate alias " + name_ + "->" + mom->getName());
@@ -178,7 +188,12 @@ public:
 
   bool hasAlias(std::shared_ptr<Moment> mom)
   {
-    return std::find(std::begin(aliases_), std::end(aliases_), mom) != std::end(aliases_);
+    std::weak_ptr<Moment> tmp = mom;
+
+    auto pos = std::find_if(std::begin(aliases_), std::end(aliases_), [&tmp](const auto& obj)
+                            { return tmp.lock() == obj.lock(); });
+
+    return pos != std::end(aliases_);
   }
 
 private:
