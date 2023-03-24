@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "To use moments++, please fill in the params file and simply call it from the command line: momentspp params=[params_file].bpp\n\n";
+    std::cout << "Please fill in a text file with the following options and execute from the command line:\nmomentspp params=[file]\n\n";
 
     std::cout << "label = \n";
     std::cout << "demes_file = \n";
@@ -86,9 +86,6 @@ int main(int argc, char *argv[]) {
 
   OptionsContainer options(params);
 
-  // 1. parse options.getPopsFilePath()
-  // 2. create populations
-  // 3. link populations from different epochs (see Model::linkMoments())
   size_t numEpochs = options.getNumEpochs();
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // pop_id -> Population*, one per epoch
   popMaps.reserve(numEpochs);
@@ -97,7 +94,7 @@ int main(int argc, char *argv[]) {
   {
     std::map<size_t, std::shared_ptr<Population>> map;
 
-    for(size_t j = 0; j < options.getNumPops(); ++j) // simplification: for now, every epoch has same number of populations; use Demes class to change that
+    for(size_t j = 0; j < options.getNumPops(); ++j) // for now, every epoch has same number of populations; use Demes class to change that
     {
       bool hasSelection = 0;//j % 2 != 0;
 

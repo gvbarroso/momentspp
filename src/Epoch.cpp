@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 21/03/2023
+ * Last modified: 24/03/2023
  *
  */
 
@@ -80,8 +80,11 @@ void Epoch::printRecursions(std::ostream& stream)
         {
           bpp::Parameter param = operators_[j]->getParameters()[k];
           std::string name = param.getName();
+
           auto mat = operators_[j]->getMatrix(k); // hard copy delta matrix
-          mat = mat / param.getValue(); // convert back to coefficients
+
+          if(param.getValue() > 0.)
+            mat = mat / param.getValue(); // convert back to coefficients
 
           for(int l = 0; l < mat.cols(); ++l)
           {

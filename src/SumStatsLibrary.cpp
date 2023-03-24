@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 21/03/2023
+ * Last modified: 24/03/2023
  *
  */
 
@@ -31,7 +31,7 @@ std::shared_ptr<DdMoment> SumStatsLibrary::getDdMoment(size_t id1, size_t id2) c
     return ret;
 
   else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: DD" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2));
+    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: DD" + asString(id1) + asString(id2));
 }
 
 std::shared_ptr<DzMoment> SumStatsLibrary::getDzMoment(size_t id1, size_t id2, size_t id3) const
@@ -43,7 +43,7 @@ std::shared_ptr<DzMoment> SumStatsLibrary::getDzMoment(size_t id1, size_t id2, s
     return ret;
 
   else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dz" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2) + bpp::TextTools::toString(id3));
+    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dz" + asString(id1) + asString(id2) + asString(id3));
 }
 
 std::shared_ptr<HetMoment> SumStatsLibrary::getHetMoment(size_t id1, size_t id2) const
@@ -55,7 +55,7 @@ std::shared_ptr<HetMoment> SumStatsLibrary::getHetMoment(size_t id1, size_t id2)
     return ret;
 
   else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: H" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2));
+    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: H" + asString(id1) + asString(id2));
 }
 
 std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
@@ -67,7 +67,7 @@ std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(size_t id1, size_t id2,
     return ret;
 
   else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Pi2" + bpp::TextTools::toString(id1) + bpp::TextTools::toString(id2) + bpp::TextTools::toString(id3) + bpp::TextTools::toString(id3));
+    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Pi2" + asString(id1) + asString(id2) + asString(id3) + asString(id3));
 }
 
 std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const
