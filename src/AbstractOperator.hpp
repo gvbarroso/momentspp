@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 20/03/2022
+ * Last modified: 27/03/2022
  *
  */
 
@@ -16,10 +16,13 @@
 #include <iomanip>
 #include <cmath>
 #include <memory>
+#include <algorithm>
+#include <numeric>
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <unsupported/Eigen/MatrixFunctions>
 
 #include <Bpp/Numeric/Function/Functions.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>

@@ -47,6 +47,7 @@ private:
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
   std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
   std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, based on symmetries
+
 public:
   SumStatsLibrary():
   order_(0),

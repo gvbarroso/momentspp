@@ -1,18 +1,17 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 21/03/2023
+ * Last modified: 27/03/2023
  *
  */
 
 
 #include "Migration.hpp"
 
-
 void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // m_ij is the forward migration rate from pop i to pop j (backwards, the prob that lineage in j has parent in i)
-  size_t numPops = fetchNumPops();
+  size_t numPops = littleMigMat_.innerSize();
   size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(numPops * (numPops - 1));
 
@@ -360,7 +359,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
 void Migration::updateMatrices_()
 {
-  size_t numPops = fetchNumPops();
+  size_t numPops = littleMigMat_.innerSize();
   size_t index = 0;
   std::string paramName = "";
 
@@ -385,5 +384,50 @@ void Migration::updateMatrices_()
 
   assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
+}
+
+void Migration::setLittleMat_()
+{
+  size_t numPops = fetchNumPops_();
+  std::vector<double> row(numPops, 0.);
+  Eigen::MatrixXd mat(numPops, numPops);
+  mat.setZero();
+
+  for(size_t i = 0; i < numPops; ++i)
+  {
+    for(size_t j = 0; j < numPops; ++j)
+    {
+      if(i != j)
+        mat(i, j) = getParameterValue("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j));
+    }
+  }
+
+  for(size_t i = 0; i < numPops; ++i)
+  {
+    for(size_t j = 0; j < numPops; ++j)
+      row[j] = mat(i, j);
+
+    std::sort(std::begin(row), std::end(row));
+    mat(i, i) = 1. - std::accumulate(std::begin(row), std::end(row), 0.);
+  }
+
+  littleMigMat_ = mat;
+}
+
+size_t Migration::fetchNumPops_() // cute way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
+{
+  int numPops = 2; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
+  int n = static_cast<int>(getParameters().size()); // raw value of P^2 - P
+
+  for(int i = 2; i < n; ++i)
+  {
+    if(i * (1 - i) == -n)  // guaranteed to find if matrices_.size() was built correctly
+    {
+      numPops = i;
+      break;
+    }
+  }
+
+  return static_cast<size_t>(numPops);
 }
 

@@ -5,6 +5,7 @@
 
 SET(momentspp_CPP
   Log.cpp
+  Graph.cpp
   Data.cpp
   SumStatsLibrary.cpp
   Drift.cpp

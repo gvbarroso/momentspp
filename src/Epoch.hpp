@@ -19,7 +19,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
-#include <unsupported/Eigen/MatrixFunctions> // for es_.pseudoEigenvalueMatrix().pow(duration())
+#include <unsupported/Eigen/MatrixFunctions>
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 

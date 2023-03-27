@@ -35,7 +35,7 @@ void Model::computeExpectedSumStats()
 void Model::printAliasedMoments(std::ostream& stream)
 {
   #ifdef VERBOSE
-  std::cout << "\n\nFinal model expectations (detailed info):" << "\n\n";
+  std::cout << "\nFinal model expectations (detailed info):" << "\n\n";
   epochs_.back()->getSslib().printBasis(std::cout);
   #endif
 

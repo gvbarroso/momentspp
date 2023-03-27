@@ -357,6 +357,6 @@ void SumStatsLibrary::compressBasis_()
   for(size_t i = 0; i < basis_.size(); ++i)
     basis_[i]->setPosition(i);
 
-  std::cout << "done.";
+  std::cout << "done.\n";
 }
 

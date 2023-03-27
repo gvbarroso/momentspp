@@ -141,6 +141,8 @@ id=1 # line counter, scenario_id
 import moments.LD
 import numpy as np
 
+np.set_printoptions(threshold=10000)
+
 moments.LD.Util.moment_names(3)
 moments.LD.Matrices.admix_ld(2, 0, 1, 0.3)
 
@@ -811,7 +813,7 @@ print(p)
   
 #if(save_plots) {
 ggsave("expect_moments++_vs_moments.LD_3-pops.png",
-       p, device="png", width=12, height=12)
+       p, device="png", width=10, height=10)
 #}
   
 ratio <- filter(full_tbl, method=="moments++") %>% select(common_moments) / 
@@ -823,10 +825,10 @@ ratio_tbl <- bind_cols(ratio, select(filter(full_tbl, method=="moments++"),
 
 dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="variable")
 
-p <- ggplot(data=filter(dat_ratio, m_01==0),
+p <- ggplot(data=dat_ratio,
             aes(x=variable, y=value, color=as.factor(scenario))) 
 p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
-p <- p + labs(title = "Ratio ++/LD (m_01 == 0) x N_0 (rows) and r (cols)",
+p <- p + labs(title = "Ratio ++/LD x N_0 (rows) and r (cols)",
               x="Moment", y="Value", color="Scenario")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
@@ -837,7 +839,7 @@ print(p)
 
 #if(save_plots) {
 ggsave("ratio_moments++_vs_moments.LD_3-pops.png",
-       p, device="png", width=12, height=12)
+       p, device="png", width=10, height=10)
 #}
 ```
 

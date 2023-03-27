@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 20/03/2022
+ * Last modified: 27/03/2022
  *
  */
 
@@ -14,17 +14,24 @@
 class Migration: public AbstractOperator
 {
 
+private:
+  Eigen::MatrixXd littleMigMat_; // P x P
+
 public:
   Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
-  AbstractOperator()
+  AbstractOperator(),
+  littleMigMat_()
   {
     includeParameters_(migParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    setLittleMat_();
+    //testStationary_();
     setUpMatrices_(sslib);
   }
 
   Migration(const std::vector<double>& initValues, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator()
+  AbstractOperator(),
+  littleMigMat_()
   {
     size_t idx = 0;
     for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI) // for each population modeled in epoch i
@@ -42,6 +49,8 @@ public:
     }
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    setLittleMat_();
+    //testStationary_();
     setUpMatrices_(sslib);
   }
 
@@ -50,27 +59,21 @@ public:
     return new Migration(*this);
   }
 
+  const Eigen::MatrixXd& getLittleMigMat()
+  {
+    return littleMigMat_;
+  }
+
+private:
   void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
 
-  // this is a weird-looking but fun way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
-  size_t fetchNumPops()
-  {
-    int numPops = 2; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
-    int n = static_cast<int>(getParameters().size()); // raw value of P^2 - P
+  void setLittleMat_();
 
-    for(int i = 2; i < n; ++i)
-    {
-      if(i * (1 - i) == -n)  // guaranteed to find if matrices_.size() was built correctly
-      {
-        numPops = i;
-        break;
-      }
-    }
+  //void testStationary_();
 
-    return static_cast<size_t>(numPops);
-  }
+  size_t fetchNumPops_();
 
 };
 
