@@ -10,6 +10,7 @@
 #define _MIGRATION_H_
 
 #include "AbstractOperator.hpp"
+#include "Graph.hpp"
 
 class Migration: public AbstractOperator
 {
@@ -25,7 +26,7 @@ public:
     includeParameters_(migParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setLittleMat_();
-    //testStationary_();
+    testFlow_();
     setUpMatrices_(sslib);
   }
 
@@ -50,7 +51,7 @@ public:
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setLittleMat_();
-    //testStationary_();
+    testFlow_();
     setUpMatrices_(sslib);
   }
 
@@ -71,7 +72,7 @@ private:
 
   void setLittleMat_();
 
-  //void testStationary_();
+  void testFlow_();
 
   size_t fetchNumPops_();
 

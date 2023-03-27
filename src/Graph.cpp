@@ -7,80 +7,49 @@
 
 #include "Graph.hpp"
 
-void Graph::sccUtil_(int u, int disc[], int low[], std::stack<int>* st, bool stackMember[])
+bool Graph::isReachable(int source, int dest)
 {
-  // A static variable is used for simplicity, we can
-  // avoid use of static variable by passing a pointer.
-  static int time = 0;
+  if(source == dest)
+    return true;
 
-  // Initialize discovery time and low value
-  disc[u] = low[u] = ++time;
-  st->push(u);
-  stackMember[u] = true;
+  // Mark all the vertices as not visited
+  bool *visited = new bool[numVertices_];
+  for(int i = 0; i < numVertices_; i++)
+    visited[i] = false;
 
-  // Go through all vertices adj_acent to this
-  std::list<int>::iterator i;
-  for(auto it = std::begin(adj_[u]); it != std::end(adj_[u]); ++it)
+  std::list<int> queue;
+  // Mark the current node as visited and enqueue it
+  visited[source] = true;
+  queue.push_back(source);
+
+  // it will be used to get all adjacent vertices of a vertex
+  std::list<int>::iterator it;
+
+  while(!queue.empty())
   {
-    int v = *it; // v is current adj_acent of 'u'
+    // Dequeue a vertex from queue and print it
+    source = queue.front();
+    queue.pop_front();
 
-    // If v is not visited yet, then recur for it
-    if(disc[v] == -1)
+    // Get all adjacent vertices of the dequeued vertex source
+    // If a adjacent has not been visited, then mark it visited
+    // and enqueue it
+    for(it = std::begin(adj_[source]); it != std::end(adj_[source]); ++it)
     {
-      sccUtil_(v, disc, low, st, stackMember);
+      // If this adjacent node is the destination node, then
+      if (*it == dest)
+        return true;
 
-      // Check if the subtree rooted with 'v' has a
-      // connection to one of the ancestors of 'u'
-      // Case 1 (per above discussion on Disc and Low value)
-      low[u] = std::min(low[u], low[v]);
-    }
-
-    // Update low value of 'u' only of 'v' is still in
-    // stack (i.e. it's a back edge, not cross edge).
-    // Case 2 (per above discussion on Disc and Low value)
-    else if(stackMember[v] == true)
-      low[u] = std::min(low[u], disc[v]);
-
-
-    // head node found, pop the stack and print an scc
-    int w = 0; // To store stack extracted vertices
-    if(low[u] == disc[u])
-    {
-      while(st->top() != u)
+      // Else, continue to do BFS
+      if (!visited[*it])
       {
-        w = (int)st->top();
-        std::cout << w << " ";
-        stackMember[w] = false;
-        st->pop();
+        visited[*it] = true;
+        queue.push_back(*it);
       }
     }
-
-    w = (int)st->top();
-    std::cout << w << "\n";
-    stackMember[w] = false;
-    st->pop();
-  }
-}
-
-// DFS traversal
-void Graph::scc()
-{
-  int* disc = new int[numVertices_];
-  int* low = new int[numVertices_];
-  bool* stackMember = new bool[numVertices_];
-  std::stack<int>* st = new std::stack<int>();
-
-  // Initialize disc and low, and stackMember arrays
-  for(int i = 0; i < numVertices_; i++)
-  {
-    disc[i] = NIL;
-    low[i] = NIL;
-    stackMember[i] = false;
   }
 
-  // Call the recursive helper function to find strongly
-  // connected components in DFS tree with vertex 'i'
-  for(int i = 0; i < numVertices_; i++)
-    if(disc[i] == NIL)
-      sccUtil_(i, disc, low, st, stackMember);
+  delete [] visited;
+  // If BFS is complete without visiting dest
+  return false;
 }

@@ -48,10 +48,7 @@ public:
     adj_[v].push_back(w);
   }
 
-  void scc();
-
-private:
-  void sccUtil_(int u, int disc[], int low[], std::stack<int>* st, bool stackMember[]);
+  bool isReachable(int source, int destination);
 
 };
 
