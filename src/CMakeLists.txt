@@ -6,6 +6,7 @@
 SET(momentspp_CPP
   Log.cpp
   Graph.cpp
+  Demes.cpp
   Data.cpp
   SumStatsLibrary.cpp
   Drift.cpp
@@ -15,7 +16,6 @@ SET(momentspp_CPP
   Epoch.cpp
   Model.cpp
   OptimizationWrapper.cpp
-  Demes.cpp
   main.cpp
 )
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 20/03/2023
+ * Last modified: 28/03/2023
  *
  */
 
@@ -37,7 +37,7 @@ private:
   bool compressMoments_; // see moments_ vs compressedBasis_ inside SumStatsLibrary::initMoments_()
   bool computeCI_;
 
-  size_t order_; // of summary statistics
+  size_t order_; // sample order of summary statistics
   size_t numEpochs_;
   size_t numPops_;
   size_t totalNumberOfGenerations_;
@@ -55,14 +55,12 @@ public:
   initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-9)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
-  computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true)),
-  order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2)),
+  computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
+  order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2, "", true, 4)),
   numEpochs_(bpp::ApplicationTools::getParameter<size_t>("num_epochs", options, 1)),
   numPops_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, 1)),
   totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("total_gen", options, 1)),
-  numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options,
-                                                               std::thread::hardware_concurrency(),
-                                                               "", true, 4))
+  numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options, 1, "", true, 4))
   {
     if(numPops_ != initPopSizes_.size())
       throw bpp::Exception("OptionsContainer::num_pops does not match length of Ni parameters!");

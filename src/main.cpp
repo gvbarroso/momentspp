@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 21/03/2023
+ * Last modified: 28/03/2023
  * Source code for moments++
  *
  */
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 27/Mar/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 28/Mar/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     return(0);
   }
 
-  bpp::BppApplication momentspp(argc, argv, "moments++"); // params file holding users choices (see OptionsContainer class)
+  bpp::BppApplication momentspp(argc, argv, "moments++");
   momentspp.startTimer();
   std::map<std::string, std::string> params = momentspp.getParams();
 
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     for(size_t j = 0; j < options.getNumPops(); ++j) // for now, every epoch has same number of populations; use Demes class to change that
     {
-      bool hasSelection = 0;//j % 2 != 0;
+      bool hasSelection = 0; // j % 2 != 0;
 
       std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test", j, 500000, 0, 10000, 10000, hasSelection);
       map.try_emplace(j, pop);
@@ -168,17 +168,22 @@ int main(int argc, char *argv[]) {
 
   try
   {
-    if(options.getDataFilePath() == "none") // no data file (default), we just compute expectations for given input parameters
+    if(options.getDataFilePath() == "none")
     {
+      std::cout << "\nNo stats_file provided, moments++ will output expectations for parameters:\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
+      model->getParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
-      std::ofstream fout(model->getName() + "_final_unsorted.txt");
+      std::string file = model->getName() + "_final_unsorted.txt";
+      std::cout << "\nCheck " << file << " for final moments expectations.\n";
+      std::ofstream fout(file);
       model->printAliasedMoments(fout);
       fout.close();
     }
 
-    else // there is a data file with observed summary statistics, thus we optimize
+    else
     {
+      std::cout << "\nstats_file provided, moments++ will optimize parameters given observed data.\n";
       std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
       OptimizationWrapper optimizer(options);
