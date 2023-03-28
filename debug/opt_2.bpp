@@ -5,6 +5,7 @@ stats_file =
 num_epochs = 1
 num_pops = 2
 total_gen = 10000
+compress_moments = 0
 
 # additional file with initial parameter values
 params=pops_2.bpp

@@ -217,10 +217,12 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
     moments_[i]->setPosition(i);
 
   linkPi2HetStats_();
-  aliasMoments_(selectedPopIds);
   basis_ = moments_; // default
   if(compressMoments)
+  {
+    aliasMoments_(selectedPopIds);
     compressBasis_();
+  }
 }
 
 void SumStatsLibrary::linkPi2HetStats_()
