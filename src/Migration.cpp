@@ -70,10 +70,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if((*it)->getPrefix() == "Dz")
           {
-            // the Dz cols
             std::vector<size_t> popIds = (*it)->getPopIndices();
 
-            for(size_t l = 0; l < popIds.size(); ++ l)
+            for(size_t l = 0; l < popIds.size(); ++ l) // contributions from the Dz cols
             {
               if(popIds[l] == j) // if entry matches childPopId
               {
@@ -86,11 +85,12 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               }
             }
 
-            if((*it)->getPopIndices()[0] == j)
+            if((*it)->getPopIndices()[0] == j) // contributions from pi2 moments
             {
-              // the pi2 cols
               // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
-              // append i to the right of both p2 and p3 and find pi2 statistics by permuting and replacing
+              // append parentPopId (i) to the right of both p2 and p3
+              // find pi2 statistics by left-right permuting + replacing appendixes
+
               popIds.clear();
               popIds.resize(4);
 
@@ -111,7 +111,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-              popIds[3] = j;
+              popIds[3] = j; // switch right appendix to childPopId
               f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
@@ -124,7 +124,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
               popIds[3] = i; // back
-              popIds[1] = j;
+              popIds[1] = j; // switch left appendix to childPopId
               f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
@@ -136,7 +136,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-              popIds[3] = j;
+              popIds[3] = j; // have both switched
               f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));

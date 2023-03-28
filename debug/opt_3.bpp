@@ -2,6 +2,7 @@ label = 3_pops
 demes_file = pops.tsv
 stats_file =
 
+compress_moments = 0
 num_epochs = 1
 num_pops = 3
 total_gen = 10000
