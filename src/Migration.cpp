@@ -70,242 +70,81 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if((*it)->getPrefix() == "Dz")
           {
-            size_t p1 = (*it)->getPopIndices()[0]; // D pop
-            size_t p2 = (*it)->getPopIndices()[1]; // first z pop
-            size_t p3 = (*it)->getPopIndices()[2]; // second z pop
+            // the Dz cols
+            std::vector<size_t> popIds = (*it)->getPopIndices();
 
-            if(p1 == i) // D_i_z_**
+            for(size_t l = 0; l < popIds.size(); ++ l)
             {
-              if((p2 == i && p3 == j) || (p2 == j && p3 == i)) // D_i_z_ij || D_i_z_ji
+              if(popIds[l] == j) // if entry matches childPopId
               {
-                col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, i));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-              }
-
-              else if(p2 == j && p3 == j) // D_i_z_jj
-              {
-                col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, j));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, i));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+                popIds[l] = i; // assign to focal parentPopId
+                col = sslib.findCompressedIndex(sslib.findDzIndex(popIds[0], popIds[1], popIds[2]));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
+                col = sslib.findCompressedIndex(sslib.findDzIndex(popIds[0], popIds[2], popIds[1]));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
+                popIds[l] = j; // recycle
               }
             }
 
-            else if(p1 == j) // D_j_z_**
-            {
-              if(p2 == i)
-              {
-                if(p3 == i) // D_j_z_ii
-                {
-                  // the Dz cols
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+            // the pi2 cols
+            // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
+            // append i to the right of both p2 and p3 and find pi2 statistics by permuting and replacing
+            popIds.clear();
+            popIds.resize(4);
 
-                  // the pi2 cols (minding permutations of derived/ancestral encoded in the suffixes, see Pi2Moment class)
-                  // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**) -> [i*;*i]
-                  // now append i to the right of both p2 and p3
+            popIds[0] = (*it)->getPopIndices()[1];
+            popIds[1] = i;
+            popIds[2] = (*it)->getPopIndices()[2];
+            popIds[3] = i;
 
-                  // as is
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
+            size_t refCount = std::count(std::begin(popIds), std::end(popIds), j);
+            double f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-                  // switch right appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+            popIds[3] = j;
+            f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-                  // switch left appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-                  // permute pop in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+            popIds[3] = i; // back
+            popIds[1] = j;
+            f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-                  // switch both
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+            popIds[3] = j;
+            f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-                  // permute pop in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  // permute pops in both loci
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-                }
-
-                else if(p3 == j) // D_j_z_ij
-                {
-                  // the Dz cols
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(j, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-
-                  // the pi2 cols
-                  // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**) -> [i*;*j]
-                  // now append i to right the of p2 and to the left of p3
-
-                  // as is
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-
-                  // switch right appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, j, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
-
-                  // switch left appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // permute pops in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // permute pop in both loci
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // switch both apendices
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, j, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-
-                  // permute pop in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, j, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-                }
-              }
-
-              else if(p2 == j)
-              {
-                if(p3 == i) // D_j_z_ji
-                {
-                  // the Dz cols
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(j, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-
-                  // the pi2 cols
-                  // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
-                  // now append i to left of p2 and right of p3
-
-                  // as is
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-
-                  // permute pop in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-
-                  // switch right appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // permute pop in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // permute pops in both loci
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1.));
-
-                  // switch left appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, j, i, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -4.));
-
-                  // switch both appendices
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, j, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, j, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
-                }
-
-                else if(p3 == j) // D_j_z_jj
-                {
-                  // the Dz cols
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(j, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  col = sslib.findCompressedIndex(sslib.findDzIndex(j, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  // the pi2 cols
-                  // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
-                  // now append i to left of both p2 and p3
-
-                  // as is
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  // permute pop in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  // permute pops in both loci
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-                  // switch right appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(i, j, j, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
-
-                  // permute pop in left locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, i, j, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
-
-                  // switch left appendix to j
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, j, i, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
-
-                  // permute pop in right locus
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, j, j, i));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
-
-                  // switch both appendices
-                  col = sslib.findCompressedIndex(sslib.findPi2Index(j, j, j, j));
-                  coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
-                }
-              }
-            }
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
           }
 
           else if((*it)->getPrefix() == "pi2") // finds pi2 moments that are a single migration away (1-hop neighbors)

@@ -40,7 +40,7 @@ write.table(params_1_pop, "params_1_pop.csv", quote=F, sep=",", row.names=F)
 
 ## 2 populations parameters
 
-```{r 2-pops-params, include=FALSE, message=FALSE, warning=FALSE}
+```{r 2-pops-params, include=TRUE, message=FALSE, warning=FALSE}
 
 mu <- c(1e-7)
 r <- c(0, 1e-6)
