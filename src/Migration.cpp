@@ -86,65 +86,68 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               }
             }
 
-            // the pi2 cols
-            // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
-            // append i to the right of both p2 and p3 and find pi2 statistics by permuting and replacing
-            popIds.clear();
-            popIds.resize(4);
+            if((*it)->getPopIndices()[0] == j)
+            {
+              // the pi2 cols
+              // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
+              // append i to the right of both p2 and p3 and find pi2 statistics by permuting and replacing
+              popIds.clear();
+              popIds.resize(4);
 
-            popIds[0] = (*it)->getPopIndices()[1];
-            popIds[1] = i;
-            popIds[2] = (*it)->getPopIndices()[2];
-            popIds[3] = i;
+              popIds[0] = (*it)->getPopIndices()[1];
+              popIds[1] = i;
+              popIds[2] = (*it)->getPopIndices()[2];
+              popIds[3] = i;
 
-            size_t refCount = std::count(std::begin(popIds), std::end(popIds), j);
-            double f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
+              size_t refCount = std::count(std::begin(popIds), std::end(popIds), j);
+              double f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-            popIds[3] = j;
-            f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
+              popIds[3] = j;
+              f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-            popIds[3] = i; // back
-            popIds[1] = j;
-            f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
+              popIds[3] = i; // back
+              popIds[1] = j;
+              f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-            popIds[3] = j;
-            f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
+              popIds[3] = j;
+              f = std::pow(-1., std::count(std::begin(popIds), std::end(popIds), j) - refCount);
 
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-            col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+            }
           }
 
           else if((*it)->getPrefix() == "pi2") // finds pi2 moments that are a single migration away (1-hop neighbors)
