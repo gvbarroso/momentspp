@@ -36,35 +36,48 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
           if((*it)->getPrefix() == "DD")
           {
-            if(childPopIdCount == 1)
+            std::vector<size_t> popIds = (*it)->getPopIndices();
+
+            for(size_t l = 0; l < popIds.size(); ++ l) // contributions from the DD cols
             {
-              col = sslib.findCompressedIndex(sslib.findDdIndex(i, i));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-            }
-
-            else if(childPopIdCount == 2)
-            {
-              col = sslib.findCompressedIndex(sslib.findDdIndex(i, j));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-
-              col = sslib.findCompressedIndex(sslib.findDdIndex(j, i));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-            }
-
-            for(size_t k = sslib.getNumDDStats(); k < (sslib.getNumDDStats() + sslib.getNumDzStats()); ++k)
-            {
-              assert(sslib.getMoments()[k]->getPrefix() == "Dz");
-
-              size_t pop1 = sslib.getMoments()[k]->getPopIndices()[0];
-              size_t pop2 = sslib.getMoments()[k]->getPopIndices()[1];
-              size_t pop3 = sslib.getMoments()[k]->getPopIndices()[2];
-
-              if(((pop1 == i && childPopIdCount == 1) || (pop1 == j && childPopIdCount == 2)) && ((pop2 == i || pop2 == j) && (pop3 == i || pop3 == j)))
+              if(popIds[l] == j) // if entry matches childPopId
               {
-                double f = static_cast<double>(pop2 == pop3) / 2. - 0.25;
-                col = sslib.findCompressedIndex(k);
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
+                popIds[l] = i; // assign to focal parentPopId
+                col = sslib.findCompressedIndex(sslib.findDdIndex(popIds[0], popIds[1]));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
+                col = sslib.findCompressedIndex(sslib.findDdIndex(popIds[1], popIds[0]));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
+                popIds[l] = j; // recycle
               }
+            }
+
+            if((*it)->hasPopIndex(j))
+            {
+              size_t p1 = popIds[0];
+              if(p1 == j)
+                p1 = popIds[1];
+
+              size_t p2 = i;
+              size_t p3 = j;
+
+              double f = static_cast<double>(p2 == p3) / 2. - 0.25;
+              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
+              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
+
+              p2 = j;
+
+              f = static_cast<double>(p2 == p3) / 2. - 0.25;
+              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
+
+              p2 = i;
+              p3 = i;
+
+              f = static_cast<double>(p2 == p3) / 2. - 0.25;
+              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
             }
           }
 
@@ -103,66 +116,54 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               size_t count = std::count(std::begin(popIds), std::end(popIds), j);
               double f = std::pow(-1., count - refCount);
 
-              if(std::count(std::begin(popIds), std::end(popIds), i) > 0)
-              {
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-              }
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
               popIds[3] = j; // switch right appendix to childPopId
               count = std::count(std::begin(popIds), std::end(popIds), j);
               f = std::pow(-1., count - refCount);
 
-              if(std::count(std::begin(popIds), std::end(popIds), i) > 0)
-              {
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-              }
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
               popIds[3] = i; // back
               popIds[1] = j; // switch left appendix to childPopId
               count = std::count(std::begin(popIds), std::end(popIds), j);
               f = std::pow(-1., count - refCount);
 
-              if(std::count(std::begin(popIds), std::end(popIds), i) > 0)
-              {
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-              }
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
               popIds[3] = j; // have both switched
               count = std::count(std::begin(popIds), std::end(popIds), j);
               f = std::pow(-1., count - refCount);
 
-              if(std::count(std::begin(popIds), std::end(popIds), i) > 0)
-              {
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
-              }
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[2], popIds[3]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
+              col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
             }
           }
 
