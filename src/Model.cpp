@@ -35,7 +35,7 @@ void Model::computeExpectedSumStats()
 void Model::printAliasedMoments(std::ostream& stream)
 {
   #ifdef VERBOSE
-  std::cout << "\nVERBOSE mode ON: check *_matrices.txt and *_recursions.txt for model details.\n";
+  std::cout << "\nVERBOSE mode ON: *_matrices.txt and *_recursions.txt present further model details.\n";
   std::cout << "Final expectations (detailed Moments information):\n\n";
   epochs_.back()->getSslib().printBasis(std::cout);
   #endif

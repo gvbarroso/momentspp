@@ -71,7 +71,15 @@ public:
   {
     parse_(file);
     epochs_.resize(popMaps.size());
+    pops_.resize(popMaps_.back().size()); // WARNING
+  }
 
+  Demes(const std::vector<std::map<size_t, std::shared_ptr<Population>>>& popMaps):
+  pops_(0),
+  epochs_(0),
+  popMaps_(popMaps)
+  {
+    epochs_.resize(popMaps.size());
     pops_.resize(popMaps_.back().size()); // WARNING
   }
 

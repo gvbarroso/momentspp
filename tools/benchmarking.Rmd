@@ -70,16 +70,16 @@ write.table(params_2_pop, "params_2_pops.csv", quote=F, sep=",", row.names=F)
 ```{r 3-pops-params, include=FALSE, message=FALSE, warning=FALSE}
 
 mu <- c(1e-7)
-r <- c(0, 1e-6)
-N_0 <- c(1e+4, 1e+5)
-N_1 <- c(1e+5)
+r <- c(1e-7)
+N_0 <- c(1e+4)
+N_1 <- c(1e+4)
 N_2 <- c(1e+4)
-m_01 <- c(0, 1e-5)
-m_02 <- c(1e-5)
-m_10 <- c(1e-6)
+m_01 <- c(1e-4)
+m_02 <- c(1e-4)
+m_10 <- c(1e-4)
 m_12 <- c(1e-4)
-m_20 <- c(1e-3)
-m_21 <- c(1e-5)
+m_20 <- c(1e-4)
+m_21 <- c(1e-4)
 
 params_3_pop <- crossing(mu, r, 
                          N_0, N_1, N_2,

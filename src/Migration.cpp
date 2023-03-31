@@ -63,7 +63,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               double f = static_cast<double>(p2 == p3) / 2. - 0.25;
               col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p3, p2));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
 
               p2 = j;

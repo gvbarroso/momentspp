@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 29/Mar/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 30/Mar/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     popMaps.emplace_back(map);
   }
 
-  Demes demes(popMaps, options.getDemesFilePath());
+  Demes demes(popMaps);
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);

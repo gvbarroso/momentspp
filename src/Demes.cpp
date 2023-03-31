@@ -9,7 +9,7 @@
 
 void Demes::parse_(const std::string& fileName)
 {
-  /*std::cout << "parsing " << fileName << "\n";
+  std::cout << "parsing " << fileName << "\n";/*
   YAML::Node test = YAML::LoadFile(fileName);
 
   std::ofstream fout("test.yaml");

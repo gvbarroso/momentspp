@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 28/03/2023
+ * Last modified: 30/03/2023
  *
  */
 
@@ -45,15 +45,15 @@ private:
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
-  label_(bpp::ApplicationTools::getStringParameter("label", options, "my_model")),
-  demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, "none")),
+  label_(bpp::ApplicationTools::getStringParameter("label", options, "moments++", "", 0, 4)),
+  demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, 0, 0, "", 0, "none", 0)),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, false, true, "", false, "none", 0)),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
   initPopSizes_(bpp::ApplicationTools::getVectorParameter<double>("Ni", options, ',', "none")),
   initMu_(bpp::ApplicationTools::getDoubleParameter("mu", options, 1e-8)),
   initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-9)),
-  tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6)),
+  tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
   order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2, "", true, 4)),
