@@ -52,7 +52,7 @@ public:
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
   initPopSizes_(bpp::ApplicationTools::getVectorParameter<double>("Ni", options, ',', "none")),
   initMu_(bpp::ApplicationTools::getDoubleParameter("mu", options, 1e-8)),
-  initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-9)),
+  initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-8)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),

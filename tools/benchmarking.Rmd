@@ -67,19 +67,20 @@ write.table(params_2_pop, "params_2_pops.csv", quote=F, sep=",", row.names=F)
 
 ## 3 populations parameters
 
-```{r 3-pops-params, include=FALSE, message=FALSE, warning=FALSE}
+```{r 3-pops-params, include=TRUE, message=FALSE, warning=FALSE}
 
-mu <- c(1e-7)
-r <- c(1e-7)
-N_0 <- c(1e+4)
-N_1 <- c(1e+4)
-N_2 <- c(1e+4)
-m_01 <- c(1e-4)
-m_02 <- c(1e-4)
-m_10 <- c(1e-4)
-m_12 <- c(1e-4)
-m_20 <- c(1e-4)
-m_21 <- c(1e-4)
+mu <- 1e-6
+r <- 1e-6
+N_0 <- 1e+4
+N_1 <- 1e+4
+N_2 <- 1e+4
+
+m_01 <- c(0, 1e-4)
+m_02 <- c(0, 1e-4)
+m_10 <- c(0, 1e-4)
+m_12 <- c(1e-4, 1e-4)
+m_20 <- c(1e-4, 1e-4)
+m_21 <- c(0, 1e-4)
 
 params_3_pop <- crossing(mu, r, 
                          N_0, N_1, N_2,
@@ -843,6 +844,58 @@ ggsave("ratio_moments++_vs_moments.LD_3-pops.png",
 #}
 ```
 
+# Test MigMats
+
+## params
+
+```{python check-my-matrix, include=TRUE}
+
+import csv
+import moments.LD
+import numpy as np
+
+with open("params_3_pops.csv") as fin:
+    params = [{k: float(v) for k, v in row.items()} for row in csv.DictReader(fin)]
+
+mig_mats = [
+    [
+        [0        , p['m_10'], p['m_20']],
+        [p['m_01'], 0        , p['m_02']],
+        [p['m_02'], p['m_12'], 0        ],
+    ]
+    for p in params
+]
+
+for i, mig_mat in enumerate(mig_mats, 1):
+    matpp = np.loadtxt(f'3-pops_scenario_{i}_mig.csv', delimiter=",")
+    mat_LD = moments.LD.Matrices.migration_ld(3, mig_mat).todense()
+    print('scenario', i)
+    print(((matpp - mat_LD) ** 2).sum())
+    print('====')
+    
+matpp = np.loadtxt('3-pops_scenario_1_drift.csv', delimiter=",")
+mat_LD = moments.LD.Matrices.drift_ld(3, [1, 1, 1]).todense()
+print('scenario', i)
+print(matpp - mat_LD)
+print('====')
+print(((matpp - mat_LD)).sum())
+print('====')
+    
+matpp = np.loadtxt('3-pops_scenario_1_rec.csv', delimiter=",")
+mat_LD = moments.LD.Matrices.recombination(3, 1e-6).todense()
+print('scenario', i)
+print(matpp - mat_LD)
+print('====')
+print(((matpp - mat_LD)).sum())
+print('====')
+    
+#matpp = np.loadtxt('3-pops_scenario_1_mut.csv', delimiter=",")
+#mat_LD = moments.LD.Matrices.mutation_ld(3, 1e-2).todense()
+#print('scenario', i)
+#print(((matpp - mat_LD) ** 2).sum())
+#print('====')
+```
+
 # Clean-up
 
 ```{bash clean-up, engine.opts='-i', include=FALSE}
@@ -850,4 +903,5 @@ ggsave("ratio_moments++_vs_moments.LD_3-pops.png",
 source ~/.bashrc
 
 rm *txt
+rm *mig.csv
 ```

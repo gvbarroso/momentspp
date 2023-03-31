@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 28/03/2023
+ * Last modified: 31/03/2023
  * Source code for moments++
  *
  */
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 30/Mar/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 31/Mar/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -163,6 +163,14 @@ int main(int argc, char *argv[]) {
     recOut.open(epochs.back()->getName() + "_recursions.txt");
     epochs.back()->printRecursions(recOut);
     recOut.close();
+
+    if(demes.getNumPops() > 1)
+    {
+      operators[0]->printDeltaLDMat(options.getLabel() + "_mig.csv", sslib);
+      operators[1]->printDeltaLDMat(options.getLabel() + "_drift.csv", sslib);
+      operators[2]->printDeltaLDMat(options.getLabel() + "_rec.csv", sslib);
+      operators[3]->printDeltaLDMat(options.getLabel() + "_mut.csv", sslib);
+    }
     #endif
   }
 
@@ -170,7 +178,7 @@ int main(int argc, char *argv[]) {
   {
     if(options.getDataFilePath() == "none")
     {
-      std::cout << "\nNo stats_file provided, moments++ will output expectations for parameters:\n";
+      std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters:\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
       model->getParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
@@ -183,7 +191,7 @@ int main(int argc, char *argv[]) {
 
     else
     {
-      std::cout << "\nstats_file provided, moments++ will optimize parameters given observed data.\n";
+      std::cout << "\nstats_file provided, moments++ will optimize parameters for input data.\n";
       std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
       OptimizationWrapper optimizer(options);

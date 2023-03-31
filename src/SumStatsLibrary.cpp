@@ -22,6 +22,11 @@ std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) cons
   return ptr;
 }
 
+std::shared_ptr<Moment> SumStatsLibrary::getMoment(size_t pos) const
+{
+  return basis_[pos];
+}
+
 std::shared_ptr<DdMoment> SumStatsLibrary::getDdMoment(size_t id1, size_t id2) const
 {
   size_t focalMomIndex = findDdIndex(id1, id2);

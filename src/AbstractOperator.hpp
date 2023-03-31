@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 27/03/2022
+ * Last modified: 31/03/2022
  *
  */
 
@@ -84,6 +84,41 @@ public:
   const Eigen::SparseMatrix<double>& getTransitionMatrix()
   {
     return transition_;
+  }
+
+  virtual void printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib)
+  {
+    std::ofstream matFile;
+    matFile.open(fileName);
+
+    auto mat = matrices_[0];
+
+    if(matrices_.size() > 1)
+    {
+      for(size_t i = 1; i < matrices_.size(); ++i)
+        mat += matrices_[i];
+    }
+
+    for(int i = 0; i < mat.rows(); ++i)
+    {
+      if(sslib.getMoment(i)->getPrefix() != "I" && sslib.getMoment(i)->getPrefix() != "H")
+      {
+        for(int j = 0; j < mat.cols(); ++j)
+        {
+          if(sslib.getMoment(j)->getPrefix() != "I" && sslib.getMoment(j)->getPrefix() != "H")
+          {
+            matFile << mat.coeffRef(i, j);
+
+            if(j < mat.cols() - 1)
+              matFile << ",";
+          }
+        }
+
+        matFile  << "\n";
+      }
+    }
+
+    matFile.close();
   }
 
 protected:

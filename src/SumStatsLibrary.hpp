@@ -162,6 +162,8 @@ public:
 
   std::shared_ptr<Moment> getMoment(const std::string& name) const;
 
+  std::shared_ptr<Moment> getMoment(size_t pos) const;
+
   std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2) const;
 
   std::shared_ptr<DzMoment> getDzMoment(size_t id1, size_t id2, size_t id3) const;
