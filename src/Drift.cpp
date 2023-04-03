@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 21/03/2023
+ * Last modified: 03/04/2023
  *
  */
 
@@ -99,7 +99,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             for(size_t j = 0; j < numPops; ++j)
             {
-              if(i != j)
+              if(i != j && (*it)->hasPopIndex(j))
               {
                 col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, j));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
@@ -115,10 +115,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           for(size_t j = 0; j < numPops; ++j)
           {
-            if(i != j)
+            if(i != j && (*it)->hasPopIndex(j))
             {
-              col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, j));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
+              std::vector<size_t> diff = (*it)->fetchDiffPopIds(i);
+              assert(diff.size() == 2);
+              double f = 1. + (diff[0] == diff[1]);
+
+              col = sslib.findCompressedIndex(sslib.findDzIndex(i, diff[0], diff[1]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * 0.0625));
+
+              col = sslib.findCompressedIndex(sslib.findDzIndex(i, diff[1], diff[0]));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * 0.0625));
             }
           }
         }

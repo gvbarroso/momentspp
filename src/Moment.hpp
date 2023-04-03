@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 22/03/2023
+ * Last modified: 03/04/2023
  *
  */
 
@@ -55,7 +55,7 @@ public:
   parent_(nullptr),
   aliases_(0)
   {
-    parseName_(name);
+    parseName(name);
   }
 
 public:
@@ -196,8 +196,20 @@ public:
     return pos != std::end(aliases_);
   }
 
-private:
-  void parseName_(const std::string& name)
+  std::vector<size_t> fetchDiffPopIds(size_t notPopId) // fetches pop IDs different from notPopId
+  {
+    std::vector<size_t> ret(0);
+
+    for(auto it = std::begin(popIndices_); it != std::end(popIndices_); ++it)
+    {
+      if(*it != notPopId)
+        ret.push_back(*it);
+    }
+
+    return ret;
+  }
+
+  void parseName(const std::string& name)
   {
     std::vector<std::string> splitName(0);
     boost::split(splitName, name, boost::is_any_of("_"));
@@ -208,7 +220,10 @@ private:
       for(size_t i = 1; i < splitName.size(); ++i)
         popIndices_.push_back(std::stoul(splitName[i]));
     }
+
+    //std::sort(std::begin(popIndices_), std::end(popIndices_));
   }
+
 };
 
 #endif

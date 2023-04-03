@@ -142,17 +142,6 @@ id=1 # line counter, scenario_id
 import moments.LD
 import numpy as np
 
-np.set_printoptions(threshold=10000)
-
-moments.LD.Util.moment_names(3)
-moments.LD.Matrices.admix_ld(2, 0, 1, 0.3)
-
-moments.LD.Matrices.migration_ld(2, [[0, 1], [0, 0]]).todense()
-moments.LD.Matrices.migration_ld(2, [[0, 0], [1, 0]]).todense()
-
-moments.LD.Matrices.drift_ld(2, [1, np.inf]).todense()
-moments.LD.Matrices.drift_ld(2, [np.inf, 1]).todense()
-
 # 1 population
 with open("params_1_pop.csv") as fin:
     params = fin.readlines()
@@ -256,7 +245,7 @@ params_1_pop <- read.csv("params_1_pop.csv", header=T, sep=",")
 num_scenarios <- nrow(params_1_pop)
 
 # extracting names of moments
-stats_1_pop <- read.table("1-pop_scenario_1_final_unsorted.txt")[,1]
+stats_1_pop <- read.table("1-pop_scenario_1_expectations.txt")[,1]
 num_stats <- length(stats_1_pop)
 
 momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
@@ -265,7 +254,7 @@ write.table(momspp, "moments++_1_pop_stats.csv", sep=",", row.names=F, quote=F)
 
 idx=1
 for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("1-pop_scenario_", idx, "_final_unsorted.txt", sep=""))
+  tmp <- read.table(paste("1-pop_scenario_", idx, "_expectations.txt", sep=""))
   momspp[idx,] <- t(tmp[ncol(tmp)])
   idx=idx + 1
 }
@@ -399,7 +388,7 @@ params_2_pops <- read.csv("params_2_pops.csv", header=T, sep=",")
 num_scenarios <- nrow(params_2_pops)
 
 # extracting names of moments
-stats_2_pops <- read.table("2-pops_scenario_1_final_unsorted.txt")[,1]
+stats_2_pops <- read.table("2-pops_scenario_1_expectations.txt")[,1]
 num_stats <- length(stats_2_pops)
 
 momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
@@ -407,7 +396,7 @@ names(momspp) <- stats_2_pops
 
 idx=1
 for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("2-pops_scenario_", idx, "_final_unsorted.txt", sep=""))
+  tmp <- read.table(paste("2-pops_scenario_", idx, "_expectations.txt", sep=""))
   momspp[idx,] <- t(tmp[ncol(tmp)])
   idx=idx + 1
 }
@@ -734,7 +723,7 @@ params_3_pops <- read.csv("params_3_pops.csv", header=T, sep=",")
 num_scenarios <- nrow(params_3_pops)
 
 # extracting names of moments
-stats_3_pops <- read.table("3-pops_scenario_1_final_unsorted.txt")[,1]
+stats_3_pops <- read.table("3-pops_scenario_1_expectations.txt")[,1]
 num_stats <- length(stats_3_pops)
 
 momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
@@ -742,7 +731,7 @@ names(momspp) <- stats_3_pops
 
 idx=1
 for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("3-pops_scenario_", idx, "_final_unsorted.txt", sep=""))
+  tmp <- read.table(paste("3-pops_scenario_", idx, "_expectations.txt", sep=""))
   momspp[idx,] <- t(tmp[ncol(tmp)])
   idx=idx + 1
 }
@@ -755,7 +744,7 @@ dat_stats <- pivot_longer(stats, cols=all_of(stats_3_pops), names_to="variable")
 
 p <- ggplot(data=dat_stats, aes(x=variable, y=value, color=as.factor(scenario))) 
 p <- p + geom_point(size=5) + theme_bw()
-p <- p + labs(title = "Moments++ expectations", 
+p <- p + labs(title="Moments++ expectations", 
               x="Moment", y="Value", color="scenario")
 p <- p + scale_y_continuous(trans="log10")
 p <- p + theme(axis.title=element_text(size=20),
@@ -812,17 +801,16 @@ p <- p + theme(axis.title=element_text(size=12),
                legend.position="bottom")
 print(p)
   
-#if(save_plots) {
 ggsave("expect_moments++_vs_moments.LD_3-pops.png",
        p, device="png", width=10, height=10)
-#}
   
 ratio <- filter(full_tbl, method=="moments++") %>% select(common_moments) / 
          filter(full_tbl, method=="moments.LD") %>% select(common_moments) 
 
-ratio_tbl <- bind_cols(ratio, select(filter(full_tbl, method=="moments++"),
-                                     -common_moments)) %>% select(-c("method",
-                                                                     "sep_moments"))
+ratio_tbl <- bind_cols(ratio,
+                       select(filter(full_tbl, method=="moments++"),
+                              -common_moments)) %>% select(-c("method",
+                                                              "sep_moments"))
 
 dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="variable")
 
@@ -838,10 +826,8 @@ p <- p + theme(axis.title=element_text(size=12),
 p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
 print(p)
 
-#if(save_plots) {
 ggsave("ratio_moments++_vs_moments.LD_3-pops.png",
        p, device="png", width=10, height=10)
-#}
 ```
 
 # Test MigMats
@@ -853,6 +839,8 @@ ggsave("ratio_moments++_vs_moments.LD_3-pops.png",
 import csv
 import moments.LD
 import numpy as np
+
+np.set_printoptions(threshold=10000)
 
 with open("params_3_pops.csv") as fin:
     params = [{k: float(v) for k, v in row.items()} for row in csv.DictReader(fin)]
@@ -868,32 +856,15 @@ mig_mats = [
 
 for i, mig_mat in enumerate(mig_mats, 1):
     matpp = np.loadtxt(f'3-pops_scenario_{i}_mig.csv', delimiter=",")
-    mat_LD = moments.LD.Matrices.migration_ld(3, mig_mat).todense()
+    mat_LD = moments.LD.Matrices.migration_ld(3, 2 * mig_mat).todense()
     print('scenario', i)
     print(((matpp - mat_LD) ** 2).sum())
-    print('====')
-    
+
 matpp = np.loadtxt('3-pops_scenario_1_drift.csv', delimiter=",")
-mat_LD = moments.LD.Matrices.drift_ld(3, [1, 1, 1]).todense()
-print('scenario', i)
+mat_LD = moments.LD.Matrices.drift_ld(3, [2 * N0, 2 * N1, 2 * N2]).todense()
+print(mat_LD)
 print(matpp - mat_LD)
-print('====')
 print(((matpp - mat_LD)).sum())
-print('====')
-    
-matpp = np.loadtxt('3-pops_scenario_1_rec.csv', delimiter=",")
-mat_LD = moments.LD.Matrices.recombination(3, 1e-6).todense()
-print('scenario', i)
-print(matpp - mat_LD)
-print('====')
-print(((matpp - mat_LD)).sum())
-print('====')
-    
-#matpp = np.loadtxt('3-pops_scenario_1_mut.csv', delimiter=",")
-#mat_LD = moments.LD.Matrices.mutation_ld(3, 1e-2).todense()
-#print('scenario', i)
-#print(((matpp - mat_LD) ** 2).sum())
-#print('====')
 ```
 
 # Clean-up
@@ -903,5 +874,9 @@ print('====')
 source ~/.bashrc
 
 rm *txt
+rm *drift.csv
+rm *rec.csv
 rm *mig.csv
+rm *mut.csv
+
 ```
