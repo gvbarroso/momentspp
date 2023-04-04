@@ -1,8 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 24/03/2023
-
+ * Last modified: 04/04/2023
  */
 
 
@@ -85,12 +84,12 @@ public:
   }
 
 public:
-  std::string asString(size_t i)
+  std::string asString(int i)
   {
     return bpp::TextTools::toString(i);
   }
 
-  std::string asString(size_t i) const
+  std::string asString(int i) const
   {
     return bpp::TextTools::toString(i);
   }

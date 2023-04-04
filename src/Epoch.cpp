@@ -92,7 +92,7 @@ void Epoch::printRecursions(std::ostream& stream)
               if(mat.coeffRef(pos, l) > 0)
                 stream << "+";
 
-              stream << bpp::TextTools::toString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getBasis()[l]->getName() + " ";
+              stream << ssl_.asString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getBasis()[l]->getName() + " ";
             }
           }
         }
