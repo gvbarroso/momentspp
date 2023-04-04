@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 31/03/2022
+ * Last modified: 04/04/2022
  *
  */
 
@@ -86,40 +86,7 @@ public:
     return transition_;
   }
 
-  virtual void printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib)
-  {
-    std::ofstream matFile;
-    matFile.open(fileName);
-
-    auto mat = matrices_[0];
-
-    if(matrices_.size() > 1)
-    {
-      for(size_t i = 1; i < matrices_.size(); ++i)
-        mat += matrices_[i];
-    }
-
-    for(int i = 0; i < mat.rows(); ++i)
-    {
-      if(sslib.getMoment(i)->getPrefix() != "I" && sslib.getMoment(i)->getPrefix() != "H")
-      {
-        for(int j = 0; j < mat.cols(); ++j)
-        {
-          if(sslib.getMoment(j)->getPrefix() != "I" && sslib.getMoment(j)->getPrefix() != "H")
-          {
-            matFile << mat.coeffRef(i, j);
-
-            if(j < mat.cols() - 1)
-              matFile << ",";
-          }
-        }
-
-        matFile  << "\n";
-      }
-    }
-
-    matFile.close();
-  }
+  virtual void printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
 
 protected:
   // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator
@@ -128,34 +95,9 @@ protected:
   virtual void updateMatrices_() = 0; // scales coefficients of "delta" matrices by (new) parameters during optimization
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
-  void assembleTransitionMatrix_()
-  {
-    transition_ = matrices_[0]; // inits to "delta" matrix
+  void assembleTransitionMatrix_();
 
-    if(matrices_.size() > 1)
-    {
-      for(size_t i = 1; i < matrices_.size(); ++i)
-        transition_ += matrices_[i];
-    }
-
-    transition_ += identity_; // adds Identity to convert from "delta" to "transition" matrix
-  }
-
-  void setIdentity_(size_t numStats)
-  {
-    Eigen::SparseMatrix<double> id(numStats, numStats);
-
-    std::vector<Eigen::Triplet<double>> md(0);
-    md.reserve(numStats);
-
-    for(size_t i = 0; i < numStats; ++i)
-      md.emplace_back(Eigen::Triplet<double>(i, i, 1.));
-
-    id.setFromTriplets(std::begin(md), std::end(md));
-    id.makeCompressed();
-
-    identity_ = id;
-  }
+  void setIdentity_(size_t numStats);
 
 };
 

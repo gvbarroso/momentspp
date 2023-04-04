@@ -1,13 +1,12 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 24/03/2023
+ * Last modified: 04/04/2023
  *
  */
 
 #include <ios>
 
-#include "Log.hpp"
 #include "Epoch.hpp"
 
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
@@ -106,38 +105,7 @@ void Epoch::printRecursions(std::ostream& stream)
 
 void Epoch::computeSteadyState_()
 {
-  #ifdef VERBOSE
-  Log logger;
-  logger.openFile(getName() + "_matrices.txt");
-  Eigen::SparseMatrix<double> test(ssl_.getSizeOfBasis(), ssl_.getSizeOfBasis());
-  test.setIdentity();
-
-  for(size_t i = 0; i < operators_.size(); ++i)
-  {
-    Eigen::SparseMatrix<double> tmp(ssl_.getSizeOfBasis(), ssl_.getSizeOfBasis());
-    tmp.setZero();
-    for(size_t j = 0; j < operators_[i]->getMatrices().size(); ++j)
-    {
-      logger.getLogFile() << "\n\nsum of entries (delta matrix " << j << ") = " << std::setprecision(6) << std::scientific << operators_[i]->getMatrices()[j].sum() << "\n";
-      tmp += operators_[i]->getMatrices()[j];
-      bpp::ParameterList pl;
-      pl.addParameter(operators_[i]->getParameters()[j]);
-      pl.printParameters(logger.getLogFile());
-      logger.getLogFile() << std::setprecision(6) << std::scientific << operators_[i]->getMatrices()[j] << "\n";
-    }
-
-    operators_[i]->getParameters().printParameters(logger.getLogFile());
-    logger.getLogFile() << "\n\nsum of entries (operator combined delta matrix) = " << std::setprecision(6) << std::scientific << tmp.sum() << "\n";
-    logger.getLogFile() << std::setprecision(6) << tmp << "\n";
-    logger.getLogFile() << "operator transition matrix:\n";
-    logger.getLogFile() << operators_[i]->getTransitionMatrix() << "\n\n";
-
-    logger.getLogFile() << "accumulated transition matrix:\n";
-    test = operators_[i]->getTransitionMatrix() * test;
-    logger.getLogFile() << std::setprecision(6) << test << "\n";
-  }
-  #endif
-
+  std::cout << "Computing steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
   Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
 
   for(size_t i = 1; i < operators_.size(); ++i)
@@ -158,4 +126,5 @@ void Epoch::computeSteadyState_()
   steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getDummyIndexUncompressed())); // I moment embodies scaling constant used by Eigen
 
   updateMoments(steadYstate_);
+  std::cout << " done.\n";
 }

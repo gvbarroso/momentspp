@@ -862,8 +862,8 @@ for i, mig_mat in enumerate(mig_mats, 1):
 
 matpp = np.loadtxt('3-pops_scenario_1_drift.csv', delimiter=",")
 mat_LD = moments.LD.Matrices.drift_ld(3, [2 * N0, 2 * N1, 2 * N2]).todense()
-print(mat_LD)
-print(matpp - mat_LD)
+#print(mat_LD)
+#print(matpp - mat_LD)
 print(((matpp - mat_LD)).sum())
 ```
 

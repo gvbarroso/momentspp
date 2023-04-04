@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso 
  * Created: 21/10/2022
- * Last modified: 21/10/2022
+ * Last modified: 04/04/2023
  *
  */
 
@@ -18,6 +18,6 @@ void Log::stop_timer()
   auto duration = end - start;
   double conv = duration / 1e+6;
     
-  logFile_ << std::setprecision(6) << conv << "\n";
+  logFile_ << std::setprecision(6) << conv << " seconds.\n";
 }
 

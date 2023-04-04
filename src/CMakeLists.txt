@@ -9,6 +9,7 @@ SET(momentspp_CPP
   Demes.cpp
   Data.cpp
   SumStatsLibrary.cpp
+  AbstractOperator.cpp
   Drift.cpp
   Migration.cpp
   Mutation.cpp
