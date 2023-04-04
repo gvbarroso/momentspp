@@ -1,7 +1,4 @@
-label = 1_pop
-demes_file = pops.tsv
-stats_file =
-
+num_threads = 1
 num_epochs = 1
 num_pops = 1
 total_gen = 10000

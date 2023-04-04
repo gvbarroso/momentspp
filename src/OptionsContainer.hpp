@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 30/03/2023
+ * Last modified: 04/04/2023
  *
  */
 
@@ -41,7 +41,7 @@ private:
   size_t numEpochs_;
   size_t numPops_;
   size_t totalNumberOfGenerations_;
-  size_t numberOfThreads_;
+  size_t numThreads_;
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
@@ -60,7 +60,7 @@ public:
   numEpochs_(bpp::ApplicationTools::getParameter<size_t>("num_epochs", options, 1)),
   numPops_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, 1)),
   totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("total_gen", options, 1)),
-  numberOfThreads_(bpp::ApplicationTools::getParameter<size_t>("number_threads", options, 1, "", true, 4))
+  numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4))
   {
     if(numPops_ != initPopSizes_.size())
       throw bpp::Exception("OptionsContainer::num_pops does not match length of Ni parameters!");
@@ -146,9 +146,9 @@ public:
     return totalNumberOfGenerations_;
   }
 
-  size_t getNumberOfThreads() const
+  size_t getNumThreads() const
   {
-    return numberOfThreads_;
+    return numThreads_;
   }
 
 };

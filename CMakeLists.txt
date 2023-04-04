@@ -11,7 +11,7 @@ project (momentspp CXX)
 # On MacOS, clang may not support this option (depending on the version); add instead e.g. "-mcpu=apple-M1" after -O3 flag.
 # clang --print-supported-cpus may give additional insight
 
-SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3")
+SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3 -fopenmp -march=native")
 
 # Find dependencies (add install directory to search)
 IF(CMAKE_INSTALL_PREFIX)

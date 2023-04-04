@@ -25,7 +25,8 @@ int main(int argc, char *argv[]) {
 
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
-  std::cout << "*                moments++  version 0.0.1                        *" << std::endl;
+  std::cout << "*                                                                *" << std::endl;
+  std::cout << "*                 moments++  version 0.0.1                       *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                   \"Barrilete Cosmico\"                          *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
@@ -36,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 03/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 04/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -53,7 +54,6 @@ int main(int argc, char *argv[]) {
    *
    * TODO
    * Write Admixture operator as an AbstractOperator that has exponent 1
-   * > 2 pops
    */
 
   if(argc == 1)
@@ -85,6 +85,9 @@ int main(int argc, char *argv[]) {
   std::map<std::string, std::string> params = momentspp.getParams();
 
   OptionsContainer options(params);
+
+  std::cout << "\nmoments++ is using " << options.getNumThreads() << " threads.\n";
+  Eigen::setNbThreads(options.getNumThreads());
 
   size_t numEpochs = options.getNumEpochs();
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // pop_id -> Population*, one per epoch

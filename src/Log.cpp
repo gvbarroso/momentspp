@@ -8,7 +8,7 @@
 
 #include "Log.hpp"
 
-void Log::stop_timer()
+void Log::stop_timer(std::ostream& stream)
 {
   endTimePoint_ = std::chrono::high_resolution_clock::now();
 
@@ -18,6 +18,6 @@ void Log::stop_timer()
   auto duration = end - start;
   double conv = duration / 1e+6;
     
-  logFile_ << std::setprecision(6) << conv << " seconds.\n";
+  stream << std::setprecision(6) << conv << " seconds.\n";
 }
 

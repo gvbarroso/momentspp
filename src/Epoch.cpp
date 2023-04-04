@@ -24,7 +24,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
-  y = transitionMatrix_.pow(duration()) * y;
+  y = transitionMatrix_.pow(duration()) * y; // uses multi-threading
 }
 
 std::vector<size_t> Epoch::fetchSelectedPopIds()
@@ -126,5 +126,5 @@ void Epoch::computeSteadyState_()
   steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getDummyIndexUncompressed())); // I moment embodies scaling constant used by Eigen
 
   updateMoments(steadYstate_);
-  std::cout << " done.\n";
+  std::cout << "done.\n";
 }

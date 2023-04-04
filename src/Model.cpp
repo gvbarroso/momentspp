@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 22/03/2023
+ * Last modified: 04/04/2023
  *
  */
 
@@ -20,6 +20,9 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats()
 {
+  Log logger;
+  logger.start_timer();
+
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
   for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
@@ -30,6 +33,9 @@ void Model::computeExpectedSumStats()
 
   epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
   epochs_.back()->updateMoments(expected_); // updates inside sslib
+
+  std::cout << "\nTime to compute expected sum. stats.: ";
+  logger.stop_timer(std::cout);
 }
 
 void Model::printAliasedMoments(std::ostream& stream)

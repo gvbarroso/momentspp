@@ -790,11 +790,11 @@ write.table(dat_matched, "LD_++_3-pops.csv", sep=",", row.names=F, quote=F)
 
 p <- ggplot(data=dat_matched,
             aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
+p <- p + geom_point(size=2) + theme_bw()
 p <- p + scale_y_continuous(trans="log10")
 p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title = "Expectations x N_0 (rows) and r (cols)",
-              x="Moment", y="Value", shape="Method", color="# Epochs")
+p <- p + labs(title = "Expectations",
+              x="Moment", y="Value", shape="Method", color="Scenario")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
@@ -816,8 +816,8 @@ dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="vari
 
 p <- ggplot(data=dat_ratio,
             aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
-p <- p + labs(title = "Ratio ++/LD x N_0 (rows) and r (cols)",
+p <- p + geom_point(size=1) + theme_bw()
+p <- p + labs(title = "Ratio ++/LD",
               x="Moment", y="Value", color="Scenario")
 p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
@@ -834,7 +834,7 @@ ggsave("ratio_moments++_vs_moments.LD_3-pops.png",
 
 ## params
 
-```{python check-my-matrix, include=TRUE}
+```{python check-my-matrix, eval=FALSE, include=FALSE}
 
 import csv
 import moments.LD
@@ -874,9 +874,9 @@ print(((matpp - mat_LD)).sum())
 source ~/.bashrc
 
 rm *txt
-rm *drift.csv
-rm *rec.csv
-rm *mig.csv
-rm *mut.csv
+#rm *drift.csv
+#rm *rec.csv
+#rm *mig.csv
+#rm *mut.csv
 
 ```

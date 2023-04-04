@@ -19,7 +19,7 @@
 
 #include <Eigen/Core>
 
-#include <boost/algorithm/string.hpp>
+//#include <boost/algorithm/string.hpp>
 
 #include <Bpp/Text/TextTools.h>
 

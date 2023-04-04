@@ -1,11 +1,8 @@
-label = 2_pops
-demes_file = pops.tsv
-stats_file =
-
+num_threads = 1
 num_epochs = 1
 num_pops = 2
 total_gen = 10000
-compress_moments = 0
+compress_moments = 1
 
 # additional file with initial parameter values
 params=pops_2.bpp
