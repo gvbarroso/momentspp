@@ -1,12 +1,13 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 04/04/2023
+ * Last modified: 05/04/2023
  *
  */
 
 #include <ios>
 
+#include "Log.hpp"
 #include "Epoch.hpp"
 
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
@@ -128,3 +129,24 @@ void Epoch::computeSteadyState_()
   updateMoments(steadYstate_);
   std::cout << "done.\n";
 }
+
+void Epoch::quickDirtySteadyState_()
+{
+  std::cout << "Computing quick-n-dirty steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
+  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
+
+  for(size_t i = 1; i < operators_.size(); ++i)
+    mat = operators_[i]->getTransitionMatrix() * mat;
+
+  transitionMatrix_ = mat; // converts from sparse to dense format
+
+  Eigen::VectorXd y(transitionMatrix_.rows());
+  for(int i = 0; i < y.size(); ++i)
+    y(i) = 1.;
+
+  steadYstate_ = transitionMatrix_.pow(1e+7) * y;
+
+  updateMoments(steadYstate_);
+  std::cout << "done.\n";
+}
+

@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 04/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 05/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
     std::cout << "order = \n";
     std::cout << "num_epochs = \n";
     std::cout << "num_pops = \n";
-    std::cout << "total_gen = \n";
-    std::cout << "number_threads = \n\n";
+    std::cout << "num_threads = \n";
+    std::cout << "total_gen = \n\n";
 
     std::cout << "params=init_params.bpp \n\n";
 
@@ -181,12 +181,12 @@ int main(int argc, char *argv[]) {
   {
     if(options.getDataFilePath() == "none")
     {
-      std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters:\n";
+      std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
-      model->getParameters().printParameters(std::cout);
+      //model->getParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
       std::string file = model->getName() + "_expectations.txt";
-      std::cout << "\nCheck " << file << " for final moments expectations.\n";
+      std::cout << "Check " << file << " for final moments expectations.\n";
       std::ofstream fout(file);
       model->printAliasedMoments(fout);
       fout.close();

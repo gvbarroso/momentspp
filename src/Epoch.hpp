@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 21/03/2023
+ * Last modified: 05/04/2023
  *
  */
 
@@ -74,7 +74,8 @@ public:
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       shareParameters_((*it)->getParameters());
 
-    computeSteadyState_(); // and updates moments inside ssl_
+    //computeSteadyState_(); // and updates moments inside ssl_
+    quickDirtySteadyState_(); // and updates moments inside ssl_
   }
 
   ~Epoch()
@@ -169,6 +170,8 @@ public:
 
 private:
   void computeSteadyState_();
+
+  void quickDirtySteadyState_();
 
   void updateOperators_(const bpp::ParameterList& params)
   {

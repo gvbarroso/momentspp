@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 04/04/2023
+ * Last modified: 05/04/2023
  *
  */
 
@@ -48,7 +48,7 @@ public:
   label_(bpp::ApplicationTools::getStringParameter("label", options, "moments++", "", 0, 4)),
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, 0, 0, "", 0, "none", 0)),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, false, true, "", false, "none", 0)),
-  numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "Powell", "", true, 4)),
+  numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "NewtonRhapson", "", true, 4)),
   initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
   initPopSizes_(bpp::ApplicationTools::getVectorParameter<double>("Ni", options, ',', "none")),
   initMu_(bpp::ApplicationTools::getDoubleParameter("mu", options, 1e-8)),

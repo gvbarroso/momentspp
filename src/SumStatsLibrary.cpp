@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 24/03/2023
+ * Last modified: 05/04/2023
  *
  */
 
@@ -11,7 +11,7 @@
 
 std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) const
 {
-  std::shared_ptr<Moment> ptr = nullptr; // object slicing, can only get (base) Moment attributes
+  std::shared_ptr<Moment> ptr = nullptr;
   for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
   {
     if((*itMom)->getName() == name)
@@ -343,7 +343,6 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
 
 void SumStatsLibrary::compressBasis_()
 {
-  std::cout << "\nCompressing basis..."; std::cout.flush();
   basis_.clear();
   basis_.reserve(moments_.size());
 
@@ -363,7 +362,5 @@ void SumStatsLibrary::compressBasis_()
 
   for(size_t i = 0; i < basis_.size(); ++i)
     basis_[i]->setPosition(i);
-
-  std::cout << " done.\n";
 }
 
