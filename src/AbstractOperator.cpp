@@ -33,7 +33,7 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName, const SumSta
           matFile << mat.coeffRef(i, j);
 
           if(j < mat.cols() - 1)
-              matFile << ",";
+            matFile << ",";
         }
       }
 

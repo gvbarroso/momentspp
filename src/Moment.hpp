@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 03/04/2023
+ * Last modified: 06/04/2023
  *
  */
 
@@ -26,14 +26,14 @@ class Moment
 {
 
 protected:
-  std::string name_; // e.g. "Dz_12_A"
+  std::string name_; // e.g. "Dz_110"
   std::string prefix_; // e.g. "Dz"
-  std::vector<size_t> popIndices_; // sorted for binary_search, e.g. {1, 2, 2}, may be relevant if Order and numPops are high
-  size_t position_; // within the Y vector, in SumStatsLibrary, same as row/col in AbstractOperator matrix(ces)
+  std::vector<size_t> popIndices_;
+  size_t position_; // within the Y vector and SumStatsLibrary basis_
   double value_;
 
-  std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry (via popIndices_)
-  std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations) under a given scenario (eg selection against derived allele in left locus)
+  std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry
+  std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations)
 
 public:
   Moment():
@@ -196,13 +196,13 @@ public:
     return pos != std::end(aliases_);
   }
 
-  std::vector<size_t> fetchDiffPopIds(size_t notPopId) // fetches pop IDs different from notPopId
+  std::vector<size_t> fetchDiffPopIds(size_t focalPopId) // fetches pop IDs different from focalPopId
   {
     std::vector<size_t> ret(0);
 
     for(auto it = std::begin(popIndices_); it != std::end(popIndices_); ++it)
     {
-      if(*it != notPopId)
+      if(*it != focalPopId)
         ret.push_back(*it);
     }
 
@@ -220,8 +220,6 @@ public:
       for(size_t i = 1; i < splitName.size(); ++i)
         popIndices_.push_back(std::stoul(splitName[i]));
     }
-
-    //std::sort(std::begin(popIndices_), std::end(popIndices_));
   }
 
 };

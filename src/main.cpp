@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 03/04/2023
+ * Last modified: 06/04/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 05/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 06/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -117,6 +117,12 @@ int main(int argc, char *argv[]) {
     popMaps.emplace_back(map);
   }
 
+  #ifdef VERBOSE
+  Log logger;
+  std::ofstream logFile;
+  logFile.open(options.getLabel() + "_timing_log.txt");
+  #endif
+
   Demes demes(popMaps);
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
@@ -142,6 +148,10 @@ int main(int argc, char *argv[]) {
     for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
       drift[j] = 1. / (2. * drift[j]);
 
+    #ifdef VERBOSE
+    logger.start_timer();
+    #endif
+
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options.getInitR(), ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options.getInitMu(), ic, sslib);
@@ -155,14 +165,25 @@ int main(int argc, char *argv[]) {
       operators.emplace_back(migOp);
     }
 
+    #ifdef VERBOSE
+    logFile << "Time to construct operators " << id << ": ";
+    logger.stop_timer(logFile);
+    #endif
+
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
+    #ifdef VERBOSE
+    logger.start_timer();
+    #endif
+
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopMaps()[i]));
 
     #ifdef VERBOSE
-    std::ofstream recOut;
+    logFile << "Time to compute steady-state " << id << ": ";
+    logger.stop_timer(logFile);
+    /*std::ofstream recOut;
     recOut.open(epochs.back()->getName() + "_recursions.txt");
     epochs.back()->printRecursions(recOut);
     recOut.close();
@@ -173,7 +194,7 @@ int main(int argc, char *argv[]) {
       operators[1]->printDeltaLDMat(options.getLabel() + "_drift.csv", sslib);
       operators[2]->printDeltaLDMat(options.getLabel() + "_rec.csv", sslib);
       operators[3]->printDeltaLDMat(options.getLabel() + "_mut.csv", sslib);
-    }
+    }*/
     #endif
   }
 
@@ -183,10 +204,21 @@ int main(int argc, char *argv[]) {
     {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
-      //model->getParameters().printParameters(std::cout);
+
+      #ifdef VERBOSE
+      logger.start_timer();
+      #endif
+
       model->computeExpectedSumStats();
+
+      #ifdef VERBOSE
+      logFile << "Time to compute model expectations: ";
+      logger.stop_timer(logFile);
+      logFile.close();
+      #endif
+
       std::string file = model->getName() + "_expectations.txt";
-      std::cout << "Check " << file << " for final moments expectations.\n";
+      std::cout << "Check " << file << " for final expectations.\n\n";
       std::ofstream fout(file);
       model->printAliasedMoments(fout);
       fout.close();

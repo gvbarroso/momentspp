@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 05/04/2023
+ * Last modified: 06/04/2023
  *
  */
 
@@ -75,7 +75,7 @@ public:
       shareParameters_((*it)->getParameters());
 
     //computeSteadyState_(); // and updates moments inside ssl_
-    quickDirtySteadyState_(); // and updates moments inside ssl_
+    pseudoSteadyState_(); // and updates moments inside ssl_
   }
 
   ~Epoch()
@@ -171,7 +171,7 @@ public:
 private:
   void computeSteadyState_();
 
-  void quickDirtySteadyState_();
+  void pseudoSteadyState_();
 
   void updateOperators_(const bpp::ParameterList& params)
   {

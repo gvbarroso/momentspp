@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 04/04/2023
+ * Last modified: 06/04/2023
  */
 
 
@@ -44,7 +44,7 @@ private:
   size_t numPi2Stats_;
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
-  std::vector<std::shared_ptr<Moment>> moments_; // sorted lexicographically based on their name_
+  std::vector<std::shared_ptr<Moment>> moments_; // sorted alphabetically based on prefix_ and numerically based on popIndices_
   std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, based on symmetries
 
 public:
@@ -208,6 +208,32 @@ public:
 
 private:
   void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments);
+
+  static bool compareMoments_(std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
+  {
+    bool lessThan = 0;
+
+    if(a->getPrefix() != b->getPrefix())
+      lessThan = a->getPrefix() < b->getPrefix();
+
+    else
+    {
+      auto x = a->getPopIndices();
+      auto y = b->getPopIndices();
+      assert(x.size() == y.size());
+
+      for(size_t i = 0; i < x.size(); ++i)
+      {
+        if(x[i] != y[i])
+        {
+          lessThan = x[i] < y[i];
+          break;
+        }
+      }
+    }
+
+    return lessThan;
+  }
 
   // assign two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();

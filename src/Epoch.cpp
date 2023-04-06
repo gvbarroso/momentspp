@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 05/04/2023
+ * Last modified: 06/04/2023
  *
  */
 
@@ -130,9 +130,9 @@ void Epoch::computeSteadyState_()
   std::cout << "done.\n";
 }
 
-void Epoch::quickDirtySteadyState_()
+void Epoch::pseudoSteadyState_()
 {
-  std::cout << "Computing quick-n-dirty steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
+  std::cout << "Computing pseudo steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
   Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
 
   for(size_t i = 1; i < operators_.size(); ++i)

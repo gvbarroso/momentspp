@@ -1,5 +1,5 @@
 compress_moments = 1
-num_threads = 1
+num_threads = 
 num_epochs = 1
 num_pops = 3
 total_gen = 10000

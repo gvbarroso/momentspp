@@ -212,11 +212,11 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
     }
   }
 
-  // adds Dummy Moment lexicographically after H_ stats to convert into a homogeneous system (see Mutation::setUpMatrices_())
+  // includes "Dummy" Moment to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.emplace_back(std::make_shared<Moment>("I", 1.));
 
   // determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
-  std::sort(std::begin(moments_), std::end(moments_), [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b) { return a->getName() < b->getName(); } );
+  std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);

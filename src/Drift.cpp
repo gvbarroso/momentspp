@@ -118,7 +118,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             if(i != j && (*it)->hasPopIndex(j))
             {
               std::vector<size_t> diff = (*it)->fetchDiffPopIds(i);
-              assert(diff.size() == 2); // NOTE
+              assert(diff.size() == 2);
               double f = 1. + (diff[0] == diff[1]);
 
               col = sslib.findCompressedIndex(sslib.findDzIndex(i, diff[0], diff[1]));
