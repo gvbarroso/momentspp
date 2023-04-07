@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 05/04/2023
+ * Last modified: 07/04/2023
  *
  */
 
@@ -16,7 +16,7 @@
 #include <thread>
 
 #include <Bpp/App/ApplicationTools.h>
-
+#include <Bpp/Text/TextTools.h>
 
 class OptionsContainer
 {
@@ -63,11 +63,11 @@ public:
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4))
   {
     if(numPops_ != initPopSizes_.size())
-      throw bpp::Exception("OptionsContainer::num_pops does not match length of Ni parameters!");
+      throw bpp::Exception("OptionsContainer::num_pops (" + bpp::TextTools::toString(numPops_) + ") does not match length of Ni parameters (" + bpp::TextTools::toString(initPopSizes_.size()) + ")!");
 
     if(numPops_ > 1)
       if(numPops_ * (numPops_ - 1) != initMij_.size())
-        throw bpp::Exception("OptionsContainer::num_pops is not compatible with length of mij parameters!");
+        throw bpp::Exception("OptionsContainer::num_pops (" + bpp::TextTools::toString(numPops_) + ") is not compatible with length of mij parameters (" + bpp::TextTools::toString(initMij_.size()) + ")!");
   }
   
 public:

@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 06/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 07/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
   /* NOTE
    * IDEAS:
-   * Selection operator -> upon rejection, sample a replacement individual from the whole population with probaility proportional to the pop. fitness vector (which maybe can be obtained from allele frequencies?)
+   * what if both left and right loci are under selection, potentially with different selection coefficients, even opposite signs
    * selection constrained to a particular epoch
    * define start and end of epochs as quantiles of the exp dist?
    *
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
       #endif
 
       std::string file = model->getName() + "_expectations.txt";
-      std::cout << "Check " << file << " for final expectations.\n\n";
+      std::cout << "Check " << file << ".\n\n";
       std::ofstream fout(file);
       model->printAliasedMoments(fout);
       fout.close();
