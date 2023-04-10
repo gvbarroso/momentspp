@@ -1,10 +1,9 @@
-label = 1-pop_scenario_$(i)
+label = 3-pops_scenario_$(i)
 demes_file = pops.tsv
 
 compress_moments = 1
 num_epochs = 1
-num_pops = 1
+num_pops = 3
 total_gen = 10000
 
-params=pops_1.bpp
-
+params=pops_3.bpp

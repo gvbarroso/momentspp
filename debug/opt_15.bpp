@@ -1,0 +1,8 @@
+compress_moments = 1
+num_threads = 
+num_epochs = 1
+num_pops = 15
+total_gen = 10000
+
+# additional file with initial parameter values
+params=pops_15.bpp

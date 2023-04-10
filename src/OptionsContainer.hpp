@@ -67,7 +67,7 @@ public:
 
     if(numPops_ > 1)
       if(numPops_ * (numPops_ - 1) != initMij_.size())
-        throw bpp::Exception("OptionsContainer::num_pops (" + bpp::TextTools::toString(numPops_) + ") is not compatible with length of mij parameters (" + bpp::TextTools::toString(initMij_.size()) + ")!");
+        throw bpp::Exception("OptionsContainer::num_pops (" + bpp::TextTools::toString(numPops_) + ") is incompatible with length of mij parameters (" + bpp::TextTools::toString(initMij_.size()) + ")!");
   }
   
 public:

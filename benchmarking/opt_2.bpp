@@ -1,15 +1,9 @@
 label = 2-pops_scenario_$(i)
 demes_file = pops.tsv
-stats_file =
 
-optimizer = Powell
-tolerance = 1e-6
 compress_moments = 1
-ci = 1
-order = 2
 num_epochs = $(epochs)
 num_pops = 2
 total_gen = 10000
-number_threads = 1
 
 params=pops_2.bpp
