@@ -35,7 +35,10 @@ public:
   Graph& operator=(const Graph&) = delete;
   Graph& operator=(Graph&&) = delete;
 
-  ~Graph() = default;
+  ~Graph()
+  {
+    delete [] adj_;
+  }
 
 public:
   int getNumVertices()
