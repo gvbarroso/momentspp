@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 08/02/2023
+ * Last modified: 11/04/2023
  *
  */
 
@@ -52,6 +52,8 @@
 #include <yaml-cpp/exceptions.h>
 #include <yaml-cpp/null.h>
 
+#include <Bpp/Exceptions.h>
+
 #include "Epoch.hpp"
 #include "Population.hpp"
 
@@ -59,12 +61,17 @@ class Demes
 {
 
 private:
+  // demes file describes the demographic structured allowed
+  // param values are optimized by moments++ but no new param is included (eg, admix event)
+  YAML::Node model_;
+
   std::vector<Population> pops_;
   std::vector<Epoch> epochs_;
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps_; // pop-id -> Population*, one per epoch
 
 public:
   Demes(const std::vector<std::map<size_t, std::shared_ptr<Population>>>& popMaps, const std::string& file):
+  model_(),
   pops_(0),
   epochs_(0),
   popMaps_(popMaps)
@@ -75,6 +82,7 @@ public:
   }
 
   Demes(const std::vector<std::map<size_t, std::shared_ptr<Population>>>& popMaps):
+  model_(),
   pops_(0),
   epochs_(0),
   popMaps_(popMaps)
@@ -84,6 +92,11 @@ public:
   }
 
 public:
+  const YAML::Node& getModel_()
+  {
+    return model_;
+  }
+
   const std::vector<Population>& getPops() const
   {
     return pops_;

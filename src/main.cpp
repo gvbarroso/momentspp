@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
   logFile.open(options.getLabel() + "_timing_log.txt");
   #endif
 
-  Demes demes(popMaps);
+  Demes demes(popMaps);//, options.getDemesFilePath());
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);

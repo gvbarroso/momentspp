@@ -1,1 +1,15 @@
-"0\t0\tBrazil 0\t1\tArgentina 1\t0\tBrazil 1\t1\tArgentina 2\t0\tBrazil 2\t1\tArgentina"
+description: test model
+time_units: generations
+demes:
+  - name: Clovis
+    epochs:
+      - end_time: 1000
+        start_size: 2000
+  - name: Argentina
+    ancestors: [Clovis]
+    epochs:
+      - start_size: 2000
+  - name: Brazil
+    ancestors: [Clovis]
+    epochs:
+      - start_size: 2000
