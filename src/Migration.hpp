@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 27/03/2022
+ * Last modified: 10/04/2022
  *
  */
 
@@ -24,7 +24,7 @@ public:
   littleMigMat_()
   {
     includeParameters_(migParams);
-    prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    prevParams_.addParameters(getParameters());
     setLittleMat_();
     testFlow_();
     setUpMatrices_(sslib);
@@ -39,9 +39,9 @@ public:
     {
       for(auto itJ = std::begin(sslib.getPopIndices()); itJ != std::end(sslib.getPopIndices()); ++itJ)
       {
-        if((*itI) != (*itJ)) // if population indices are different
+        if((*itI) != (*itJ))
         {
-          //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValue, ic);
+          //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValues[idx], ic);
           //addParameter_(param.get());
           addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI)) + "_" + bpp::TextTools::toString((*itJ)), initValues[idx], ic));
           ++idx;
@@ -49,7 +49,7 @@ public:
       }
     }
 
-    prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    prevParams_.addParameters(getParameters());
     setLittleMat_();
     testFlow_();
     setUpMatrices_(sslib);

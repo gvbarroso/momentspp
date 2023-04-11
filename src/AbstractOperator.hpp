@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 04/04/2022
+ * Last modified: 11/04/2022
  *
  */
 
@@ -58,7 +58,15 @@ public:
 
 public:
   virtual ~AbstractOperator()
-  { }
+  {
+    std::vector<std::string> paramNames(0);
+    paramNames.reserve(getParameters().size());
+
+    for(size_t i = 0; i < getParameters().size(); ++i)
+      paramNames.emplace_back(getParameters()[i].getName());
+
+    deleteParameters_(paramNames);
+  }
 
   void setParameters(const bpp::ParameterList& params)
   {

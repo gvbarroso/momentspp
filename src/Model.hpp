@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/03/2023
+ * Last modified: 11/04/2023
  *
  */
 
@@ -55,7 +55,13 @@ public:
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
-      shareParameters_((*it)->getParameters());
+      addParameters_((*it)->getParameters());
+
+    for(size_t i = 1; i < epochs_.size(); ++i)
+    {
+      aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
+      aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
+    }
 
     linkMoments_();
   }
@@ -70,13 +76,27 @@ public:
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
-      shareParameters_((*it)->getParameters());
+      addParameters_((*it)->getParameters());
+
+    for(size_t i = 0; i < epochs_.size(); ++i)
+    {
+      aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
+      aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
+    }
 
     linkMoments_();
   }
 
   ~Model()
-  { }
+  {
+    std::vector<std::string> paramNames(0);
+    paramNames.reserve(getParameters().size());
+
+    for(size_t i = 0; i < getParameters().size(); ++i)
+      paramNames.emplace_back(getParameters()[i].getName());
+
+    deleteParameters_(paramNames);
+  }
 
   Model* clone() const
   {

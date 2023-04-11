@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 06/04/2023
+ * Last modified: 11/04/2023
  *
  */
 
@@ -61,7 +61,7 @@ public:
   Epoch(const std::string& name, SumStatsLibrary& ssl, size_t start, size_t end,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
         const std::map<size_t, std::shared_ptr<Population>>& pops):
-  bpp::AbstractParameterAliasable(""), // set namespace TODO use name somehow
+  bpp::AbstractParameterAliasable(""),
   name_(name),
   ssl_(ssl),
   startGen_(start),
@@ -72,14 +72,22 @@ public:
   steadYstate_()
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
-      shareParameters_((*it)->getParameters());
+      addParameters_((*it)->getParameters());
 
-    //computeSteadyState_(); // and updates moments inside ssl_
+    bpp::AbstractParameterAliasable::setNamespace(name + ".");
     pseudoSteadyState_(); // and updates moments inside ssl_
   }
 
   ~Epoch()
-  { }
+  {
+    std::vector<std::string> paramNames(0);
+    paramNames.reserve(getParameters().size());
+
+    for(size_t i = 0; i < getParameters().size(); ++i)
+      paramNames.emplace_back(getParameters()[i].getName());
+
+    deleteParameters_(paramNames);
+  }
 
   Epoch* clone() const
   {

@@ -67,8 +67,6 @@ int main(int argc, char *argv[]) {
     std::cout << "optimizer = \n";
     std::cout << "tolerance = \n";
     std::cout << "compress_moments = \n";
-    std::cout << "ci = \n";
-    std::cout << "order = \n";
     std::cout << "num_epochs = \n";
     std::cout << "num_pops = \n";
     std::cout << "num_threads = \n";
@@ -184,7 +182,7 @@ int main(int argc, char *argv[]) {
     logFile << "Time to compute steady-state " << id << ": ";
     logger.stop_timer(logFile);
     /*std::ofstream recOut;
-    recOut.open(epochs.back()->getName() + "_recursions.txt");
+    recOut.open(options.getLabel() + "_" + epochs.back()->getName() + "_recursions.txt");
     epochs.back()->printRecursions(recOut);
     recOut.close();
 
@@ -206,6 +204,7 @@ int main(int argc, char *argv[]) {
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
       #ifdef VERBOSE
+      model->getParameters().printParameters(std::cout);
       logger.start_timer();
       #endif
 

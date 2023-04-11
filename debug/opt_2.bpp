@@ -1,4 +1,4 @@
-num_threads = 1
+label = 2_pops
 num_epochs = 1
 num_pops = 2
 total_gen = 10000
