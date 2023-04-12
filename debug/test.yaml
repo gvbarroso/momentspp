@@ -1,15 +1,19 @@
-description: test model
 time_units: generations
 demes:
-  - name: Clovis
+  - name: X
     epochs:
       - end_time: 1000
         start_size: 2000
-  - name: Argentina
-    ancestors: [Clovis]
+  - name: A
+    ancestors: [X]
     epochs:
       - start_size: 2000
-  - name: Brazil
-    ancestors: [Clovis]
+  - name: B
+    ancestors: [X]
     epochs:
       - start_size: 2000
+pulses:
+  - sources: [A]
+    dest: B
+    proportions: [0.05]
+    time: 500

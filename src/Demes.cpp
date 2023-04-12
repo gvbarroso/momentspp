@@ -50,14 +50,16 @@ void Demes::parse_(const std::string& fileName)
           if(popEpochs[j]["end_time"])
             endTime = popEpochs[j]["end_time"].as<int>();
 
-          size_t size = -1;
+          size_t size = 0;
           if(popEpochs[j]["start_size"])
+          {
             size = popEpochs[j]["start_size"].as<int>();
 
-          if(popEpochs[j]["end_size"] != popEpochs[j]["start_size"])
-            throw bpp::Exception("moments++ requires a deme's [start_size] and [end_size] to be equal within each epoch!");
+            if(popEpochs[j]["end_size"] && popEpochs[j]["end_size"] != popEpochs[j]["start_size"])
+              throw bpp::Exception("moments++ requires a deme's [start_size] and [end_size] to be equal within each epoch!");
+          }
 
-          // each instance of pop i (one per epoch) is treated as a different pop in moments++
+          // each instance of pop i (one per epoch) is treated as a different Population object in moments++
           std::shared_ptr<Population> p = std::make_shared<Population>(name, des, i, startTime, endTime, size, false);
           singlePopOverTime.push_back(p);
         }
@@ -78,6 +80,9 @@ void Demes::parse_(const std::string& fileName)
 
                 child->setLeftParent(parent);
                 child->setRightParent(parent);
+
+                if(child->getStartTime() == std::numeric_limits<int>::max())
+                  child->setStartTime(parent->getEndTime());
 
                 if(child->getSize() == 0)
                   child->setSize(parent->getSize());
@@ -117,6 +122,9 @@ void Demes::parse_(const std::string& fileName)
 
             if(child->getSize() == 0)
               throw bpp::Exception("demes with two ancestors must have specified start_sizes!");
+
+            if(child->getStartTime() == std::numeric_limits<int>::max())
+              std::cout << "Fix this\n";
           }
 
           else if(pops[i]["ancestors"].size() > 2)
@@ -153,5 +161,11 @@ void Demes::parse_(const std::string& fileName)
       //double u = 0.;
       //double r = 0.;
     }
+  }
+
+  for(auto it = std::begin(popMapsInverted); it != std::end(popMapsInverted); ++it)
+  {
+    for(size_t x = 0; x < it->size(); ++x)
+      (*it)[x]->printAttributes(std::cout);
   }
 }

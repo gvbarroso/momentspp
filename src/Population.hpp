@@ -63,6 +63,20 @@ public:
   { }
 
 public:
+  void printAttributes(std::ostream& stream)
+  {
+    stream << id_ << " | " << name_ << " | " << description_ << "\t";
+    stream << startTime_ << " | " << endTime_ << " | " << size_ << "\t";
+
+    if(leftParent_ != nullptr)
+      stream << "\tleft parent = " << leftParent_->getName() << "\t";
+
+    if(rightParent_ != nullptr)
+      stream << "\tright parent = " << rightParent_->getName();
+
+    stream << "\n";
+  }
+
   const std::string& getName() const
   {
     return name_;
