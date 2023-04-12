@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 11/04/2023
+ * Last modified: 12/04/2023
  *
  */
 
@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <map>
 #include <ios>
+#include <limits>
 
 #include <yaml-cpp/node/parse.h>
 #include <yaml-cpp/node/ptr.h>
@@ -62,7 +63,7 @@ class Demes
 
 private:
   // demes file describes the demographic structured allowed
-  // param values are optimized by moments++ but no new param is included (eg, admix event)
+  // param values are optimized by moments++ but no "new param" is included (eg, admix event)
   YAML::Node model_;
 
   std::vector<Population> pops_;
@@ -136,6 +137,8 @@ public:
   {
     return epochs_.size();
   }
+
+  void write(const std::string& fileName);
 
 private:
   void parse_(const std::string& fileName);

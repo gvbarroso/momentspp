@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 06/04/2023
+ * Last modified: 12/04/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 11/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 12/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     {
       bool hasSelection = 0; // j % 2 != 0;
 
-      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test", j, 500000, 0, 10000, 10000, hasSelection);
+      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test", j, 500000, 0, 10000, hasSelection);
       map.try_emplace(j, pop);
     }
 
@@ -115,13 +115,7 @@ int main(int argc, char *argv[]) {
     popMaps.emplace_back(map);
   }
 
-  #ifdef VERBOSE
-  Log logger;
-  std::ofstream logFile;
-  logFile.open(options.getLabel() + "_timing_log.txt");
-  #endif
-
-  Demes demes(popMaps);//, options.getDemesFilePath());
+  Demes demes(popMaps, options.getDemesFilePath());
 
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
@@ -139,16 +133,12 @@ int main(int argc, char *argv[]) {
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
-     * even though we prob. want single r and mu params in Model --> alias r and mu across epochs?
+     * even though inside Model we alias r and mu across epochs
      */
 
     std::vector<double> drift = options.getInitPopSizes(); // should get this from Demes instead
     for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
       drift[j] = 1. / (2. * drift[j]);
-
-    #ifdef VERBOSE
-    logger.start_timer();
-    #endif
 
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options.getInitR(), ic, sslib);
@@ -163,37 +153,11 @@ int main(int argc, char *argv[]) {
       operators.emplace_back(migOp);
     }
 
-    #ifdef VERBOSE
-    logFile << "Time to construct operators " << id << ": ";
-    logger.stop_timer(logFile);
-    #endif
-
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    #ifdef VERBOSE
-    logger.start_timer();
-    #endif
-
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopMaps()[i]));
-
-    #ifdef VERBOSE
-    logFile << "Time to compute steady-state " << id << ": ";
-    logger.stop_timer(logFile);
-    /*std::ofstream recOut;
-    recOut.open(options.getLabel() + "_" + epochs.back()->getName() + "_recursions.txt");
-    epochs.back()->printRecursions(recOut);
-    recOut.close();
-
-    if(demes.getNumPops() > 1)
-    {
-      operators[0]->printDeltaLDMat(options.getLabel() + "_mig.csv", sslib);
-      operators[1]->printDeltaLDMat(options.getLabel() + "_drift.csv", sslib);
-      operators[2]->printDeltaLDMat(options.getLabel() + "_rec.csv", sslib);
-      operators[3]->printDeltaLDMat(options.getLabel() + "_mut.csv", sslib);
-    }*/
-    #endif
   }
 
   try
@@ -203,24 +167,15 @@ int main(int argc, char *argv[]) {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
-      #ifdef VERBOSE
-      model->getParameters().printParameters(std::cout);
-      logger.start_timer();
-      #endif
-
       model->computeExpectedSumStats();
 
-      #ifdef VERBOSE
-      logFile << "Time to compute model expectations: ";
-      logger.stop_timer(logFile);
-      logFile.close();
-      #endif
-
       std::string file = model->getName() + "_expectations.txt";
-      std::cout << "Check " << file << ".\n\n";
       std::ofstream fout(file);
+
       model->printAliasedMoments(fout);
+
       fout.close();
+      std::cout << "Check " << file << ".\n\n";
     }
 
     else
@@ -228,6 +183,7 @@ int main(int argc, char *argv[]) {
       std::cout << "\nstats_file provided, moments++ will optimize parameters for input data.\n";
       std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
+
       OptimizationWrapper optimizer(options);
       optimizer.fitModel(model.get());
     }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 09/02/2023
+ * Last modified: 12/04/2023
  *
  */
 
@@ -33,8 +33,7 @@ private:
   size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
   size_t startTime_; // in units of generations (coming from past to present)
   size_t endTime_; // in units of generations
-  size_t startSize_; // N_i in 1/N_i Drift parameters
-  size_t endSize_; // must be equal to startSize because we assume constant pop sizes within each epoch
+  size_t size_; // N_i in 1/N_i Drift parameters (NOTE start_size and end_size must be equal for each epoch in Demes file)
 
   bool isDerivedLeftSelected_; // ... in this population
 
@@ -47,12 +46,11 @@ public:
   id_(0),
   startTime_(0),
   endTime_(0),
-  startSize_(0),
-  endSize_(0),
+  size_(0),
   isDerivedLeftSelected_(0)
   { }
 
-  Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t startSize, size_t endSize, bool hasSelection):
+  Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t size, bool hasSelection):
   name_(name),
   description_(description),
   leftParent_(nullptr),
@@ -60,13 +58,9 @@ public:
   id_(id),
   startTime_(startTime),
   endTime_(endTime),
-  startSize_(startSize),
-  endSize_(endSize),
+  size_(size),
   isDerivedLeftSelected_(hasSelection)
-  {
-    if(startSize_ != endSize_)
-      throw bpp::Exception("Population::start and end sizes for population " + bpp::TextTools::toString(id) + " specified in YAML file are not equal!");
-  }
+  { }
 
 public:
   const std::string& getName() const
@@ -89,16 +83,6 @@ public:
     return rightParent_;
   }
 
-  void setLeftParent(std::shared_ptr<Population> parent)
-  {
-    leftParent_ = parent;
-  }
-
-  void setRightParent(std::shared_ptr<Population> parent)
-  {
-    rightParent_ = parent;
-  }
-
   size_t getId()
   {
     return id_;
@@ -114,9 +98,39 @@ public:
     return endTime_;
   }
 
+  size_t getSize()
+  {
+    return size_;
+  }
+
   bool hasSelection()
   {
     return isDerivedLeftSelected_;
+  }
+
+  void setStartTime(size_t time)
+  {
+    startTime_ = time;
+  }
+
+  void setEndTime(size_t time)
+  {
+    endTime_ = time;
+  }
+
+  void setSize(size_t size)
+  {
+    size_ = size;
+  }
+
+  void setLeftParent(std::shared_ptr<Population> parent)
+  {
+    leftParent_ = parent;
+  }
+
+  void setRightParent(std::shared_ptr<Population> parent)
+  {
+    rightParent_ = parent;
   }
 
 };
