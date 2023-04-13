@@ -118,13 +118,14 @@ void Epoch::computeSteadyState_()
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
   {
-    // finding the leading eigenvalue (should be == 1., but searching for equality is problematic due to precision)
+    // finding the leading eigenvalue (== 1.,but not searching for equality due to precision)
     if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
       idx = i;
   }
 
+  // I moment embodies scaling constant used by Eigen
   steadYstate_ = es.eigenvectors().col(idx).real();
-  steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getDummyIndexUncompressed())); // I moment embodies scaling constant used by Eigen
+  steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getDummyIndexUncompressed()));
 
   updateMoments(steadYstate_);
   std::cout << "done.\n";

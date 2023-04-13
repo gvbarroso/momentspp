@@ -1,9 +1,12 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 12/04/2023
+ * Last modified: 13/04/2023
  *
  */
+
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include "Demes.hpp"
 
@@ -66,6 +69,9 @@ void Demes::parse_(const std::string& fileName)
 
         if(pops[i]["ancestors"])
         {
+          if(i == 0)
+            throw bpp::Exception("ancestor(s) specified for first population of Demes file! Please list them in chronological order!");
+
           std::shared_ptr<Population> child = singlePopOverTime.front(); // most ancient instance of pop i
 
           if(pops[i]["ancestors"].size() == 1)
@@ -141,18 +147,33 @@ void Demes::parse_(const std::string& fileName)
         popMapsInverted.push_back(singlePopOverTime);
       }
 
-      // TODO slice time into epochs based on populations time boundaries
+      // slice time into epochs based on populations time boundaries
+      std::vector<size_t> timeStamps(0);
+      for(size_t i = 0; i < popMapsInverted.size(); ++i)
+      {
+        for(size_t j = 0; j < popMapsInverted[i].size(); ++j)
+        {
+          timeStamps.push_back(popMapsInverted[i][j]->getStartTime());
+          timeStamps.push_back(popMapsInverted[i][j]->getEndTime());
+        }
+      }
 
+      std::sort(std::begin(timeStamps), std::end(timeStamps), std::greater<int>()); // descending order
+      timeStamps.erase(std::unique(std::begin(timeStamps), std::end(timeStamps)), std::end(timeStamps));
+
+      for(size_t i = 1; i < timeStamps.size(); ++i)
+      {
+      }
     }
 
     else if(it->first.as<std::string>() == "migrations")
     {
-      std::cout << "build littleMigMat\n";
+      std::cout << "build littleMigMat\n"; // NOTE: it is epoch-specific
     }
 
     else if(it->first.as<std::string>() == "pulses")
     {
-      std::cout << "TODO\n";
+      std::cout << "TODO\n"; // NOTE: it is epoch-specific
     }
 
     else if(it->first.as<std::string>() == "metadata")

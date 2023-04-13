@@ -7,13 +7,11 @@ demes:
   - name: A
     ancestors: [X]
     epochs:
-      - start_size: 2000
+      - end_size: 2000
   - name: B
     ancestors: [X]
     epochs:
       - start_size: 2000
-pulses:
-  - sources: [A]
-    dest: B
-    proportions: [0.05]
-    time: 500
+migrations:
+  - demes: [A, B]
+    rate: 1e-4
