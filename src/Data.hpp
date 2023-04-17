@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 01/02/2023
+ * Last modified: 17/04/2023
  *
  */
 
@@ -42,12 +42,12 @@ private:
   std::map<std::string, double> variances_; // bootstrapped, moment name -> moment var
 
 public:
-  Data(const std::string& file, const std::map<size_t, std::shared_ptr<Population>>& popMap):
+  Data(const std::string& file):
   ssl_(),
   covar_(),
   variances_()
   {
-    parse_(file, popMap); // popMap concerns sampled populations (~extant, in the simplest case)
+    parse_(file);
   }
 
 public:
@@ -67,7 +67,7 @@ public:
   }
 
 private:
-  void parse_(const std::string& file, const std::map<size_t, std::shared_ptr<Population>>& popMap);
+  void parse_(const std::string& file);
 
 };
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/09/2022
- * Last modified: 06/02/2023
+ * Last modified: 17/04/2023
  *
  */
 
@@ -9,9 +9,9 @@
 #include "Data.hpp"
 
 
-void Data::parse_(const std::string& file, const std::map<size_t, std::shared_ptr<Population>>& popMap)
+void Data::parse_(const std::string& file)
 {
-  std::cout << "Processing input data..."; std::cout.flush();
+  std::cout << "Processing " << file << "..."; std::cout.flush();
 
   // size_t order = from file
   // SumStatsLibrary ssl(order, popMaps);

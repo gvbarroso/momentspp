@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 04/04/2023
+ * Last modified: 13/04/2023
  *
  */
 
@@ -22,13 +22,13 @@ void Model::computeExpectedSumStats()
 {
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
 
-  for(size_t i = 0; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
+  for(size_t i = 1; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs (pass expected_ by non-const ref)
-    epochs_[i + 1]->transferStatistics(expected_); // copying values into epoch i + 1 according to population ancestry (pass expected_ by non-const ref)
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
+    epochs_[i + 1]->transferStatistics(expected_); // copying values into epoch i + 1 according to population ancestry
   }
 
-  epochs_.back()->computeExpectedSumStats(expected_); // final epoch (out of the for loop due to "i+1" access there)
+  epochs_.back()->computeExpectedSumStats(expected_); // final epoch
   epochs_.back()->updateMoments(expected_); // updates inside sslib
 }
 
@@ -73,7 +73,7 @@ void Model::linkMoments_()
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
 
-        size_t focalP1 = (*it)->getPopIndices()[0]; // i in DD_i_*
+        size_t focalP1 = (*it)->getPopIndices()[0]; // j in DD_j_*
         size_t p1LeftParentId = epochs_[i]->getPops().at(focalP1)->getLeftParent()->getId();
         size_t p1RightParentId = epochs_[i]->getPops().at(focalP1)->getRightParent()->getId();
 
@@ -83,7 +83,7 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        size_t focalP2 = (*it)->getPopIndices()[1]; // j in DD_*_j
+        size_t focalP2 = (*it)->getPopIndices()[1]; // k in DD_*_k
         size_t p2LeftParentId = epochs_[i]->getPops().at(focalP2)->getLeftParent()->getId();
         size_t p2RightParentId = epochs_[i]->getPops().at(focalP2)->getRightParent()->getId();
 

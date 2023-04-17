@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 12/04/2023
+ * Last modified: 17/04/2023
  *
  */
 
@@ -55,7 +55,6 @@
 
 #include <Bpp/Exceptions.h>
 
-#include "Epoch.hpp"
 #include "Population.hpp"
 
 class Demes
@@ -66,33 +65,33 @@ private:
   // param values are optimized by moments++ but no "new param" is included (eg, admix event)
   YAML::Node model_;
 
+  size_t numEpochs_;
   std::vector<Population> pops_;
-  std::vector<Epoch> epochs_;
   std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps_; // pop-id -> Population*, one per epoch
 
 public:
-  Demes(const std::vector<std::map<size_t, std::shared_ptr<Population>>>& popMaps, const std::string& file):
+  Demes(const std::string& file):
   model_(),
+  numEpochs_(0),
   pops_(0),
-  epochs_(0),
-  popMaps_(popMaps)
+  popMaps_(0)
   {
     parse_(file);
-    epochs_.resize(popMaps.size());
-    pops_.resize(popMaps_.back().size()); // WARNING
   }
 
-  Demes(const std::vector<std::map<size_t, std::shared_ptr<Population>>>& popMaps):
+  Demes():
   model_(),
+  numEpochs_(0),
   pops_(0),
-  epochs_(0),
-  popMaps_(popMaps)
-  {
-    epochs_.resize(popMaps.size());
-    pops_.resize(popMaps_.back().size()); // WARNING
-  }
+  popMaps_(0)
+  { }
 
 public:
+  ~Demes()
+  {
+
+  }
+
   const YAML::Node& getModel_()
   {
     return model_;
@@ -101,11 +100,6 @@ public:
   const std::vector<Population>& getPops() const
   {
     return pops_;
-  }
-
-  const std::vector<Epoch>& getEpochs() const
-  {
-    return epochs_;
   }
 
   const std::vector<std::map<size_t, std::shared_ptr<Population>>>& getPopMaps()
@@ -130,12 +124,12 @@ public:
 
   size_t getNumEpochs()
   {
-    return epochs_.size();
+    return numEpochs_;
   }
 
   size_t getNumEpochs() const
   {
-    return epochs_.size();
+    return numEpochs_;
   }
 
   void write(const std::string& fileName);

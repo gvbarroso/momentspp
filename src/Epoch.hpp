@@ -118,7 +118,7 @@ public:
 
   size_t duration()
   {
-    return endGen_ - startGen_;
+    return startGen_ - endGen_;
   }
 
   const Eigen::VectorXd& getSteadyState()

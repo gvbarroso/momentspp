@@ -148,22 +148,59 @@ void Demes::parse_(const std::string& fileName)
       }
 
       // slice time into epochs based on populations time boundaries
-      std::vector<size_t> timeStamps(0);
+      std::vector<size_t> timeBoundaries(0);
       for(size_t i = 0; i < popMapsInverted.size(); ++i)
       {
         for(size_t j = 0; j < popMapsInverted[i].size(); ++j)
         {
-          timeStamps.push_back(popMapsInverted[i][j]->getStartTime());
-          timeStamps.push_back(popMapsInverted[i][j]->getEndTime());
+          timeBoundaries.push_back(popMapsInverted[i][j]->getStartTime());
+          timeBoundaries.push_back(popMapsInverted[i][j]->getEndTime());
         }
       }
 
-      std::sort(std::begin(timeStamps), std::end(timeStamps), std::greater<int>()); // descending order
-      timeStamps.erase(std::unique(std::begin(timeStamps), std::end(timeStamps)), std::end(timeStamps));
+      std::sort(std::begin(timeBoundaries), std::end(timeBoundaries), std::greater<int>()); // descending order
+      timeBoundaries.erase(std::unique(std::begin(timeBoundaries), std::end(timeBoundaries)), std::end(timeBoundaries));
 
-      for(size_t i = 1; i < timeStamps.size(); ++i)
+      for(auto& t : timeBoundaries)
+        std::cout << t << "\n";
+
+      for(size_t i = 1; i < timeBoundaries.size(); ++i) // split populations that span more than one epoch
       {
+        size_t epochStart = timeBoundaries[i - 1];
+        size_t epochEnd = timeBoundaries[i];
+
+        for(size_t j = 0; j < popMapsInverted.size(); ++j)
+        {
+          for(auto itPop = std::begin(popMapsInverted[j]); itPop < std::end(popMapsInverted[j]); ++itPop)
+          {
+            size_t popStart = (*itPop)->getStartTime();
+            size_t popEnd = (*itPop)->getEndTime();
+
+            if(popStart == epochStart && popEnd < epochEnd)
+            {
+              std::shared_ptr<Population> splitLeft = std::make_shared<Population>(*(*itPop).get());
+              std::shared_ptr<Population> splitRight = std::make_shared<Population>(*(*itPop).get());
+
+              splitLeft->setEndTime(epochEnd);
+
+              splitRight->setStartTime(splitLeft->getEndTime());
+              splitRight->setEndTime(popEnd);
+              splitRight->setLeftParent(splitLeft);
+              splitRight->setRightParent(splitLeft);
+
+              // pseudo code
+              itPop = popMapsInverted[j].erase(itPop);
+              itPop = popMapsInverted[j].insert(itPop, splitRight);
+              itPop = popMapsInverted[j].insert(itPop, splitLeft);
+              itPop = std::next(itPop, 1);
+            }
+          }
+        }
       }
+
+      // TODO
+      numEpochs_ = 1;
+      popMaps_.reserve(1);
     }
 
     else if(it->first.as<std::string>() == "migrations")

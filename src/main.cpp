@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 12/04/2023
+ * Last modified: 17/04/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 13/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 17/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -87,47 +87,18 @@ int main(int argc, char *argv[]) {
   std::cout << "\nmoments++ is using " << options.getNumThreads() << " threads.\n";
   Eigen::setNbThreads(options.getNumThreads());
 
+  Demes demes(options.getDemesFilePath());
+
   size_t numEpochs = options.getNumEpochs();
-  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps(0); // pop_id -> Population*, one per epoch
-  popMaps.reserve(numEpochs);
-
-  for(size_t i = 0; i < numEpochs; ++i)
-  {
-    std::map<size_t, std::shared_ptr<Population>> map;
-
-    for(size_t j = 0; j < options.getNumPops(); ++j) // for now, every epoch has same number of populations; use Demes class to change that
-    {
-      bool hasSelection = 0; // j % 2 != 0;
-
-      std::shared_ptr<Population> pop = std::make_shared<Population>("pop_" + bpp::TextTools::toString(j), "test", j, 500000, 0, 10000, hasSelection);
-      map.try_emplace(j, pop);
-    }
-
-    if(i > 0)
-    {
-      for(size_t j = 0; j < options.getNumPops(); ++j)
-      {
-        map.at(j)->setLeftParent(popMaps.back().at(j));
-        map.at(j)->setRightParent(popMaps.back().at(j));
-      }
-    }
-
-    popMaps.emplace_back(map);
-  }
-
-  Demes demes(popMaps, options.getDemesFilePath());
-
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
-
-  for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
+  for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present TODO move this to within Demes
   {
     std::string id = "e_" + bpp::TextTools::toString(i);
 
-    size_t start = i * (options.getTotalNumberOfGenerations() / numEpochs);
-    size_t end = (i + 1) * (options.getTotalNumberOfGenerations() / numEpochs);
+    size_t start = -1;
+    size_t end = -1;
 
     SumStatsLibrary sslib(options.getOrder(), demes.getPopMaps()[i], options.compressMoments());
 
@@ -140,6 +111,7 @@ int main(int argc, char *argv[]) {
     for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
       drift[j] = 1. / (2. * drift[j]);
 
+    std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options.getInitR(), ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options.getInitMu(), ic, sslib);
@@ -181,7 +153,7 @@ int main(int argc, char *argv[]) {
     else
     {
       std::cout << "\nstats_file provided, moments++ will optimize parameters for input data.\n";
-      std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath(), popMaps.back());
+      std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
 
       OptimizationWrapper optimizer(options);
