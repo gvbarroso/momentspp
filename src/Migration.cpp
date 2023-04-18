@@ -208,7 +208,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         mat.makeCompressed();
         mat *= getParameterValue("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j));
         matrices_.emplace_back(mat);
-      } // ends if(i != j)
+      }
     }
   }
 

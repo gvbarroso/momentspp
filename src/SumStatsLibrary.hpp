@@ -36,7 +36,6 @@ class SumStatsLibrary
 {
 
 private:
-  size_t order_; // sample-size order of moments
   size_t numPops_;
   size_t numDDStats_;
   size_t numDzStats_;
@@ -49,7 +48,6 @@ private:
 
 public:
   SumStatsLibrary():
-  order_(0),
   numPops_(0),
   numDDStats_(0),
   numDzStats_(0),
@@ -60,8 +58,7 @@ public:
   basis_(0)
   { }
 
-  SumStatsLibrary(size_t order, const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments):
-  order_(order),
+  SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments):
   numPops_(pops.size()),
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
@@ -94,11 +91,6 @@ public:
   size_t getNumPops()
   {
     return numPops_;
-  }
-
-  size_t getOrder()
-  {
-    return order_;
   }
 
   const std::vector<size_t>& getPopIndices() const

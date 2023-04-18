@@ -53,6 +53,9 @@
 #include <yaml-cpp/exceptions.h>
 #include <yaml-cpp/null.h>
 
+#include <Eigen/Core>
+#include <Eigen/Dense>
+
 #include <Bpp/Exceptions.h>
 
 #include "Population.hpp"
@@ -65,20 +68,29 @@ private:
   // param values are optimized by moments++ but no "new param" is included (eg, admix event)
   YAML::Node model_;
 
-  // pop-id -> Population*, one per epoch
+  // following vectors store one object per epoch:
   std::vector<std::vector<std::shared_ptr<Population>>> pops_;
+  std::vector<double> mutRates_;
+  std::vector<double> recRates_;
+  std::vector<Eigen::MatrixXd> migRates_;
 
 public:
   Demes(const std::string& file):
   model_(),
-  pops_(0)
+  pops_(0),
+  mutRates_(0),
+  recRates_(0),
+  migRates_(0)
   {
     parse_(file);
   }
 
   Demes():
   model_(),
-  pops_(0)
+  pops_(0),
+  mutRates_(0),
+  recRates_(0),
+  migRates_(0)
   { }
 
 public:
@@ -110,9 +122,74 @@ public:
     return pops_.size();
   }
 
+  const std::vector<std::shared_ptr<Population>>& getPops(size_t epoch)
+  {
+    return pops_[epoch];
+  }
+
+  const std::vector<std::shared_ptr<Population>>& getPops(size_t epoch) const
+  {
+    return pops_[epoch];
+  }
+
   size_t getNumPops(size_t epoch)
   {
     return pops_[epoch].size();
+  }
+
+  size_t getNumPops(size_t epoch) const
+  {
+    return pops_[epoch].size();
+  }
+
+  double getMu(size_t epoch)
+  {
+    return mutRates_[epoch];
+  }
+
+  double getMu(size_t epoch) const
+  {
+    return mutRates_[epoch];
+  }
+
+  double getRec(size_t epoch)
+  {
+    return recRates_[epoch];
+  }
+
+  double getRec(size_t epoch) const
+  {
+    return recRates_[epoch];
+  }
+
+  const Eigen::MatrixXd& getMig(size_t epoch)
+  {
+    return migRates_[epoch];
+  }
+
+  const Eigen::MatrixXd& getMig(size_t epoch) const
+  {
+    return migRates_[epoch];
+  }
+
+  void setMus(size_t epoch, double mu)
+  {
+    mutRates_[epoch] = mu;
+  }
+
+  void setRecs(size_t epoch, double rec)
+  {
+    recRates_[epoch] = rec;
+  }
+
+  void setPops(size_t epoch, const std::vector<std::shared_ptr<Population>>& pops)
+  {
+    pops_[epoch] = pops;
+  }
+
+  void setMig(size_t epoch, const Eigen::MatrixXd mat)
+  {
+    migRates_[epoch] = mat;
   }
 
   void write(const std::string& fileName);

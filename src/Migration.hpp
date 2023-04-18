@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 10/04/2022
+ * Last modified: 18/04/2022
  *
  */
 
@@ -30,27 +30,24 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Migration(const std::vector<double>& initValues, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Migration(const Eigen::MatrixXd& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(),
-  littleMigMat_()
+  littleMigMat_(migMat)
   {
-    size_t idx = 0;
-    for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI) // for each population modeled in epoch i
+    for(size_t i = 0; i < sslib.getPopIndices().size(); ++i) // for each population modeled in epoch i
     {
-      for(auto itJ = std::begin(sslib.getPopIndices()); itJ != std::end(sslib.getPopIndices()); ++itJ)
+      for(size_t j = 0; j < sslib.getPopIndices().size(); ++j)
       {
-        if((*itI) != (*itJ))
+        if((i != j) && (littleMigMat_(i, j) != 0.))
         {
           //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("m_" + bpp::TextTools::toString((*itI)) + bpp::TextTools::toString((*itJ)), initValues[idx], ic);
           //addParameter_(param.get());
-          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString((*itI)) + "_" + bpp::TextTools::toString((*itJ)), initValues[idx], ic));
-          ++idx;
+          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j), littleMigMat_(i, j), ic));
         }
       }
     }
 
     prevParams_.addParameters(getParameters());
-    setLittleMat_();
     testFlow_();
     setUpMatrices_(sslib);
   }

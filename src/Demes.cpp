@@ -148,24 +148,24 @@ void Demes::parse_(const std::string& fileName)
       }
 
       // slice time into epochs based on populations time boundaries
-      std::vector<size_t> timeBoundaries(0);
+      std::vector<size_t> timeBounds(0);
       for(size_t i = 0; i < popsInv.size(); ++i)
       {
         for(size_t j = 0; j < popsInv[i].size(); ++j)
         {
-          timeBoundaries.push_back(popsInv[i][j]->getStartTime());
-          timeBoundaries.push_back(popsInv[i][j]->getEndTime());
+          timeBounds.push_back(popsInv[i][j]->getStartTime());
+          timeBounds.push_back(popsInv[i][j]->getEndTime());
         }
       }
 
-      std::sort(std::begin(timeBoundaries), std::end(timeBoundaries), std::greater<int>()); // descending order
-      timeBoundaries.erase(std::unique(std::begin(timeBoundaries), std::end(timeBoundaries)), std::end(timeBoundaries));
+      std::sort(std::begin(timeBounds), std::end(timeBounds), std::greater<int>()); // descending order
+      timeBounds.erase(std::unique(std::begin(timeBounds), std::end(timeBounds)), std::end(timeBounds));
 
       // first pass: split populations that span more than one epoch
-      for(size_t i = 1; i < timeBoundaries.size(); ++i)
+      for(size_t i = 1; i < timeBounds.size(); ++i)
       {
-        size_t epochStart = timeBoundaries[i - 1];
-        size_t epochEnd = timeBoundaries[i];
+        size_t epochStart = timeBounds[i - 1];
+        size_t epochEnd = timeBounds[i];
 
         for(size_t j = 0; j < popsInv.size(); ++j)
         {
@@ -197,11 +197,11 @@ void Demes::parse_(const std::string& fileName)
       }
 
       // second pass: organize pops within epochs
-      pops_.resize(timeBoundaries.size() - 1);
-      for(size_t i = 1; i < timeBoundaries.size(); ++i)
+      pops_.resize(timeBounds.size() - 1);
+      for(size_t i = 1; i < timeBounds.size(); ++i)
       {
-        size_t epochStart = timeBoundaries[i - 1];
-        size_t epochEnd = timeBoundaries[i];
+        size_t epochStart = timeBounds[i - 1];
+        size_t epochEnd = timeBounds[i];
 
         for(size_t j = 0; j < popsInv.size(); ++j)
         {

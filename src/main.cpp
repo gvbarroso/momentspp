@@ -64,15 +64,10 @@ int main(int argc, char *argv[]) {
     std::cout << "demes_file = \n";
     std::cout << "stats_file = \n\n";
 
-    std::cout << "optimizer = \n";
+    std::cout << "optimizer =\n";
     std::cout << "tolerance = \n";
     std::cout << "compress_moments = \n";
-    std::cout << "num_epochs = \n";
-    std::cout << "num_pops = \n";
     std::cout << "num_threads = \n";
-    std::cout << "total_gen = \n\n";
-
-    std::cout << "params=init_params.bpp \n\n";
 
     std::cout << "For more information, please email gvbarroso@gmail.com " << std::endl;
     return(0);
@@ -89,7 +84,7 @@ int main(int argc, char *argv[]) {
 
   Demes demes(options.getDemesFilePath());
 
-  size_t numEpochs = options.getNumEpochs();
+  size_t numEpochs = demes.getNumEpochs();
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
@@ -97,31 +92,35 @@ int main(int argc, char *argv[]) {
   {
     std::string id = "e_" + bpp::TextTools::toString(i);
 
-    size_t start = -1;
-    size_t end = -1;
+    size_t start = demes.getPopMaps()[i].front()->getStartTime();
+    size_t end = demes.getPopMaps()[i].front()->getEndTime();
 
-    SumStatsLibrary sslib(options.getOrder(), demes.getPopMaps()[i], options.compressMoments());
+    SumStatsLibrary sslib(demes.getPopMaps()[i], options.compressMoments());
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * must have epoch-specific recombination and mutation operators because they depend on pop indices (popss[i]),
      * even though inside Model we alias r and mu across epochs
      */
 
-    std::vector<double> drift = options.getInitPopSizes(); // should get this from Demes instead
-    for(size_t j = 0; j < drift.size(); ++j) // from (diploid) population sizes (N_j, not 2N_j) to (diploid) drift parameters
-      drift[j] = 1. / (2. * drift[j]);
+
+    std::vector<double> drift(0);
+    drift.reserve(demes.getPopMaps()[i].size());
+
+    // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
+    for(size_t j = 0; j < demes.getPopMaps()[i].size(); ++j)
+      drift.emplace_back(1. / (2. * demes.getPopMaps()[i][j]->getSize()));
 
     std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(options.getInitR(), ic, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(options.getInitMu(), ic, sslib);
+    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
+    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
 
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
 
     if(demes.getNumPops(i) > 1)
     {
-      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(options.getInitMig(), ic, sslib);
+      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(demes.getMig(i), ic, sslib);
       operators.emplace_back(migOp);
     }
 

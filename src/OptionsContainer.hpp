@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 07/04/2023
+ * Last modified: 18/04/2023
  *
  */
 
@@ -27,20 +27,9 @@ private:
   std::string dataFilePath_; // or observed sum stats
   std::string numericalOptimizer_;
 
-  std::vector<double> initMij_;
-  std::vector<double> initPopSizes_;
-
-  double initMu_;
-  double initR_;
   double tolerance_; // for numerical optimization
-
   bool compressMoments_; // see moments_ vs compressedBasis_ inside SumStatsLibrary::initMoments_()
   bool computeCI_;
-
-  size_t order_; // sample order of summary statistics
-  size_t numEpochs_;
-  size_t numPops_;
-  size_t totalNumberOfGenerations_;
   size_t numThreads_;
 
 public:
@@ -49,26 +38,11 @@ public:
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, 0, 0, "", 0, "none", 0)),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, false, true, "", false, "none", 0)),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "NewtonRhapson", "", true, 4)),
-  initMij_(bpp::ApplicationTools::getVectorParameter<double>("mij", options, ',', "none")),
-  initPopSizes_(bpp::ApplicationTools::getVectorParameter<double>("Ni", options, ',', "none")),
-  initMu_(bpp::ApplicationTools::getDoubleParameter("mu", options, 1e-8)),
-  initR_(bpp::ApplicationTools::getDoubleParameter("r", options, 1e-8)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
-  order_(bpp::ApplicationTools::getParameter<size_t>("order", options, 2, "", true, 4)),
-  numEpochs_(bpp::ApplicationTools::getParameter<size_t>("num_epochs", options, 1)),
-  numPops_(bpp::ApplicationTools::getParameter<size_t>("num_pops", options, 1)),
-  totalNumberOfGenerations_(bpp::ApplicationTools::getParameter<size_t>("total_gen", options, 1)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4))
-  {
-    if(numPops_ != initPopSizes_.size())
-      throw bpp::Exception("OptionsContainer::num_pops (" + bpp::TextTools::toString(numPops_) + ") does not match length of Ni parameters (" + bpp::TextTools::toString(initPopSizes_.size()) + ")!");
-
-    if(numPops_ > 1)
-      if(numPops_ * (numPops_ - 1) != initMij_.size())
-        throw bpp::Exception("OptionsContainer::num_pops (" + bpp::TextTools::toString(numPops_) + ") is incompatible with length of mij parameters (" + bpp::TextTools::toString(initMij_.size()) + ")!");
-  }
+  { }
   
 public:
   const std::string& getLabel() const
@@ -91,26 +65,6 @@ public:
     return numericalOptimizer_;
   }
 
-  const std::vector<double>& getInitMig() const
-  {
-    return initMij_;
-  }
-
-  const std::vector<double>& getInitPopSizes() const
-  {
-    return initPopSizes_;
-  }
-
-  double getInitMu() const
-  {
-    return initMu_;
-  }
-
-  double getInitR() const
-  {
-    return initR_;
-  }
-
   double getTolerance() const
   {
     return tolerance_;
@@ -124,26 +78,6 @@ public:
   bool computeCI() const
   {
     return computeCI_;
-  }
-
-  size_t getOrder() const
-  {
-    return order_;
-  }
-
-  size_t getNumEpochs() const
-  {
-    return numEpochs_;
-  }
-
-  size_t getNumPops() const
-  {
-    return numPops_;
-  }
-
-  size_t getTotalNumberOfGenerations() const
-  {
-    return totalNumberOfGenerations_;
   }
 
   size_t getNumThreads() const
