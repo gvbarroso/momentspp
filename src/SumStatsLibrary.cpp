@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 05/04/2023
+ * Last modified: 18/04/2023
  *
  */
 
@@ -180,17 +180,17 @@ void SumStatsLibrary::printBasis(std::ostream& stream)
     basis_[i]->printAttributes(stream);
 }
 
-void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments)
+void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments)
 {
   moments_.reserve(getNumStats());
 
   // fetches ids of populations where derived allele for left locus is under selection
   std::vector<size_t> selectedPopIds(0);
-  selectedPopIds.reserve(popMap.size());
-  for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
+  selectedPopIds.reserve(pops.size());
+  for(auto it = std::begin(pops); it != std::end(pops); ++it)
   {
-    if(it->second->hasSelection())
-      selectedPopIds.emplace_back(it->second->getId());
+    if((*it)->hasSelection())
+      selectedPopIds.emplace_back((*it)->getId());
   }
 
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
@@ -200,7 +200,7 @@ void SumStatsLibrary::initMoments_(const std::map<size_t, std::shared_ptr<Popula
       moments_.emplace_back(std::make_shared<DdMoment>("DD_" + asString(*itI) + "_" + asString(*itJ), 0.));
       moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ), 0., false));
       // NOTE: H_01 = p_0(1-p_1); H_10 = p_1(1-p_0)
-      // insert H moments with isPutativelySelected_ == true based on popMap
+      // insert H moments with isPutativelySelected_ == true based on pops
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {

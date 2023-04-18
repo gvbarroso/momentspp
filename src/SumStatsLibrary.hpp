@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 06/04/2023
+ * Last modified: 18/04/2023
  */
 
 
@@ -60,9 +60,9 @@ public:
   basis_(0)
   { }
 
-  SumStatsLibrary(size_t order, const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments):
+  SumStatsLibrary(size_t order, const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments):
   order_(order),
-  numPops_(popMap.size()),
+  numPops_(pops.size()),
   numDDStats_(numPops_ * numPops_),
   numDzStats_(numPops_ * numPops_ * numPops_),
   numHetStats_(numPops_ * numPops_),
@@ -71,16 +71,13 @@ public:
   moments_(0),
   basis_(0)
   {
-    popIndices_.reserve(popMap.size());
+    popIndices_.reserve(pops.size());
 
-    for(auto it = std::begin(popMap); it != std::end(popMap); ++it)
-    {
-      assert(it->first == it->second->getId());
-      popIndices_.emplace_back(it->first);
-    }
+    for(auto it = std::begin(pops); it != std::end(pops); ++it)
+      popIndices_.emplace_back((*it)->getId());
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
-    initMoments_(popMap, compressMoments);
+    initMoments_(pops, compressMoments);
   }
 
 public:
@@ -207,7 +204,7 @@ public:
   void printBasis(std::ostream& stream);
 
 private:
-  void initMoments_(const std::map<size_t, std::shared_ptr<Population>>& popMap, bool compressMoments);
+  void initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments);
 
   static bool compareMoments_(std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
   {

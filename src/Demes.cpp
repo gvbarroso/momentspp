@@ -24,7 +24,7 @@ void Demes::parse_(const std::string& fileName)
   if(model_["time_units"].as<std::string>() != "generations")
     throw bpp::Exception("moments++ requires Demes [time_units] to be \"generations\"!");
 
-  std::vector<std::vector<std::shared_ptr<Population>>> popMapsInverted(0);
+  std::vector<std::vector<std::shared_ptr<Population>>> popsInv(0);
 
   for(YAML::const_iterator it = model_.begin(); it != model_.end(); ++it)
   {
@@ -78,11 +78,11 @@ void Demes::parse_(const std::string& fileName)
           {
             std::string ancName = pops[i]["ancestors"][0].as<std::string>();
 
-            for(size_t k = 0; k < popMapsInverted.size(); ++k)
+            for(size_t k = 0; k < popsInv.size(); ++k)
             {
-              if(popMapsInverted[k].front()->getName() == ancName)
+              if(popsInv[k].front()->getName() == ancName)
               {
-                std::shared_ptr<Population> parent = popMapsInverted[k].front();
+                std::shared_ptr<Population> parent = popsInv[k].front();
 
                 child->setLeftParent(parent);
                 child->setRightParent(parent);
@@ -103,17 +103,17 @@ void Demes::parse_(const std::string& fileName)
             std::string ancNameFirst = pops[i]["ancestors"][0].as<std::string>();
             std::string ancNameSecond = pops[i]["ancestors"][1].as<std::string>();
 
-            for(size_t k = 0; k < popMapsInverted.size(); ++k)
+            for(size_t k = 0; k < popsInv.size(); ++k)
             {
-              if(popMapsInverted[k].front()->getName() == ancNameFirst)
+              if(popsInv[k].front()->getName() == ancNameFirst)
               {
-                std::shared_ptr<Population> parent = popMapsInverted[k].front();
+                std::shared_ptr<Population> parent = popsInv[k].front();
                 child->setLeftParent(parent);
               }
 
-              else if(popMapsInverted[k].front()->getName() == ancNameSecond)
+              else if(popsInv[k].front()->getName() == ancNameSecond)
               {
-                std::shared_ptr<Population> parent = popMapsInverted[k].front();
+                std::shared_ptr<Population> parent = popsInv[k].front();
                 child->setRightParent(parent);
               }
             }
@@ -144,34 +144,32 @@ void Demes::parse_(const std::string& fileName)
           singlePopOverTime[k]->setStartTime(singlePopOverTime[k - 1]->getEndTime());
         }
 
-        popMapsInverted.push_back(singlePopOverTime);
+        popsInv.push_back(singlePopOverTime);
       }
 
       // slice time into epochs based on populations time boundaries
       std::vector<size_t> timeBoundaries(0);
-      for(size_t i = 0; i < popMapsInverted.size(); ++i)
+      for(size_t i = 0; i < popsInv.size(); ++i)
       {
-        for(size_t j = 0; j < popMapsInverted[i].size(); ++j)
+        for(size_t j = 0; j < popsInv[i].size(); ++j)
         {
-          timeBoundaries.push_back(popMapsInverted[i][j]->getStartTime());
-          timeBoundaries.push_back(popMapsInverted[i][j]->getEndTime());
+          timeBoundaries.push_back(popsInv[i][j]->getStartTime());
+          timeBoundaries.push_back(popsInv[i][j]->getEndTime());
         }
       }
 
       std::sort(std::begin(timeBoundaries), std::end(timeBoundaries), std::greater<int>()); // descending order
       timeBoundaries.erase(std::unique(std::begin(timeBoundaries), std::end(timeBoundaries)), std::end(timeBoundaries));
 
-      for(auto& t : timeBoundaries)
-        std::cout << t << "\n";
-
-      for(size_t i = 1; i < timeBoundaries.size(); ++i) // split populations that span more than one epoch
+      // first pass: split populations that span more than one epoch
+      for(size_t i = 1; i < timeBoundaries.size(); ++i)
       {
         size_t epochStart = timeBoundaries[i - 1];
         size_t epochEnd = timeBoundaries[i];
 
-        for(size_t j = 0; j < popMapsInverted.size(); ++j)
+        for(size_t j = 0; j < popsInv.size(); ++j)
         {
-          for(auto itPop = std::begin(popMapsInverted[j]); itPop < std::end(popMapsInverted[j]); ++itPop)
+          for(auto itPop = std::begin(popsInv[j]); itPop < std::end(popsInv[j]); ++itPop)
           {
             size_t popStart = (*itPop)->getStartTime();
             size_t popEnd = (*itPop)->getEndTime();
@@ -189,18 +187,37 @@ void Demes::parse_(const std::string& fileName)
               splitRight->setRightParent(splitLeft);
 
               // pseudo code
-              itPop = popMapsInverted[j].erase(itPop);
-              itPop = popMapsInverted[j].insert(itPop, splitRight);
-              itPop = popMapsInverted[j].insert(itPop, splitLeft);
+              itPop = popsInv[j].erase(itPop);
+              itPop = popsInv[j].insert(itPop, splitRight);
+              itPop = popsInv[j].insert(itPop, splitLeft);
               itPop = std::next(itPop, 1);
             }
           }
         }
       }
 
-      // TODO
-      numEpochs_ = 1;
-      popMaps_.reserve(1);
+      // second pass: organize pops within epochs
+      pops_.resize(timeBoundaries.size() - 1);
+      for(size_t i = 1; i < timeBoundaries.size(); ++i)
+      {
+        size_t epochStart = timeBoundaries[i - 1];
+        size_t epochEnd = timeBoundaries[i];
+
+        for(size_t j = 0; j < popsInv.size(); ++j)
+        {
+          for(auto itPop = std::begin(popsInv[j]); itPop < std::end(popsInv[j]); ++itPop)
+          {
+            size_t popStart = (*itPop)->getStartTime();
+            size_t popEnd = (*itPop)->getEndTime();
+
+            if(popStart == epochStart && popEnd == epochEnd)
+            {
+              pops_[i - 1].push_back(*itPop);
+              break;
+            }
+          }
+        }
+      }
     }
 
     else if(it->first.as<std::string>() == "migrations")
@@ -221,7 +238,7 @@ void Demes::parse_(const std::string& fileName)
     }
   }
 
-  for(auto it = std::begin(popMapsInverted); it != std::end(popMapsInverted); ++it)
+  for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
   {
     for(size_t x = 0; x < it->size(); ++x)
       (*it)[x]->printAttributes(std::cout);

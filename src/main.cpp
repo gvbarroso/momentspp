@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 17/04/2023
+ * Last modified: 18/04/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 17/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 18/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present TODO move this to within Demes
+  for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
     std::string id = "e_" + bpp::TextTools::toString(i);
 
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     SumStatsLibrary sslib(options.getOrder(), demes.getPopMaps()[i], options.compressMoments());
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
-     * must have epoch-specific recombination and mutation operators because they depend on pop indices (popMaps[i]),
+     * must have epoch-specific recombination and mutation operators because they depend on pop indices (popss[i]),
      * even though inside Model we alias r and mu across epochs
      */
 
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
 
-    if(demes.getNumPops() > 1)
+    if(demes.getNumPops(i) > 1)
     {
       std::shared_ptr<Migration> migOp = std::make_shared<Migration>(options.getInitMig(), ic, sslib);
       operators.emplace_back(migOp);

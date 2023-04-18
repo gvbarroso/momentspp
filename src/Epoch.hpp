@@ -40,7 +40,7 @@ private:
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
-  std::map<size_t, std::shared_ptr<Population>> pops_; // pop-id->class object (containing that same id as a member variable)
+  std::vector<std::shared_ptr<Population>> pops_; // pop-id->class object (containing that same id as a member variable)
 
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::VectorXd steadYstate_; // based on the parameters of *this epoch
@@ -53,14 +53,14 @@ public:
   startGen_(0),
   endGen_(0),
   operators_(0),
-  pops_(),
+  pops_(0),
   transitionMatrix_(),
   steadYstate_()
   { }
 
   Epoch(const std::string& name, SumStatsLibrary& ssl, size_t start, size_t end,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
-        const std::map<size_t, std::shared_ptr<Population>>& pops):
+        const std::vector<std::shared_ptr<Population>>& pops):
   bpp::AbstractParameterAliasable(""),
   name_(name),
   ssl_(ssl),
@@ -131,7 +131,7 @@ public:
     return transitionMatrix_;
   }
 
-  const std::map<size_t, std::shared_ptr<Population>>& getPops()
+  const std::vector<std::shared_ptr<Population>>& getPops()
   {
     return pops_;
   }

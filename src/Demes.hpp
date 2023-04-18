@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 17/04/2023
+ * Last modified: 18/04/2023
  *
  */
 
@@ -61,75 +61,58 @@ class Demes
 {
 
 private:
-  // demes file describes the demographic structured allowed
+  // demes file describes the demographic structure allowed
   // param values are optimized by moments++ but no "new param" is included (eg, admix event)
   YAML::Node model_;
 
-  size_t numEpochs_;
-  std::vector<Population> pops_;
-  std::vector<std::map<size_t, std::shared_ptr<Population>>> popMaps_; // pop-id -> Population*, one per epoch
+  // pop-id -> Population*, one per epoch
+  std::vector<std::vector<std::shared_ptr<Population>>> pops_;
 
 public:
   Demes(const std::string& file):
   model_(),
-  numEpochs_(0),
-  pops_(0),
-  popMaps_(0)
+  pops_(0)
   {
     parse_(file);
   }
 
   Demes():
   model_(),
-  numEpochs_(0),
-  pops_(0),
-  popMaps_(0)
+  pops_(0)
   { }
 
 public:
   ~Demes()
-  {
-
-  }
+  { }
 
   const YAML::Node& getModel_()
   {
     return model_;
   }
 
-  const std::vector<Population>& getPops() const
+  const std::vector<std::vector<std::shared_ptr<Population>>>& getPopMaps()
   {
     return pops_;
   }
 
-  const std::vector<std::map<size_t, std::shared_ptr<Population>>>& getPopMaps()
+  const std::vector<std::vector<std::shared_ptr<Population>>>& getPopMaps() const
   {
-    return popMaps_;
-  }
-
-  const std::vector<std::map<size_t, std::shared_ptr<Population>>>& getPopMaps() const
-  {
-    return popMaps_;
-  }
-
-  size_t getNumPops()
-  {
-    return pops_.size();
-  }
-
-  size_t getNumPops() const
-  {
-    return pops_.size();
+    return pops_;
   }
 
   size_t getNumEpochs()
   {
-    return numEpochs_;
+    return pops_.size();
   }
 
   size_t getNumEpochs() const
   {
-    return numEpochs_;
+    return pops_.size();
+  }
+
+  size_t getNumPops(size_t epoch)
+  {
+    return pops_[epoch].size();
   }
 
   void write(const std::string& fileName);

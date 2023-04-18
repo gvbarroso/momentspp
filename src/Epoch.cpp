@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 06/04/2023
+ * Last modified: 18/04/2023
  *
  */
 
@@ -35,8 +35,8 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
 
   for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
   {
-    if(it->second->hasSelection())
-      ret.emplace_back(it->first);
+    if((*it)->hasSelection())
+      ret.emplace_back((*it)->getId());
   }
 
   return ret;
