@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 11/04/2023
+ * Last modified: 19/04/2023
  *
  */
 
@@ -15,11 +15,11 @@
 #include <algorithm>
 #include <map>
 
-#include <Eigen/Core>
-#include <Eigen/Sparse>
-#include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
-#include <unsupported/Eigen/MatrixFunctions>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Sparse>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Eigenvalues>
+#include <eigen3/unsupported/Eigen/MatrixFunctions>
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 

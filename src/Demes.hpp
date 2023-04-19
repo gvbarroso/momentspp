@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 18/04/2023
+ * Last modified: 19/04/2023
  *
  */
 
@@ -53,8 +53,9 @@
 #include <yaml-cpp/exceptions.h>
 #include <yaml-cpp/null.h>
 
-#include <Eigen/Core>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Dense>
+
 
 #include <Bpp/Exceptions.h>
 

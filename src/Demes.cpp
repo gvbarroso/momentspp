@@ -1,12 +1,9 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 13/04/2023
+ * Last modified: 19/04/2023
  *
  */
-
-#include <Eigen/Core>
-#include <Eigen/Dense>
 
 #include "Demes.hpp"
 
@@ -24,6 +21,8 @@ void Demes::parse_(const std::string& fileName)
   if(model_["time_units"].as<std::string>() != "generations")
     throw bpp::Exception("moments++ requires Demes [time_units] to be \"generations\"!");
 
+  // two vectors that must live throughout this method
+  std::vector<size_t> timeBounds(0);
   std::vector<std::vector<std::shared_ptr<Population>>> popsInv(0);
 
   for(YAML::const_iterator it = model_.begin(); it != model_.end(); ++it)
@@ -59,7 +58,7 @@ void Demes::parse_(const std::string& fileName)
             size = popEpochs[j]["start_size"].as<int>();
 
             if(popEpochs[j]["end_size"] && popEpochs[j]["end_size"] != popEpochs[j]["start_size"])
-              throw bpp::Exception("moments++ requires a deme's [start_size] and [end_size] to be equal within each epoch!");
+              throw bpp::Exception("deme's [start_size] and [end_size] must be equal within each epoch!");
           }
 
           // each instance of pop i (one per epoch) is treated as a different Population object in moments++
@@ -121,7 +120,7 @@ void Demes::parse_(const std::string& fileName)
             double f = pops[i]["proportions"][0].as<double>();
             double g = pops[i]["proportions"][1].as<double>();
 
-            // TODO forward f and g to Admixture operator
+            // forward f and g to Admixture operator
 
             if((f + g) != 1.)
               throw bpp::Exception("admixture proportions in Demes file don't sum to 1.0!");
@@ -148,7 +147,6 @@ void Demes::parse_(const std::string& fileName)
       }
 
       // slice time into epochs based on populations time boundaries
-      std::vector<size_t> timeBounds(0);
       for(size_t i = 0; i < popsInv.size(); ++i)
       {
         for(size_t j = 0; j < popsInv[i].size(); ++j)
@@ -196,8 +194,10 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
-      // second pass: organize pops within epochs
       pops_.resize(timeBounds.size() - 1);
+      migRates_.resize(timeBounds.size() - 1);
+
+      // second pass: organize pops within epochs
       for(size_t i = 1; i < timeBounds.size(); ++i)
       {
         size_t epochStart = timeBounds[i - 1];
@@ -218,11 +218,88 @@ void Demes::parse_(const std::string& fileName)
           }
         }
       }
+
+      for(size_t i = 0; i < migRates_.size(); ++i)
+      {
+        size_t p = pops_[i].size();
+        Eigen::MatrixXd mat(p, p);
+        mat.setZero();
+
+        migRates_[i] = mat;
+      }
     }
 
     else if(it->first.as<std::string>() == "migrations")
     {
-      std::cout << "build littleMigMat\n"; // NOTE: it is epoch-specific
+      YAML::Node migs = it->second;
+
+      std::string source = "";
+      std::string dest = "";
+      double rate = 0.;
+      size_t startTime = 0;
+      size_t endTime = 0;
+
+      for(size_t i = 0; i < migs.size(); ++i) // mig period by mig period
+      {
+        if(migs[i]["source"])
+          source = migs[i]["source"].as<std::string>();
+
+        else
+          throw bpp::Exception("'migrations' field in Demes file must explicitly speficy 'source'!");
+
+        if(migs[i]["dest"])
+          dest = migs[i]["dest"].as<std::string>();
+
+        else
+          throw bpp::Exception("'migrations' field in Demes file must explicitly speficy 'dest'!");
+
+        if(migs[i]["rate"])
+          rate = migs[i]["rate"].as<double>();
+
+        else
+          throw bpp::Exception("'migrations' field in Demes file must explicitly speficy 'rate'!");
+
+        if(migs[i]["start_time"])
+          startTime = migs[i]["start_time"].as<size_t>();
+
+        else
+          throw bpp::Exception("'migrations' field in Demes file must explicitly speficy 'start_time'!");
+
+        if(migs[i]["end_time"])
+          endTime = migs[i]["end_time"].as<size_t>();
+
+        else
+          throw bpp::Exception("'migrations' field in Demes file must explicitly speficy 'end_time'!");
+
+
+        bool match = 0;
+        for(size_t j = 1; j < timeBounds.size(); ++j)
+        {
+          if(startTime == timeBounds[j - 1] && endTime == timeBounds[j])
+          {
+            int row = -1;
+            int col = -1;
+
+            for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
+            {
+              if(pops_[j - 1][k]->getName() == source)
+                row = k;
+
+              else if(pops_[j - 1][k]->getName() == dest)
+                col = k;
+            }
+
+            migRates_[j - 1](row, col) = rate;
+
+            match = 1;
+            break;
+          }
+        }
+
+        if(!match)
+          throw bpp::Exception("start_time/end_time of at least one migration event in Demes file do not match the span of any epoch!");
+
+      }
     }
 
     else if(it->first.as<std::string>() == "pulses")

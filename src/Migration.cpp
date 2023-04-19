@@ -275,6 +275,7 @@ void Migration::setLittleMat_()
 
 void Migration::testFlow_()
 {
+  assert(littleMigMat_.innerSize() > 0);
   int numPops = littleMigMat_.innerSize();
   Graph mig(numPops);
 

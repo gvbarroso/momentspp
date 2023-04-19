@@ -17,7 +17,7 @@
 #include <ostream>
 #include <cassert>
 
-#include <Eigen/Core>
+#include <eigen3/Eigen/Core>
 
 //#include <boost/algorithm/string.hpp>
 

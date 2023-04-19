@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/03/2023
+ * Last modified: 19/03/2023
  *
  */
 
@@ -34,7 +34,7 @@ void OptimizationWrapper::fitModel(Model* model)
     optimizer->init(rfw.getParameters());
   }
 
-  else if(options_.getOptimMethod() == "NewtonRhapson")
+  /*else if(options_.getOptimMethod() == "NewtonRhapson")
   {
     bpp::ThreePointsNumericalDerivative tpnd(model);
 
@@ -46,7 +46,7 @@ void OptimizationWrapper::fitModel(Model* model)
     optimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
     optimizer->setConstraintPolicy(bpp::AutoParameter::CONSTRAINTS_AUTO);
     optimizer->init(model->getUnfrozenParameters());
-  }
+  }*/
 
   else if(options_.getOptimMethod() == "BFGS")
   {
