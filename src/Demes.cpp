@@ -141,6 +141,9 @@ void Demes::parse_(const std::string& fileName)
           singlePopOverTime[k]->setLeftParent(singlePopOverTime[k - 1]);
           singlePopOverTime[k]->setRightParent(singlePopOverTime[k - 1]);
           singlePopOverTime[k]->setStartTime(singlePopOverTime[k - 1]->getEndTime());
+
+          if(singlePopOverTime[k]->getSize() == 0)
+            singlePopOverTime[k]->setSize(singlePopOverTime[k - 1]->getSize());
         }
 
         popsInv.push_back(singlePopOverTime);
@@ -194,10 +197,12 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
-      pops_.resize(timeBounds.size() - 1);
-      migRates_.resize(timeBounds.size() - 1);
-      mutRates_.reserve(timeBounds.size() - 1);
-      recRates_.reserve(timeBounds.size() - 1);
+      size_t numEpochs = timeBounds.size() - 1;
+
+      pops_.resize(numEpochs);
+      migRates_.resize(numEpochs);
+      mutRates_.reserve(numEpochs);
+      recRates_.reserve(numEpochs);
 
       // second pass: organize pops within epochs
       for(size_t i = 1; i < timeBounds.size(); ++i)
@@ -221,7 +226,7 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
-      for(size_t i = 0; i < migRates_.size(); ++i)
+      for(size_t i = 0; i < numEpochs; ++i)
       {
         size_t p = pops_[i].size();
         Eigen::MatrixXd mat(p, p);
@@ -233,7 +238,7 @@ void Demes::parse_(const std::string& fileName)
       // sets defaults to mutation and recombination rates
       double rate = 1e-8;
 
-      for(size_t i = 0; i < timeBounds.size() - 1; ++i)
+      for(size_t i = 0; i < numEpochs; ++i)
       {
         mutRates_.emplace_back(rate);
         recRates_.emplace_back(rate);
@@ -314,7 +319,7 @@ void Demes::parse_(const std::string& fileName)
 
     else if(it->first.as<std::string>() == "pulses")
     {
-      std::cout << "TODO\n"; // NOTE: it is epoch-specific
+      std::cout << "TODO\n";
     }
 
     // move to mutation and recombination rates (optional, defaults give above)
@@ -340,7 +345,7 @@ void Demes::parse_(const std::string& fileName)
         bool match = 0;
         for(size_t j = 1; j < timeBounds.size(); ++j)
         {
-          if(startTime == timeBounds[j - 1] && endTime == timeBounds[j])
+          if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
           {
             mutRates_[j - 1] = rate;
 
@@ -358,7 +363,7 @@ void Demes::parse_(const std::string& fileName)
     {
       YAML::Node recs = it->second;
 
-      double rate = 0.;
+      double rate = 1e-8;
       size_t startTime = timeBounds.front();
       size_t endTime = 0;
 
@@ -376,7 +381,7 @@ void Demes::parse_(const std::string& fileName)
         bool match = 0;
         for(size_t j = 1; j < timeBounds.size(); ++j)
         {
-          if(startTime == timeBounds[j - 1] && endTime == timeBounds[j])
+          if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
           {
             recRates_[j - 1] = rate;
 

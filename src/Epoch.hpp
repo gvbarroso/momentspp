@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 19/04/2023
+ * Last modified: 20/04/2023
  *
  */
 
@@ -76,7 +76,7 @@ public:
       addParameters_((*it)->getParameters());
 
     bpp::AbstractParameterAliasable::setNamespace(name + ".");
-    pseudoSteadyState_(); // and updates moments inside ssl_
+    init_();
   }
 
   ~Epoch()
@@ -132,9 +132,40 @@ public:
     return transitionMatrix_;
   }
 
+  size_t getNumPops()
+  {
+    return pops_.size();
+  }
+
   const std::vector<std::shared_ptr<Population>>& getPops()
   {
     return pops_;
+  }
+
+  std::shared_ptr<Population> fetchPop(size_t id)
+  {
+    std::shared_ptr<Population> pop = nullptr;
+    for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+    {
+      if((*it)->getId() == id)
+        pop = (*it);
+    }
+
+    assert(pop != nullptr);
+    return pop;
+  }
+
+  std::shared_ptr<Population> fetchPop(const std::string& name)
+  {
+    std::shared_ptr<Population> pop = nullptr;
+    for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+    {
+      if((*it)->getName() == name)
+        pop = (*it);
+    }
+
+    assert(pop != nullptr);
+    return pop;
   }
 
   const SumStatsLibrary& getSslib() const
@@ -177,10 +208,14 @@ public:
 
   void printRecursions(std::ostream& stream);
 
-private:
-  void computeSteadyState_();
+  void pseudoSteadyState();
 
-  void pseudoSteadyState_();
+  void computeSteadyState();
+
+  void testSteadyState();
+
+private:
+  void init_();
 
   void updateOperators_(const bpp::ParameterList& params)
   {

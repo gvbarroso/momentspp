@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 20/04/2023
  *
  */
 
@@ -24,18 +24,12 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Drift(const std::vector<double>& initValues, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Drift(const std::vector<double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator()
   {
-    size_t idx = 0;
-    // for each population modeled in the epoch this operator belongs to, add Ne parameter
-    for(auto itI = std::begin(sslib.getPopIndices()); itI != std::end(sslib.getPopIndices()); ++itI)
-    {
-      //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("1/2N_" + bpp::TextTools::toString((*itI)), initValue, bpp::Parameter::R_PLUS_STAR);
-      //addParameter_(param);
-      addParameter_(new bpp::Parameter("1/2N_" + bpp::TextTools::toString(*itI), initValues[idx], ic));
-      ++idx;
-    }
+    // for each population modeled in the epoch *this operator belongs to, add Ne parameter
+    for(size_t i = 0; i < sslib.getPopIndices().size(); ++i)  // i-th coal rate corresponds top popIndex[i]
+      addParameter_(new bpp::Parameter("1/2N_" + bpp::TextTools::toString(i), vals[i], ic));
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);

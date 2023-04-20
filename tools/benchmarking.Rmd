@@ -953,9 +953,9 @@ p <- p + labs(title="Moments++ expectations",
               x="Moment", y="Value", color="scenario")
 p <- p + scale_y_continuous(trans="log10")
 p <- p + theme(axis.title=element_text(size=20),
-                 axis.text=element_text(size=14),
-                 axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
-                 legend.position = "bottom")
+               axis.text=element_text(size=14),
+               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               legend.position = "bottom")
 p
 if(save_plots) {
   ggsave("moments++_3_pops.png", p1, device="png", width=7, height=7)
@@ -1070,9 +1070,9 @@ p <- p + labs(title="Moments++ expectations",
               x="Moment", y="Value", color="scenario")
 p <- p + scale_y_continuous(trans="log10")
 p <- p + theme(axis.title=element_text(size=20),
-                 axis.text=element_text(size=14),
-                 axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
-                 legend.position = "bottom")
+               axis.text=element_text(size=14),
+               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+               legend.position = "bottom")
 p
 if(save_plots) {
   ggsave("moments++_4_pops.png", p1, device="png", width=12, height=12)

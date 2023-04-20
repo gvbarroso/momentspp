@@ -27,8 +27,6 @@ public:
   Mutation(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator()
   {
-    //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("u", initValue, ic);
-    //addParameter_(param.get());
     addParameter_(new bpp::Parameter("u", initValue, ic));
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters

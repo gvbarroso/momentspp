@@ -1,26 +1,28 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 18/04/2023
+ * Last modified: 20/04/2023
  *
  */
 
 #include <ios>
 
-#include "Log.hpp"
+#include "Migration.hpp"
 #include "Epoch.hpp"
 
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
   if(matchParametersValues(params))
+  {
     updateOperators_(params);
 
-  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
+    Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
 
-  for(size_t i = 1; i < operators_.size(); ++i)
-    mat = mat * operators_[i]->getTransitionMatrix();
+    for(size_t i = 1; i < operators_.size(); ++i)
+      mat = mat * operators_[i]->getTransitionMatrix();
 
-  transitionMatrix_ = mat; // converts from sparse to dense format
+    transitionMatrix_ = mat; // converts from sparse to dense format
+  }
 }
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
@@ -104,15 +106,11 @@ void Epoch::printRecursions(std::ostream& stream)
   }
 }
 
-void Epoch::computeSteadyState_()
+void Epoch::computeSteadyState()
 {
   std::cout << "Computing steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
-  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
-
-  for(size_t i = 1; i < operators_.size(); ++i)
-    mat = operators_[i]->getTransitionMatrix() * mat;
-
-  transitionMatrix_ = mat; // converts from sparse to dense format
+  testSteadyState();
+  init_();
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
 
   int idx = 0;
@@ -131,15 +129,11 @@ void Epoch::computeSteadyState_()
   std::cout << "done.\n";
 }
 
-void Epoch::pseudoSteadyState_()
+void Epoch::pseudoSteadyState()
 {
   std::cout << "Computing pseudo steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
-  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
-
-  for(size_t i = 1; i < operators_.size(); ++i)
-    mat = operators_[i]->getTransitionMatrix() * mat;
-
-  transitionMatrix_ = mat; // converts from sparse to dense format
+  testSteadyState();
+  init_();
 
   Eigen::VectorXd y(transitionMatrix_.rows());
   for(int i = 0; i < y.size(); ++i)
@@ -149,5 +143,29 @@ void Epoch::pseudoSteadyState_()
 
   updateMoments(steadYstate_);
   std::cout << "done.\n";
+}
+
+void Epoch::testSteadyState()
+{
+  if(pops_.size() > 1)
+  {
+    for(size_t i = 0; i < operators_.size(); ++i)
+    {
+      auto tmp = std::dynamic_pointer_cast<Migration>(operators_[i]);
+
+      if(tmp != nullptr)
+        tmp->testFlow();
+    }
+  }
+}
+
+void Epoch::init_()
+{
+  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
+
+  for(size_t i = 1; i < operators_.size(); ++i)
+    mat = operators_[i]->getTransitionMatrix() * mat;
+
+  transitionMatrix_ = mat; // converts from sparse to dense format
 }
 

@@ -52,8 +52,6 @@ int main(int argc, char *argv[]) {
    * selection constrained to a particular epoch
    * define start and end of epochs as quantiles of the exp dist?
    *
-   * TODO
-   * Write Admixture operator as an AbstractOperator that has exponent 1
    */
 
   if(argc == 1)
@@ -127,7 +125,11 @@ int main(int argc, char *argv[]) {
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
+    std::shared_ptr<Epoch> epoch = std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]);
+    epochs.emplace_back(epoch);
+
+    if(i == 0) // only need to ensure existence of steady state for deepest epoch
+      epochs[0]->pseudoSteadyState();
   }
 
   try

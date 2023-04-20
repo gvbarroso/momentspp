@@ -216,6 +216,36 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
   assembleTransitionMatrix_();
 }
 
+void Migration::testFlow()
+{
+  assert(littleMigMat_.innerSize() > 0);
+  int numPops = littleMigMat_.innerSize();
+  Graph mig(numPops);
+
+  for(int i = 0; i < numPops; ++i)
+  {
+    for(int j = 0; j < numPops; ++j)
+    {
+      if(i != j && littleMigMat_(i, j) > 0.)
+        mig.addEdge(i, j);
+    }
+  }
+
+  for(int i = 0; i < numPops; ++i)
+  {
+    for(int j = i; j < numPops; ++j)
+    {
+      bool flow = mig.isReachable(i, j) || mig.isReachable(j, i);
+
+      if(!flow)
+      {
+        std::cout << "ERROR: Demes " << i << " & " << j << " not connected by migration!\n" << littleMigMat_ << "\n";
+        throw bpp::Exception("Migration::no steady-state solution!");
+      }
+    }
+  }
+}
+
 void Migration::updateMatrices_()
 {
   size_t numPops = littleMigMat_.innerSize();
@@ -271,36 +301,6 @@ void Migration::setLittleMat_()
   }
 
   littleMigMat_ = mat;
-}
-
-void Migration::testFlow_()
-{
-  assert(littleMigMat_.innerSize() > 0);
-  int numPops = littleMigMat_.innerSize();
-  Graph mig(numPops);
-
-  for(int i = 0; i < numPops; ++i)
-  {
-    for(int j = 0; j < numPops; ++j)
-    {
-      if(i != j && littleMigMat_(i, j) > 0.)
-        mig.addEdge(i, j);
-    }
-  }
-
-  for(int i = 0; i < numPops; ++i)
-  {
-    for(int j = i; j < numPops; ++j)
-    {
-      bool flow = mig.isReachable(i, j) || mig.isReachable(j, i);
-
-      if(!flow)
-      {
-        std::cout << "ERROR: Demes " << i << " & " << j << " not connected by migration!\n" << littleMigMat_ << "\n";
-        throw bpp::Exception("Migration::no steady-state solution!");
-      }
-    }
-  }
 }
 
 size_t Migration::fetchNumPops_() // cute way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())

@@ -23,7 +23,7 @@ class Population
 {
 
 private:
-  std::string name_; // human label, e.g. "Yoruba"
+  std::string name_; // human label, e.g. "Yoruba" or "DGN_Zambia"
   std::string description_;
 
   // parents in previous epoch; they will be the same unless focal population is a result of admixture

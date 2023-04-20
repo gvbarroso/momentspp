@@ -26,8 +26,6 @@ public:
   Recombination(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator()
   {
-    //std::shared_ptr<bpp::Parameter> param = std::make_shared<bpp::Parameter>("r_0", initValue, ic);
-    //addParameter_(param.get());
     addParameter_(new bpp::Parameter("r", initValue, ic));
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
