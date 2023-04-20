@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 18/04/2023
+ * Last modified: 20/04/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 19/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 20/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -92,23 +92,22 @@ int main(int argc, char *argv[]) {
   {
     std::string id = "e_" + bpp::TextTools::toString(i);
 
-    size_t start = demes.getPopMaps()[i].front()->getStartTime();
-    size_t end = demes.getPopMaps()[i].front()->getEndTime();
+    size_t start = demes.getPopsVec()[i].front()->getStartTime();
+    size_t end = demes.getPopsVec()[i].front()->getEndTime();
 
-    SumStatsLibrary sslib(demes.getPopMaps()[i], options.compressMoments());
+    SumStatsLibrary sslib(demes.getPopsVec()[i], options.compressMoments());
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * must have epoch-specific recombination and mutation operators because they depend on pop indices (popss[i]),
      * even though inside Model we alias r and mu across epochs
      */
 
-
     std::vector<double> drift(0);
-    drift.reserve(demes.getPopMaps()[i].size());
+    drift.reserve(demes.getPopsVec()[i].size());
 
     // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
-    for(size_t j = 0; j < demes.getPopMaps()[i].size(); ++j)
-      drift.emplace_back(1. / (2. * demes.getPopMaps()[i][j]->getSize()));
+    for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
+      drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
 
     std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
@@ -128,7 +127,7 @@ int main(int argc, char *argv[]) {
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopMaps()[i]));
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
   }
 
   try

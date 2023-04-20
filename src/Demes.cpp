@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 19/04/2023
+ * Last modified: 20/04/2023
  *
  */
 
@@ -196,6 +196,8 @@ void Demes::parse_(const std::string& fileName)
 
       pops_.resize(timeBounds.size() - 1);
       migRates_.resize(timeBounds.size() - 1);
+      mutRates_.reserve(timeBounds.size() - 1);
+      recRates_.reserve(timeBounds.size() - 1);
 
       // second pass: organize pops within epochs
       for(size_t i = 1; i < timeBounds.size(); ++i)
@@ -226,6 +228,15 @@ void Demes::parse_(const std::string& fileName)
         mat.setZero();
 
         migRates_[i] = mat;
+      }
+
+      // sets defaults to mutation and recombination rates
+      double rate = 1e-8;
+
+      for(size_t i = 0; i < timeBounds.size() - 1; ++i)
+      {
+        mutRates_.emplace_back(rate);
+        recRates_.emplace_back(rate);
       }
     }
 
@@ -271,7 +282,6 @@ void Demes::parse_(const std::string& fileName)
         else
           throw bpp::Exception("'migrations' field in Demes file must explicitly speficy 'end_time'!");
 
-
         bool match = 0;
         for(size_t j = 1; j < timeBounds.size(); ++j)
         {
@@ -297,7 +307,7 @@ void Demes::parse_(const std::string& fileName)
         }
 
         if(!match)
-          throw bpp::Exception("start_time/end_time of at least one migration event in Demes file do not match the span of any epoch!");
+          throw bpp::Exception("start_time and end_time of 'migrations' in Demes file do not match the span of any epoch!");
 
       }
     }
@@ -307,11 +317,77 @@ void Demes::parse_(const std::string& fileName)
       std::cout << "TODO\n"; // NOTE: it is epoch-specific
     }
 
-    else if(it->first.as<std::string>() == "metadata")
+    // move to mutation and recombination rates (optional, defaults give above)
+    if(it->first.as<std::string>() == "mutation")
     {
-      std::cout << "extract u, r...\n";
-      //double u = 0.;
-      //double r = 0.;
+      YAML::Node muts = it->second;
+
+      double rate = 0.;
+      size_t startTime = timeBounds.front();
+      size_t endTime = 0;
+
+      for(size_t i = 0; i < muts.size(); ++i) // mut period by mut period
+      {
+        if(muts[i]["rate"])
+          rate = muts[i]["rate"].as<double>();
+
+        if(muts[i]["start_time"])
+          startTime = muts[i]["start_time"].as<size_t>();
+
+        if(muts[i]["end_time"])
+          endTime = muts[i]["end_time"].as<size_t>();
+
+        bool match = 0;
+        for(size_t j = 1; j < timeBounds.size(); ++j)
+        {
+          if(startTime == timeBounds[j - 1] && endTime == timeBounds[j])
+          {
+            mutRates_[j - 1] = rate;
+
+            match = 1;
+            break;
+          }
+        }
+
+        if(!match)
+          throw bpp::Exception("start_time and end_time of 'mutation' in Demes file do not match the span of any epoch!");
+      }
+    }
+
+    else if(it->first.as<std::string>() == "recombination")
+    {
+      YAML::Node recs = it->second;
+
+      double rate = 0.;
+      size_t startTime = timeBounds.front();
+      size_t endTime = 0;
+
+      for(size_t i = 0; i < recs.size(); ++i) // rec period by rec period
+      {
+        if(recs[i]["rate"])
+          rate = recs[i]["rate"].as<double>();
+
+        if(recs[i]["start_time"])
+          startTime = recs[i]["start_time"].as<size_t>();
+
+        if(recs[i]["end_time"])
+          endTime = recs[i]["end_time"].as<size_t>();
+
+        bool match = 0;
+        for(size_t j = 1; j < timeBounds.size(); ++j)
+        {
+          if(startTime == timeBounds[j - 1] && endTime == timeBounds[j])
+          {
+            recRates_[j - 1] = rate;
+
+            match = 1;
+            break;
+          }
+        }
+
+        if(!match)
+          throw bpp::Exception("start_time and end_time of 'recombination' in Demes file do not match the span of any epoch!");
+      }
     }
   }
 

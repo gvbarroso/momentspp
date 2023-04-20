@@ -35,12 +35,13 @@ private:
   std::string name_;
   SumStatsLibrary ssl_; // *this epoch has its own set of moments using its population indices
 
-  size_t startGen_; // we let the deepest point in relevant time be generation '0'
+  // generations ago, from past to present
+  size_t startGen_;
   size_t endGen_;
 
   // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
-  std::vector<std::shared_ptr<Population>> pops_; // pop-id->class object (containing that same id as a member variable)
+  std::vector<std::shared_ptr<Population>> pops_;
 
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::VectorXd steadYstate_; // based on the parameters of *this epoch

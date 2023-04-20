@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 19/04/2023
+ * Last modified: 20/04/2023
  *
  */
 
@@ -103,12 +103,12 @@ public:
     return model_;
   }
 
-  const std::vector<std::vector<std::shared_ptr<Population>>>& getPopMaps()
+  const std::vector<std::vector<std::shared_ptr<Population>>>& getPopsVec()
   {
     return pops_;
   }
 
-  const std::vector<std::vector<std::shared_ptr<Population>>>& getPopMaps() const
+  const std::vector<std::vector<std::shared_ptr<Population>>>& getPopsVec() const
   {
     return pops_;
   }
@@ -173,12 +173,12 @@ public:
     return migRates_[epoch];
   }
 
-  void setMus(size_t epoch, double mu)
+  void setMu(size_t epoch, double mu)
   {
     mutRates_[epoch] = mu;
   }
 
-  void setRecs(size_t epoch, double rec)
+  void setRec(size_t epoch, double rec)
   {
     recRates_[epoch] = rec;
   }

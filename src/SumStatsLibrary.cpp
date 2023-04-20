@@ -180,7 +180,7 @@ void SumStatsLibrary::printBasis(std::ostream& stream)
     basis_[i]->printAttributes(stream);
 }
 
-void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments)
+void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compress)
 {
   moments_.reserve(getNumStats());
 
@@ -223,7 +223,7 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
 
   linkPi2HetStats_();
   basis_ = moments_; // default
-  if(compressMoments)
+  if(compress)
   {
     aliasMoments_(selectedPopIds);
     compressBasis_();
