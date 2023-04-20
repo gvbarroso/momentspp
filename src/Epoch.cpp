@@ -108,7 +108,6 @@ void Epoch::printRecursions(std::ostream& stream)
 
 void Epoch::computeSteadyState()
 {
-  std::cout << "Computing steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
   testSteadyState();
   init_();
   Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
@@ -126,12 +125,10 @@ void Epoch::computeSteadyState()
   steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getDummyIndexUncompressed()));
 
   updateMoments(steadYstate_);
-  std::cout << "done.\n";
 }
 
 void Epoch::pseudoSteadyState()
 {
-  std::cout << "Computing pseudo steady-state distribution for epoch " << name_ << "..."; std::cout.flush();
   testSteadyState();
   init_();
 
@@ -142,7 +139,6 @@ void Epoch::pseudoSteadyState()
   steadYstate_ = transitionMatrix_.pow(1e+7) * y;
 
   updateMoments(steadYstate_);
-  std::cout << "done.\n";
 }
 
 void Epoch::testSteadyState()

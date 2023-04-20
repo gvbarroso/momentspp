@@ -139,6 +139,7 @@ int main(int argc, char *argv[]) {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
+      model->getParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
       std::string file = model->getName() + "_expectations.txt";

@@ -342,16 +342,14 @@ void Demes::parse_(const std::string& fileName)
         if(muts[i]["end_time"])
           endTime = muts[i]["end_time"].as<size_t>();
 
-        bool match = 0;
+        bool match = 1;
         for(size_t j = 1; j < timeBounds.size(); ++j)
         {
           if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
-          {
             mutRates_[j - 1] = rate;
 
-            match = 1;
-            break;
-          }
+          else
+            match = 0;
         }
 
         if(!match)
@@ -378,16 +376,14 @@ void Demes::parse_(const std::string& fileName)
         if(recs[i]["end_time"])
           endTime = recs[i]["end_time"].as<size_t>();
 
-        bool match = 0;
+        bool match = 1;
         for(size_t j = 1; j < timeBounds.size(); ++j)
         {
           if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
-          {
             recRates_[j - 1] = rate;
 
-            match = 1;
-            break;
-          }
+          else
+            match = 0;
         }
 
         if(!match)
@@ -396,9 +392,9 @@ void Demes::parse_(const std::string& fileName)
     }
   }
 
-  for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+  /*for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
   {
     for(size_t x = 0; x < it->size(); ++x)
       (*it)[x]->printAttributes(std::cout);
-  }
+  }*/
 }

@@ -28,7 +28,6 @@ void Model::computeExpectedSumStats()
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
   }
 
-  //std::cout << expected_ << std::endl;
   // final epoch
   epochs_.back()->transferStatistics(expected_);
   epochs_.back()->computeExpectedSumStats(expected_);
