@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 21/04/2023
  *
  */
 
@@ -17,7 +17,7 @@ class Mutation:
 
 public:
   Mutation(const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
-  AbstractOperator()
+  AbstractOperator(sslib.getPopIndices())
   {
     includeParameters_(mutParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
@@ -25,7 +25,7 @@ public:
   }
 
   Mutation(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator()
+  AbstractOperator(sslib.getPopIndices())
   {
     addParameter_(new bpp::Parameter("u", initValue, ic));
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 20/04/2022
+ * Last modified: 21/04/2022
  *
  */
 
@@ -46,6 +46,7 @@ protected:
   Eigen::SparseMatrix<double> identity_; // helper matrix to convert from "delta" to "transition" matrix
   Eigen::SparseMatrix<double> transition_; // "transition" matrix
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
+  std::vector<size_t> popIndices_;
 
 public:
   AbstractOperator():
@@ -53,7 +54,17 @@ public:
   matrices_(0),
   identity_(),
   transition_(),
-  prevParams_()
+  prevParams_(),
+  popIndices_(0)
+  { }
+
+  AbstractOperator(const std::vector<size_t>& popIndices):
+  bpp::AbstractParameterAliasable(""),
+  matrices_(0),
+  identity_(),
+  transition_(),
+  prevParams_(),
+  popIndices_(popIndices)
   { }
 
 public:

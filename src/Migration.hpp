@@ -20,7 +20,7 @@ private:
 
 public:
   Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
-  AbstractOperator(),
+  AbstractOperator(sslib.getPopIndices()),
   littleMigMat_()
   {
     includeParameters_(migParams);
@@ -30,16 +30,20 @@ public:
   }
 
   Migration(const Eigen::MatrixXd& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(),
+  AbstractOperator(sslib.getPopIndices()),
   littleMigMat_(migMat)
   {
     // for each pair of populations modeled in the epoch to which *this operator belongs
-    for(size_t i = 0; i < sslib.getPopIndices().size(); ++i)
+    for(size_t i = 0; i < popIndices_.size(); ++i)
     {
-      for(size_t j = 0; j < sslib.getPopIndices().size(); ++j)
+      size_t id = popIndices_[i];
+
+      for(size_t j = 0; j < popIndices_.size(); ++j)
       {
-        if(i != j)
-          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j), littleMigMat_(i, j), ic));
+        size_t jd = popIndices_[j];
+
+        if(id != jd)
+          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd), littleMigMat_(i, j), ic));
       }
     }
 

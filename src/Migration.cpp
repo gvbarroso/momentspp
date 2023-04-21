@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 31/03/2023
+ * Last modified: 21/04/2023
  *
  */
 
@@ -15,11 +15,15 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
   size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(numPops * (numPops - 1));
 
-  for(size_t i = 0; i < numPops; ++i) // for i in m_ij (i => parent pop ID)
+  for(size_t i = 0; i < numPops; ++i)
   {
-    for(size_t j = 0; j < numPops; ++j) // for j in m_ij (j => child pop ID)
+    size_t id = popIndices_[i]; // id => parent pop ID
+
+    for(size_t j = 0; j < numPops; ++j)
     {
-      if(i != j)
+      size_t jd = popIndices_[j]; // jd => child pop ID
+
+      if(id != jd)
       {
         std::vector<Eigen::Triplet<double>> coeffs(0);
         coeffs.reserve(3 * sizeOfBasis);
@@ -40,25 +44,25 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             for(size_t l = 0; l < popIds.size(); ++ l) // contributions from the DD cols
             {
-              if(popIds[l] == j) // if entry matches childPopId
+              if(popIds[l] == jd) // if entry matches childPopId
               {
-                popIds[l] = i; // assign to focal parentPopId
+                popIds[l] = id; // assign to focal parentPopId
                 col = sslib.findCompressedIndex(sslib.findDdIndex(popIds[0], popIds[1]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
                 col = sslib.findCompressedIndex(sslib.findDdIndex(popIds[1], popIds[0]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-                popIds[l] = j; // recycle
+                popIds[l] = jd; // recycle
               }
             }
 
             if((*it)->hasPopIndex(j))
             {
               size_t p1 = popIds[0];
-              if(p1 == j)
+              if(p1 == jd)
                 p1 = popIds[1];
 
-              size_t p2 = i;
-              size_t p3 = j;
+              size_t p2 = id;
+              size_t p3 = jd;
 
               double f = static_cast<double>(p2 == p3) / 2. - 0.25;
               col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
@@ -66,14 +70,14 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p3, p2));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
 
-              p2 = j;
+              p2 = jd;
 
               f = static_cast<double>(p2 == p3) / 2. - 0.25;
               col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
 
-              p2 = i;
-              p3 = i;
+              p2 = id;
+              p3 = id;
 
               f = static_cast<double>(p2 == p3) / 2. - 0.25;
               col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
@@ -87,18 +91,18 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             for(size_t l = 0; l < popIds.size(); ++ l) // contributions from the Dz cols
             {
-              if(popIds[l] == j) // if entry matches childPopId
+              if(popIds[l] == jd) // if entry matches childPopId
               {
-                popIds[l] = i; // assign to focal parentPopId
+                popIds[l] = id; // assign to focal parentPopId
                 col = sslib.findCompressedIndex(sslib.findDzIndex(popIds[0], popIds[1], popIds[2]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
                 col = sslib.findCompressedIndex(sslib.findDzIndex(popIds[0], popIds[2], popIds[1]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-                popIds[l] = j; // recycle
+                popIds[l] = jd; // recycle
               }
             }
 
-            if((*it)->getPopIndices()[0] == j) // contributions from pi2 moments
+            if((*it)->getPopIndices()[0] == jd) // contributions from pi2 moments
             {
               // imagine starting with pop indices p2 and p3 on each side of ';' character in pi2(**;**)
               // append parentPopId (i) to the right of both p2 and p3
@@ -108,12 +112,12 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               popIds.resize(4);
 
               popIds[0] = (*it)->getPopIndices()[1];
-              popIds[1] = i;
+              popIds[1] = id;
               popIds[2] = (*it)->getPopIndices()[2];
-              popIds[3] = i;
+              popIds[3] = id;
 
-              size_t refCount = std::count(std::begin(popIds), std::end(popIds), j);
-              size_t count = std::count(std::begin(popIds), std::end(popIds), j);
+              size_t refCount = std::count(std::begin(popIds), std::end(popIds), jd);
+              size_t count = std::count(std::begin(popIds), std::end(popIds), jd);
               double f = std::pow(-1., count - refCount);
 
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
@@ -125,8 +129,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-              popIds[3] = j; // switch right appendix to childPopId
-              count = std::count(std::begin(popIds), std::end(popIds), j);
+              popIds[3] = jd; // switch right appendix to childPopId
+              count = std::count(std::begin(popIds), std::end(popIds), jd);
               f = std::pow(-1., count - refCount);
 
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
@@ -138,9 +142,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-              popIds[3] = i; // back
-              popIds[1] = j; // switch left appendix to childPopId
-              count = std::count(std::begin(popIds), std::end(popIds), j);
+              popIds[3] = id; // back
+              popIds[1] = jd; // switch left appendix to childPopId
+              count = std::count(std::begin(popIds), std::end(popIds), jd);
               f = std::pow(-1., count - refCount);
 
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
@@ -152,8 +156,8 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[1], popIds[0], popIds[3], popIds[2]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f));
 
-              popIds[3] = j; // have both switched
-              count = std::count(std::begin(popIds), std::end(popIds), j);
+              popIds[3] = jd; // have both switched
+              count = std::count(std::begin(popIds), std::end(popIds), jd);
               f = std::pow(-1., count - refCount);
 
               col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
@@ -173,12 +177,12 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             for(size_t l = 0; l < popIds.size(); ++ l) // l -> 0:3
             {
-              if(popIds[l] == j) // if entry matches childPopId
+              if(popIds[l] == jd) // if entry matches childPopId
               {
-                popIds[l] = i; // assign to focal parentPopId
+                popIds[l] = id; // assign to focal parentPopId
                 col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-                popIds[l] = j; // recycle
+                popIds[l] = jd; // recycle
               }
             }
           }
@@ -189,12 +193,12 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
 
             for(size_t l = 0; l < popIds.size(); ++ l) // l -> 0:1
             {
-              if(popIds[l] == j) // if entry matches childPopId
+              if(popIds[l] == jd) // if entry matches childPopId
               {
-                popIds[l] = i; // assign to focal parentPopId
+                popIds[l] = id; // assign to focal parentPopId
                 col = sslib.findCompressedIndex(sslib.findHetIndex(popIds[0], popIds[1]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-                popIds[l] = j; // recycle
+                popIds[l] = jd; // recycle
               }
             }
           }
@@ -206,7 +210,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
         mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
         mat.makeCompressed();
-        mat *= getParameterValue("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j));
+        mat *= getParameterValue("m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd));
         matrices_.emplace_back(mat);
       }
     }
@@ -239,7 +243,7 @@ void Migration::testFlow()
 
       if(!flow)
       {
-        std::cout << "ERROR: Demes " << i << " & " << j << " not connected by migration!\n" << littleMigMat_ << "\n";
+        std::cout << "ERROR: Demes " << i << " & " << j << " not connected by migration!\n";
         throw bpp::Exception("Migration::no steady-state solution!");
       }
     }
@@ -254,11 +258,15 @@ void Migration::updateMatrices_()
 
   for(size_t i = 0; i < numPops; ++i)
   {
+    size_t id = popIndices_[i];
+
     for(size_t j = 0; j < numPops; ++j)
     {
-      if(i != j)
+      size_t jd = popIndices_[j];
+
+      if(id != jd)
       {
-        paramName = "m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j);
+        paramName = "m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd);
 
         double prevVal = prevParams_.getParameterValue(paramName);
         double newVal = getParameterValue(paramName);
@@ -277,17 +285,21 @@ void Migration::updateMatrices_()
 
 void Migration::setLittleMat_()
 {
-  size_t numPops = fetchNumPops_();
+  size_t numPops = popIndices_.size();
   std::vector<double> row(numPops, 0.);
   Eigen::MatrixXd mat(numPops, numPops);
   mat.setZero();
 
   for(size_t i = 0; i < numPops; ++i)
   {
+    size_t id = popIndices_[i];
+
     for(size_t j = 0; j < numPops; ++j)
     {
-      if(i != j)
-        mat(i, j) = getParameterValue("m_" + bpp::TextTools::toString(i) + "_" + bpp::TextTools::toString(j));
+      size_t jd = popIndices_[j];
+
+      if(id != jd)
+        mat(i, j) = getParameterValue("m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd));
     }
   }
 

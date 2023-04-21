@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 20/04/2023
+ * Last modified: 21/04/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 20/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
    * IDEAS:
    * what if both left and right loci are under selection, potentially with different selection coefficients, even opposite signs
    * selection constrained to a particular epoch
-   * define start and end of epochs as quantiles of the exp dist?
+   * epoch-specific mutation rates to test the hypothesis of change in mu along human lineage (wrt eg chimps)?
    *
    */
 
@@ -58,14 +58,14 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "Please fill in a text file with the following options and execute from the command line:\nmomentspp params=[file]\n\n";
 
-    std::cout << "label = \n";
-    std::cout << "demes_file = \n";
-    std::cout << "stats_file = \n\n";
+    std::cout << "label = # optional, default = 'moments++'\n";
+    std::cout << "demes_file = # mandatory\n";
+    std::cout << "stats_file = # optional, default = 'none'\n\n";
 
-    std::cout << "optimizer =\n";
-    std::cout << "tolerance = \n";
-    std::cout << "compress_moments = \n";
-    std::cout << "num_threads = \n";
+    std::cout << "optimizer = # optional, default = 'BFGS'\n";
+    std::cout << "tolerance = # optional, default = 1e-6\n";
+    std::cout << "compress_moments = # optional, default = 1 (TRUE)\n";
+    std::cout << "num_threads = # optional, default = num_cores / 2\n";
 
     std::cout << "For more information, please email gvbarroso@gmail.com " << std::endl;
     return(0);
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
 
-    if(demes.getNumPops(i) > 1)
+    if(demes.getNumPops(i) > 1 && !demes.getMig(i).isZero(0))
     {
       std::shared_ptr<Migration> migOp = std::make_shared<Migration>(demes.getMig(i), ic, sslib);
       operators.emplace_back(migOp);
@@ -125,8 +125,7 @@ int main(int argc, char *argv[]) {
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    std::shared_ptr<Epoch> epoch = std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]);
-    epochs.emplace_back(epoch);
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
 
     if(i == 0) // only need to ensure existence of steady state for deepest epoch
       epochs[0]->pseudoSteadyState();
@@ -139,7 +138,7 @@ int main(int argc, char *argv[]) {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
-      model->getParameters().printParameters(std::cout);
+      //model->getParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
       std::string file = model->getName() + "_expectations.txt";

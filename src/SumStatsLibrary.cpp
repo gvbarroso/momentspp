@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 18/04/2023
+ * Last modified: 21/04/2023
  *
  */
 
@@ -98,7 +98,7 @@ std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(std::shared_ptr<HetMome
 
 size_t SumStatsLibrary::findPopIndexRank(size_t index) const // among all pop indices
 {
-  auto it = std::lower_bound(std::begin(popIndices_), std::end(popIndices_), index);
+  auto it = std::find(std::begin(popIndices_), std::end(popIndices_), index);
   assert(it != std::end(popIndices_));
 
   return std::distance(std::begin(popIndices_), it); // indexed from 0

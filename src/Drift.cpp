@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 03/04/2023
+ * Last modified: 21/04/2023
  *
  */
 
@@ -17,6 +17,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
   for(size_t i = 0; i < numPops; ++i)
   {
+    size_t id = popIndices_[i];
     std::vector<Eigen::Triplet<double>> coeffs(0);
     coeffs.reserve(sizeOfBasis);
 
@@ -24,7 +25,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     {
       int row = it - std::begin(sslib.getBasis());
       int col = -1;
-      size_t popIdCount = (*it)->countInstances(i); // count of i (focal pop ID) in moment's name
+      size_t popIdCount = (*it)->countInstances(id); // count of i (focal pop ID) in moment's name
 
       if((*it)->getPrefix() == "DD")
       {
@@ -32,10 +33,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -3.));
 
-          col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, i));
+          col = sslib.findCompressedIndex(sslib.findDzIndex(id, id, id));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-          col = sslib.findCompressedIndex(sslib.findPi2Index(i, i, i, i));
+          col = sslib.findCompressedIndex(sslib.findPi2Index(id, id, id, id));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -45,13 +46,13 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
       else if((*it)->getPrefix() == "Dz")
       {
-        if((*it)->getPopIndices()[0] == i) // if D_i_z**
+        if((*it)->getPopIndices()[0] == id) // if D_i_z**
         {
           if(popIdCount == 3) // D_i_z_ii
           {
             coeffs.emplace_back(Eigen::Triplet<double>(row, row, -5.));
 
-            col = sslib.findCompressedIndex(sslib.findDdIndex(i, i));
+            col = sslib.findCompressedIndex(sslib.findDdIndex(id, id));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4.));
           }
 
@@ -66,10 +67,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIdCount == 2) // D_x_z_ii
           {
-            col = sslib.findCompressedIndex(sslib.findDdIndex(i, (*it)->getPopIndices()[0]));
+            col = sslib.findCompressedIndex(sslib.findDdIndex(id, (*it)->getPopIndices()[0]));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
 
-            col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], i));
+            col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], id));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2.));
           }
         }
@@ -80,14 +81,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*it);
         assert(tmpPi2 != nullptr);
 
-        size_t countLeft = tmpPi2->getLeftHetStat()->countInstances(i);
-        size_t countRight = tmpPi2->getRightHetStat()->countInstances(i);
+        size_t countLeft = tmpPi2->getLeftHetStat()->countInstances(id);
+        size_t countRight = tmpPi2->getRightHetStat()->countInstances(id);
 
         if((countLeft + countRight) == 4)
         {
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
-          col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, i));
+          col = sslib.findCompressedIndex(sslib.findDzIndex(id, id, id));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -99,12 +100,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             for(size_t j = 0; j < numPops; ++j)
             {
-              if(i != j && (*it)->hasPopIndex(j))
+              size_t jd = popIndices_[j];
+
+              if(id != jd && (*it)->hasPopIndex(jd))
               {
-                col = sslib.findCompressedIndex(sslib.findDzIndex(i, i, j));
+                col = sslib.findCompressedIndex(sslib.findDzIndex(id, id, jd));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
 
-                col = sslib.findCompressedIndex(sslib.findDzIndex(i, j, i));
+                col = sslib.findCompressedIndex(sslib.findDzIndex(id, jd, id));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
               }
             }
@@ -115,16 +118,18 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           for(size_t j = 0; j < numPops; ++j)
           {
-            if(i != j && (*it)->hasPopIndex(j))
+            size_t jd = popIndices_[j];
+
+            if(id != jd && (*it)->hasPopIndex(jd))
             {
-              std::vector<size_t> diff = (*it)->fetchDiffPopIds(i);
+              std::vector<size_t> diff = (*it)->fetchDiffPopIds(id);
               assert(diff.size() == 2);
               double f = 1. + (diff[0] == diff[1]);
 
-              col = sslib.findCompressedIndex(sslib.findDzIndex(i, diff[0], diff[1]));
+              col = sslib.findCompressedIndex(sslib.findDzIndex(id, diff[0], diff[1]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * 0.0625));
 
-              col = sslib.findCompressedIndex(sslib.findDzIndex(i, diff[1], diff[0]));
+              col = sslib.findCompressedIndex(sslib.findDzIndex(id, diff[1], diff[0]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * 0.0625));
             }
           }
@@ -144,7 +149,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
     mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
     mat.makeCompressed();
-    mat *= (getParameterValue("1/2N_" + bpp::TextTools::toString(i)));
+    mat *= (getParameterValue("1/2N_" + bpp::TextTools::toString(id)));
     matrices_.emplace_back(mat);
   }
 
@@ -158,7 +163,8 @@ void Drift::updateMatrices_()
 
   for(size_t i = 0; i < matrices_.size(); ++i)
   {
-    paramName = "1/2N_" + bpp::TextTools::toString(i);
+    size_t id = popIndices_[i];
+    paramName = "1/2N_" + bpp::TextTools::toString(id);
 
     double prevVal = prevParams_.getParameterValue(paramName);
     double newVal = getParameterValue(paramName);
