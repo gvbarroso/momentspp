@@ -27,6 +27,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
+  //y = admixture_->getTransitionMatrix() * y; // TODO admixture_ default to Identity, alternatively it's an operator with exponent = 1
   y = transitionMatrix_.pow(duration()) * y; // uses multi-threading
 }
 

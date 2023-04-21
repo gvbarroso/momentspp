@@ -51,7 +51,8 @@ int main(int argc, char *argv[]) {
    * what if both left and right loci are under selection, potentially with different selection coefficients, even opposite signs
    * selection constrained to a particular epoch
    * epoch-specific mutation rates to test the hypothesis of change in mu along human lineage (wrt eg chimps)?
-   *
+   * alias N's from adjacent epochs to reduce parameter space
+   * WARNING Admixture events should define epoch boundaries
    */
 
   if(argc == 1)

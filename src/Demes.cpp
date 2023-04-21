@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 20/04/2023
+ * Last modified: 21/04/2023
  *
  */
 
@@ -102,34 +102,49 @@ void Demes::parse_(const std::string& fileName)
             std::string ancNameFirst = pops[i]["ancestors"][0].as<std::string>();
             std::string ancNameSecond = pops[i]["ancestors"][1].as<std::string>();
 
-            for(size_t k = 0; k < popsInv.size(); ++k)
-            {
-              if(popsInv[k].front()->getName() == ancNameFirst)
-              {
-                std::shared_ptr<Population> parent = popsInv[k].front();
-                child->setLeftParent(parent);
-              }
-
-              else if(popsInv[k].front()->getName() == ancNameSecond)
-              {
-                std::shared_ptr<Population> parent = popsInv[k].front();
-                child->setRightParent(parent);
-              }
-            }
-
             double f = pops[i]["proportions"][0].as<double>();
             double g = pops[i]["proportions"][1].as<double>();
 
             // forward f and g to Admixture operator
 
             if((f + g) != 1.)
-              throw bpp::Exception("admixture proportions in Demes file don't sum to 1.0!");
+              throw bpp::Exception("ancestral admixture proportions in Demes file don't sum to 1.0!");
 
             if(child->getSize() == 0)
-              throw bpp::Exception("demes with two ancestors must have specified start_sizes!");
+              throw bpp::Exception("demes with two ancestors must have specified start_size's!");
 
             if(child->getStartTime() == std::numeric_limits<int>::max())
-              std::cout << "Fix this\n";
+              throw bpp::Exception("demes with two ancestors must have specified start_time's!");
+
+            for(size_t k = 0; k < popsInv.size(); ++k)
+            {
+              if(popsInv[k].front()->getName() == ancNameFirst)
+              {
+                for(size_t l = 0; l < popsInv[k].size(); ++l)
+                {
+                  if(popsInv[k][l]->getEndTime() == child->getStartTime())
+                  {
+                    std::shared_ptr<Population> parent = popsInv[k][l];
+                    child->setLeftParent(parent);
+                  }
+                }
+              }
+
+              else if(popsInv[k].front()->getName() == ancNameSecond)
+              {
+                for(size_t l = 0; l < popsInv[k].size(); ++l)
+                {
+                  if(popsInv[k][l]->getEndTime() == child->getStartTime())
+                  {
+                    std::shared_ptr<Population> parent = popsInv[k][l];
+                    child->setRightParent(parent);
+                  }
+                }
+              }
+            }
+
+            if(child->getLeftParent() == nullptr || child->getRightParent() == nullptr)
+              throw bpp::Exception("could not pinpoint parents of pop " + child->getName() + " in time.");
           }
 
           else if(pops[i]["ancestors"].size() > 2)
@@ -319,7 +334,33 @@ void Demes::parse_(const std::string& fileName)
 
     else if(it->first.as<std::string>() == "pulses")
     {
-      std::cout << "TODO\n";
+      YAML::Node pulses = it->second;
+
+      for(size_t i = 0; i < pulses.size(); ++i) // pulse by pulse
+      {
+        YAML::Node sources = pulses[i]["sources"];
+        YAML::Node fs = pulses[i]["proportions"];
+
+        std::string source = "";
+        double f = -1.;
+
+        if(sources.size() == 1)
+          source = sources[0].as<std::string>();
+
+        else
+          throw bpp::Exception("only a single 'source' per admixture 'pulse' is allowed in Demes model");
+
+        if(fs.size() == 1)
+          f = fs[0].as<double>(); // proportion of source ancestry
+
+        else
+          throw bpp::Exception("only a single 'proportion' per admixture 'pulse' is allowed in Demes model");
+
+        std::string dest = pulses[i]["dest"].as<std::string>();
+        size_t time = pulses[i]["time"].as<size_t>();
+
+        std::cout << source << "~~~~~>" << dest << " [" << f << "] at " << time << " gens. ago\n";
+      }
     }
 
     // move to mutation and recombination rates (optional, defaults give above)
