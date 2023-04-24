@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 20/04/2023
+ * Last modified: 24/04/2023
  *
  */
 
@@ -74,6 +74,7 @@ private:
   std::vector<double> mutRates_;
   std::vector<double> recRates_;
   std::vector<Eigen::MatrixXd> migRates_;
+  std::vector<Eigen::MatrixXd> pulses_;
 
 public:
   Demes(const std::string& file):
@@ -81,7 +82,8 @@ public:
   pops_(0),
   mutRates_(0),
   recRates_(0),
-  migRates_(0)
+  migRates_(0),
+  pulses_(0)
   {
     parse_(file);
   }
@@ -91,7 +93,8 @@ public:
   pops_(0),
   mutRates_(0),
   recRates_(0),
-  migRates_(0)
+  migRates_(0),
+  pulses_(0)
   { }
 
 public:
@@ -173,6 +176,16 @@ public:
     return migRates_[epoch];
   }
 
+  const Eigen::MatrixXd& getPulse(size_t epoch)
+  {
+    return pulses_[epoch];
+  }
+
+  const Eigen::MatrixXd& getPulse(size_t epoch) const
+  {
+    return pulses_[epoch];
+  }
+
   void setMu(size_t epoch, double mu)
   {
     mutRates_[epoch] = mu;
@@ -188,9 +201,14 @@ public:
     pops_[epoch] = pops;
   }
 
-  void setMig(size_t epoch, const Eigen::MatrixXd mat)
+  void setMig(size_t epoch, const Eigen::MatrixXd& mat)
   {
     migRates_[epoch] = mat;
+  }
+
+  void setPulse(size_t epoch, const Eigen::MatrixXd& mat)
+  {
+    pulses_[epoch] = mat;
   }
 
   void write(const std::string& fileName);
