@@ -39,6 +39,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
           int parentPopIdCount = static_cast<int>((*it)->countInstances(ancOneId));
           int admixedCount = childPopIdCount + parentPopIdCount;
 
+          /*
           if((*it)->getPrefix() == "DD")
           {
             std::vector<size_t> popIds = (*it)->getPopIndices();
@@ -300,6 +301,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if((*it)->getPrefix() != "I")
             throw bpp::Exception("Admixture::mis-specified Moment prefix: " + (*it)->getPrefix());
+          */
         }
 
         Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);

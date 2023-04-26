@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 24/04/2023
+ * Last modified: 26/04/2023
  *
  */
 
@@ -24,6 +24,7 @@
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
 #include "AbstractOperator.hpp"
+#include "Admixture.hpp"
 #include "Mutation.hpp"
 #include "SumStatsLibrary.hpp"
 #include "Population.hpp"
@@ -39,10 +40,10 @@ private:
   size_t startGen_;
   size_t endGen_;
 
+  std::vector<std::shared_ptr<Population>> pops_;
   // each operator contains Eigen matrices and a subset of the parameters (Admixture is a special operator)
   std::shared_ptr<Admixture> admixture_;
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
-  std::vector<std::shared_ptr<Population>> pops_;
 
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::VectorXd steadYstate_; // based on the parameters of *this epoch
@@ -54,25 +55,25 @@ public:
   ssl_(),
   startGen_(0),
   endGen_(0),
+  pops_(0),
   admixture_(nullptr),
   operators_(0),
-  pops_(0),
   transitionMatrix_(),
   steadYstate_()
   { }
 
   Epoch(const std::string& name, SumStatsLibrary& ssl, size_t start, size_t end,
-        const std::shared_ptr<Admixture> admixture,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
+        const std::shared_ptr<Admixture> admixture,
         const std::vector<std::shared_ptr<Population>>& pops):
   bpp::AbstractParameterAliasable(""),
   name_(name),
   ssl_(ssl),
   startGen_(start),
   endGen_(end),
+  pops_(pops),
   admixture_(admixture),
   operators_(ops),
-  pops_(pops),
   transitionMatrix_(),
   steadYstate_()
   {

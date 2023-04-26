@@ -224,7 +224,7 @@ void Migration::testFlow()
 {
   assert(littleMigMat_.innerSize() > 0);
   int numPops = littleMigMat_.innerSize();
-  Graph mig(numPops);
+  Graph<int> mig(numPops);
 
   for(int i = 0; i < numPops; ++i)
   {

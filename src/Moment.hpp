@@ -20,6 +20,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <Bpp/Text/TextTools.h>
+#include <Bpp/Exceptions.h>
 
 
 class Moment

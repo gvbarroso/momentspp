@@ -13,6 +13,7 @@ SET(momentspp_CPP
   Drift.cpp
   Migration.cpp
   Mutation.cpp
+  Admixture.cpp
   Recombination.cpp
   Epoch.cpp
   Model.cpp

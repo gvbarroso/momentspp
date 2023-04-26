@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 24/04/2023
+ * Last modified: 26/04/2023
  *
  */
 
@@ -29,11 +29,8 @@ void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
   if(admixture_ != nullptr) // admixture happens at the *beginning* of epoch (operator is applied first)
   {
-    if(!admixture_->getTransitionMatrix().isZero(0))
-    {
-      y = admixture_->getTransitionMatrix() * y;
-      // marginalize y
-    }
+    y = admixture_->getTransitionMatrix() * y;
+    // marginalize y
   }
 
   y = transitionMatrix_.pow(duration()) * y; // uses Eigen multi-threading

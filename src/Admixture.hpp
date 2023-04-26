@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/04/2023
- * Last modified: 24/04/2023
+ * Last modified: 26/04/2023
  *
  */
 
@@ -20,7 +20,7 @@ private:
 
 public:
   Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getNumStats()),
+  AbstractOperator(sslib.getPopIndices()),
   littleAdmixMat_()
   {
     includeParameters_(admixParams);
@@ -53,6 +53,11 @@ public:
   virtual Admixture* clone() const override
   {
     return new Admixture(*this);
+  }
+
+  const Eigen::MatrixXd& getLittleAdmixMat()
+  {
+    return littleAdmixMat_;
   }
 
 private:

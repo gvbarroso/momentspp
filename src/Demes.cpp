@@ -293,7 +293,13 @@ void Demes::parse_(const std::string& fileName)
           throw bpp::Exception("Demes::'migrations' field must explicitly speficy 'rate'!");
 
         if(migs[i]["start_time"])
-          startTime = migs[i]["start_time"].as<size_t>();
+        {
+          if(migs[i]["start_time"].as<std::string>() == ".inf")
+            startTime = std::numeric_limits<int>::max();
+
+          else
+            startTime = migs[i]["start_time"].as<size_t>();
+        }
 
         else
           throw bpp::Exception("Demes::'migrations' field must explicitly speficy 'start_time'!");
@@ -462,9 +468,9 @@ void Demes::parse_(const std::string& fileName)
     }
   }
 
-  /*for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+  for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
   {
     for(size_t x = 0; x < it->size(); ++x)
       (*it)[x]->printAttributes(std::cout);
-  }*/
+  }
 }

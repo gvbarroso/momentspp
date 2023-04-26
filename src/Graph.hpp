@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 27/03/2023
- * Last modified: 27/03/2023
+ * Last modified: 26/04/2023
 
  */
 
@@ -15,19 +15,20 @@
 #include <stack>
 
 // based on https://www.geeksforgeeks.org/tarjan-algorithm-find-strongly-connected-components/
+template<typename ValueType>
 class Graph
 {
 
 private:
-  int numVertices_;
-  std::list<int>* adj_; // A dynamic array of adjacency lists
+  size_t numVertices_;
+  std::list<ValueType>* adj_; // A dynamic array of adjacency lists
 
 public:
-  Graph(int numVertices):
+  Graph(size_t numVertices):
   numVertices_(numVertices),
   adj_()
   {
-    adj_ = new std::list<int>[numVertices];
+    adj_ = new std::list<ValueType>[numVertices];
   }
 
   Graph(const Graph&) = delete;
@@ -41,17 +42,17 @@ public:
   }
 
 public:
-  int getNumVertices()
+  size_t getNumVertices()
   {
     return numVertices_;
   }
 
-  void addEdge(int v, int w)
+  void addEdge(size_t v, ValueType w)
   {
     adj_[v].push_back(w);
   }
 
-  bool isReachable(int source, int destination);
+  bool isReachable(ValueType source, ValueType destination);
 
 };
 

@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 21/04/2023
+ * Last modified: 26/04/2023
  * Source code for moments++
  *
  */
@@ -14,7 +14,7 @@
 #include "Drift.hpp"
 #include "Migration.hpp"
 //#include "Selection.hpp"
-//#include "Admixture.hpp"
+#include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 24/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 26/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -111,25 +111,28 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
     std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
     std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
+    std::shared_ptr<Admixture> admixOp = nullptr;
 
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
     operators.reserve(4);
 
-    if(demes.getNumPops(i) > 1 && !demes.getMig(i).isZero(0))
+    if(demes.getNumPops(i) > 1)
     {
       std::shared_ptr<Migration> migOp = std::make_shared<Migration>(demes.getMig(i), ic, sslib);
       operators.emplace_back(migOp);
+
+      if(!demes.getPulse(i).isZero(0))
+        admixOp = std::make_shared<Admixture>(demes.getPulse(i), sslib);
     }
 
     operators.emplace_back(driftOp);
     operators.emplace_back(recOp);
     operators.emplace_back(mutOp);
 
-    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-
-    if(i == 0) // only need to ensure existence of steady state for deepest epoch
-      epochs[0]->pseudoSteadyState();
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, admixOp, demes.getPopsVec()[i]));
   }
+
+  epochs[0]->pseudoSteadyState(); // only need to have steady state in the deepest epoch
 
   try
   {
@@ -138,7 +141,7 @@ int main(int argc, char *argv[]) {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
-      //model->getParameters().printParameters(std::cout);
+      model->getParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
       std::string file = model->getName() + "_expectations.txt";

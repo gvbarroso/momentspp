@@ -1,29 +1,37 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 27/03/2023
- * Last modified: 11/04/2023
+ * Last modified: 26/04/2023
  *
  */
 
+#include <memory>
+
+#include "Moment.hpp"
+#include "DdMoment.hpp"
+#include "DzMoment.hpp"
+#include "HetMoment.hpp"
+#include "Pi2Moment.hpp"
 #include "Graph.hpp"
 
-bool Graph::isReachable(int source, int dest)
+template<typename ValueType>
+bool Graph<ValueType>::isReachable(ValueType source, ValueType dest)
 {
   if(source == dest)
     return true;
 
   // mark all the vertices as not visited
   bool *visited = new bool[numVertices_];
-  for(int i = 0; i < numVertices_; i++)
+  for(size_t i = 0; i < numVertices_; i++)
     visited[i] = false;
 
-  std::list<int> queue;
+  typename std::list<ValueType> queue;
   // mark the current node as visited and enqueue it
   visited[source] = true;
   queue.push_back(source);
 
   // it will be used to get all adjacent vertices of a vertex
-  std::list<int>::iterator it;
+  typename std::list<ValueType>::iterator it;
 
   while(!queue.empty())
   {
@@ -57,3 +65,10 @@ bool Graph::isReachable(int source, int dest)
   // If BFS is complete without visiting dest
   return false;
 }
+
+template class Graph<int>;
+/*template class Graph<std::shared_ptr<DdMoment>>;
+template class Graph<std::shared_ptr<DzMoment>>;
+template class Graph<std::shared_ptr<HetMoment>>;
+template class Graph<std::shared_ptr<Pi2Moment>>;
+*/
