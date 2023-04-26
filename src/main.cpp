@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 24/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) {
    * selection constrained to a particular epoch
    * epoch-specific mutation rates to test the hypothesis of change in mu along human lineage (wrt eg chimps)?
    * alias N's from adjacent epochs to reduce parameter space
-   * WARNING Admixture events should define epoch boundaries
    */
 
   if(argc == 1)

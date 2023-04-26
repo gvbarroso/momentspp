@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 21/04/2023
+ * Last modified: 24/04/2023
  *
  */
 
@@ -33,7 +33,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           int row = it - std::begin(sslib.getBasis()); // row index
           int col = -1; // inits column index to out-of-bounds
-          int childPopIdCount = static_cast<int>((*it)->countInstances(j));
+          int childPopIdCount = static_cast<int>((*it)->countInstances(jd));
 
           if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros
             coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));

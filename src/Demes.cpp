@@ -375,6 +375,7 @@ void Demes::parse_(const std::string& fileName)
 
             for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
             {
+              // ancestral populations are found in the previous epoch
               if(pops_[j - 1][k]->getName() == source)
                 row = k;
 
@@ -382,7 +383,7 @@ void Demes::parse_(const std::string& fileName)
                 col = k;
             }
 
-            pulses_[j - 1](row, col) = f;
+            pulses_[j](row, col) = f; // "from" (f), "to" (1-f), can only happen from second epoch
           }
         }
 

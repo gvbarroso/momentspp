@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 21/04/2023
+ * Last modified: 24/04/2023
  *
  */
 
@@ -16,14 +16,16 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 
   for(size_t i = 0; i < numPops; ++i)
   {
-    size_t id = popIndices_[i]; // id => parent pop ID
+    size_t ancOneId = popIndices_[i]; // contributes f
 
     for(size_t j = 0; j < numPops; ++j)
     {
-      size_t jd = popIndices_[j]; // jd => child pop ID
+      size_t ancTwoId = popIndices_[j]; // contributes 1-f
 
-      if(id != jd)
+      if(ancOneId != ancTwoId)
       {
+        double f = littleAdmixMat_(i, j);
+
         std::vector<Eigen::Triplet<double>> coeffs(0);
         coeffs.reserve(3 * sizeOfBasis);
 
@@ -32,10 +34,10 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           int row = it - std::begin(sslib.getBasis()); // row index
           int col = -1; // inits column index to out-of-bounds
-          int childPopIdCount = static_cast<int>((*it)->countInstances(j));
 
-          if(childPopIdCount != 0) // not to populate the sparse matrix with unnecessary zeros
-            coeffs.emplace_back(Eigen::Triplet<double>(row, row, -childPopIdCount));
+          int childPopIdCount = static_cast<int>((*it)->countInstances(ancTwoId));
+          int parentPopIdCount = static_cast<int>((*it)->countInstances(ancOneId));
+          int admixedCount = childPopIdCount + parentPopIdCount;
 
           if((*it)->getPrefix() == "DD")
           {
@@ -170,19 +172,113 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if((*it)->getPrefix() == "pi2") // finds pi2 moments that are a single migration away (1-hop neighbors)
+          else if((*it)->getPrefix() == "pi2")
           {
+            double x = std::pow(f, childPopIdCount);
+            double y = std::pow(1. - f, parentPopIdCount);
+
+            coeffs.emplace_back(Eigen::Triplet<double>(row, row, x * y)); // original moment
             std::vector<size_t> popIds = (*it)->getPopIndices();
 
-            for(size_t l = 0; l < popIds.size(); ++ l) // l -> 0:3
+            switch(admixedCount)
             {
-              if(popIds[l] == jd) // if entry matches childPopId
-              {
-                popIds[l] = id; // assign to focal parentPopId
-                col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-                popIds[l] = jd; // recycle
-              }
+              case 1:
+                for(size_t k = 0; k < popIds.size(); ++k) // 1-neighbors
+                {
+                  if(popIds[k] == ancOneId)
+                  {
+                    popIds[k] = ancTwoId;
+                    x = std::pow(f, childPopIdCount + 1);
+                    y = std::pow(1. - f, parentPopIdCount - 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancOneId;
+                  }
+
+                  else if(popIds[k] == ancTwoId)
+                  {
+                    popIds[k] = ancOneId;
+                    x = std::pow(f, childPopIdCount - 1);
+                    y = std::pow(1. - f, parentPopIdCount + 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancTwoId;
+                  }
+                }
+
+              case 2:
+                for(size_t k = 0; k < popIds.size(); ++k) // 1-neighbors
+                {
+                  if(popIds[k] == ancOneId)
+                  {
+                    popIds[k] = ancTwoId;
+                    x = std::pow(f, childPopIdCount + 1);
+                    y = std::pow(1. - f, parentPopIdCount - 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancOneId;
+                  }
+
+                  else if(popIds[k] == ancTwoId)
+                  {
+                    popIds[k] = ancOneId;
+                    x = std::pow(f, childPopIdCount - 1);
+                    y = std::pow(1. - f, parentPopIdCount + 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancTwoId;
+                  }
+                }
+
+                for(size_t k = 0; k < popIds.size(); ++k) // 2-neighbors
+                {
+                  if(popIds[k] == ancOneId)
+                  {
+                    popIds[k] = ancTwoId;
+                    x = std::pow(f, childPopIdCount + 1);
+                    y = std::pow(1. - f, parentPopIdCount - 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancOneId;
+                  }
+
+                  else if(popIds[k] == ancTwoId)
+                  {
+                    popIds[k] = ancOneId;
+                    x = std::pow(f, childPopIdCount - 1);
+                    y = std::pow(1. - f, parentPopIdCount + 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancTwoId;
+                  }
+                }
+
+
+              case 3:
+
+              case 4:
+                for(size_t k = 0; k < popIds.size(); ++k)
+                {
+                  if(popIds[k] == ancOneId)
+                  {
+                    popIds[k] = ancTwoId;
+                    x = std::pow(f, childPopIdCount + 1);
+                    y = std::pow(1. - f, parentPopIdCount - 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancOneId;
+                  }
+
+                  else if(popIds[k] == ancTwoId)
+                  {
+                    popIds[k] = ancOneId;
+                    x = std::pow(f, childPopIdCount - 1);
+                    y = std::pow(1. - f, parentPopIdCount + 1);
+                    col = sslib.findCompressedIndex(sslib.findPi2Index(popIds[0], popIds[1], popIds[2], popIds[3]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, x * y));
+                    popIds[k] = ancTwoId;
+                  }
+                }
             }
           }
 
@@ -209,7 +305,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
         mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
         mat.makeCompressed();
-        mat *= getParameterValue("m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd));
         matrices_.emplace_back(mat);
       }
     }
@@ -221,7 +316,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 
 void Admixture::updateMatrices_()
 {
-  size_t numPops = littleMigMat_.innerSize();
+  size_t numPops = littleAdmixMat_.innerSize();
   size_t index = 0;
   std::string paramName = "";
 

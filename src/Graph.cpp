@@ -1,5 +1,5 @@
 /*
- * Authors: Gustavo numVertices_. Barroso
+ * Authors: Gustavo V. Barroso
  * Created: 27/03/2023
  * Last modified: 11/04/2023
  *
