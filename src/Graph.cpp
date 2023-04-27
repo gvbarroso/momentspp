@@ -8,10 +8,6 @@
 #include <memory>
 
 #include "Moment.hpp"
-#include "DdMoment.hpp"
-#include "DzMoment.hpp"
-#include "HetMoment.hpp"
-#include "Pi2Moment.hpp"
 #include "Graph.hpp"
 
 template<typename ValueType>
@@ -67,8 +63,4 @@ bool Graph<ValueType>::isReachable(ValueType source, ValueType dest)
 }
 
 template class Graph<int>;
-/*template class Graph<std::shared_ptr<DdMoment>>;
-template class Graph<std::shared_ptr<DzMoment>>;
-template class Graph<std::shared_ptr<HetMoment>>;
-template class Graph<std::shared_ptr<Pi2Moment>>;
-*/
+//template class Graph<std::shared_ptr<Moment>>;

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/04/2023
- * Last modified: 26/04/2023
+ * Last modified: 27/04/2023
  *
  */
 
@@ -16,20 +16,24 @@ class Admixture: public AbstractOperator
 {
 
 private:
+  Eigen::MatrixXd adjacencyMat_; // numStats x numStats, undirected graph
   Eigen::MatrixXd littleAdmixMat_; // P x P
 
 public:
   Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
+  adjacencyMat_(),
   littleAdmixMat_()
   {
     includeParameters_(admixParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
+    setUpAdjacencyMatrix_(sslib);
     setUpMatrices_(sslib);
   }
 
   Admixture(const Eigen::MatrixXd& admixMat, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
+  adjacencyMat_(),
   littleAdmixMat_(admixMat)
   {
     // for each pair of populations modeled in the epoch to which *this operator belongs
@@ -47,6 +51,7 @@ public:
     }
 
     prevParams_.addParameters(getParameters());
+    setUpAdjacencyMatrix_(sslib);
     setUpMatrices_(sslib);
   }
 
@@ -60,10 +65,17 @@ public:
     return littleAdmixMat_;
   }
 
+  const Eigen::MatrixXd& getAdjacencyMat()
+  {
+    return adjacencyMat_;
+  }
+
 private:
   void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
+
+  void setUpAdjacencyMatrix_(const SumStatsLibrary& sslib);
 
 };
 

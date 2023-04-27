@@ -28,7 +28,6 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
         std::vector<Eigen::Triplet<double>> coeffs(0);
         coeffs.reserve(3 * sizeOfBasis);
 
-        // although we have pi2(i,j;k,l) moments, we need only to loop over pops twice because we take care of the k,l pop indices in this loop over stats
         for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
         {
           int row = it - std::begin(sslib.getBasis()); // row index

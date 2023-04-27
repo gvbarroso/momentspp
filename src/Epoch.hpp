@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 26/04/2023
+ * Last modified: 27/04/2023
  *
  */
 
@@ -79,6 +79,9 @@ public:
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       addParameters_((*it)->getParameters());
+
+    if(admixture != nullptr)
+       addParameters_(admixture->getParameters());
 
     bpp::AbstractParameterAliasable::setNamespace(name + ".");
     init_();

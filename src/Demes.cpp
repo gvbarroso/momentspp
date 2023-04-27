@@ -370,7 +370,7 @@ void Demes::parse_(const std::string& fileName)
         std::cout << source << "~~~~~>" << dest << " [" << f << "] at " << time << " gens. ago\n";
 
         bool valid = 0;
-        for(size_t j = 1; j < timeBounds.size(); ++j)
+        for(size_t j = 1; j < timeBounds.size(); ++j) // pulses_[0] remains the zero matrix, by virtue of how epochs are defined
         {
           if(time == timeBounds[j])
           {
@@ -389,7 +389,10 @@ void Demes::parse_(const std::string& fileName)
                 col = k;
             }
 
-            pulses_[j](row, col) = f; // "from" (f), "to" (1-f), can only happen from second epoch
+            if(row == -1 || col == -1)
+              throw bpp::Exception("Demes::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
+
+            pulses_[j](row, col) = f; // "from" (f), "to" (1-f), can only happen from second epoch forwards in time
           }
         }
 

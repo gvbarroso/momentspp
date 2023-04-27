@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 06/04/2023
+ * Last modified: 27/04/2023
  *
  */
 
@@ -16,6 +16,7 @@
 #include <iostream>
 #include <cassert>
 #include <memory>
+#include <typeinfo>
 
 #include <boost/algorithm/string.hpp>
 
@@ -208,6 +209,39 @@ public:
     }
 
     return ret;
+  }
+
+  size_t popIndexDistance(const std::shared_ptr<Moment> other) const
+  {
+    assert(typeid(*this) == typeid(*other.get()));
+
+    size_t dist = 0;
+    for(size_t i = 0; i < popIndices_.size(); ++i)
+    {
+      if(popIndices_[i] != other->getPopIndices()[i])
+        ++dist;
+    }
+
+    return dist;
+  }
+
+  size_t popIndexDistance(const std::shared_ptr<Moment> other)
+  {
+    assert(typeid(*this) == typeid(*other.get()));
+
+    size_t dist = 0;
+    for(size_t i = 0; i < popIndices_.size(); ++i)
+    {
+      if(popIndices_[i] != other->getPopIndices()[i])
+        ++dist;
+    }
+
+    return dist;
+  }
+
+  bool isAdjacent(const std::shared_ptr<Moment> other)
+  {
+    return popIndexDistance(other) == 1;
   }
 
   void parseName(const std::string& name)
