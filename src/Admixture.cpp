@@ -29,24 +29,24 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         std::vector<Eigen::Triplet<double>> coeffs(0);
         coeffs.reserve(3 * sizeOfBasis);
 
-        for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
+        for(auto it = std::begin(sslib.getMoments()); it != std::end(sslib.getMoments()); ++it)
         {
-          int row = it - std::begin(sslib.getBasis()); // row index
+          int row = sslib.findCompressedIndex(*it);
           int col = -1; // inits column index to out-of-bounds
 
           // contributions from moments of the same kind
-          for(auto it2nd = std::begin(sslib.getBasis()); it2nd != std::end(sslib.getBasis()); ++it2nd)
+          for(auto it2nd = std::begin(sslib.getMoments()); it2nd != std::end(sslib.getMoments()); ++it2nd)
           {
             if((*it)->getPrefix() == (*it2nd)->getPrefix())
             {
-              col = it2nd - std::begin(sslib.getBasis());
+              col = sslib.findCompressedIndex(*it2nd);
 
               size_t parentPopIdCount =(*it2nd)->countInstances(ancOneId);
               size_t childPopIdCount = (*it2nd)->countInstances(ancTwoId);
-              double x = std::pow(1. - f, childPopIdCount) * std::pow(f, parentPopIdCount);
-              double y = (*it)->isAdmixAdjacent(*it2nd, ancOneId, ancTwoId) * x;
+              double y = std::pow(1. - f, childPopIdCount) * std::pow(f, parentPopIdCount);
+              double z = ((*it)->isAdmixAdjacent(*it2nd, ancOneId, ancTwoId) * y) / ((*it)->getNumberOfAliases() + 1);
 
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, z));
             }
           }
 
@@ -193,8 +193,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
         mat.makeCompressed();
         matrices_.emplace_back(mat);
-        if(f > 0)
-          std::cout << mat << "\n";
       }
     }
   }

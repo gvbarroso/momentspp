@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 18/04/2023
+ * Last modified: 28/04/2023
  */
 
 
@@ -184,6 +184,8 @@ public:
   }
 
   size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const;
+
+  size_t findCompressedIndex(std::shared_ptr<Moment> mom) const;
 
   size_t findCompressedIndex(size_t uncompressedIndex) const;
 

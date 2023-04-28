@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 21/04/2023
+ * Last modified: 28/04/2023
  *
  */
 
@@ -138,6 +138,23 @@ size_t SumStatsLibrary::findPi2Index(size_t id1, size_t id2, size_t id3, size_t 
 
   // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
   return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
+}
+
+size_t SumStatsLibrary::findCompressedIndex(std::shared_ptr<Moment> mom) const
+{
+  size_t ret = getNumStats(); // init to out-of-bounds
+
+  for(size_t j = 0; j < basis_.size(); ++j)
+  {
+    if(basis_[j] == mom || basis_[j]->hasAlias(mom))
+      ret = j;
+  }
+
+  if(ret < getNumStats())
+    return ret;
+
+  else
+    throw bpp::Exception("SumStatsLibrary::could not find compressed index for " + mom->getName());
 }
 
 size_t SumStatsLibrary::findCompressedIndex(size_t uncompressedIndex) const
