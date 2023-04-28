@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 27/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 28/Apr/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -122,11 +122,7 @@ int main(int argc, char *argv[]) {
       operators.emplace_back(migOp);
 
       if(!demes.getPulse(i).isZero(0))
-      {
         admixOp = std::make_shared<Admixture>(demes.getPulse(i), sslib);
-        //std::cout << admixOp->getLittleAdmixMat() << std::endl;
-        //std::cout << admixOp->getAdjacencyMat();
-      }
     }
 
     operators.emplace_back(driftOp);
@@ -145,7 +141,8 @@ int main(int argc, char *argv[]) {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
-      model->getParameters().printParameters(std::cout);
+      //model->getParameters().printParameters(std::cout);
+      //model->getIndependentParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
       std::string file = model->getName() + "_expectations.txt";

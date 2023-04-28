@@ -244,6 +244,23 @@ public:
     return popIndexDistance(other) == 1;
   }
 
+  bool isAdmixAdjacent(const std::shared_ptr<Moment> other, size_t admixId1, size_t admixId2)
+  {
+    assert(typeid(*this) == typeid(*other.get()));
+
+    bool eval = 1;
+
+    for(size_t i = 0; i < popIndices_.size(); ++i)
+    {
+      if(popIndices_[i] != other->getPopIndices()[i])
+        if((popIndices_[i] != admixId1 && popIndices_[i] != admixId2) || (other->getPopIndices()[i] != admixId1 && other->getPopIndices()[i] != admixId2))
+          eval = 0;
+    }
+
+    //std::cout << name_ << " vs " << other->getName() << ": " << eval << "(" << admixId1 << "," << admixId2 << ")" << std::endl;
+    return eval;
+  }
+
   void parseName(const std::string& name)
   {
     std::vector<std::string> splitName(0);

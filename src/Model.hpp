@@ -38,7 +38,7 @@ class Model: public bpp::AbstractParameterAliasable, public bpp::Function
 private:
   std::string name_; // model label / id
   std::vector<std::string> frozenParams_;
-  std::vector<std::shared_ptr<Epoch>> epochs_; // each epoch contains its own parameters and operators
+  std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own params and operators
   std::shared_ptr<Data> data_;
 
   Eigen::VectorXd expected_;

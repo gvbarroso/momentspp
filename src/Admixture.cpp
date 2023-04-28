@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 27/04/2023
+ * Last modified: 28/04/2023
  *
  */
 
@@ -22,11 +22,10 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
     for(size_t j = 0; j < numPops; ++j)
     {
       size_t ancTwoId = popIndices_[j]; // contributes 1-f
+      double f = littleAdmixMat_(i, j);
 
-      if(ancOneId != ancTwoId)
+      if(ancOneId != ancTwoId && f > 0.)
       {
-        double f = littleAdmixMat_(i, j);
-
         std::vector<Eigen::Triplet<double>> coeffs(0);
         coeffs.reserve(3 * sizeOfBasis);
 
@@ -35,21 +34,19 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
           int row = it - std::begin(sslib.getBasis()); // row index
           int col = -1; // inits column index to out-of-bounds
 
-          int childPopIdCount = static_cast<int>((*it)->countInstances(ancTwoId));
-          int parentPopIdCount = static_cast<int>((*it)->countInstances(ancOneId));
-
-          double x = std::pow(f, childPopIdCount);
-          double y = std::pow(1. - f, parentPopIdCount);
-
-          // constributions from moments of the same kind
-          coeffs.emplace_back(Eigen::Triplet<double>(row, row, x * y));
-
+          // contributions from moments of the same kind
           for(auto it2nd = std::begin(sslib.getBasis()); it2nd != std::end(sslib.getBasis()); ++it2nd)
           {
-            if(typeid((*it).get()) == typeid((*it2nd).get()))
+            if((*it)->getPrefix() == (*it2nd)->getPrefix())
             {
               col = it2nd - std::begin(sslib.getBasis());
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, adjacencyMat_(row, col) * x * y));
+
+              size_t parentPopIdCount =(*it2nd)->countInstances(ancOneId);
+              size_t childPopIdCount = (*it2nd)->countInstances(ancTwoId);
+              double x = std::pow(1. - f, childPopIdCount) * std::pow(f, parentPopIdCount);
+              double y = (*it)->isAdmixAdjacent(*it2nd, ancOneId, ancTwoId) * x;
+
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
             }
           }
 
@@ -195,8 +192,9 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
         mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
         mat.makeCompressed();
-        std::cout << mat << std::endl;
         matrices_.emplace_back(mat);
+        if(f > 0)
+          std::cout << mat << "\n";
       }
     }
   }
@@ -236,22 +234,4 @@ void Admixture::updateMatrices_()
 
   assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
-}
-
-void Admixture::setUpAdjacencyMatrix_(const SumStatsLibrary& sslib)
-{
-  adjacencyMat_.resize(sslib.getSizeOfBasis(), sslib.getSizeOfBasis());
-  adjacencyMat_.setZero();
-
-  for(size_t i = 0; i < sslib.getSizeOfBasis(); ++i)
-  {
-    for(size_t j = 0; j < sslib.getSizeOfBasis(); ++j)
-    {
-      if(sslib.getBasis()[i]->getPrefix() == sslib.getBasis()[j]->getPrefix())
-      {
-        if(sslib.getBasis()[i]->isAdjacent(sslib.getBasis()[j]))
-          adjacencyMat_(i, j) = 1.;
-      }
-    }
-  }
 }

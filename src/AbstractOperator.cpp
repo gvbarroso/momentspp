@@ -55,7 +55,7 @@ void AbstractOperator::assembleTransitionMatrix_()
       transition_ += matrices_[i];
   }
 
-  transition_ += identity_; // adds Identity to convert from "delta" to "transition" matrix
+  transition_ += identity_; // converts from "delta" to "transition" matrix
 }
 
 void AbstractOperator::setIdentity_(size_t numStats)

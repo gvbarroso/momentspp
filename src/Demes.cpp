@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 24/04/2023
+ * Last modified: 28/04/2023
  *
  */
 
@@ -468,6 +468,11 @@ void Demes::parse_(const std::string& fileName)
         if(!match)
           throw bpp::Exception("Demes::start_time and end_time of 'recombination' do not match the span of any epoch!");
       }
+    }
+
+    else if(it->first.as<std::string>() == "selection")
+    {
+      std::cout << "TODO: list demes which experience selection on the left locus\n";
     }
   }
 
