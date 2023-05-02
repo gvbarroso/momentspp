@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 24/04/2023
+ * Last modified: 01/05/2023
  *
  */
 
@@ -73,6 +73,7 @@ private:
   std::vector<std::vector<std::shared_ptr<Population>>> pops_;
   std::vector<double> mutRates_;
   std::vector<double> recRates_;
+  std::vector<double> selCoeffs_;
   std::vector<Eigen::MatrixXd> migRates_;
   std::vector<Eigen::MatrixXd> pulses_;
 
@@ -82,6 +83,7 @@ public:
   pops_(0),
   mutRates_(0),
   recRates_(0),
+  selCoeffs_(0),
   migRates_(0),
   pulses_(0)
   {
@@ -93,6 +95,7 @@ public:
   pops_(0),
   mutRates_(0),
   recRates_(0),
+  selCoeffs_(0),
   migRates_(0),
   pulses_(0)
   { }
@@ -164,6 +167,11 @@ public:
   double getRec(size_t epoch) const
   {
     return recRates_[epoch];
+  }
+
+  double getSelCoeff(size_t epoch) const
+  {
+    return selCoeffs_[epoch];
   }
 
   const Eigen::MatrixXd& getMig(size_t epoch)

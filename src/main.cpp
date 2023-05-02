@@ -122,7 +122,10 @@ int main(int argc, char *argv[]) {
       operators.emplace_back(migOp);
 
       if(!demes.getPulse(i).isZero(0))
+      {
         admixOp = std::make_shared<Admixture>(demes.getPulse(i), sslib);
+        admixOp->printDeltaLDMat(id + "_admix.csv", sslib);
+      }
     }
 
     operators.emplace_back(driftOp);
@@ -130,6 +133,9 @@ int main(int argc, char *argv[]) {
     operators.emplace_back(mutOp);
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, admixOp, demes.getPopsVec()[i]));
+    std::cout << id << " recursions: \n";
+    epochs.back()->printRecursions(std::cout);
+    std::cout << "\n\n";
   }
 
   epochs[0]->pseudoSteadyState(); // only need to have steady state in the deepest epoch

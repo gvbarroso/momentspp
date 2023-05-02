@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 12/04/2023
+ * Last modified: 01/05/2023
  *
  */
 
@@ -120,6 +120,11 @@ public:
   bool hasSelection()
   {
     return isDerivedLeftSelected_;
+  }
+
+  void setSelectiveConstraint(bool isSelected)
+  {
+    isDerivedLeftSelected_ = isSelected;
   }
 
   void setStartTime(size_t time)

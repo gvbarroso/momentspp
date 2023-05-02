@@ -107,6 +107,31 @@ void Epoch::printRecursions(std::ostream& stream)
         }
       }
 
+      if(admixture_ != nullptr)
+      {
+        for(size_t k = 0; k < admixture_->getParameters().size(); ++k)
+        {
+          bpp::Parameter param = admixture_->getParameters()[k];
+          std::string name = param.getName();
+
+          auto mat = admixture_->getMatrix(k); // hard copy delta matrix
+
+          if(param.getValue() > 0.)
+            mat = mat / param.getValue(); // convert back to coefficients
+
+          for(int l = 0; l < mat.cols(); ++l)
+          {
+            if(mat.coeffRef(pos, l) != 0)
+            {
+              if(mat.coeffRef(pos, l) > 0)
+                stream << "+";
+
+              stream << ssl_.asString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getBasis()[l]->getName() + " ";
+            }
+          }
+        }
+      }
+
       stream << "\n";
     }
   }

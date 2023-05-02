@@ -379,6 +379,9 @@ void Demes::parse_(const std::string& fileName)
             int row = -1;
             int col = -1;
 
+            // NOTE below we check names of pops in epoch j - 1 to build Admixture operator in epoch j
+            // TODO use (or adapt) this to make admixture not only from pulses but also pops with 2 ancestors
+
             for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
             {
               // ancestral populations are found in the previous epoch
@@ -473,6 +476,36 @@ void Demes::parse_(const std::string& fileName)
     else if(it->first.as<std::string>() == "selection")
     {
       std::cout << "TODO: list demes which experience selection on the left locus\n";
+      YAML::Node sel = it->second;
+
+      double s = 1e-8;
+      size_t startTime = timeBounds.front();
+      size_t endTime = 0;
+
+      for(size_t i = 0; i < sel.size(); ++i) // rec period by rec period
+      {
+        if(sel[i]["s"])
+          s = sel[i]["s"].as<double>();
+
+        if(sel[i]["start_time"])
+          startTime = sel[i]["start_time"].as<size_t>();
+
+        if(sel[i]["end_time"])
+          endTime = sel[i]["end_time"].as<size_t>();
+
+        bool match = 1;
+        for(size_t j = 1; j < timeBounds.size(); ++j)
+        {
+          if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
+            selCoeffs_[j - 1] = s;
+
+          else
+            match = 0;
+        }
+
+        if(!match)
+          throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
+      }
     }
   }
 

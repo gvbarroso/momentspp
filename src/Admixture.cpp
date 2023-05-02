@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 28/04/2023
+ * Last modified: 02/05/2023
  *
  */
 
@@ -13,7 +13,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = popIndices_.size();
   size_t sizeOfBasis = sslib.getSizeOfBasis();
-  matrices_.reserve(numPops * (numPops - 1));
+  matrices_.reserve(getParameters().size());
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -34,7 +34,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
           int row = sslib.findCompressedIndex(*it);
           int col = -1; // inits column index to out-of-bounds
 
-          // contributions from moments of the same kind
+          // contributions from moments of the same prefix
           for(auto it2nd = std::begin(sslib.getMoments()); it2nd != std::end(sslib.getMoments()); ++it2nd)
           {
             if((*it)->getPrefix() == (*it2nd)->getPrefix())
@@ -50,54 +50,43 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          /*
-          if((*it)->getPrefix() == "DD")
+          // contributions from moments of distinct prefixes
+          if((*it)->getPrefix() == "DD" && (*it)->hasPopIndex(ancTwoId))
           {
             std::vector<size_t> popIds = (*it)->getPopIndices();
 
-            for(size_t l = 0; l < popIds.size(); ++ l) // contributions from the DD cols
+            size_t p1 = popIds[0];
+            if(p1 == ancTwoId)
+              p1 = popIds[1];
+
+            size_t p2 = ancOneId;
+            size_t p3 = ancTwoId;
+
+            double c = (f * (1. - f) * (static_cast<double>(p2 == p3) / 2. - 0.25)) / ((*it)->getNumberOfAliases() + 1);
+            col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, c));
+            col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p3, p2));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, c));
+
+            p2 = ancTwoId;
+
+            c = f * (1. - f) * (static_cast<double>(p2 == p3) / 2. - 0.25) / ((*it)->getNumberOfAliases() + 1);
+            col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, c));
+
+            p2 = ancOneId;
+            p3 = ancOneId;
+
+            c = f * (1. - f) * (static_cast<double>(p2 == p3) / 2. - 0.25) / ((*it)->getNumberOfAliases() + 1);
+            col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, c));
+
+            if((*it)->countInstances(ancTwoId) == 2) // has pi2 contributions
             {
-              if(popIds[l] == jd) // if entry matches childPopId
-              {
-                popIds[l] = id; // assign to focal parentPopId
-                col = sslib.findCompressedIndex(sslib.findDdIndex(popIds[0], popIds[1]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-                col = sslib.findCompressedIndex(sslib.findDdIndex(popIds[1], popIds[0]));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-                popIds[l] = jd; // recycle
-              }
-            }
 
-            if((*it)->hasPopIndex(j))
-            {
-              size_t p1 = popIds[0];
-              if(p1 == jd)
-                p1 = popIds[1];
-
-              size_t p2 = id;
-              size_t p3 = jd;
-
-              double f = static_cast<double>(p2 == p3) / 2. - 0.25;
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p3, p2));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
-
-              p2 = jd;
-
-              f = static_cast<double>(p2 == p3) / 2. - 0.25;
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
-
-              p2 = id;
-              p3 = id;
-
-              f = static_cast<double>(p2 == p3) / 2. - 0.25;
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
             }
           }
-
+          /*
           else if((*it)->getPrefix() == "Dz")
           {
             std::vector<size_t> popIds = (*it)->getPopIndices();
