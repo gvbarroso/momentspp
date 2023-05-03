@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 02/05/2023
+ * Last modified: 03/05/2023
  *
  */
 
@@ -39,16 +39,17 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
             // contributions from moments of the same prefix
             for(auto it2nd = std::begin(sslib.getMoments()); it2nd != std::end(sslib.getMoments()); ++it2nd)
             {
-              if((*it)->getPrefix() == (*it2nd)->getPrefix())
+              if((*it)->isAdmixAdjacent(*it2nd, ancFromId, ancToId))
               {
                 col = sslib.findCompressedIndex(*it2nd);
 
-                size_t parentPopIdCount =(*it2nd)->countInstances(ancFromId);
-                size_t childPopIdCount = (*it2nd)->countInstances(ancToId);
-                double y = std::pow(1. - f, childPopIdCount) * std::pow(f, parentPopIdCount);
-                double z = ((*it)->isAdmixAdjacent(*it2nd, ancFromId, ancToId) * y) / ((*it)->getNumberOfAliases() + 1);
+                double mig = (*it)->countInstances(ancToId) - (*it2nd)->countInstances(ancToId);
+                double nat = (*it2nd)->countInstances(ancToId);
+                double y = std::pow(1. - f, nat) * std::pow(f, mig) / ((*it)->getNumberOfAliases() + 1);
 
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, z));
+                //std::cout << (*it)->getName() << " from " << (*it2nd)->getName() << ": " << mig << ", " << nat << " = " << y << "\n";
+
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
               }
             }
 

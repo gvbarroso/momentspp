@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 27/04/2023
+ * Last modified: 03/05/2023
  *
  */
 
@@ -244,20 +244,26 @@ public:
     return popIndexDistance(other) == 1;
   }
 
-  bool isAdmixAdjacent(const std::shared_ptr<Moment> other, size_t admixId1, size_t admixId2)
+  bool isAdmixAdjacent(const std::shared_ptr<Moment> other, size_t fromId, size_t toId)
   {
-    assert(typeid(*this) == typeid(*other.get()));
+    if(typeid(*this) != typeid(*other.get()))
+      return 0;
 
     bool eval = 1;
 
     for(size_t i = 0; i < popIndices_.size(); ++i)
     {
       if(popIndices_[i] != other->getPopIndices()[i])
-        if((popIndices_[i] != admixId1 && popIndices_[i] != admixId2) || (other->getPopIndices()[i] != admixId1 && other->getPopIndices()[i] != admixId2))
+      {
+        if(popIndices_[i] != toId)
           eval = 0;
+
+        else if(other->getPopIndices()[i] != fromId)
+          eval = 0;
+      }
     }
 
-    //std::cout << name_ << " vs " << other->getName() << ": " << eval << "(" << admixId1 << "," << admixId2 << ")" << std::endl;
+    //std::cout << "to " << name_ << " from " << other->getName() << ": " << eval << "(" << fromId << "," << toId << ")" << std::endl;
     return eval;
   }
 

@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 26/04/2023
+ * Last modified: 02/05/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 28/Apr/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 02/May/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -133,9 +133,9 @@ int main(int argc, char *argv[]) {
     operators.emplace_back(mutOp);
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, admixOp, demes.getPopsVec()[i]));
-    std::cout << id << " recursions: \n";
-    epochs.back()->printRecursions(std::cout);
-    std::cout << "\n\n";
+    //std::cout << id << " recursions: \n";
+    //epochs.back()->printRecursions(std::cout);
+    //std::cout << "\n\n";
   }
 
   epochs[0]->pseudoSteadyState(); // only need to have steady state in the deepest epoch
