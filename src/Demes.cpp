@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 28/04/2023
+ * Last modified: 04/05/2023
  *
  */
 
@@ -105,8 +105,6 @@ void Demes::parse_(const std::string& fileName)
             double f = pops[i]["proportions"][0].as<double>();
             double g = pops[i]["proportions"][1].as<double>();
 
-            // forward f and g to Admixture operator
-
             if((f + g) != 1.)
               throw bpp::Exception("Demes::ancestral admixture proportions don't sum to 1.0!");
 
@@ -115,6 +113,8 @@ void Demes::parse_(const std::string& fileName)
 
             if(child->getStartTime() == std::numeric_limits<int>::max())
               throw bpp::Exception("Demes::demes with two ancestors must have specified start_time's!");
+
+            // TODO forward f and g to Admixture operator
 
             for(size_t k = 0; k < popsInv.size(); ++k)
             {
@@ -370,7 +370,7 @@ void Demes::parse_(const std::string& fileName)
         std::cout << source << "~~~~~>" << dest << " [" << f << "] at " << time << " gens. ago\n";
 
         bool valid = 0;
-        for(size_t j = 1; j < timeBounds.size(); ++j) // pulses_[0] remains the zero matrix, by virtue of how epochs are defined
+        for(size_t j = 1; j < timeBounds.size(); ++j) // pulses_[0] remains the zero matrix, by virtue of how epochs are defined wrt admixture events
         {
           if(time == timeBounds[j])
           {
@@ -395,7 +395,9 @@ void Demes::parse_(const std::string& fileName)
             if(row == -1 || col == -1)
               throw bpp::Exception("Demes::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
 
-            pulses_[j](row, col) = f; // "from" (f), "to" (1-f), can only happen from second epoch forwards in time
+            // "from" (f), "to" (1-f), can only happen from second epoch forwards in time
+            pulses_[j](row, col) = f;
+            pulses_[j](row, row) = 1. - f;
           }
         }
 

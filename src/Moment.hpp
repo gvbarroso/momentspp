@@ -263,7 +263,6 @@ public:
       }
     }
 
-    //std::cout << "to " << name_ << " from " << other->getName() << ": " << eval << "(" << fromId << "," << toId << ")" << std::endl;
     return eval;
   }
 

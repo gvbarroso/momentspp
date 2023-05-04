@@ -58,7 +58,7 @@ void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoc
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
   for(int i = 0; i < tmp.size(); ++i)
   {
-    int idx = ssl_.getBasis()[i]->getParent()->getPosition(); // NOTE check under complex scenarios of admixture
+    int idx = ssl_.getBasis()[i]->getParent()->getPosition(); // NOTE check under complex scenarios of admixture TODO when pop has 2 ancestors, pick one of them, then apply admixture as if it were a pulse
     tmp(i) = y(idx);
   }
 
