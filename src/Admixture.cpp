@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 04/05/2023
+ * Last modified: 05/05/2023
  *
  */
 
@@ -18,8 +18,8 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
   for(size_t i = 0; i < numPops; ++i)
   {
     // both vectors will hold exactly 2 values
-    std::vector<double> populations(0);
-    std::vector<double> proportions(0);
+    std::vector<double> populations(0); // populations contributing to ancestry of popIndices_[i]
+    std::vector<double> proportions(0); // their ancestry proportions
 
     for(size_t j = 0; j < numPops; ++j)
     {
@@ -34,15 +34,17 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
     {
       assert(proportions.size() == 2 && populations.size() == 2);
 
-      size_t ancFromId = popIndices_[0];
-      size_t ancToId = popIndices_[1];
+      size_t ancFromId = populations[0];
+      size_t ancToId = populations[1];
 
       double f = proportions[1];
       double g = proportions[0];
 
-      assert(f + g == 1.);
+      assert((f + g) == 1.);
 
-      std::cout << "from pop " << ancFromId << " to pop " << ancToId << "; f = " << f << ", g = " << g << "\n";
+      // TODO replace ancToId with popIndices_[i] somehow
+
+      std::cout << "from pop " << ancFromId << " to pop " << ancToId << "(" << popIndices_[i] << "); f = " << f << ", g = " << g << "\n";
 
       std::vector<Eigen::Triplet<double>> coeffs(0);
       coeffs.reserve(3 * sizeOfBasis);
@@ -65,7 +67,8 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
               double nat = (*it2nd)->countInstances(ancToId);
               double y = std::pow(g, nat) * std::pow(f, mig) / ((*it)->getNumberOfAliases() + 1);
 
-              std::cout << (*it)->getName() << " from " << (*it2nd)->getName() << ": " << mig << ", " << nat << " = " << y << "\n";
+              if((*it)->getPrefix() == "H")
+                std::cout << (*it)->getName() << " from " << (*it2nd)->getName() << ": " << mig << ", " << nat << " = " << y << "\n";
 
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
             }
@@ -203,12 +206,16 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
         }
-      }
+      } // ends loop over moments
 
       Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
       mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
       mat.makeCompressed();
       matrices_.emplace_back(mat);
+
+      // reset
+      populations.clear();
+      proportions.clear();
     }
   }
 
@@ -219,7 +226,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 void Admixture::updateMatrices_()
 {
   size_t numPops = littleAdmixMat_.innerSize();
-  size_t index = 0;
   std::string paramName = "";
 
   for(size_t i = 0; i < numPops; ++i)
@@ -232,19 +238,28 @@ void Admixture::updateMatrices_()
 
       if(id != jd)
       {
-        paramName = "m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd);
+        if(littleAdmixMat_(i, j) > 0.)
+        {
+          paramName = "a_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd);
 
-        double prevVal = prevParams_.getParameterValue(paramName);
-        double newVal = getParameterValue(paramName);
+          if(hasParameter(paramName))
+          {
+            double newVal = getParameterValue(paramName);
+            littleAdmixMat_(i, j) = newVal;
+          }
 
-        if(newVal != prevVal)
-          matrices_[index] *= (newVal / prevVal);
-
-        ++index;
+          else
+          {
+            paramName = "a_" + bpp::TextTools::toString(jd) + "_" + bpp::TextTools::toString(id); // switch order
+            double newVal = getParameterValue(paramName);
+            littleAdmixMat_(i, j) = 1. - newVal;
+          }
+        }
       }
     }
   }
 
+  //setUpMatrices_(sslib); // WARNING
   assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
 }

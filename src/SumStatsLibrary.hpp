@@ -1,13 +1,14 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 28/04/2023
+ * Last modified: 05/05/2023
  */
 
 
 #ifndef _SUMSTATSLIBRARY_H_
 #define _SUMSTATSLIBRARY_H_
 
+#include <set>
 #include <string>
 #include <vector>
 #include <memory>
@@ -67,9 +68,16 @@ public:
   basis_(0)
   {
     popIndices_.reserve(pops.size());
+    std::set<size_t> uniqueIds;
 
     for(auto it = std::begin(pops); it != std::end(pops); ++it)
+    {
       popIndices_.emplace_back((*it)->getId());
+      uniqueIds.insert((*it)->getId());
+    }
+
+    if(popIndices_.size() != uniqueIds.size())
+      throw bpp::Exception("SumStatsLibrary::non-unique population indices!");
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
     initMoments_(pops, compressMoments);

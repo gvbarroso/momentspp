@@ -69,7 +69,7 @@ private:
   // param values are optimized by moments++ but no "new param" is included (eg, admix event)
   YAML::Node model_;
 
-  // following vectors store one object per epoch:
+  // following (outer) vectors store one object per epoch:
   std::vector<std::vector<std::shared_ptr<Population>>> pops_;
   std::vector<double> mutRates_;
   std::vector<double> recRates_;

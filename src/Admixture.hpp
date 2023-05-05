@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/04/2023
- * Last modified: 02/05/2023
+ * Last modified: 05/05/2023
  *
  */
 
@@ -43,7 +43,10 @@ public:
         size_t jd = popIndices_[j];
 
         if(id != jd && littleAdmixMat_(i, j) > 0.)
+        {
           addParameter_(new bpp::Parameter("a_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd), littleAdmixMat_(i, j), ic));
+          break; // we don't include g (a.k.a. 1-f) as a model parameter
+        }
       }
     }
 

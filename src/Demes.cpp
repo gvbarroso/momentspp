@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 04/05/2023
+ * Last modified: 05/05/2023
  *
  */
 
@@ -23,7 +23,7 @@ void Demes::parse_(const std::string& fileName)
 
   // two vectors that must live throughout this method
   std::vector<size_t> timeBounds(0);
-  std::vector<std::vector<std::shared_ptr<Population>>> popsInv(0);
+  std::vector<std::vector<std::shared_ptr<Population>>> popsOverTime(0);
 
   for(YAML::const_iterator it = model_.begin(); it != model_.end(); ++it)
   {
@@ -31,7 +31,7 @@ void Demes::parse_(const std::string& fileName)
     {
       YAML::Node pops = it->second;
 
-      for(size_t i = 0; i < pops.size(); ++i) // deme by deme
+      for(size_t i = 0; i < pops.size(); ++i) // deme by deme, pop index (i) is fixed by order of listing pops in Demes file
       {
         std::string name = pops[i]["name"].as<std::string>(); // stats file should match pop names in Demes file
         std::string des = "none";
@@ -39,7 +39,7 @@ void Demes::parse_(const std::string& fileName)
         if(pops[i]["description"])
           des = pops[i]["description"].as<std::string>();
 
-        std::vector<std::shared_ptr<Population>> singlePopOverTime(0); // pop i is represented by a series of constant-size populations
+        std::vector<std::shared_ptr<Population>> singlePopOverTime(0); // deme i is represented by a series of populations of piece-wise constant Ne
         YAML::Node popEpochs = pops[i]["epochs"];
 
         for(size_t j = 0; j < popEpochs.size(); ++j) // epochs of focal pop i as they appear in the Demes (YAML) file
@@ -62,26 +62,23 @@ void Demes::parse_(const std::string& fileName)
           }
 
           // each instance of pop i (one per epoch) is treated as a different Population object in moments++
-          std::shared_ptr<Population> p = std::make_shared<Population>(name, des, i, startTime, endTime, size, false);
-          singlePopOverTime.push_back(p);
+          singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, false));
+          //singlePopOverTime.back()->printAttributes(std::cout);
         }
 
         if(pops[i]["ancestors"])
         {
-          if(i == 0)
-            throw bpp::Exception("Demes::ancestor(s) specified for first population! Please list them in chronological order!");
-
           std::shared_ptr<Population> child = singlePopOverTime.front(); // most ancient instance of pop i
 
           if(pops[i]["ancestors"].size() == 1)
           {
             std::string ancName = pops[i]["ancestors"][0].as<std::string>();
 
-            for(size_t k = 0; k < popsInv.size(); ++k)
+            for(size_t k = 0; k < popsOverTime.size(); ++k)
             {
-              if(popsInv[k].front()->getName() == ancName)
+              if(popsOverTime[k].front()->getName() == ancName)
               {
-                std::shared_ptr<Population> parent = popsInv[k].front();
+                std::shared_ptr<Population> parent = popsOverTime[k].front();
 
                 child->setLeftParent(parent);
                 child->setRightParent(parent);
@@ -114,29 +111,29 @@ void Demes::parse_(const std::string& fileName)
             if(child->getStartTime() == std::numeric_limits<int>::max())
               throw bpp::Exception("Demes::demes with two ancestors must have specified start_time's!");
 
-            // TODO forward f and g to Admixture operator
+            child->setProportions(std::make_pair(f, g));
 
-            for(size_t k = 0; k < popsInv.size(); ++k)
+            for(size_t k = 0; k < popsOverTime.size(); ++k)
             {
-              if(popsInv[k].front()->getName() == ancNameFirst)
+              if(popsOverTime[k].front()->getName() == ancNameFirst)
               {
-                for(size_t l = 0; l < popsInv[k].size(); ++l)
+                for(size_t l = 0; l < popsOverTime[k].size(); ++l)
                 {
-                  if(popsInv[k][l]->getEndTime() == child->getStartTime())
+                  if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
                   {
-                    std::shared_ptr<Population> parent = popsInv[k][l];
+                    std::shared_ptr<Population> parent = popsOverTime[k][l];
                     child->setLeftParent(parent);
                   }
                 }
               }
 
-              else if(popsInv[k].front()->getName() == ancNameSecond)
+              else if(popsOverTime[k].front()->getName() == ancNameSecond)
               {
-                for(size_t l = 0; l < popsInv[k].size(); ++l)
+                for(size_t l = 0; l < popsOverTime[k].size(); ++l)
                 {
-                  if(popsInv[k][l]->getEndTime() == child->getStartTime())
+                  if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
                   {
-                    std::shared_ptr<Population> parent = popsInv[k][l];
+                    std::shared_ptr<Population> parent = popsOverTime[k][l];
                     child->setRightParent(parent);
                   }
                 }
@@ -148,7 +145,7 @@ void Demes::parse_(const std::string& fileName)
           }
 
           else if(pops[i]["ancestors"].size() > 2)
-            throw bpp::Exception("Demes::more than two ancestors for a single population!");
+            throw bpp::Exception("Demes::more than two ancestors specified for a single population!");
         }
 
         for(size_t k = 1; k < singlePopOverTime.size(); ++k)
@@ -161,16 +158,16 @@ void Demes::parse_(const std::string& fileName)
             singlePopOverTime[k]->setSize(singlePopOverTime[k - 1]->getSize());
         }
 
-        popsInv.push_back(singlePopOverTime);
-      }
+        popsOverTime.push_back(singlePopOverTime);
+      } // ends loop over demes
 
       // slice time into epochs based on populations time boundaries
-      for(size_t i = 0; i < popsInv.size(); ++i)
+      for(size_t i = 0; i < popsOverTime.size(); ++i)
       {
-        for(size_t j = 0; j < popsInv[i].size(); ++j)
+        for(size_t j = 0; j < popsOverTime[i].size(); ++j)
         {
-          timeBounds.push_back(popsInv[i][j]->getStartTime());
-          timeBounds.push_back(popsInv[i][j]->getEndTime());
+          timeBounds.push_back(popsOverTime[i][j]->getStartTime());
+          timeBounds.push_back(popsOverTime[i][j]->getEndTime());
         }
       }
 
@@ -183,17 +180,17 @@ void Demes::parse_(const std::string& fileName)
         size_t epochStart = timeBounds[i - 1];
         size_t epochEnd = timeBounds[i];
 
-        for(size_t j = 0; j < popsInv.size(); ++j)
+        for(size_t j = 0; j < popsOverTime.size(); ++j)
         {
-          for(auto itPop = std::begin(popsInv[j]); itPop < std::end(popsInv[j]); ++itPop)
+          for(auto itPop = std::begin(popsOverTime[j]); itPop < std::end(popsOverTime[j]); ++itPop)
           {
             size_t popStart = (*itPop)->getStartTime();
             size_t popEnd = (*itPop)->getEndTime();
 
-            if(popStart == epochStart && popEnd < epochEnd)
+            if(popStart == epochStart && popEnd < epochEnd) // must split
             {
-              std::shared_ptr<Population> splitLeft = std::make_shared<Population>(*(*itPop).get());
-              std::shared_ptr<Population> splitRight = std::make_shared<Population>(*(*itPop).get());
+              std::shared_ptr<Population> splitLeft = std::make_shared<Population>(*(*itPop).get()); // more ancient instance of pop
+              std::shared_ptr<Population> splitRight = std::make_shared<Population>(*(*itPop).get()); // more recent instance of pop
 
               splitLeft->setEndTime(epochEnd);
 
@@ -202,10 +199,9 @@ void Demes::parse_(const std::string& fileName)
               splitRight->setLeftParent(splitLeft);
               splitRight->setRightParent(splitLeft);
 
-              // pseudo code
-              itPop = popsInv[j].erase(itPop);
-              itPop = popsInv[j].insert(itPop, splitRight);
-              itPop = popsInv[j].insert(itPop, splitLeft);
+              itPop = popsOverTime[j].erase(itPop);
+              itPop = popsOverTime[j].insert(itPop, splitRight);
+              itPop = popsOverTime[j].insert(itPop, splitLeft);
               itPop = std::next(itPop, 1);
             }
           }
@@ -226,9 +222,9 @@ void Demes::parse_(const std::string& fileName)
         size_t epochStart = timeBounds[i - 1];
         size_t epochEnd = timeBounds[i];
 
-        for(size_t j = 0; j < popsInv.size(); ++j)
+        for(size_t j = 0; j < popsOverTime.size(); ++j)
         {
-          for(auto itPop = std::begin(popsInv[j]); itPop < std::end(popsInv[j]); ++itPop)
+          for(auto itPop = std::begin(popsOverTime[j]); itPop < std::end(popsOverTime[j]); ++itPop)
           {
             size_t popStart = (*itPop)->getStartTime();
             size_t popEnd = (*itPop)->getEndTime();
@@ -242,8 +238,14 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
+      // inits parameters for the different operators
       for(size_t i = 0; i < numEpochs; ++i)
       {
+        double rate = 1e-8; // default mu and r
+
+        mutRates_.emplace_back(rate);
+        recRates_.emplace_back(rate);
+
         size_t p = pops_[i].size();
         Eigen::MatrixXd mat(p, p);
         mat.setZero();
@@ -251,16 +253,7 @@ void Demes::parse_(const std::string& fileName)
         migRates_[i] = mat;
         pulses_[i] = mat;
       }
-
-      // sets defaults to mutation and recombination rates
-      double rate = 1e-8;
-
-      for(size_t i = 0; i < numEpochs; ++i)
-      {
-        mutRates_.emplace_back(rate);
-        recRates_.emplace_back(rate);
-      }
-    }
+    } // exits 'demes' field of Demes file
 
     else if(it->first.as<std::string>() == "migrations")
     {
@@ -379,9 +372,6 @@ void Demes::parse_(const std::string& fileName)
             int row = -1;
             int col = -1;
 
-            // NOTE below we check names of pops in epoch j - 1 to build Admixture operator in epoch j
-            // TODO use (or adapt) this to make admixture not only from pulses but also pops with 2 ancestors
-
             for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
             {
               // ancestral populations are found in the previous epoch
@@ -403,15 +393,36 @@ void Demes::parse_(const std::string& fileName)
 
         if(!valid)
           throw bpp::Exception("Demes::time of admixture pulse must match the start of an epoch!");
-      }
-    }
+      } // ends loop over pulses
 
-    // move to mutation and recombination rates (optional, defaults give above)
+      for(size_t j = 1; j < timeBounds.size() - 1; ++j)
+      {
+        // search for populations with two ancestors: pick one of them to copy moments from,
+        // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
+        for(size_t k = 0; k < pops_[j].size(); ++ k)
+        {
+          if(pops_[j][k]->hasDistinctParents())
+          {
+            // search for ancestral populations in the previous epoch
+            for(size_t l = 0; l < pops_[j - 1].size(); ++ l)
+            {
+              if(pops_[j - 1][l] == pops_[j][k]->getLeftParent())
+                pulses_[j](k, l) = pops_[j][k]->getProportions().first;
+
+              if(pops_[j - 1][l] == pops_[j][k]->getRightParent())
+                pulses_[j](k, l) = pops_[j][k]->getProportions().second;
+            }
+          }
+        }
+      }
+    } // exits 'pulses' field of Demes file
+
+    // move to custom fields for moments++ (mutation, recombination, selection)
     if(it->first.as<std::string>() == "mutation")
     {
       YAML::Node muts = it->second;
 
-      double rate = 0.;
+      double rate = 1e-8;
       size_t startTime = timeBounds.front();
       size_t endTime = 0;
 
@@ -439,7 +450,7 @@ void Demes::parse_(const std::string& fileName)
         if(!match)
           throw bpp::Exception("Demes::start_time and end_time of 'mutation' do not match the span of any epoch!");
       }
-    }
+    } // exits 'mutation' field of Demes file
 
     else if(it->first.as<std::string>() == "recombination")
     {
@@ -473,14 +484,14 @@ void Demes::parse_(const std::string& fileName)
         if(!match)
           throw bpp::Exception("Demes::start_time and end_time of 'recombination' do not match the span of any epoch!");
       }
-    }
+    } // exits 'recombination' field of Demes file
 
     else if(it->first.as<std::string>() == "selection")
     {
       std::cout << "TODO: list demes which experience selection on the left locus\n";
       YAML::Node sel = it->second;
 
-      double s = 1e-8;
+      double s = 1e-3;
       size_t startTime = timeBounds.front();
       size_t endTime = 0;
 
@@ -508,7 +519,7 @@ void Demes::parse_(const std::string& fileName)
         if(!match)
           throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
       }
-    }
+    } // exits 'selection' field of Demes file
   }
 
   for(auto it = std::begin(pops_); it != std::end(pops_); ++it)

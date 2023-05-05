@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 04/May/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 05/May/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Please fill in a text file with the following options and execute from the command line:\nmomentspp params=[file]\n\n";
 
     std::cout << "label = # optional, default = 'moments++'\n";
-    std::cout << "demes_file = # mandatory\n";
+    std::cout << "demes_file = # mandatory, relative path to file in Demes format\n";
     std::cout << "stats_file = # optional, default = 'none'\n\n";
 
     std::cout << "optimizer = # optional, default = 'BFGS'\n";

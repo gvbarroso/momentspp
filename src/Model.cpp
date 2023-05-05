@@ -62,6 +62,7 @@ void Model::computeCompositeLogLikelihood_()
 }
 
 // this method defines the relationships among moments from different epochs (w.r.t population indices)
+// when pop has 2 ancestors, pick one of them, then apply Admixture as if it were a pulse
 void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
@@ -75,7 +76,7 @@ void Model::linkMoments_()
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
 
-        size_t focalP1 = (*it)->getPopIndices()[0]; // j in DD_j_*
+        size_t focalP1 = (*it)->getPopIndices()[0]; // j in DD_j_* focal moment
         size_t p1LeftParentId = epochs_[i]->fetchPop(focalP1)->getLeftParent()->getId();
         size_t p1RightParentId = epochs_[i]->fetchPop(focalP1)->getRightParent()->getId();
 
@@ -85,7 +86,7 @@ void Model::linkMoments_()
         else
           throw bpp::Exception("Model::TODO->include admixture cases");
 
-        size_t focalP2 = (*it)->getPopIndices()[1]; // k in DD_*_k
+        size_t focalP2 = (*it)->getPopIndices()[1]; // k in DD_*_k focal moment
         size_t p2LeftParentId = epochs_[i]->fetchPop(focalP2)->getLeftParent()->getId();
         size_t p2RightParentId = epochs_[i]->fetchPop(focalP2)->getRightParent()->getId();
 
@@ -142,21 +143,21 @@ void Model::linkMoments_()
 
       else if((*it)->getPrefix() == "H")
       {
-        // indices of populations in parental H_**_* moment
+        // indices of populations in parental H_** moment
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
 
-        size_t focalP1 = (*it)->getPopIndices()[0]; // i in H_i_*
+        size_t focalP1 = (*it)->getPopIndices()[0]; // i in H_i_* focal moment
         size_t p1LeftParentId = epochs_[i]->fetchPop(focalP1)->getLeftParent()->getId();
         size_t p1RightParentId = epochs_[i]->fetchPop(focalP1)->getRightParent()->getId();
 
         if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
           prevP1 = p1LeftParentId;
 
-        else
-          throw bpp::Exception("Model::TODO->include admixture cases");
+        else // focalP1 is formed by admixture of two populations in previous epoch
+          prevP1 = p1RightParentId;
 
-        size_t focalP2 = (*it)->getPopIndices()[1]; // j in H_*_j
+        size_t focalP2 = (*it)->getPopIndices()[1]; // j in H_*_j focal moment
         size_t p2LeftParentId = epochs_[i]->fetchPop(focalP2)->getLeftParent()->getId();
         size_t p2RightParentId = epochs_[i]->fetchPop(focalP2)->getRightParent()->getId();
 
@@ -164,7 +165,7 @@ void Model::linkMoments_()
           prevP2 = p2LeftParentId;
 
         else
-          throw bpp::Exception("Model::TODO->include admixture cases");
+          prevP2 = p2RightParentId;
 
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetIndex(prevP1, prevP2));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);

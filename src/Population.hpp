@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 01/05/2023
+ * Last modified: 05/05/2023
  *
  */
 
@@ -30,6 +30,8 @@ private:
   std::shared_ptr<Population> leftParent_;
   std::shared_ptr<Population> rightParent_;
 
+  std::pair<double, double> proportions_; // parental f and 1-f
+
   size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
   size_t startTime_; // in units of generations (coming from past to present)
   size_t endTime_; // in units of generations
@@ -43,6 +45,7 @@ public:
   description_(""),
   leftParent_(nullptr),
   rightParent_(nullptr),
+  proportions_(std::make_pair(0.5, 0.5)),
   id_(0),
   startTime_(0),
   endTime_(0),
@@ -55,6 +58,7 @@ public:
   description_(description),
   leftParent_(nullptr),
   rightParent_(nullptr),
+  proportions_(std::make_pair(0.5, 0.5)),
   id_(id),
   startTime_(startTime),
   endTime_(endTime),
@@ -66,13 +70,13 @@ public:
   void printAttributes(std::ostream& stream)
   {
     stream << id_ << " | " << name_ << " | " << description_ << "\t";
-    stream << startTime_ << " | " << endTime_ << " | " << size_ << "\t";
+    stream << "from " << startTime_ << " to " << endTime_ << " | size = " << size_ << "\t";
 
     if(leftParent_ != nullptr)
-      stream << "\tleft parent = " << leftParent_->getName() << "\t";
+      stream << "\tleft parent = " << leftParent_->getName() << "(" << proportions_.first << ")\t";
 
     if(rightParent_ != nullptr)
-      stream << "\tright parent = " << rightParent_->getName();
+      stream << "\tright parent = " << rightParent_->getName() << "(" << proportions_.second << ")";
 
     stream << "\n";
   }
@@ -95,6 +99,11 @@ public:
   std::shared_ptr<Population> getRightParent()
   {
     return rightParent_;
+  }
+
+  const std::pair<double, double>& getProportions() const
+  {
+    return proportions_;
   }
 
   size_t getId()
@@ -120,6 +129,11 @@ public:
   bool hasSelection()
   {
     return isDerivedLeftSelected_;
+  }
+
+  bool hasDistinctParents()
+  {
+    return leftParent_ != rightParent_;
   }
 
   void setSelectiveConstraint(bool isSelected)
@@ -150,6 +164,11 @@ public:
   void setRightParent(std::shared_ptr<Population> parent)
   {
     rightParent_ = parent;
+  }
+
+  void setProportions(const std::pair<double, double>& prop)
+  {
+    proportions_ = prop;
   }
 
 };
