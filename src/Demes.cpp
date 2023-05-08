@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 05/05/2023
+ * Last modified: 08/05/2023
  *
  */
 
@@ -63,7 +63,6 @@ void Demes::parse_(const std::string& fileName)
 
           // each instance of pop i (one per epoch) is treated as a different Population object in moments++
           singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, false));
-          //singlePopOverTime.back()->printAttributes(std::cout);
         }
 
         if(pops[i]["ancestors"])
@@ -122,7 +121,7 @@ void Demes::parse_(const std::string& fileName)
                   if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
                   {
                     std::shared_ptr<Population> parent = popsOverTime[k][l];
-                    child->setLeftParent(parent);
+                    child->setLeftParent(parent); // treated as source population in pulse of admixture
                   }
                 }
               }
@@ -134,7 +133,7 @@ void Demes::parse_(const std::string& fileName)
                   if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
                   {
                     std::shared_ptr<Population> parent = popsOverTime[k][l];
-                    child->setRightParent(parent);
+                    child->setRightParent(parent); // child will copy stats from right parent
                   }
                 }
               }
@@ -252,6 +251,9 @@ void Demes::parse_(const std::string& fileName)
 
         migRates_[i] = mat;
         pulses_[i] = mat;
+
+        //for(size_t j = 0; j < pops_[i].size(); ++j)
+          //std::cout << "epoch " << i << ", pop[" << j << "] = " << pops_[i][j]->getName() << ", id " << pops_[i][j]->getId() << "\n";
       }
     } // exits 'demes' field of Demes file
 
@@ -375,19 +377,18 @@ void Demes::parse_(const std::string& fileName)
             for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
             {
               // ancestral populations are found in the previous epoch
-              if(pops_[j - 1][k]->getName() == source)
+              if(pops_[j - 1][k]->getName() == dest)
                 row = k;
 
-              else if(pops_[j - 1][k]->getName() == dest)
+              else if(pops_[j - 1][k]->getName() == source)
                 col = k;
             }
 
             if(row == -1 || col == -1)
               throw bpp::Exception("Demes::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
 
-            // "from" (f), "to" (1-f), can only happen from second epoch forwards in time
+            // "from" (f), "to" (1-f, ommited), can only happen from second epoch forwards in time
             pulses_[j](row, col) = f;
-            pulses_[j](row, row) = 1. - f;
           }
         }
 
@@ -401,7 +402,7 @@ void Demes::parse_(const std::string& fileName)
         // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
         for(size_t k = 0; k < pops_[j].size(); ++ k)
         {
-          if(pops_[j][k]->hasDistinctParents())
+          if(pops_[j][k]->hasDistinctParents()) // admixture forms a new population
           {
             // search for ancestral populations in the previous epoch
             for(size_t l = 0; l < pops_[j - 1].size(); ++ l)
@@ -409,8 +410,7 @@ void Demes::parse_(const std::string& fileName)
               if(pops_[j - 1][l] == pops_[j][k]->getLeftParent())
                 pulses_[j](k, l) = pops_[j][k]->getProportions().first;
 
-              if(pops_[j - 1][l] == pops_[j][k]->getRightParent())
-                pulses_[j](k, l) = pops_[j][k]->getProportions().second;
+              // NOTE ommit contributions from right parent because focal pop will copy straight from it (see Model::linkMoments_)
             }
           }
         }

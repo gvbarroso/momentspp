@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 05/05/2023
+ * Last modified: 08/05/2023
  *
  */
 
@@ -17,34 +17,25 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 
   for(size_t i = 0; i < numPops; ++i)
   {
-    // both vectors will hold exactly 2 values
-    std::vector<double> populations(0); // populations contributing to ancestry of popIndices_[i]
-    std::vector<double> proportions(0); // their ancestry proportions
+    size_t ancFromId = 0;
+    size_t ancToId = 0;
+    double f = -1.;
+    double g = -1.;
 
     for(size_t j = 0; j < numPops; ++j)
     {
       if(littleAdmixMat_(i, j) > 0.)
       {
-        populations.push_back(popIndices_[j]);
-        proportions.push_back(littleAdmixMat_(i, j));
+        ancToId = popIndices_[i];
+        ancFromId = popIndices_[j];
+        f = littleAdmixMat_(i, j);
+        g = 1. - f;
       }
     }
 
-    if(populations.size() > 0)
+    if(f > 0.)
     {
-      assert(proportions.size() == 2 && populations.size() == 2);
-
-      size_t ancFromId = populations[0];
-      size_t ancToId = populations[1];
-
-      double f = proportions[1];
-      double g = proportions[0];
-
-      assert((f + g) == 1.);
-
-      // TODO replace ancToId with popIndices_[i] somehow
-
-      std::cout << "from pop " << ancFromId << " to pop " << ancToId << "(" << popIndices_[i] << "); f = " << f << ", g = " << g << "\n";
+      std::cout << "pulse from pop " << ancFromId << " to pop " << ancToId << "; f = " << f << ", 1 - f = " << g << "\n";
 
       std::vector<Eigen::Triplet<double>> coeffs(0);
       coeffs.reserve(3 * sizeOfBasis);
@@ -212,10 +203,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
       mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
       mat.makeCompressed();
       matrices_.emplace_back(mat);
-
-      // reset
-      populations.clear();
-      proportions.clear();
     }
   }
 
