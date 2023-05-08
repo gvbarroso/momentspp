@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 03/05/2023
+ * Last modified: 08/05/2023
  *
  */
 
@@ -65,7 +65,7 @@ public:
 
   virtual void printAttributes(std::ostream& stream)
   {
-    stream << std::scientific << position_ << " | " << name_ << " = " << value_;
+    stream << std::scientific << name_ << " = " << value_;
 
     if(parent_ != nullptr)
       stream << "; parent = " << parent_->getName() << "\n";

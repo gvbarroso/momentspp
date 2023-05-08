@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 26/04/2023
+ * Last modified: 08/05/2023
  *
  */
 
@@ -27,13 +27,10 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
-  if(admixture_ != nullptr) // admixture happens at the *beginning* of epoch (operator is applied first)
-  {
-    y = admixture_->getTransitionMatrix() * y;
-    // marginalize y
-  }
-
   y = transitionMatrix_.pow(duration()) * y; // uses Eigen multi-threading
+
+  if(admixture_ != nullptr) // admixture happens as a pulse at the *end* of epoch
+    y = admixture_->getTransitionMatrix() * y;
 }
 
 std::vector<size_t> Epoch::fetchSelectedPopIds()
@@ -57,10 +54,7 @@ void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoc
 
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
   for(int i = 0; i < tmp.size(); ++i)
-  {
-    int idx = ssl_.getBasis()[i]->getParent()->getPosition();
-    tmp(i) = y(idx);
-  }
+    tmp(i) = y(ssl_.getBasis()[i]->getParent()->getPosition());
 
   y = tmp;
 }
@@ -82,7 +76,7 @@ void Epoch::printRecursions(std::ostream& stream)
       int pos = static_cast<int>(ssl_.getBasis()[i]->getPosition()); // row in delta matrix
       stream << "\u0394[" << ssl_.getBasis()[i]->getName() << "] = ";
 
-      for(size_t j = 0; j < operators_.size(); ++j)
+      for(size_t j = 0; j < operators_.size(); ++j) // admixture not included here because coefficients are more complex
       {
         for(size_t k = 0; k < operators_[j]->getParameters().size(); ++k)
         {
@@ -90,31 +84,6 @@ void Epoch::printRecursions(std::ostream& stream)
           std::string name = param.getName();
 
           auto mat = operators_[j]->getMatrix(k); // hard copy delta matrix
-
-          if(param.getValue() > 0.)
-            mat = mat / param.getValue(); // convert back to coefficients
-
-          for(int l = 0; l < mat.cols(); ++l)
-          {
-            if(mat.coeffRef(pos, l) != 0)
-            {
-              if(mat.coeffRef(pos, l) > 0)
-                stream << "+";
-
-              stream << ssl_.asString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getBasis()[l]->getName() + " ";
-            }
-          }
-        }
-      }
-
-      if(admixture_ != nullptr)
-      {
-        for(size_t k = 0; k < admixture_->getParameters().size(); ++k)
-        {
-          bpp::Parameter param = admixture_->getParameters()[k];
-          std::string name = param.getName();
-
-          auto mat = admixture_->getMatrix(k); // hard copy delta matrix
 
           if(param.getValue() > 0.)
             mat = mat / param.getValue(); // convert back to coefficients

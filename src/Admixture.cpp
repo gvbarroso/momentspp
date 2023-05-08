@@ -35,7 +35,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 
     if(f > 0.)
     {
-      std::cout << "pulse from pop " << ancFromId << " to pop " << ancToId << "; f = " << f << ", 1 - f = " << g << "\n";
+      //std::cout << "pulse from pop " << ancFromId << " to pop " << ancToId << "; f = " << f << ", 1 - f = " << g << "\n";
 
       std::vector<Eigen::Triplet<double>> coeffs(0);
       coeffs.reserve(3 * sizeOfBasis);
@@ -57,9 +57,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
               double mig = (*it)->countInstances(ancToId) - (*it2nd)->countInstances(ancToId);
               double nat = (*it2nd)->countInstances(ancToId);
               double y = std::pow(g, nat) * std::pow(f, mig) / ((*it)->getNumberOfAliases() + 1);
-
-              if((*it)->getPrefix() == "H")
-                std::cout << (*it)->getName() << " from " << (*it2nd)->getName() << ": " << mig << ", " << nat << " = " << y << "\n";
 
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
             }
