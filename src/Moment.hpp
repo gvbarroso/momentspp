@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 08/05/2023
+ * Last modified: 11/05/2023
  *
  */
 
@@ -244,6 +244,7 @@ public:
     return popIndexDistance(other) == 1;
   }
 
+  // directional, tells if *this can be reached by other via Admixture
   bool isAdmixAdjacent(const std::shared_ptr<Moment> other, size_t fromId, size_t toId)
   {
     if(typeid(*this) != typeid(*other.get()))

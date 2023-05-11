@@ -44,16 +44,21 @@ public:
     isPutativelySelected_ = isSelected;
   }
 
-  bool hasSamePopIds(std::shared_ptr<Moment> mom) override
+  bool isCrossPop()
   {
-    assert(std::dynamic_pointer_cast<HetMoment>(mom) != nullptr);
+    return popIndices_[0] != popIndices_[1];
+  }
+
+  bool hasSamePopIds(std::shared_ptr<Moment> other) override
+  {
+    assert(std::dynamic_pointer_cast<HetMoment>(other) != nullptr);
 
     bool test = 0;
 
-    if(mom->getPopIndices() == popIndices_)
+    if(other->getPopIndices() == popIndices_)
       test = 1;
 
-    else if(mom->getPopIndices()[1] == popIndices_[0] && mom->getPopIndices()[0] == popIndices_[1])
+    else if(other->getPopIndices()[1] == popIndices_[0] && other->getPopIndices()[0] == popIndices_[1])
       test = 1;
 
     return test;

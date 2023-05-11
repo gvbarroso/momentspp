@@ -54,19 +54,19 @@ public:
     right_ = mom;
   }
 
-  bool hasSamePopIds(std::shared_ptr<Moment> mom) override
+  bool hasSamePopIds(std::shared_ptr<Moment> other) override
   {
-    assert(std::dynamic_pointer_cast<DzMoment>(mom) != nullptr);
+    assert(std::dynamic_pointer_cast<DzMoment>(other) != nullptr);
 
     bool test = 0;
 
-    if(mom->getPopIndices() == popIndices_)
+    if(other->getPopIndices() == popIndices_)
       test = 1;
 
     else
     {
       auto tmpThis = popIndices_;
-      auto tmpOther = mom->getPopIndices();
+      auto tmpOther = other->getPopIndices();
 
       std::sort(std::begin(tmpThis), std::end(tmpThis));
       tmpThis.erase(std::unique(std::begin(tmpThis), std::end(tmpThis)), std::end(tmpThis));
