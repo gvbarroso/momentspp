@@ -244,7 +244,7 @@ public:
     return popIndexDistance(other) == 1;
   }
 
-  // directional, tells if *this can be reached by other via Admixture
+  // directional, tells if *this can be reached by other* via Admixture
   bool isAdmixAdjacent(const std::shared_ptr<Moment> other, size_t fromId, size_t toId)
   {
     if(typeid(*this) != typeid(*other.get()))
