@@ -33,7 +33,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 
     if(f > 0.)
     {
-      std::cout << "pulse from pop " << ancFromId << " to pop " << ancToId << "; f = " << f << ", 1 - f = " << g << "\n";
+      std::cout << "pulse from pop " << ancFromId << " to pop " << ancToId << "; f = " << f << ", 1 - f = " << 1 - f << "\n";
 
       std::vector<Eigen::Triplet<double>> coeffs(0);
       coeffs.reserve(3 * sizeOfBasis);
@@ -103,69 +103,63 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             if((*it)->getPopIndices()[0] == ancToId) // has pi2 contributions
             {
+              // a reference pi2 moment to help track which other pi2 moments contribute to focal Dz
+              std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[2]), 0., nullptr, nullptr);
+
               // case 1: Dz TTT
               if((*it)->countInstances(ancToId) == 3) // NOTE the following is tailored to the compressed basis at the moment:
               {
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * std::pow(f, 3.) * (1. - f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancToId, ancFromId, ancFromId));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2*f));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancFromId, ancToId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * std::pow(f, 2.) * std::pow(1. - f, 2.)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancToId, ancFromId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancToId, ancToId, ancFromId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancFromId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancToId, ancToId, ancToId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancToId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * f * std::pow(1. - f, 3.)));
               }
-
               // case 2: Dz TFT / TTF
               else if(((*it)->getPopIndices()[1] == ancToId && (*it)->getPopIndices()[2] == ancFromId) || ((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancToId))
               {
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 8. * std::pow(f, 2.) * (1. - f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancToId, ancFromId, ancFromId));
-                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * f * (1. - f) * (1. - 3. * f));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId));
+                coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * f * (1. - f) * (1. - 3. * f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancFromId, ancToId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * f * std::pow(1. - f, 2.)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancToId, ancFromId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2. * f * (1. - f) * (1. - 2. * f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancToId, ancToId, ancFromId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancFromId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2. * f * std::pow(1. - f, 2.)));
               }
-
               // case 3: Dz TFF
               else if((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancFromId)
               {
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * f * (1. - f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancToId, ancFromId, ancFromId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2. * f * (1. - f)));
 
-                col = sslib.findCompressedIndex(findPi2Index(ancFromId, ancToId, ancFromId, ancToId));
+                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * (1. - f)));
               }
-
               // case 4: Dz TTx / TxT
               else if((*it)->getPopIndices()[1] == ancToId || (*it)->getPopIndices()[2] == ancToId)
               {
-                // a reference pi2 moment to help track which other pi2 moments contribute to focal Dz
-                std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" +
-                                                                                               bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" +
-                                                                                               bpp::TextTools::toString(ancToId) + "_" +
-                                                                                               bpp::TextTools::toString((*it)->getPopIndices()[2]), 0., nullptr, nullptr);
-
                 for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
                 {
                   if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
@@ -178,16 +172,9 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                   }
                 }
               }
-
               // case 5: Dz TFx / TxF
               else if((*it)->getPopIndices()[1] == ancFromId || (*it)->getPopIndices()[2] == ancFromId)
               {
-                // a reference pi2 moment to help track which other pi2 moments contribute to focal Dz
-                std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" +
-                                                                                               bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" +
-                                                                                               bpp::TextTools::toString(ancToId) + "_" +
-                                                                                               bpp::TextTools::toString((*it)->getPopIndices()[2]), 0., nullptr, nullptr);
-
                 for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
                 {
                   if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
@@ -200,16 +187,9 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                   }
                 }
               }
-
               // case 6: Dz Txx / Txx
               else
               {
-                // a reference pi2 moment to help track which other pi2 moments contribute to focal Dz
-                std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" +
-                                                                                               bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" +
-                                                                                               bpp::TextTools::toString(ancToId) + "_" +
-                                                                                               bpp::TextTools::toString((*it)->getPopIndices()[2]), 0., nullptr, nullptr);
-
                 for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
                 {
                   if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
