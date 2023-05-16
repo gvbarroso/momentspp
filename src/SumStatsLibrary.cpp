@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 28/04/2023
+ * Last modified: 16/05/2023
  *
  */
 
@@ -146,7 +146,7 @@ size_t SumStatsLibrary::findCompressedIndex(std::shared_ptr<Moment> mom) const
 
   for(size_t j = 0; j < basis_.size(); ++j)
   {
-    if(basis_[j] == mom || basis_[j]->hasAlias(mom)) // WARNING we should not be comparing pointers here
+    if(basis_[j]->getName() == mom->getName() || basis_[j]->hasAlias(mom))
       ret = j;
   }
 
