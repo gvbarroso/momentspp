@@ -11,6 +11,7 @@
 
 #include <Bpp/App/ApplicationTools.h>
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include <memory>

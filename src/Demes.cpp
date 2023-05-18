@@ -75,18 +75,42 @@ void Demes::parse_(const std::string& fileName)
 
             for(size_t k = 0; k < popsOverTime.size(); ++k)
             {
-              if(popsOverTime[k].front()->getName() == ancName)
+              if(popsOverTime[k].back()->getName() == ancName)
               {
-                std::shared_ptr<Population> parent = popsOverTime[k].front();
+                if(startTime == std::numeric_limits<int>::max())
+                {
+                  std::shared_ptr<Population> parent = popsOverTime[k].back();
 
-                child->setLeftParent(parent);
-                child->setRightParent(parent);
-
-                if(child->getStartTime() == std::numeric_limits<int>::max())
+                  child->setLeftParent(parent);
+                  child->setRightParent(parent);
                   child->setStartTime(parent->getEndTime());
 
-                if(child->getSize() == 0)
-                  child->setSize(parent->getSize());
+                  if(child->getSize() == 0)
+                    child->setSize(parent->getSize());
+                }
+
+                else
+                {
+                  bool match = 0;
+                  for(size_t l = 0; l < popsOverTime[k].size(); ++l)
+                  {
+                    if(startTime == popsOverTime[k][l]->getEndTime())
+                    {
+                      std::shared_ptr<Population> parent = popsOverTime[k][l];
+
+                      child->setLeftParent(parent);
+                      child->setRightParent(parent);
+
+                      if(child->getSize() == 0)
+                        child->setSize(parent->getSize());
+
+                      match = 1;
+                    }
+                  }
+
+                  if(match == 0)
+                    throw bpp::Exception("Demes::could not find ancestor of pop " + name + "at specified start_time!");
+                }
 
                 break;
               }
@@ -330,7 +354,7 @@ void Demes::parse_(const std::string& fileName)
           throw bpp::Exception("Demes::start_time and end_time of 'migrations' in Demes file do not match the span of any epoch!");
 
       }
-    }
+    } // exits 'migrations' field of Demes file
 
     else if(it->first.as<std::string>() == "pulses")
     {
@@ -435,8 +459,12 @@ void Demes::parse_(const std::string& fileName)
 
           for(size_t j = 0; j < muts.size(); ++j) // mut period by mut period
           {
+            std::cout << j << "," << muts[j] << " of " << muts.size() << std::endl;
             if(muts[j]["rate"])
+            {
+              std::cout << " hi " << std::endl;
               rate = muts[i]["rate"].as<double>();
+            }
 
             if(muts[j]["start_time"])
               startTime = muts[i]["start_time"].as<size_t>();
@@ -453,6 +481,8 @@ void Demes::parse_(const std::string& fileName)
               else
                 match = 0;
             }
+
+            std::cout << rate << " from " << startTime << " to " << endTime << std::endl;
 
             if(!match)
               throw bpp::Exception("Demes::start_time and end_time of 'mutation' do not match the span of any epoch!");
@@ -530,10 +560,4 @@ void Demes::parse_(const std::string& fileName)
       }
     }
   }
-
-  /*for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
-  {
-    for(size_t x = 0; x < it->size(); ++x)
-      (*it)[x]->printAttributes(std::cout);
-  }*/
 }

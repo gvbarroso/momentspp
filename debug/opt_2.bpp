@@ -1,8 +1,0 @@
-label = 2_pops
-num_epochs = 1
-num_pops = 2
-total_gen = 10000
-compress_moments = 1
-
-# additional file with initial parameter values
-params=pops_2.bpp

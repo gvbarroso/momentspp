@@ -15,7 +15,7 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   matchParametersValues(params);
   updateEpochs_(params); // updates transitionMatrix_ within each epoch
   computeExpectedSumStats();
-  computeCompositeLogLikelihood_(); // e.g. for each rec. binx
+  computeCompositeLogLikelihood_(); // e.g. for each rec. bin
 }
 
 void Model::computeExpectedSumStats()
@@ -67,7 +67,7 @@ void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    //std::cout << "epoch " << i << std::endl;
+    std::cout << "epoch " << i << std::endl;
     // for each moment in focal epoch, set "parent" in previous epoch using population ancestry
     for(auto it = std::begin(epochs_[i]->getMoments()); it != std::end(epochs_[i]->getMoments()); ++it)
     {
@@ -170,7 +170,6 @@ void Model::linkMoments_()
 
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetIndex(prevP1, prevP2));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
-        //(*it)->printAttributes(std::cout);
       }
 
       else if((*it)->getPrefix() == "pi2")
@@ -227,6 +226,8 @@ void Model::linkMoments_()
 
       else if((*it)->getPrefix() == "I")
         (*it)->setParent(epochs_[i - 1]->getSslib().getDummyMomentCompressed());
+
+      (*it)->printAttributes(std::cout);
     } // ends loop over moments
   } // ends loop over epochs
 }

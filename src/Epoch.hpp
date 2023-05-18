@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 27/04/2023
+ * Last modified: 18/05/2023
  *
  */
 
@@ -9,6 +9,7 @@
 #ifndef _EPOCH_H_
 #define _EPOCH_H_
 
+#include <iostream>
 #include <vector>
 #include <memory>
 #include <utility>
@@ -148,6 +149,17 @@ public:
   const std::vector<std::shared_ptr<Population>>& getPops()
   {
     return pops_;
+  }
+
+  void printAttributes(std::ostream& stream)
+  {
+    stream << name_ << ", from " << startGen_ << " to " << endGen_ << "\n";
+
+    for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+    {
+      stream << "\t";
+      (*it)->printAttributes(stream);
+    }
   }
 
   std::shared_ptr<Population> fetchPop(size_t id)

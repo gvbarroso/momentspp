@@ -1,7 +1,0 @@
-label = 1_pop
-num_epochs = 1
-num_pops = 1
-total_gen = 10000
-
-# additional file with initial parameter values
-params=pops_1.bpp
