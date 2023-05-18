@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 08/05/2023
+ * Last modified: 18/05/2023
  *
  */
 
@@ -39,15 +39,15 @@ void Demes::parse_(const std::string& fileName)
         if(pops[i]["description"])
           des = pops[i]["description"].as<std::string>();
 
+        size_t startTime = std::numeric_limits<int>::max();
+        if(pops[i]["start_time"] && pops[i]["start_time"].as<std::string>() != ".inf")
+          startTime = pops[i]["start_time"].as<int>();
+
         std::vector<std::shared_ptr<Population>> singlePopOverTime(0); // deme i is represented by a series of populations of piece-wise constant Ne
         YAML::Node popEpochs = pops[i]["epochs"];
 
         for(size_t j = 0; j < popEpochs.size(); ++j) // epochs of focal pop i as they appear in the Demes (YAML) file
         {
-          size_t startTime = std::numeric_limits<int>::max();
-          if(popEpochs[j]["start_time"] && popEpochs[j]["start_time"].as<std::string>() != ".inf")
-            startTime = popEpochs[j]["start_time"].as<int>();
-
           size_t endTime = 0;
           if(popEpochs[j]["end_time"])
             endTime = popEpochs[j]["end_time"].as<int>();
@@ -133,14 +133,14 @@ void Demes::parse_(const std::string& fileName)
                   if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
                   {
                     std::shared_ptr<Population> parent = popsOverTime[k][l];
-                    child->setRightParent(parent); // child will copy stats from right parent
+                    child->setRightParent(parent); // child will "copy" stats from right parent
                   }
                 }
               }
             }
 
             if(child->getLeftParent() == nullptr || child->getRightParent() == nullptr)
-              throw bpp::Exception("Demes::could not find ancestors of pop " + child->getName());
+              throw bpp::Exception("Demes::could not find ancestors of pop " + child->getName() + " (both must have an epoch's end_time matching " + child->getName() + "'s start_time)");
           }
 
           else if(pops[i]["ancestors"].size() > 2)
@@ -359,8 +359,6 @@ void Demes::parse_(const std::string& fileName)
         std::string dest = pulses[i]["dest"].as<std::string>();
         size_t time = pulses[i]["time"].as<size_t>();
 
-        //std::cout << source << "~~~~~>" << dest << " [" << f << "] at " << time << " gens. ago\n";
-
         bool valid = 0;
         for(size_t j = 1; j < timeBounds.size(); ++j) // pulses_[0] remains the zero matrix, by virtue of how epochs are defined wrt admixture events
         {
@@ -421,108 +419,116 @@ void Demes::parse_(const std::string& fileName)
     } // exits 'pulses' field of Demes file
 
     // move to custom fields for moments++ (mutation, recombination, selection)
-    if(it->first.as<std::string>() == "mutation")
+    else if(it->first.as<std::string>() == "metadata")
     {
-      YAML::Node muts = it->second;
+      YAML::Node meta = it->second;
 
-      double rate = 1e-8;
-      size_t startTime = timeBounds.front();
-      size_t endTime = 0;
-
-      for(size_t i = 0; i < muts.size(); ++i) // mut period by mut period
+      for(size_t i = 0; i < meta.size(); ++i) // mut period by mut period
       {
-        if(muts[i]["rate"])
-          rate = muts[i]["rate"].as<double>();
-
-        if(muts[i]["start_time"])
-          startTime = muts[i]["start_time"].as<size_t>();
-
-        if(muts[i]["end_time"])
-          endTime = muts[i]["end_time"].as<size_t>();
-
-        bool match = 1;
-        for(size_t j = 1; j < timeBounds.size(); ++j)
+        if(meta[i]["mutation"])
         {
-          if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
-            mutRates_[j - 1] = rate;
+          double rate = 1e-8;
+          size_t startTime = timeBounds.front();
+          size_t endTime = 0;
 
-          else
-            match = 0;
+          YAML::Node muts = meta[i];
+
+          for(size_t j = 0; j < muts.size(); ++j) // mut period by mut period
+          {
+            if(muts[j]["rate"])
+              rate = muts[i]["rate"].as<double>();
+
+            if(muts[j]["start_time"])
+              startTime = muts[i]["start_time"].as<size_t>();
+
+            if(muts[j]["end_time"])
+              endTime = muts[i]["end_time"].as<size_t>();
+
+            bool match = 1;
+            for(size_t k = 1; k < timeBounds.size(); ++k)
+            {
+              if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
+                mutRates_[k - 1] = rate;
+
+              else
+                match = 0;
+            }
+
+            if(!match)
+              throw bpp::Exception("Demes::start_time and end_time of 'mutation' do not match the span of any epoch!");
+          }
         }
 
-        if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of 'mutation' do not match the span of any epoch!");
-      }
-    } // exits 'mutation' field of Demes file
-
-    else if(it->first.as<std::string>() == "recombination")
-    {
-      YAML::Node recs = it->second;
-
-      double rate = 1e-8;
-      size_t startTime = timeBounds.front();
-      size_t endTime = 0;
-
-      for(size_t i = 0; i < recs.size(); ++i) // rec period by rec period
-      {
-        if(recs[i]["rate"])
-          rate = recs[i]["rate"].as<double>();
-
-        if(recs[i]["start_time"])
-          startTime = recs[i]["start_time"].as<size_t>();
-
-        if(recs[i]["end_time"])
-          endTime = recs[i]["end_time"].as<size_t>();
-
-        bool match = 1;
-        for(size_t j = 1; j < timeBounds.size(); ++j)
+        else if(meta[i]["recombination"])
         {
-          if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
-            recRates_[j - 1] = rate;
+          double rate = 1e-8;
+          size_t startTime = timeBounds.front();
+          size_t endTime = 0;
 
-          else
-            match = 0;
+          YAML::Node recs = meta[i];
+
+          for(size_t j = 0; j < recs.size(); ++j) // mut period by mut period
+          {
+            if(recs[j]["rate"])
+              rate = recs[j]["rate"].as<double>();
+
+            if(recs[j]["start_time"])
+              startTime = recs[j]["start_time"].as<size_t>();
+
+            if(recs[i]["end_time"])
+              endTime = recs[j]["end_time"].as<size_t>();
+
+            bool match = 1;
+            for(size_t k = 1; k < timeBounds.size(); ++k)
+            {
+              if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
+                recRates_[k - 1] = rate;
+
+              else
+                match = 0;
+            }
+
+            if(!match)
+              throw bpp::Exception("Demes::start_time and end_time of 'recombination' do not match the span of any epoch!");
+          }
         }
 
-        if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of 'recombination' do not match the span of any epoch!");
-      }
-    } // exits 'recombination' field of Demes file
-
-    else if(it->first.as<std::string>() == "selection")
-    {
-      std::cout << "TODO: list demes which experience selection on the left locus\n";
-      YAML::Node sel = it->second;
-
-      double s = 1e-3;
-      size_t startTime = timeBounds.front();
-      size_t endTime = 0;
-
-      for(size_t i = 0; i < sel.size(); ++i) // rec period by rec period
-      {
-        if(sel[i]["s"])
-          s = sel[i]["s"].as<double>();
-
-        if(sel[i]["start_time"])
-          startTime = sel[i]["start_time"].as<size_t>();
-
-        if(sel[i]["end_time"])
-          endTime = sel[i]["end_time"].as<size_t>();
-
-        bool match = 1;
-        for(size_t j = 1; j < timeBounds.size(); ++j)
+        else if(meta[i]["selection"])
         {
-          if((startTime == timeBounds[j - 1] && endTime == timeBounds[j]) || (startTime == timeBounds.front() && endTime == 0))
-            selCoeffs_[j - 1] = s;
+          std::cout << "TODO: list demes which experience selection on the left locus\n";
+          double s = 1e-3;
+          size_t startTime = timeBounds.front();
+          size_t endTime = 0;
 
-          else
-            match = 0;
+          YAML::Node sel = meta[i];
+
+          for(size_t j = 0; j < sel.size(); ++j) // rec period by rec period
+          {
+            if(sel[j]["s"])
+              s = sel[j]["s"].as<double>();
+
+            if(sel[j]["start_time"])
+              startTime = sel[j]["start_time"].as<size_t>();
+
+            if(sel[j]["end_time"])
+              endTime = sel[j]["end_time"].as<size_t>();
+
+            bool match = 1;
+            for(size_t k = 1; k < timeBounds.size(); ++k)
+            {
+              if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
+                selCoeffs_[k - 1] = s;
+
+              else
+                match = 0;
+            }
+
+            if(!match)
+              throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
+          }
         }
-
-        if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
       }
-    } // exits 'selection' field of Demes file
+    }
   }
 
   /*for(auto it = std::begin(pops_); it != std::end(pops_); ++it)

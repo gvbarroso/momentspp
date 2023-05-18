@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 16/05/2023
+ * Last modified: 17/05/2023
  *
  */
 
@@ -238,9 +238,9 @@ public:
     return dist;
   }
 
-  bool isAdjacent(const std::shared_ptr<Moment> other)
+  bool isMigAdjacent(const std::shared_ptr<Moment> other) // NOTE check
   {
-    return popIndexDistance(other) == 1;
+    return popIndexDistance(other) <= 1;
   }
 
   // directional, tells if *this can be reached by other* via Admixture

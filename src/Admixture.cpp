@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 16/05/2023
+ * Last modified: 17/05/2023
  *
  */
 
@@ -62,6 +62,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
           if((*it)->getPrefix() == "DD")
           {
             size_t p1 = (*it)->getPopIndices()[0];
+
             if(p1 == ancToId)
               p1 = (*it)->getPopIndices()[1];
 
@@ -80,8 +81,10 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 size_t a = 1 + ((*itCmp)->getPopIndices()[0] == ancToId);
                 size_t b = t - a;
                 double c = std::pow(-1., (*itCmp)->countInstances(ancFromId));
-                if((*itCmp)->getPopIndices()[0] != ancToId)
-                  c *= -1;
+
+                if((*itCmp)->getPopIndices()[0] == ancFromId)
+                  c *= -1.;
+
                 double x = (0.25 * (*it)->countInstances(ancToId) * c * std::pow((1. - f), a) * std::pow(f, b)) / ((*it)->getNumberOfAliases() + 1);
 
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, x));
@@ -91,7 +94,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
               else if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId) && (*it)->countInstances(ancToId) == 2)
               {
                 col = sslib.findCompressedIndex(*itCmp);
-
                 size_t parentPopIdCount =(*itCmp)->countInstances(ancFromId);
                 double x = std::pow((1. - f), 2.) * std::pow(f, 2.);
                 double y = std::pow(-1., parentPopIdCount) * x;
@@ -104,7 +106,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             if((*it)->getPopIndices()[0] == ancToId) // has pi2 contributions
             {
-              // a reference pi2 moment to help track which other pi2 moments contribute to focal Dz (which contains population indices not equal to either ancFromId / ancToId)
+              // a reference pi2 moment to help track which other pi2 moments contribute to focal Dz
               std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[2]), 0., nullptr, nullptr);
 
               // case 1: Dz TTT
@@ -148,7 +150,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancToId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * f * std::pow(1. - f, 3.)));
               }
-              // case 2: Dz TFT / TTF NOTE forced some differences with the "naive" Mathematica notebook to match moments.LD
+              // case 2: Dz TFT / TTF NOTE "forced" through some differences with the "naive" Mathematica notebook to match moments.LD admix matrix
               else if(((*it)->getPopIndices()[1] == ancToId && (*it)->getPopIndices()[2] == ancFromId) || ((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancToId))
               {
                 col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
@@ -196,13 +198,25 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
               {
                 for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
                 {
-                  if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId)) // WARNING
+                  if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
                   {
                     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*itCmp);
                     col = sslib.findCompressedIndex(tmp);
-                    double c = std::pow(-1., tmp->countInstances(ancToId));
-                    double d = 2. - (tmp->getLeftHetStat()->isCrossPop() || tmp->getRightHetStat()->isCrossPop());
-                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * d * f * (1. - f)));
+
+                    double c = std::pow(-1., tmp->countInstances(ancToId) + 1);
+                    double z = (tmp->getLeftHetStat()->isCrossPop() && tmp->getRightHetStat()->isCrossPop());
+                    double x = 1 + (tmp->getLeftHetStat()->countInstances(ancFromId) == 2 || tmp->getRightHetStat()->countInstances(ancFromId) == 2);
+                    double y = 3. - z - x;
+                    double w = std::pow(f, x) * std::pow((1. - f), y) * std::pow(1. - 2 * f, z);
+
+                    if(z == 0)
+                    {
+                      w *= 2.;
+                      if(x == 2)
+                        w *= -1;
+                    }
+
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * w));
                   }
                 }
               }
@@ -216,8 +230,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*itCmp);
                     col = sslib.findCompressedIndex(tmp);
                     double c = std::pow(-1., tmp->countInstances(ancToId));
-                    double d = 2. - (tmp->getLeftHetStat()->isCrossPop() || tmp->getRightHetStat()->isCrossPop());
-                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * d * f * (1. - f)));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * 2 * f * (1. - f)));
                   }
                 }
               }
@@ -231,7 +244,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*itCmp);
                     col = sslib.findCompressedIndex(tmp);
                     double c = std::pow(-1., tmp->countInstances(ancToId));
-                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * f * (1. - f)));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * 4 * f * (1. - f)));
                   }
                 }
               }

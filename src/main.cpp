@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 16/May/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 18/May/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -47,7 +47,6 @@ int main(int argc, char *argv[]) {
 
 
   /* NOTE
-   * IDEAS:
    * what if both left and right loci are under selection, potentially with different selection coefficients, even opposite signs
    * selection constrained to a particular epoch
    * epoch-specific mutation rates to test the hypothesis of change in mu along human lineage (wrt eg chimps)?
