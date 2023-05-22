@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/04/2023
- * Last modified: 05/05/2023
+ * Last modified: 22/05/2023
  *
  */
 
@@ -68,6 +68,8 @@ private:
   void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
+
+  void assembleTransitionMatrix_() override;
 };
 
 #endif

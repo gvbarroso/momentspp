@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 18/05/2023
+ * Last modified: 22/05/2023
  *
  */
 
@@ -352,7 +352,6 @@ void Demes::parse_(const std::string& fileName)
 
         if(!match)
           throw bpp::Exception("Demes::start_time and end_time of 'migrations' in Demes file do not match the span of any epoch!");
-
       }
     } // exits 'migrations' field of Demes file
 
@@ -406,8 +405,7 @@ void Demes::parse_(const std::string& fileName)
             if(row == -1 || col == -1)
               throw bpp::Exception("Demes::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
 
-            // "from" (f), "to" (1-f, ommited), can only happen from second epoch forwards in time
-            pulses_[j](row, col) = f;
+            pulses_[j - 1](row, col) = f;  // "from" (f), "to" (1-f, ommited)
           }
         }
 

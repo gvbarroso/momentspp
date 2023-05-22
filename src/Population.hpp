@@ -71,13 +71,13 @@ public:
   void printAttributes(std::ostream& stream)
   {
     stream << id_ << " | " << name_ << " | " << description_ << "\t";
-    stream << "from " << startTime_ << " to " << endTime_ << " | size = " << size_ << "\t";
+    stream << "from " << startTime_ << " to " << endTime_ << ", size = " << size_ << "\t";
 
     if(leftParent_ != nullptr)
-      stream << "\tleft parent = " << leftParent_->getName() << "(" << proportions_.first << ")\t";
+      stream << "\tleft parent = " << leftParent_->getName() << "(" << proportions_.first << "), ";
 
     if(rightParent_ != nullptr)
-      stream << "\tright parent = " << rightParent_->getName() << "(" << proportions_.second << ")";
+      stream << "right parent = " << rightParent_->getName() << "(" << proportions_.second << ")";
 
     stream << "\n";
   }

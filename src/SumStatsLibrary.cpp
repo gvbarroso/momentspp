@@ -146,7 +146,7 @@ size_t SumStatsLibrary::findCompressedIndex(std::shared_ptr<Moment> mom) const
 
   for(size_t j = 0; j < basis_.size(); ++j)
   {
-    if(basis_[j]->getName() == mom->getName() || basis_[j]->hasAlias(mom))
+    if(basis_[j] == mom || basis_[j]->hasAlias(mom))
       ret = j;
   }
 

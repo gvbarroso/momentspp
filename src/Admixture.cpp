@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 17/05/2023
+ * Last modified: 22/05/2023
  *
  */
 
@@ -28,6 +28,8 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         ancToId = popIndices_[i];
         ancFromId = popIndices_[j];
         f = littleAdmixMat_(i, j);
+
+        std::cout << "from " << ancFromId << " to " << ancToId << ", f = " << f << std::endl;
       }
     }
 
@@ -260,7 +262,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
     }
   }
 
-  setIdentity_(sizeOfBasis);
+  //setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
 }
 
@@ -303,4 +305,27 @@ void Admixture::updateMatrices_()
   //setUpMatrices_(sslib); // WARNING
   assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
+}
+
+// overrides AbstractOperator because Admixture works differently
+void Admixture::assembleTransitionMatrix_()
+{
+  transition_ = matrices_[0]; // inits to "delta" matrix
+
+  if(matrices_.size() > 1)
+  {
+    for(size_t i = 1; i < matrices_.size(); ++i)
+      transition_ += matrices_[i];
+  }
+
+  for(int i = 0; i < transition_.rows(); ++i)
+  {
+    double rowSum = 0.;
+
+    for(int j = 0; j < transition_.cols(); ++j)
+      rowSum += transition_.coeffRef(i, j);
+
+    if(rowSum == 0.)
+      transition_.coeffRef(i, i) = 1.;
+  }
 }

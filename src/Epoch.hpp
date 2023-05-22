@@ -160,6 +160,9 @@ public:
       stream << "\t";
       (*it)->printAttributes(stream);
     }
+
+    if(admixture_ != nullptr)
+      std::cout << admixture_->getLittleAdmixMat() << std::endl;
   }
 
   std::shared_ptr<Population> fetchPop(size_t id)

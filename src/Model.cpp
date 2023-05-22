@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/05/2023
+ * Last modified: 19/05/2023
  *
  */
 
@@ -20,18 +20,25 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats()
 {
+  std::ofstream fout;
+  fout.open("moms_evol.txt");
+
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
+  fout << expected_.transpose() << "\n";
 
   for(size_t i = 1; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
     epochs_[i]->transferStatistics(expected_); // copying values into epoch i according to population ancestry
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
+    fout << expected_.transpose() << "\n";
   }
 
   // final epoch
   epochs_.back()->transferStatistics(expected_);
   epochs_.back()->computeExpectedSumStats(expected_);
   epochs_.back()->updateMoments(expected_); // updates inside sslib
+  fout << expected_.transpose() << "\n";
+  fout.close();
 }
 
 void Model::printAliasedMoments(std::ostream& stream)
@@ -67,15 +74,15 @@ void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    std::cout << "epoch " << i << std::endl;
+    std::cout << "\nepoch " << epochs_[i]->getName() << "\n";
     // for each moment in focal epoch, set "parent" in previous epoch using population ancestry
-    for(auto it = std::begin(epochs_[i]->getMoments()); it != std::end(epochs_[i]->getMoments()); ++it)
+    for(auto it = std::begin(epochs_[i]->getBasis()); it != std::end(epochs_[i]->getBasis()); ++it)
     {
       if((*it)->getPrefix() == "DD")
       {
-        // indices of populations in parental DD_** moment
-        size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
-        size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+        // indices of populations in parental DD_** moment, inits to out-of-bounds
+        size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops();
+        size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops();
 
         size_t focalP1 = (*it)->getPopIndices()[0];
         size_t p1LeftParentId = epochs_[i]->fetchPop(focalP1)->getLeftParent()->getId();
@@ -103,10 +110,10 @@ void Model::linkMoments_()
 
       else if((*it)->getPrefix() == "Dz")
       {
-        // indices of populations in parental Dz*** moment
-        size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
-        size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
-        size_t prevP3 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+        // indices of populations in parental Dz*** moment, inits to out-of-bounds
+        size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops();
+        size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops();
+        size_t prevP3 = epochs_[i - 1]->getSslib().getNumPops();
 
         size_t focalP1 = (*it)->getPopIndices()[0];
         size_t p1LeftParentId = epochs_[i]->fetchPop(focalP1)->getLeftParent()->getId();

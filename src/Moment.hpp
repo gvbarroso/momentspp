@@ -190,11 +190,12 @@ public:
 
   bool hasAlias(std::shared_ptr<Moment> mom)
   {
-    for(size_t i = 0; i < aliases_.size(); ++i)
-      if(mom->getName() == aliases_[i].lock()->getName())
-        return true;
+    std::weak_ptr<Moment> tmp = mom;
 
-    return false;
+    auto pos = std::find_if(std::begin(aliases_), std::end(aliases_), [&tmp](const auto& obj)
+                            { return tmp.lock() == obj.lock(); }); // WARNING
+
+    return pos != std::end(aliases_);
   }
 
   std::vector<size_t> fetchDiffPopIds(size_t focalPopId) // fetches pop IDs different from focalPopId

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 21/04/2022
+ * Last modified: 22/05/2022
  *
  */
 
@@ -114,7 +114,7 @@ protected:
   virtual void updateMatrices_() = 0; // scales coefficients of "delta" matrices by (new) parameters during optimization
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
-  void assembleTransitionMatrix_();
+  virtual void assembleTransitionMatrix_();
 
   void setIdentity_(size_t numStats);
 
