@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 19/05/2023
+ * Last modified: 23/05/2023
  *
  */
 
@@ -20,25 +20,18 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats()
 {
-  std::ofstream fout;
-  fout.open("moms_evol.txt");
-
   expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
-  fout << expected_.transpose() << "\n";
 
   for(size_t i = 1; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
-    epochs_[i]->transferStatistics(expected_); // copying values into epoch i according to population ancestry
+    epochs_[i]->transferStatistics(expected_); // copying values from epoch i-1 into epoch i according to population ancestry
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
-    fout << expected_.transpose() << "\n";
   }
 
   // final epoch
   epochs_.back()->transferStatistics(expected_);
   epochs_.back()->computeExpectedSumStats(expected_);
   epochs_.back()->updateMoments(expected_); // updates inside sslib
-  fout << expected_.transpose() << "\n";
-  fout.close();
 }
 
 void Model::printAliasedMoments(std::ostream& stream)

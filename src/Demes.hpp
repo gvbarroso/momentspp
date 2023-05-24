@@ -56,7 +56,6 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 
-
 #include <Bpp/Exceptions.h>
 
 #include "Population.hpp"

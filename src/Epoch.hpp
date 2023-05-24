@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 18/05/2023
+ * Last modified: 23/05/2023
  *
  */
 
@@ -42,8 +42,7 @@ private:
   size_t endGen_;
 
   std::vector<std::shared_ptr<Population>> pops_;
-  // each operator contains Eigen matrices and a subset of the parameters (Admixture is a special operator)
-  std::shared_ptr<Admixture> admixture_;
+  // each operator contains Eigen matrices and a subset of the parameters
   std::vector<std::shared_ptr<AbstractOperator>> operators_;
 
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
@@ -57,7 +56,6 @@ public:
   startGen_(0),
   endGen_(0),
   pops_(0),
-  admixture_(nullptr),
   operators_(0),
   transitionMatrix_(),
   steadYstate_()
@@ -65,7 +63,6 @@ public:
 
   Epoch(const std::string& name, SumStatsLibrary& ssl, size_t start, size_t end,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
-        const std::shared_ptr<Admixture> admixture,
         const std::vector<std::shared_ptr<Population>>& pops):
   bpp::AbstractParameterAliasable(""),
   name_(name),
@@ -73,16 +70,12 @@ public:
   startGen_(start),
   endGen_(end),
   pops_(pops),
-  admixture_(admixture),
   operators_(ops),
   transitionMatrix_(),
   steadYstate_()
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       addParameters_((*it)->getParameters());
-
-    if(admixture != nullptr)
-       addParameters_(admixture->getParameters());
 
     bpp::AbstractParameterAliasable::setNamespace(name + ".");
     init_();
@@ -160,9 +153,6 @@ public:
       stream << "\t";
       (*it)->printAttributes(stream);
     }
-
-    if(admixture_ != nullptr)
-      std::cout << admixture_->getLittleAdmixMat() << std::endl;
   }
 
   std::shared_ptr<Population> fetchPop(size_t id)

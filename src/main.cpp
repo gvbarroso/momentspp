@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 02/05/2023
+ * Last modified: 23/05/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 22/May/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 23/May/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -55,16 +55,16 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "Please fill in a text file with the following options and execute from the command line:\nmomentspp params=[file]\n\n";
+    std::cout << "Please fill in a text file with the following options and execute from the command line:\nmomentspp params=file_name\n\n";
 
-    std::cout << "label = # optional, default = 'moments++'\n";
+    std::cout << "label = # optional string, default = 'moments++'\n";
     std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the (starting) model\n";
     std::cout << "stats_file = # optional, relative path to file listing observed summary statistics from sampled populations, default = 'none'\n\n";
 
-    std::cout << "optimizer = # optional, default = 'BFGS'\n";
-    std::cout << "tolerance = # optional, default = 1e-6\n";
-    std::cout << "compress_moments = # optional, default = 1 (TRUE)\n";
-    std::cout << "num_threads = # optional, default = num_cores / 2\n";
+    std::cout << "optimizer = # optional string, default = 'BFGS'\n";
+    std::cout << "tolerance = # optional double, default = 1e-6\n";
+    std::cout << "compress_moments = # optional boolean, default = TRUE\n";
+    std::cout << "num_threads = # optional unsigned int, default = num_cores / 2\n";
 
     std::cout << "For more information, please email gvbarroso@gmail.com " << std::endl;
     return(0);
@@ -94,44 +94,44 @@ int main(int argc, char *argv[]) {
 
     SumStatsLibrary sslib(demes.getPopsVec()[i], options.compressMoments());
 
+    std::vector<std::shared_ptr<AbstractOperator>> operators(0);
+
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * must have epoch-specific recombination and mutation operators because they depend on pop indices (popss[i]),
      * even though inside Model we alias r and mu across epochs
+     * NOTE Admixture is modeled as the only operator in an epoch of 1 generation
      */
 
-    std::vector<double> drift(0);
-    drift.reserve(demes.getPopsVec()[i].size());
-
-    // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
-    for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
-      drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
-
-    std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
-    std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
-    std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
-    std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
-    std::shared_ptr<Admixture> admixOp = nullptr;
-
-    std::vector<std::shared_ptr<AbstractOperator>> operators(0);
-    operators.reserve(4);
-
-    if(demes.getNumPops(i) > 1)
+    if(!demes.getPulse(i).isZero(0))
     {
-      std::shared_ptr<Migration> migOp = std::make_shared<Migration>(demes.getMig(i), ic, sslib);
-      operators.emplace_back(migOp);
-
-      if(!demes.getPulse(i).isZero(0))
-      {
-        admixOp = std::make_shared<Admixture>(demes.getPulse(i), sslib);
-        admixOp->printDeltaLDMat(id + "_admix.csv", sslib);
-      }
+      operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
+      operators.back()->printDeltaLDMat(id + "_admix.csv", sslib);
     }
 
-    operators.emplace_back(driftOp);
-    operators.emplace_back(recOp);
-    operators.emplace_back(mutOp);
+    else
+    {
+      std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
 
-    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, admixOp, demes.getPopsVec()[i]));
+      std::vector<double> drift(0);
+      drift.reserve(demes.getPopsVec()[i].size());
+
+      // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
+      for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
+        drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
+
+      std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
+      std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
+      std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
+
+      if(demes.getNumPops(i) > 1) // && ! demes.getMig(i).isZero() ?
+        operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
+
+      operators.push_back(driftOp);
+      operators.push_back(recOp);
+      operators.push_back(mutOp);
+    }
+
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
     epochs.back()->printAttributes(std::cout);
   }
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 08/05/2023
+ * Last modified: 23/05/2023
  *
  */
 
@@ -16,7 +16,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   {
     updateOperators_(params);
 
-    Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
+    Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init
 
     for(size_t i = 1; i < operators_.size(); ++i)
       mat = mat * operators_[i]->getTransitionMatrix();
@@ -27,10 +27,8 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
 void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
 {
-  y = transitionMatrix_.pow(duration()) * y; // uses Eigen multi-threading
-
-  if(admixture_ != nullptr) // admixture happens as a pulse at the *end* of epoch
-    y = admixture_->getTransitionMatrix() * y;
+  // heavy linear algebra, uses Eigen multi-threading
+  y = transitionMatrix_.pow(duration()) * y;
 }
 
 std::vector<size_t> Epoch::fetchSelectedPopIds()
