@@ -4,1318 +4,191 @@ author: "Gustavo V. Barroso"
 date: "`r Sys.Date()`"
 output:
   pdf_document:
-    toc: true
-    number_sections: true
-    toc_depth: 3
+  toc: true
+number_sections: true
+toc_depth: 3
 ---
-
+  
 ```{r setup, message=FALSE, warning=FALSE}
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo=TRUE)
 
 library(tidyverse)
+library(cowplot)
 
 # for running moments.LD:
 library(reticulate)
 use_python("/usr/bin/python3")
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
-
-save_plots <- FALSE # should this script ggsave plots to root.dir?
 ```
 
-# Setting up scenarios to test (parameter combinations)
-## 1 population parameters
+# Validating and visualizing demes models
 
-```{r 1-pop-params, include=FALSE, message=FALSE, warning=FALSE}
+```{bash draw-models, engine.opts='-i', include=TRUE, eval=TRUE}
 
-r <- c(1e-8, 1e-7, 1e-6)
-mu <- c(1e-8, 1e-7, 1e-6)
-N <- c(1e+3, 1e+4, 1e+5)
+source ~/.bashrc
 
-params_1_pop <- crossing(N, mu, r) %>% arrange(N, mu, r)
-print(params_1_pop, n=nrow(params_1_pop))
-write.table(params_1_pop, "params_1_pop.csv", quote=F, sep=",", row.names=F)
-```
+for((i=1;i<=6;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
 
-## 2 populations parameters
-
-```{r 2-pops-params, include=TRUE, message=FALSE, warning=FALSE}
-
-mu <- c(1e-7)
-r <- c(0, 1e-6)
-N_0 <- c(1e+4, 1e+5)
-N_1 <- c(1e+5)
-m_01 <- c(0, 1e-5)
-m_10 <- c(1e-6, 1e-5)
-num_epochs <- c(1, 2)
-num_gen_epoch_2 <- 5000
-
-params_2_pop <- crossing(num_epochs, mu, r, m_01, m_10, N_0, N_1) 
-params_2_pop <- mutate(params_2_pop, 
-                       N_0_epoch_2 = case_when(num_epochs==1 ~ NA_real_,
-                                               num_epochs==2 ~ (N_0)))
-params_2_pop <- mutate(params_2_pop, 
-                       N_1_epoch_2 = case_when(num_epochs==1 ~ NA_real_,
-                                               num_epochs==2 ~ (N_1)))
-params_2_pop <- mutate(params_2_pop, 
-                       num_gen_epoch_2 = case_when(num_epochs==1 ~ NA_real_, 
-                                                   num_epochs==2 ~ 5000))
-print(params_2_pop, n=nrow(params_2_pop))
-write.table(params_2_pop, "params_2_pops.csv", quote=F, sep=",", row.names=F)
-```
-
-## 3 populations parameters
-
-```{r 3-pops-params, include=TRUE, message=FALSE, warning=FALSE}
-
-mu <- 1e-6
-r <- 1e-6
-N_0 <- 1e+4
-N_1 <- 1e+4
-N_2 <- 1e+4
-
-m_01 <- c(0, 1e-4)
-m_02 <- c(0, 1e-4)
-m_10 <- c(0, 1e-4)
-m_12 <- c(1e-4, 1e-4)
-m_20 <- c(1e-4, 1e-4)
-m_21 <- c(0, 1e-4)
-
-params_3_pop <- crossing(mu, r, 
-                         N_0, N_1, N_2,
-                         m_01, m_02, m_10, m_12, m_20, m_21) 
-
-print(params_3_pop, n=nrow(params_3_pop))
-write.table(params_3_pop, "params_3_pops.csv", sep=",", quote=F, row.names=F)
-```
-
-## 4 populations parameters
-
-```{r 4-pops-params, include=TRUE, message=FALSE, warning=FALSE}
-
-mu <- 1e-6
-r <- 1e-6
-N_0 <- 1e+4
-N_1 <- 1e+4
-N_2 <- 1e+4
-N_3 <- 1e+4
-
-m_01 <- c(1e-4)
-m_02 <- c(1e-4)
-m_03 <- c(1e-4)
-m_10 <- c(1e-4)
-m_12 <- c(0, 1e-4)
-m_13 <- c(0, 1e-4)
-m_20 <- c(1e-4)
-m_21 <- c(0)
-m_23 <- c(0)
-m_30 <- c(1e-4)
-m_31 <- c(1e-4)
-m_32 <- c(1e-4)
-
-params_4_pop <- crossing(mu, r, 
-                         N_0, N_1, N_2, N_3,
-                         m_01, m_02, m_03,
-                         m_10, m_12, m_13,
-                         m_20, m_21, m_23,
-                         m_30, m_31, m_32) 
-
-print(params_4_pop, n=nrow(params_4_pop))
-write.table(params_4_pop, "params_4_pops.csv", sep=",", quote=F, row.names=F)
-```
-
-## 5 populations parameters
-
-```{r 5-pops-params, include=TRUE, message=FALSE, warning=FALSE}
-
-mu <- 1e-6
-r <- 1e-6
-N_0 <- 1e+4
-N_1 <- 1e+4
-N_2 <- 1e+4
-N_3 <- 1e+4
-N_4 <- 1e+4
-
-m_01 <- c(1e-4)
-m_02 <- c(1e-4)
-m_03 <- c(1e-4)
-m_04 <- c(1e-4)
-m_10 <- c(1e-4)
-m_12 <- c(1e-4)
-m_13 <- c(0)
-m_14 <- c(1e-4)
-m_20 <- c(1e-4)
-m_21 <- c(0)
-m_23 <- c(0)
-m_24 <- c(1e-4)
-m_30 <- c(1e-4)
-m_31 <- c(1e-4)
-m_32 <- c(1e-4)
-m_34 <- c(0)
-m_40 <- c(1e-4)
-m_41 <- c(1e-4)
-m_42 <- c(1e-4)
-m_43 <- c(0)
-
-params_5_pop <- crossing(mu, r, 
-                         N_0, N_1, N_2, N_3, N_4,
-                         m_01, m_02, m_03, m_04,
-                         m_10, m_12, m_13, m_14,
-                         m_20, m_21, m_23, m_24,
-                         m_30, m_31, m_32, m_34,
-                         m_40, m_41, m_42, m_43) 
-
-print(params_5_pop, n=nrow(params_5_pop))
-write.table(params_5_pop, "params_5_pops.csv", sep=",", quote=F, row.names=F)
 ```
 
 # Running moments++
 
-```{bash run-moments++, engine.opts='-i', include=FALSE}
+```{bash run-moments++, engine.opts='-i', include=TRUE}
 
 source ~/.bashrc
 
-# 1 population
-input="params_1_pop.csv";
-id=1 # line counter, scenario_id
-
-{
-  read # ignores header 
-  while IFS=, read -r a b c; do
-    momentspp params=opt_1.bpp i=$id N=$a u=$b r=$c
-    ((id=id+1))
-  done
-} < "$input"
-
-# 2 populations
-input="params_2_pops.csv";
-id=1 # line counter, scenario_id
-
-{
-  read # ignores header 
-  while IFS=, read -r a b c d e f g h i j
-  do
-    momentspp params=opt_2.bpp i=$id epochs=$a N0=$f N1=$g m01=$d m10=$e u=$b r=$c
-    ((id=id+1))
-  done 
-} < "$input"
-
-# 3 populations
-input="params_3_pops.csv";
-id=1 # line counter, scenario_id
-
-{
-  read # ignores header 
-  while IFS=, read -r a b c d e f g h i j k
-  do
-    momentspp params=opt_3.bpp i=$id N0=$c N1=$d N2=$e m01=$f m02=$g m10=$h m12=$i m20=$j m21=$k u=$a r=$b
-    ((id=id+1))
-  done 
-} < "$input"
-
-# 4 populations
-input="params_4_pops.csv";
-id=1 # line counter, scenario_id
-
-{
-  read # ignores header 
-  while IFS=, read -r a b c d e f g h i j k l m n o p q r
-  do
-    momentspp params=opt_4.bpp i=$id N0=$c N1=$d N2=$e N3=$f m01=$g m02=$h m03=$i m10=$j m12=$k m13=$l m20=$m m21=$n m23=$o m30=$p m31=$q m32=$r u=$a r=$b
-    ((id=id+1))
-  done 
-} < "$input"
-
-# 5 populations
-input="params_5_pops.csv";
-id=1 # line counter, scenario_id
-
-{
-  read # ignores header 
-  while IFS=, read -r a b c d e f g h i j k l m n o p q r s t u v x w y z last
-  do
-    momentspp params=opt_5.bpp i=$id N0=$c N1=$d N2=$e N3=$f N4=$g m01=$h m02=$i m03=$j m04=$k m10=$l m12=$m m13=$n m14=$o m20=$p m21=$q m23=$r m24=$s m30=$t m31=$u m32=$v m34=$x m40=$w m41=$y m42=$z m43=$last u=$a r=$b
-    ((id=id+1))
-  done 
-} < "$input"
+momentspp params=opt.bpp FILE=model_1.yaml LABEL=model_1
+momentspp params=opt.bpp FILE=model_2.yaml LABEL=model_2
+momentspp params=opt.bpp FILE=model_3.yaml LABEL=model_3
+momentspp params=opt.bpp FILE=model_4.yaml LABEL=model_4
+momentspp params=opt.bpp FILE=model_5.yaml LABEL=model_5
+momentspp params=opt.bpp FILE=model_6.yaml LABEL=model_6
 
 ```
 
 # Running moments.LD
 
-```{python run-momentsLD, include=FALSE}
+```{python run-momentsLD, include=TRUE, eval=TRUE}
 
 import moments.LD
-import numpy as np
+import demes
 
-# 1 population
-with open("params_1_pop.csv") as fin:
-    params = fin.readlines()
-  
-p_names = params[0].strip().split(",")
+def simulate_ld(f, sampled_demes):
+    """
+    f: the demes filename
+    """
+    g = demes.load(f)
+    u = g.metadata["mutation"]["rate"]
+    r = g.metadata["recombination"]["rate"]
 
-with open("moments_LD_1_pop_out.csv", "w+") as fout:
-    stats = moments.LD.Util.moment_names(1)
+    y = moments.LD.LDstats.from_demes(g, sampled_demes, r=r, u=u)
+    return y
+
+with open("moments_LD_model_1.csv", "w+") as fout:
+    f = "model_1.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
     l = ",".join(stats[0] + stats[1]) + "\n"
     fout.write(l)
-    for p_list in params[1:]:
-        p_list = p_list.split(",")
-        N = float(p_list[p_names.index('N')])
-        u = float(p_list[p_names.index('mu')])
-        r = float(p_list[p_names.index('r')])
-        y = moments.LD.Demographics1D.snm(rho = 4 * N * r, theta = 4 * N * u)
-        l = ",".join([str(_) for _ in y.LD()[0]]) + "," + str(y.H()[0]) + "\n"
-        fout.write(l)
-
-# 2 populations
-with open("params_2_pops.csv") as fin:
-    params = fin.readlines()
-
-p_names = params[0].strip().split(",")
-
-with open("moments_LD_2_pops_out.csv", "w+") as fout:
-    stats = moments.LD.Util.moment_names(2)
-    l = ",".join(stats[0] + stats[1]) + "\n"
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
     fout.write(l)
-    for p_list in params[1:]:
-        p_list = p_list.split(",")
-        u = eval(p_list[p_names.index('mu')])
-        r = eval(p_list[p_names.index('r')])
-        m01 = eval(p_list[p_names.index('m_10')]) # invert ids w.r.t. moments++
-        m10 = eval(p_list[p_names.index('m_01')]) # invert ids w.r.t. moments++
-        N0 = eval(p_list[p_names.index('N_0')])
-        N1 = eval(p_list[p_names.index('N_1')])
-        rho = 4 * N0 * r
-        theta = 4 * N0 * u
-        nus = [N0 / N0, N1 / N0]
-        m = [[0, 2 * N0 * m01], [2 * N0 * m10, 0]]
-        y = moments.LD.LDstats(
-            moments.LD.Numerics.steady_state(nus, m, rho=rho, theta=theta),
-            num_pops=2,
-        )
-        num_epochs = eval(p_list[p_names.index('num_epochs')])
-        if num_epochs == 2:
-            T = eval(p_list[p_names.index('num_gen_epoch_2')]) / 2 / N1
-            N0b = eval(p_list[p_names.index('N_0_epoch_2')])
-            N1b = eval(p_list[p_names.index('N_1_epoch_2')])
-            nus = [N0b / N0, N1b / N0]
-            y.integrate(nus, T, theta=theta, rho=rho, m=m)
-        else:
-            assert num_epochs == 1
-        l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-        fout.write(l)
-
-# 3 populations        
-with open("params_3_pops.csv") as fin:
-    params = fin.readlines()
-
-p_names = params[0].strip().split(",")
-
-with open("moments_LD_3_pops_out.csv", "w+") as fout:
-    stats = moments.LD.Util.moment_names(3)
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    for p_list in params[1:]:
-        p_list = p_list.split(",")
-        u = eval(p_list[p_names.index('mu')])
-        r = eval(p_list[p_names.index('r')])
-        m01 = eval(p_list[p_names.index('m_10')]) # invert ids w.r.t. moments++
-        m02 = eval(p_list[p_names.index('m_20')]) # invert ids w.r.t. moments++
-        m10 = eval(p_list[p_names.index('m_01')]) # invert ids w.r.t. moments++
-        m12 = eval(p_list[p_names.index('m_21')]) # invert ids w.r.t. moments++
-        m20 = eval(p_list[p_names.index('m_02')]) # invert ids w.r.t. moments++
-        m21 = eval(p_list[p_names.index('m_12')]) # invert ids w.r.t. moments++
-        N0 = eval(p_list[p_names.index('N_0')])
-        N1 = eval(p_list[p_names.index('N_1')])
-        N2 = eval(p_list[p_names.index('N_2')])
-        rho = 4 * N0 * r
-        theta = 4 * N0 * u
-        nus = [N0 / N0, N1 / N0, N2 / N0]
-        m = [[0, 2 * N0 * m01, 2 * N0 * m02],
-             [2 * N0 * m10, 0, 2 * N0 * m12],
-             [2 * N0 * m20, 2 * N0 * m21, 0]]
-        y = moments.LD.LDstats(
-            moments.LD.Numerics.steady_state(nus, m, rho=rho, theta=theta),
-            num_pops=3,
-        )
-        l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-        fout.write(l)
-        
-# 4 populations        
-with open("params_4_pops.csv") as fin:
-    params = fin.readlines()
-
-p_names = params[0].strip().split(",")
-
-with open("moments_LD_4_pops_out.csv", "w+") as fout:
-    stats = moments.LD.Util.moment_names(4)
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    for p_list in params[1:]:
-        p_list = p_list.split(",")
-        u = eval(p_list[p_names.index('mu')])
-        r = eval(p_list[p_names.index('r')])
-        m01 = eval(p_list[p_names.index('m_10')]) # invert ids w.r.t. moments++
-        m02 = eval(p_list[p_names.index('m_20')]) # invert ids w.r.t. moments++
-        m03 = eval(p_list[p_names.index('m_30')]) # invert ids w.r.t. moments++
-        m10 = eval(p_list[p_names.index('m_01')]) # invert ids w.r.t. moments++
-        m12 = eval(p_list[p_names.index('m_21')]) # invert ids w.r.t. moments++
-        m13 = eval(p_list[p_names.index('m_31')]) # invert ids w.r.t. moments++
-        m20 = eval(p_list[p_names.index('m_02')]) # invert ids w.r.t. moments++
-        m21 = eval(p_list[p_names.index('m_12')]) # invert ids w.r.t. moments++
-        m23 = eval(p_list[p_names.index('m_32')]) # invert ids w.r.t. moments++
-        m30 = eval(p_list[p_names.index('m_03')]) # invert ids w.r.t. moments++
-        m31 = eval(p_list[p_names.index('m_13')]) # invert ids w.r.t. moments++
-        m32 = eval(p_list[p_names.index('m_23')]) # invert ids w.r.t. moments++
-        N0 = eval(p_list[p_names.index('N_0')])
-        N1 = eval(p_list[p_names.index('N_1')])
-        N2 = eval(p_list[p_names.index('N_2')])
-        N3 = eval(p_list[p_names.index('N_3')])
-        rho = 4 * N0 * r
-        theta = 4 * N0 * u
-        nus = [N0 / N0, N1 / N0, N2 / N0, N3 / N0]
-        m = [[0, 2 * N0 * m01, 2 * N0 * m02, 2 * N0 * m03],
-             [2 * N0 * m10, 0, 2 * N0 * m12, 2 * N0 * m13],
-             [2 * N0 * m20, 2 * N0 * m21, 0, 2 * N0 * m23],
-             [2 * N0 * m30, 2 * N0 * m31, 2 * N0 * m32, 0]]
-        y = moments.LD.LDstats(
-            moments.LD.Numerics.steady_state(nus, m, rho=rho, theta=theta),
-            num_pops=4,
-        )
-        l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-        fout.write(l)
-        
-# 5 populations        
-with open("params_5_pops.csv") as fin:
-    params = fin.readlines()
-
-p_names = params[0].strip().split(",")
-
-with open("moments_LD_5_pops_out.csv", "w+") as fout:
-    stats = moments.LD.Util.moment_names(5)
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    for p_list in params[1:]:
-        p_list = p_list.split(",")
-        u = eval(p_list[p_names.index('mu')])
-        r = eval(p_list[p_names.index('r')])
-        m01 = eval(p_list[p_names.index('m_10')]) # invert ids w.r.t. moments++
-        m02 = eval(p_list[p_names.index('m_20')]) # invert ids w.r.t. moments++
-        m03 = eval(p_list[p_names.index('m_30')]) # invert ids w.r.t. moments++
-        m04 = eval(p_list[p_names.index('m_40')]) # invert ids w.r.t. moments++
-        m10 = eval(p_list[p_names.index('m_01')]) # invert ids w.r.t. moments++
-        m12 = eval(p_list[p_names.index('m_21')]) # invert ids w.r.t. moments++
-        m13 = eval(p_list[p_names.index('m_31')]) # invert ids w.r.t. moments++
-        m14 = eval(p_list[p_names.index('m_41')]) # invert ids w.r.t. moments++
-        m20 = eval(p_list[p_names.index('m_02')]) # invert ids w.r.t. moments++
-        m21 = eval(p_list[p_names.index('m_12')]) # invert ids w.r.t. moments++
-        m23 = eval(p_list[p_names.index('m_32')]) # invert ids w.r.t. moments++
-        m24 = eval(p_list[p_names.index('m_42')]) # invert ids w.r.t. moments++
-        m30 = eval(p_list[p_names.index('m_03')]) # invert ids w.r.t. moments++
-        m31 = eval(p_list[p_names.index('m_13')]) # invert ids w.r.t. moments++
-        m32 = eval(p_list[p_names.index('m_23')]) # invert ids w.r.t. moments++
-        m34 = eval(p_list[p_names.index('m_43')]) # invert ids w.r.t. moments++
-        m40 = eval(p_list[p_names.index('m_04')]) # invert ids w.r.t. moments++
-        m41 = eval(p_list[p_names.index('m_14')]) # invert ids w.r.t. moments++
-        m42 = eval(p_list[p_names.index('m_24')]) # invert ids w.r.t. moments++
-        m43 = eval(p_list[p_names.index('m_34')]) # invert ids w.r.t. moments++
-        N0 = eval(p_list[p_names.index('N_0')])
-        N1 = eval(p_list[p_names.index('N_1')])
-        N2 = eval(p_list[p_names.index('N_2')])
-        N3 = eval(p_list[p_names.index('N_3')])
-        N4 = eval(p_list[p_names.index('N_4')])
-        rho = 4 * N0 * r
-        theta = 4 * N0 * u
-        nus = [N0 / N0, N1 / N0, N2 / N0, N3 / N0, N4 / N0]
-        m = [[0, 2 * N0 * m01, 2 * N0 * m02, 2 * N0 * m03, 2 * N0 * m04],
-             [2 * N0 * m10, 0, 2 * N0 * m12, 2 * N0 * m13, 2 * N0 * m14],
-             [2 * N0 * m20, 2 * N0 * m21, 0, 2 * N0 * m23, 2 * N0 * m24],
-             [2 * N0 * m30, 2 * N0 * m31, 2 * N0 * m32, 0, 2 * N0 * m34],
-             [2 * N0 * m40, 2 * N0 * m41, 2 * N0 * m42, 2 * N0 * m43, 0]]
-        y = moments.LD.LDstats(
-            moments.LD.Numerics.steady_state(nus, m, rho=rho, theta=theta),
-            num_pops=5,
-        )
-        l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-        fout.write(l)
-```
-
-# 1-population plots
-## moments++
-
-```{r 1-population-plots, include=FALSE, message=FALSE, warning=FALSE}
-
-params_1_pop <- read.csv("params_1_pop.csv", header=T, sep=",")
-num_scenarios <- nrow(params_1_pop)
-
-# extracting names of moments
-stats_1_pop <- read.table("1-pop_scenario_1_expectations.txt")[,1]
-num_stats <- length(stats_1_pop)
-
-momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
-names(momspp) <- stats_1_pop
-write.table(momspp, "moments++_1_pop_stats.csv", sep=",", row.names=F, quote=F)
-
-idx=1
-for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("1-pop_scenario_", idx, "_expectations.txt", sep=""))
-  momspp[idx,] <- t(tmp[ncol(tmp)])
-  idx=idx + 1
-}
-
-stats <- bind_cols(momspp, params_1_pop)
-dat_stats <- pivot_longer(stats, cols=all_of(stats_1_pop), names_to="variable")
-
-p <- ggplot(data=dat_stats, aes(x=variable, y=value, shape=as.factor(N)))
-p <- p + geom_point(size=1) + theme_bw() + facet_grid(r~mu)
-p <- p + scale_shape_manual(values=c(0, 1, 2, 3, 4))
-p <- p + scale_y_continuous(trans="log10")
-p <- p + labs(title="1-Pop Moments x r (rows) and u (cols)",
-              x="Moment", y="Value", shape="N")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p
-
-if(save_plots) {
-  ggsave("moments++_1_pop.png", p, device="png", width=7, height=7)
-}
-```
-
-## Comparison with moments.LD 
-
-### moments/scenarios together
-
-```{r 1-population-LDx++A, include=TRUE}
-
-py_moments <- read.csv("moments_LD_1_pop_out.csv") # out from python chunk 
-
-common_moments <- intersect(names(momspp), names(py_moments))
-match_moments <- bind_rows(select(momspp, all_of(common_moments)),
-                           select(py_moments, all_of(common_moments)))
-match_moments$scenario <- rep(seq(1:num_scenarios), 2)
-match_moments$method <- c(rep("moments++", num_scenarios),
-                          rep("moments.LD", num_scenarios))
-match_moments$scenario <- rep(seq(1:num_scenarios), 2)
-
-full_tbl <- bind_cols(match_moments, 
-                      bind_rows(params_1_pop, params_1_pop)) 
-
-# following lines help visualization in raw table
-full_tbl$sep_moments <- paste(full_tbl$scenario, full_tbl$method, sep="_")
-
-dat_matched <- pivot_longer(full_tbl,
-                            cols=all_of(common_moments),
-                            names_to="variable") 
-
-dat_matched$matched_moments <- paste(dat_matched$variable, 
-                                     dat_matched$sep_moments, 
-                                     sep="_")
-
-dat_matched <- arrange(dat_matched, scenario, matched_moments)
-dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
-write.table(dat_matched, "LD_++_1-pop.csv", sep=",", row.names=F, quote=F)
-
-p <- ggplot(data=dat_matched, aes(x=variable, y=value, shape=method))
-p <- p + geom_point(size=3) + theme_bw()
-p <- p + labs(title="1-Pop moments++ vs moments.LD",
-                x="Moment", y="Value", shape="method")
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1,2))
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-print(p)
-
-if(save_plots) {
-  ggsave("moments++_vs_moments.LD_1-pop_all_stats.png",
-          p, device="png", width=7, height=7)
-}
-```
-
-### for each moment/scenario separately
-
-```{r 1-population-LDx++B, include=FALSE, message=FALSE, warning=FALSE} 
-
-for(i in 1:length(common_moments)) {
-  
-  mom <- common_moments[i]
-  
-  p <- ggplot(data=filter(dat_matched, variable==mom),
-              aes(x=scenario, y=value, shape=method))
-  p <- p + geom_point(size=5) + theme_bw()
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + scale_shape_manual(values=c(1,2))
-  p <- p + labs(title=paste(mom, "moments++ vs moments.LD", sep=" "),
-                x="Scenario", y="Value")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave(paste(mom, "_moments++_vs_moments.LD_1-pop.png", sep=""),
-           p, device="png", width=7, height=7)
-  }
-}
-
-for(i in 1:num_scenarios) {
-  
-  p <- ggplot(data=filter(dat_matched, scenario==i), 
-              aes(x=variable, y=value, shape=method))
-  p <- p + geom_point(size=3) + theme_bw()
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + scale_shape_manual(values=c(1,2))
-  p <- p + labs(title=paste("scenario", i, "(moments++ vs moments.LD)", sep=" "),
-                x="Moment", y="Value")
-  p <- p + theme(axis.title=element_text(size=12), 
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=10, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave(paste("scenario", i, "moments++_vs_moments.LD_1-pop.png", sep="_"),
-           p, device="png", width=7, height=7)
-  }
-}
-```
-
-# 2-populations plots
-## moments++
-
-```{r 2-population-prep, include=FALSE, message=FALSE, warning=FALSE}
-
-params_2_pops <- read.csv("params_2_pops.csv", header=T, sep=",")
-num_scenarios <- nrow(params_2_pops)
-
-# extracting names of moments
-stats_2_pops <- read.table("2-pops_scenario_1_expectations.txt")[,1]
-num_stats <- length(stats_2_pops)
-
-momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
-names(momspp) <- stats_2_pops
-
-idx=1
-for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("2-pops_scenario_", idx, "_expectations.txt", sep=""))
-  momspp[idx,] <- t(tmp[ncol(tmp)])
-  idx=idx + 1
-}
-
-stats <- bind_cols(momspp, params_2_pops)
-stats$scenario <- 1:nrow(stats)
-write.table(momspp, "moments++_2_pops_stats.csv", sep=",", row.names=F, quote=F)
-
-dat_stats <- pivot_longer(stats, cols=all_of(stats_2_pops), names_to="variable")
-
-p <- ggplot(data=dat_stats, aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=5) + theme_bw()
-p <- p + labs(title = "Moments++ expectations", 
-              x="Moment", y="Value", color="scenario")
-p <- p + scale_y_continuous(trans="log10")
-p <- p + theme(axis.title=element_text(size=20),
-                 axis.text=element_text(size=14),
-                 axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
-                 legend.position = "bottom")
-p
-if(save_plots) {
-  ggsave("moments++_2_pops.png", p1, device="png", width=7, height=7)
-}
-```
-
-## Comparison with moments.LD 
-
-### moments/scenarios together
-
-```{r 2-population-LDx++A, include=TRUE, message=FALSE, warning=FALSE}
-
-py_moments <- read.csv("moments_LD_2_pops_out.csv") # out from python chunk 
-
-common_moments <- intersect(names(momspp), names(py_moments))
-match_moments <- bind_rows(select(momspp, all_of(common_moments)),
-                           select(py_moments, all_of(common_moments)))
-match_moments$scenario <- rep(seq(1:num_scenarios), 2)
-match_moments$method <- c(rep("moments++", num_scenarios),
-                          rep("moments.LD", num_scenarios))
-full_tbl <- bind_cols(match_moments, 
-                      bind_rows(params_2_pop, params_2_pop)) 
-
-# following lines help visualization in raw table
-full_tbl$sep_moments <- paste(full_tbl$scenario, full_tbl$method, sep="_")
-
-dat_matched <- pivot_longer(full_tbl,
-                            cols=all_of(common_moments),
-                            names_to="variable") 
-
-dat_matched$matched_moments <- paste(dat_matched$variable, 
-                                     dat_matched$sep_moments, 
-                                     sep="_")
-
-dat_matched <- arrange(dat_matched, scenario, matched_moments)
-dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
-
-write.table(dat_matched, "LD_++_2-pops.csv", sep=",", row.names=F, quote=F)
-
-if(var(dat_matched$num_epochs) > 0) {
-  p <- ggplot(data=dat_matched,
-              aes(x=variable, y=value, shape=method, color=as.factor(num_epochs))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + scale_shape_manual(values=c(1, 2))
-  p <- p + labs(title = "Expectations x N_0 (rows) and r (cols)",
-                x="Moment", y="Value", shape="Method", color="# Epochs")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("expect_moments++_vs_moments.LD_2-pops~num_epochs.png",
-           p, device="png", width=7, height=7)
-  }
     
-  vals <- unique(dat_matched$num_epochs)
-  
-  for(i in vals) {
-    p <- ggplot(data=filter(dat_matched, num_epochs==vals[i]),
-                aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-    p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
-    p <- p + scale_y_continuous(trans="log10")
-    p <- p + scale_shape_manual(values=c(1, 2))
-    p <- p + labs(title=paste("Expectations (# epochs == ", vals[i], 
-                  ") x N_0 (rows) and r (cols)", sep = ""),
-                  x="Moment", y="Value", shape="Method", color="Scenario")
-    p <- p + theme(axis.title=element_text(size=12),
-                   axis.text=element_text(size=10),
-                   axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                   legend.position="bottom")
-    print(p)
-  
-    if(save_plots) {
-      ggsave(paste("expect_moments++_vs_moments.LD_2-pops_", vals[i],
-                   "epochs.png", sep=""), p, device="png", width=7, height=7)
-    }
-  }
-}
-
-if(any(dat_matched$m_01 == 0)) {
-  p <- ggplot(data=filter(dat_matched, m_01==0),
-              aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + scale_shape_manual(values=c(1, 2))
-  p <- p + labs(title = "Expectations (m_01 == 0) x N_0 (rows) and r (cols)",
-                x="Moment", y="Value", shape="Method", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("expect_moments++_vs_moments.LD_2-pops_m01_zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
-
-if(any(dat_matched$m_01 > 0)) {
-  p <- ggplot(data=filter(dat_matched, m_01 > 0),
-              aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~r)
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + scale_shape_manual(values=c(1, 2))
-  p <- p + labs(title="Expectations (m_01 > 0) x N_0 (rows) and r (cols)",
-                x="Moment", y="Value", shape="Method", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10), 
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("expect_moments++_vs_moments.LD_2-pops_m01_non-zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
-
-if(any(dat_matched$r == 0)) {
-  p <- ggplot(data=filter(dat_matched, r==0),
-               aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + scale_shape_manual(values=c(1, 2))
-  p <- p + labs(title = "Expectations (r == 0) x N_0 (rows) and m_01 (cols)",
-                x="Moment", y="Value", shape="Method", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("expect_moments++_vs_moments.LD_2-pops_r_zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
-
-if(any(dat_matched$r > 0)) {
-  p <- ggplot(data=filter(dat_matched, r > 0),
-              aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-  p <- p + geom_point(size=2) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + scale_shape_manual(values=c(1, 2))
-  p <- p + labs(title="Expectations (r > 0) x N_0 (rows) and m_01 (cols)",
-                x="Moment", y="Value", shape="Method", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10), 
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("expect_moments++_vs_moments.LD_2-pops_r_non-zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
-
-# visualizing the ratio in each moment
-ratio <- filter(full_tbl, method=="moments++") %>% select(common_moments) / 
-         filter(full_tbl, method=="moments.LD") %>% select(common_moments) 
-
-ratio_tbl <- bind_cols(ratio, select(filter(full_tbl, method=="moments++"),
-                                     -common_moments)) %>% select(-c("method",
-                                                                     "sep_moments"))
-
-dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="variable") 
-
-if(any(dat_ratio$m_01 == 0)) {
-  p <- ggplot(data=filter(dat_ratio, m_01==0),
-              aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
-  p <- p + labs(title = "Ratio ++/LD (m_01 == 0) x N_0 (rows) and r (cols)",
-                x="Moment", y="Value", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("ratio_moments++_vs_moments.LD_2-pops_m01_zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
-
-if(any(dat_ratio$m_01 > 0)) {
-  p <- ggplot(data=filter(dat_ratio, m_01 > 0),
-              aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~r)
-  p <- p + labs(title="Ratio ++/LD (m_01 > 0) x N_0 (rows) and r (cols)",
-                x="Moment", y="Value", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10), 
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("ratio_moments++_vs_moments.LD_2-pops_m01_non-zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
-
-if(any(dat_ratio$r == 0)) {
-  p <- ggplot(data=filter(dat_ratio, r==0),
-               aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + labs(title = "Ratio ++/LD (r == 0) x N_0 (rows) and m_01 (cols)",
-                x="Moment", y="Value", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("ratio_moments++_vs_moments.LD_2-pops_r_zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
-
-if(any(dat_ratio$r > 0)) {
-  p <- ggplot(data=filter(dat_ratio, r > 0),
-              aes(x=variable, y=value, color=as.factor(scenario))) 
-  p <- p + geom_point(size=1) + theme_bw() + facet_grid(N_0~m_01)
-  p <- p + labs(title="Ratio ++/LD (r > 0) x N_0 (rows) and m_01 (cols)",
-                x="Moment", y="Value", shape="Method", color="Scenario")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10), 
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
-  print(p)
-  
-  if(save_plots) {
-    ggsave("ratio_moments++_vs_moments.LD_2-pops_r_non-zero.png",
-           p, device="png", width=7, height=7)
-  }
-}
+with open("moments_LD_model_2.csv", "w+") as fout:
+    f = "model_2.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_3.csv", "w+") as fout:
+    f = "model_3.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_4.csv", "w+") as fout:
+    f = "model_4.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_5.csv", "w+") as fout:
+    f = "model_5.yaml"
+    pops = ["A", "B", "C", "D"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_6.csv", "w+") as fout:
+    f = "model_6.yaml"
+    pops = ["A", "B", "C", "D"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
 ```
 
-### for each moment/scenario separately
+# plots
 
-```{r 2-population-LDx++B, include=FALSE, message=FALSE, warning=FALSE}
+```{r plots, include=TRUE, eval=FALSE}
 
-for(i in 1:length(common_moments)) {
-  
-  mom <- common_moments[i]
-  
-  p <- ggplot(data=filter(dat_matched, variable==mom),
-              aes(x=scenario, y=value, shape=method))
-  p <- p + geom_point(size=3) + theme_bw()
-  p <- p + scale_shape_manual(values=c(1, 2))
-  p <- p + scale_x_continuous(breaks=seq(1, num_scenarios))
-  p <- p + labs(title=paste(mom, "moments++ vs moments.LD (2-pops)", sep=" "),
-                x="Scenario", y="Value", shape="Method")
-  p <- p + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave(paste(mom, "_moments++_vs_moments.LD_2-pops.png", sep=""),
-           p, device="png", width=7, height=7)
-  }
-}
+# 3-populations (models 1-4)
+mpp_m1 <- read.table("model_1_expectations.txt") %>% select(!V2)
+mpp_m2 <- read.table("model_2_expectations.txt") %>% select(V3)
+mpp_m3 <- read.table("model_3_expectations.txt") %>% select(V3)
+mpp_m4 <- read.table("model_4_expectations.txt") %>% select(V3)
 
-for(i in 1:num_scenarios) {
-  
-  p <- ggplot(data=filter(dat_matched, scenario==i), 
-              aes(x=variable, y=value, shape=method))
-  p <- p + geom_point(size=3) + theme_bw()
-  p <- p + scale_shape_manual(values=c(1, 2))
-  p <- p + scale_y_continuous(trans="log10")
-  p <- p + labs(title=paste("scenario", i, "(moments++ vs moments.LD)", sep=" "),
-                x="Moment", y="Value", shape="Method")
-  p <- p + theme(axis.title=element_text(size=12), 
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-  print(p)
-  
-  if(save_plots) {
-    ggsave(paste("scenario", i, "moments++_vs_moments.LD_2-pops.png", sep="_"),
-           p, device="png", width=7, height=7)
-  }
-}
-```
+momspp <- bind_cols(mpp_m1, mpp_m2, mpp_m3, mpp_m4)
+names(momspp) <- c("stat", "m1++", "m2++", "m3++", "m4++")
+momspp <- momspp[-31,]
+momspp <- slice(momspp, 1:24, 31:52, 25:30) # re-orders rows to match moments.LD
 
-# 3-populations plots
+py_m1 <- read.csv("moments_LD_model_1.csv") 
+py_m2 <- read.csv("moments_LD_model_2.csv") 
+py_m3 <- read.csv("moments_LD_model_3.csv") 
+py_m4 <- read.csv("moments_LD_model_4.csv") 
 
-## moments++
+py_moms <- as_tibble(cbind(names(py_m1), t(bind_rows(py_m1, py_m2, py_m3, py_m4))))
+names(py_moms) <- c("stat", "m1py", "m2py", "m3py", "m4py")
 
-```{r 3-population-prep, include=FALSE, message=FALSE, warning=FALSE}
+models <- bind_cols(momspp[,1:3], py_moms[,2:3])
+models <- head(models, - 6)
+names(models) <- c("stat", "admix++", "no-admix++", "admix_py", "no-admix_py")
+models$ratio_admix <- models$`admix++` / models$admix_py
+models$ratio_no_admix <- models$`no-admix++` / models$`no-admix_py`
 
-params_3_pops <- read.csv("params_3_pops.csv", header=T, sep=",")
-num_scenarios <- nrow(params_3_pops)
-
-# extracting names of moments
-stats_3_pops <- read.table("3-pops_scenario_1_expectations.txt")[,1]
-num_stats <- length(stats_3_pops)
-
-momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
-names(momspp) <- stats_3_pops
-
-idx=1
-for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("3-pops_scenario_", idx, "_expectations.txt", sep=""))
-  momspp[idx,] <- t(tmp[ncol(tmp)])
-  idx=idx + 1
-}
-
-stats <- bind_cols(momspp, params_3_pops)
-stats$scenario <- 1:nrow(stats)
-write.table(momspp, "moments++_3_pops_stats.csv", sep=",", row.names=F, quote=F)
-
-dat_stats <- pivot_longer(stats, cols=all_of(stats_3_pops), names_to="variable")
-
-p <- ggplot(data=dat_stats, aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=5) + theme_bw()
-p <- p + labs(title="Moments++ expectations", 
-              x="Moment", y="Value", color="scenario")
-p <- p + scale_y_continuous(trans="log10")
-p <- p + theme(axis.title=element_text(size=20),
-               axis.text=element_text(size=14),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
-               legend.position = "bottom")
-p
-if(save_plots) {
-  ggsave("moments++_3_pops.png", p1, device="png", width=7, height=7)
-}
-```
-
-## Comparison with moments.LD 
-
-```{r 3-population-LDx++A, include=TRUE, message=FALSE, warning=FALSE}
-
-py_moments <- read.csv("moments_LD_3_pops_out.csv") # out from python chunk 
-
-common_moments <- intersect(names(momspp), names(py_moments))
-match_moments <- bind_rows(select(momspp, all_of(common_moments)),
-                           select(py_moments, all_of(common_moments)))
-match_moments$scenario <- rep(seq(1:num_scenarios), 2)
-match_moments$method <- c(rep("moments++", num_scenarios),
-                          rep("moments.LD", num_scenarios))
-full_tbl <- bind_cols(match_moments, 
-                      bind_rows(params_3_pop, params_3_pop)) 
-
-# following lines help visualization in raw table
-full_tbl$sep_moments <- paste(full_tbl$scenario, full_tbl$method, sep="_")
-
-dat_matched <- pivot_longer(full_tbl,
-                            cols=all_of(common_moments),
-                            names_to="variable") 
-
-dat_matched$matched_moments <- paste(dat_matched$variable, 
-                                     dat_matched$sep_moments, 
-                                     sep="_")
-
-dat_matched <- arrange(dat_matched, scenario, matched_moments)
-dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
-
-write.table(dat_matched, "LD_++_3-pops.csv", sep=",", row.names=F, quote=F)
-
-p <- ggplot(data=dat_matched,
-            aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-p <- p + geom_point(size=2) + theme_bw()
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title = "Expectations",
-              x="Moment", y="Value", shape="Method", color="Scenario")
-p <- p + theme(axis.title=element_text(size=12),
+molten_admix <- pivot_longer(models, cols=starts_with("admix"))
+r <- ggplot(data=molten_admix, aes(x=stat, y=value, shape=name))
+r <- r + geom_point(size=3) + theme_bw()
+r <- r + labs(title="++ vs LD (pulse)", x="Moment", y="Value", shape="model")
+r <- r + scale_shape_manual(values=c(1, 2))
+r <- r + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
-print(p)
-  
-ggsave("expect_moments++_vs_moments.LD_3-pops.png",
-       p, device="png", width=10, height=10)
-  
-ratio <- filter(full_tbl, method=="moments++") %>% select(common_moments) / 
-         filter(full_tbl, method=="moments.LD") %>% select(common_moments) 
 
-ratio_tbl <- bind_cols(ratio,
-                       select(filter(full_tbl, method=="moments++"),
-                              -common_moments)) %>% select(-c("method",
-                                                              "sep_moments"))
-
-dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="variable")
-
-p <- ggplot(data=dat_ratio,
-            aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=1) + theme_bw()
-p <- p + labs(title = "Ratio ++/LD",
-              x="Moment", y="Value", color="Scenario")
-p <- p + theme(axis.title=element_text(size=12),
+molten_no_admix <- pivot_longer(models, cols=starts_with("no-admix"))
+s <- ggplot(data=molten_no_admix, aes(x=stat, y=value, shape=name))
+s <- s + geom_point(size=3) + theme_bw()
+s <- s + labs(title="++ vs LD (no-pulse)", x="Moment", y="Value", shape="model")
+s <- s + scale_shape_manual(values=c(1, 2))
+s <- s + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
-p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
-print(p)
 
-ggsave("ratio_moments++_vs_moments.LD_3-pops.png",
-       p, device="png", width=10, height=10)
-```
+plot <- plot_grid(r, s, ncol = 2)
+plot
 
-# 4-populations plots
-
-## moments++
-
-```{r 4-population-prep, include=FALSE, message=FALSE, warning=FALSE}
-
-params_4_pops <- read.csv("params_4_pops.csv", header=T, sep=",")
-num_scenarios <- nrow(params_4_pops)
-
-# extracting names of moments
-stats_4_pops <- read.table("4-pops_scenario_1_expectations.txt")[,1]
-num_stats <- length(stats_4_pops)
-
-momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
-names(momspp) <- stats_4_pops
-
-idx=1
-for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("4-pops_scenario_", idx, "_expectations.txt", sep=""))
-  momspp[idx,] <- t(tmp[ncol(tmp)])
-  idx=idx + 1
-}
-
-stats <- bind_cols(momspp, params_4_pops)
-stats$scenario <- 1:nrow(stats)
-write.table(momspp, "moments++_4_pops_stats.csv", sep=",", row.names=F, quote=F)
-
-dat_stats <- pivot_longer(stats, cols=all_of(stats_4_pops), names_to="variable")
-
-p <- ggplot(data=dat_stats, aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=5) + theme_bw()
-p <- p + labs(title="Moments++ expectations", 
-              x="Moment", y="Value", color="scenario")
-p <- p + scale_y_continuous(trans="log10")
-p <- p + theme(axis.title=element_text(size=20),
-               axis.text=element_text(size=14),
-               axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
-               legend.position = "bottom")
-p
-if(save_plots) {
-  ggsave("moments++_4_pops.png", p1, device="png", width=12, height=12)
-}
-```
-
-## Comparison with moments.LD 
-
-```{r 4-population-LDx++A, include=TRUE, message=FALSE, warning=FALSE}
-
-py_moments <- read.csv("moments_LD_4_pops_out.csv") # out from python chunk 
-
-common_moments <- intersect(names(momspp), names(py_moments))
-match_moments <- bind_rows(select(momspp, all_of(common_moments)),
-                           select(py_moments, all_of(common_moments)))
-match_moments$scenario <- rep(seq(1:num_scenarios), 2)
-match_moments$method <- c(rep("moments++", num_scenarios),
-                          rep("moments.LD", num_scenarios))
-full_tbl <- bind_cols(match_moments, 
-                      bind_rows(params_4_pop, params_4_pop)) 
-
-# following lines help visualization in raw table
-full_tbl$sep_moments <- paste(full_tbl$scenario, full_tbl$method, sep="_")
-
-dat_matched <- pivot_longer(full_tbl,
-                            cols=all_of(common_moments),
-                            names_to="variable") 
-
-dat_matched$matched_moments <- paste(dat_matched$variable, 
-                                     dat_matched$sep_moments, 
-                                     sep="_")
-
-dat_matched <- arrange(dat_matched, scenario, matched_moments)
-dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
-
-write.table(dat_matched, "LD_++_4-pops.csv", sep=",", row.names=F, quote=F)
-
-p <- ggplot(data=dat_matched,
-            aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-p <- p + geom_point(size=2) + theme_bw()
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title = "Expectations",
-              x="Moment", y="Value", shape="Method", color="Scenario")
-p <- p + theme(axis.title=element_text(size=12),
+molten_ratios <- pivot_longer(models, cols=starts_with("ratio"))
+t <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name))
+t <- t + geom_point(size=3) + theme_bw()
+t <- t + labs(title="++ / LD", x="Moment", y="Value", shape="model")
+t <- t + scale_shape_manual(values=c(1, 2))
+t <- t + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
-print(p)
-  
-ggsave("expect_moments++_vs_moments.LD_4-pops.png",
-       p, device="png", width=12, height=12)
-  
-ratio <- filter(full_tbl, method=="moments++") %>% select(common_moments) / 
-         filter(full_tbl, method=="moments.LD") %>% select(common_moments) 
-
-ratio_tbl <- bind_cols(ratio,
-                       select(filter(full_tbl, method=="moments++"),
-                              -common_moments)) %>% select(-c("method",
-                                                              "sep_moments"))
-
-dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="variable")
-
-p <- ggplot(data=dat_ratio,
-            aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=1) + theme_bw()
-p <- p + labs(title = "Ratio ++/LD",
-              x="Moment", y="Value", color="Scenario")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
-print(p)
-
-ggsave("ratio_moments++_vs_moments.LD_4-pops.png",
-       p, device="png", width=12, height=12)
-```
-
-# 5-populations plots
-
-## moments++
-
-```{r 5-population-prep, include=FALSE, message=FALSE, warning=FALSE}
-
-params_5_pops <- read.csv("params_5_pops.csv", header=T, sep=",")
-num_scenarios <- nrow(params_5_pops)
-
-# extracting names of moments
-stats_5_pops <- read.table("5-pops_scenario_1_expectations.txt")[,1]
-num_stats <- length(stats_5_pops)
-
-momspp <- as_tibble(matrix(nrow=num_scenarios, ncol=num_stats), .name_repair="unique")
-names(momspp) <- stats_5_pops
-
-idx=1
-for(i in 1:num_scenarios) {
-  tmp <- read.table(paste("5-pops_scenario_", idx, "_expectations.txt", sep=""))
-  momspp[idx,] <- t(tmp[ncol(tmp)])
-  idx=idx + 1
-}
-
-stats <- bind_cols(momspp, params_5_pops)
-stats$scenario <- 1:nrow(stats)
-write.table(momspp, "moments++_5_pops_stats.csv", sep=",", row.names=F, quote=F)
-
-dat_stats <- pivot_longer(stats, cols=all_of(stats_5_pops), names_to="variable")
-
-p <- ggplot(data=dat_stats, aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=5) + theme_bw()
-p <- p + labs(title="Moments++ expectations", 
-              x="Moment", y="Value", color="scenario")
-p <- p + scale_y_continuous(trans="log10")
-p <- p + theme(axis.title=element_text(size=20),
-                 axis.text=element_text(size=15),
-                 axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
-                 legend.position = "bottom")
-p
-if(save_plots) {
-  ggsave("moments++_5_pops.png", p1, device="png", width=20, height=20)
-}
-```
-
-## Comparison with moments.LD 
-
-```{r 5-population-LDx++A, include=TRUE, message=FALSE, warning=FALSE}
-
-py_moments <- read.csv("moments_LD_5_pops_out.csv") # out from python chunk 
-
-common_moments <- intersect(names(momspp), names(py_moments))
-match_moments <- bind_rows(select(momspp, all_of(common_moments)),
-                           select(py_moments, all_of(common_moments)))
-match_moments$scenario <- rep(seq(1:num_scenarios), 2)
-match_moments$method <- c(rep("moments++", num_scenarios),
-                          rep("moments.LD", num_scenarios))
-full_tbl <- bind_cols(match_moments, 
-                      bind_rows(params_5_pop, params_5_pop)) 
-
-# following lines help visualization in raw table
-full_tbl$sep_moments <- paste(full_tbl$scenario, full_tbl$method, sep="_")
-
-dat_matched <- pivot_longer(full_tbl,
-                            cols=all_of(common_moments),
-                            names_to="variable") 
-
-dat_matched$matched_moments <- paste(dat_matched$variable, 
-                                     dat_matched$sep_moments, 
-                                     sep="_")
-
-dat_matched <- arrange(dat_matched, scenario, matched_moments)
-dat_matched <- select(dat_matched, -c(sep_moments, matched_moments))
-
-write.table(dat_matched, "LD_++_5-pops.csv", sep=",", row.names=F, quote=F)
-
-p <- ggplot(data=dat_matched,
-            aes(x=variable, y=value, shape=method, color=as.factor(scenario))) 
-p <- p + geom_point(size=2) + theme_bw()
-p <- p + scale_y_continuous(trans="log10")
-p <- p + scale_shape_manual(values=c(1, 2))
-p <- p + labs(title = "Expectations",
-              x="Moment", y="Value", shape="Method", color="Scenario")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-print(p)
-  
-ggsave("expect_moments++_vs_moments.LD_5-pops.png",
-       p, device="png", width=20, height=20)
-  
-ratio <- filter(full_tbl, method=="moments++") %>% select(common_moments) / 
-         filter(full_tbl, method=="moments.LD") %>% select(common_moments) 
-
-ratio_tbl <- bind_cols(ratio,
-                       select(filter(full_tbl, method=="moments++"),
-                              -common_moments)) %>% select(-c("method",
-                                                              "sep_moments"))
-
-dat_ratio <- pivot_longer(ratio_tbl, cols=all_of(common_moments), names_to="variable")
-
-p <- ggplot(data=dat_ratio,
-            aes(x=variable, y=value, color=as.factor(scenario))) 
-p <- p + geom_point(size=1) + theme_bw()
-p <- p + labs(title = "Ratio ++/LD",
-              x="Moment", y="Value", color="Scenario")
-p <- p + theme(axis.title=element_text(size=12),
-               axis.text=element_text(size=10),
-               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
-               legend.position="bottom")
-p <- p + geom_hline(yintercept=1, linetype="dashed", color = "darkgrey")
-print(p)
-
-ggsave("ratio_moments++_vs_moments.LD_5-pops.png",
-       p, device="png", width=20, height=20)
-```
-
-# Test Mats
-
-## params
-
-```{python check-my-matrix, eval=FALSE, include=FALSE}
-
-import csv
-import moments.LD
-import numpy as np
-
-np.set_printoptions(threshold=10000)
-
-with open("params_3_pops.csv") as fin:
-    params = [{k: float(v) for k, v in row.items()} for row in csv.DictReader(fin)]
-
-mig_mats = [
-    [
-        [0        , p['m_10'], p['m_20']],
-        [p['m_01'], 0        , p['m_02']],
-        [p['m_02'], p['m_12'], 0        ],
-    ]
-    for p in params
-]
-
-for i, mig_mat in enumerate(mig_mats, 1):
-    matpp = np.loadtxt(f'3-pops_scenario_{i}_mig.csv', delimiter=",")
-    mat_LD = moments.LD.Matrices.migration_ld(3, 2 * mig_mat).todense()
-    print('scenario', i)
-    print(((matpp - mat_LD) ** 2).sum())
-
-matpp = np.loadtxt('3-pops_scenario_1_drift.csv', delimiter=",")
-mat_LD = moments.LD.Matrices.drift_ld(3, [2 * N0, 2 * N1, 2 * N2]).todense()
-#print(mat_LD)
-#print(matpp - mat_LD)
-print(((matpp - mat_LD)).sum())
-```
-
-# Clean-up
-
-```{bash clean-up, engine.opts='-i', include=FALSE}
-
-source ~/.bashrc
-
-rm *txt
-#rm *drift.csv
-#rm *rec.csv
-#rm *mig.csv
-#rm *mut.csv
+t
+save_plot("ratios.pdf", t, base_height=12, base_width=12)
 
 ```

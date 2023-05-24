@@ -67,7 +67,7 @@ void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    std::cout << "\nepoch " << epochs_[i]->getName() << "\n";
+    //std::cout << "\nepoch " << epochs_[i]->getName() << "\n";
     // for each moment in focal epoch, set "parent" in previous epoch using population ancestry
     for(auto it = std::begin(epochs_[i]->getBasis()); it != std::end(epochs_[i]->getBasis()); ++it)
     {
@@ -227,7 +227,7 @@ void Model::linkMoments_()
       else if((*it)->getPrefix() == "I")
         (*it)->setParent(epochs_[i - 1]->getSslib().getDummyMomentCompressed());
 
-      (*it)->printAttributes(std::cout);
+      //(*it)->printAttributes(std::cout);
     } // ends loop over moments
   } // ends loop over epochs
 }
