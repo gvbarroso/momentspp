@@ -25,6 +25,14 @@ void Demes::parse_(const std::string& fileName)
   std::vector<size_t> timeBounds(0);
   std::vector<std::vector<std::shared_ptr<Population>>> popsOverTime(0);
 
+  if(model_["pulses"]) // first pass on "pulses" to store times
+  {
+    YAML::Node pulses = model_["pulses"];
+
+    for(size_t i = 0; i < pulses.size(); ++i) // pulse by pulse
+      timeBounds.push_back(pulses[i]["time"].as<size_t>() - 1);
+  }
+
   for(YAML::const_iterator it = model_.begin(); it != model_.end(); ++it)
   {
     if(it->first.as<std::string>() == "demes")
@@ -33,7 +41,8 @@ void Demes::parse_(const std::string& fileName)
 
       for(size_t i = 0; i < pops.size(); ++i) // deme by deme, pop index (i) is fixed by order of listing demes in Demes file
       {
-        std::string name = pops[i]["name"].as<std::string>(); // NOTE: stats file should match pop names and/or indices in Demes file
+        // NOTE: stats file should match pop names and/or indices in Demes file
+        std::string name = pops[i]["name"].as<std::string>();
         std::string des = "none";
 
         if(pops[i]["description"])
@@ -178,13 +187,6 @@ void Demes::parse_(const std::string& fileName)
         popsOverTime.push_back(singlePopOverTime);
       } // ends loop over demes
 
-      /**/
-      for(size_t i = 0; i < popsOverTime.size(); ++i)
-        for(size_t j = 0; j < popsOverTime[i].size(); ++j)
-          popsOverTime[i][j]->printAttributes(std::cout);
-
-      /**/
-
       // slice time into epochs based on populations time boundaries
       for(size_t i = 0; i < popsOverTime.size(); ++i)
       {
@@ -195,15 +197,12 @@ void Demes::parse_(const std::string& fileName)
 
           // NOTE introducing 1-generation epoch to handle admixture that forms new population
           if(popsOverTime[i][j]->hasDistinctParents())
-            timeBounds.push_back(popsOverTime[i][j]->getEndTime() + 1);
+            timeBounds.push_back(popsOverTime[i][j]->getStartTime() - 1);
         }
       }
 
       std::sort(std::begin(timeBounds), std::end(timeBounds), std::greater<int>()); // descending order
       timeBounds.erase(std::unique(std::begin(timeBounds), std::end(timeBounds)), std::end(timeBounds));
-
-      //for(auto& t : timeBounds)
-        //std::cout << t << "\n";
 
       // first pass: split populations that span more than one epoch
       for(size_t i = 1; i < timeBounds.size(); ++i)
@@ -249,6 +248,8 @@ void Demes::parse_(const std::string& fileName)
         for(size_t j = 0; j < popsOverTime[i].size(); ++j)
           popsOverTime[i][j]->printAttributes(std::cout);
 
+      // epochs are formalized (Epoch objects are instantiated) in the main function
+      // their skeleton are prepared here:
       size_t numEpochs = timeBounds.size() - 1;
 
       pops_.resize(numEpochs);
@@ -291,8 +292,29 @@ void Demes::parse_(const std::string& fileName)
         Eigen::MatrixXd mat(p, p);
         mat.setZero();
 
-        migRates_[i] = mat;
-        pulses_[i] = mat;
+        migRates_[i] = mat; // littleMigMat_ inside Migration class
+        pulses_[i] = mat; // littleAdmixMat_ inside Admixture class
+      }
+
+      // search for populations with two ancestors: pick one of them to copy moments from,
+      // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
+      for(size_t j = 1; j < timeBounds.size() - 1; ++j)
+      {
+        for(size_t k = 0; k < pops_[j].size(); ++ k)
+        {
+          int row = -1;
+          int col = k;
+
+          if(pops_[j][k]->hasDistinctParents()) // admixture forms a new population
+          {
+            // search for (left) ancestral population in the current (1-generation) epoch
+            for(size_t l = 0; l < pops_[j].size(); ++ l)
+              if(pops_[j][l]->getName() == pops_[j][k]->getLeftParent()->getName())
+                row = l;
+
+            pulses_[j](row, col) = pops_[j][k]->getProportions().first;
+          }
+        }
       }
     } // exits 'demes' field of Demes file
 
@@ -347,7 +369,8 @@ void Demes::parse_(const std::string& fileName)
         bool match = 0;
         for(size_t j = 1; j < timeBounds.size(); ++j)
         {
-          if(startTime == timeBounds[j - 1] && endTime == timeBounds[j])
+          // minding 1-gen epochs introduced by admixture
+          if((startTime == timeBounds[j - 1] || (startTime - 1) == timeBounds[j - 1]) && endTime == timeBounds[j])
           {
             int row = -1;
             int col = -1;
@@ -398,7 +421,7 @@ void Demes::parse_(const std::string& fileName)
           throw bpp::Exception("Demes::only a single 'proportion'(specified within brackets) per admixture 'pulse' is allowed!");
 
         std::string dest = pulses[i]["dest"].as<std::string>();
-        size_t time = pulses[i]["time"].as<size_t>();
+        size_t time = pulses[i]["time"].as<size_t>() - 1; // -1 to help define 1-gen epochs for admixture
 
         bool valid = 0;
         for(size_t j = 1; j < timeBounds.size(); ++j)
@@ -429,32 +452,11 @@ void Demes::parse_(const std::string& fileName)
 
         if(!valid)
           throw bpp::Exception("Demes::time of admixture pulse must match the start of an epoch!");
-      } // ends loop over pulses
-
-      // search for populations with two ancestors: pick one of them to copy moments from,
-      // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
-      for(size_t j = 1; j < timeBounds.size() - 1; ++j)
-      {
-        for(size_t k = 0; k < pops_[j].size(); ++ k)
-        {
-          int row = -1;
-          int col = k;
-
-          if(pops_[j][k]->hasDistinctParents()) // admixture forms a new population
-          {
-            // search for (left) ancestral population in the current (1-generation) epoch
-            for(size_t l = 0; l < pops_[j].size(); ++ l)
-              if(pops_[j][l]->getName() == pops_[j][k]->getLeftParent()->getName())
-                row = l;
-
-            pulses_[j](row, col) = pops_[j][k]->getProportions().first;
-          }
-        }
       }
     } // exits 'pulses' field of Demes file
 
     // move to custom fields for moments++ (mutation, recombination, selection)
-    // NOTE: this field should be placed last in the demes file
+    // NOTE: this field must be placed last in the demes file
     else if(it->first.as<std::string>() == "metadata")
     {
       YAML::Node meta = it->second;
@@ -538,7 +540,7 @@ void Demes::parse_(const std::string& fileName)
           size_t startTime = timeBounds.front();
           size_t endTime = 0;
 
-          for(size_t j = 0; j < sel.size(); ++j) // rec period by rec period
+          for(size_t j = 0; j < sel.size(); ++j) // sel period by sel period
           {
             if(sel["s"])
               s = sel["s"].as<double>();
@@ -564,6 +566,6 @@ void Demes::parse_(const std::string& fileName)
           }
         }
       }
-    }
+    } // exits 'metadata' field of Demes file
   }
 }

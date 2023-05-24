@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 19/04/2023
+ * Last modified: 24/05/2023
  *
  */
 
@@ -57,10 +57,15 @@ public:
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       addParameters_((*it)->getParameters());
 
+    // epoch[0] should never be 1-generation only (ie, be an "Admixture epoch")
+    // hence should always have a full set of parameters, including 'u' and 'r'
     for(size_t i = 1; i < epochs_.size(); ++i)
     {
-      aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
-      aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
+      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".u"))
+        aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
+
+      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".r"))
+        aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
     }
 
     linkMoments_();
@@ -78,10 +83,15 @@ public:
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       addParameters_((*it)->getParameters());
 
-    for(size_t i = 0; i < epochs_.size(); ++i)
+    // epoch[0] should never be 1-generation only (ie, be an "Admixture epoch")
+    // hence should always have a full set of parameters, including 'u' and 'r'
+    for(size_t i = 1; i < epochs_.size(); ++i)
     {
-      aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
-      aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
+      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".u"))
+        aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
+
+      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".r"))
+        aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
     }
 
     linkMoments_();

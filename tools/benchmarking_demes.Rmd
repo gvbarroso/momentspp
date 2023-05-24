@@ -1,0 +1,158 @@
+---
+title: "Benchmarking Moments++"
+author: "Gustavo V. Barroso"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+  toc: true
+number_sections: true
+toc_depth: 3
+---
+  
+```{r setup, message=FALSE, warning=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(cowplot)
+
+# for running moments.LD:
+library(reticulate)
+use_python("/usr/bin/python3")
+
+knitr::opts_knit$set(root.dir="~/Devel/momentspp/debug/")
+
+save_plots <- FALSE # should this script ggsave plots to root.dir?
+```
+
+# Running moments++
+
+```{bash run-moments++, engine.opts='-i', include=TRUE}
+
+source ~/.bashrc
+
+momentspp params=opt_admix.bpp
+momentspp params=opt_no_admix.bpp
+
+```
+
+# Running moments.LD
+
+```{python run-momentsLD, include=TRUE}
+
+import moments.LD
+import demes
+
+def simulate_ld(f, sampled_demes):
+    """
+    f: the demes filename
+    """
+    g = demes.load(f)
+    u = g.metadata["mutation"]["rate"]
+    r = g.metadata["recombination"]["rate"]
+
+    y = moments.LD.LDstats.from_demes(g, sampled_demes, r=r, u=u)
+    return y
+
+with open("moments_LD_admix.csv", "w+") as fout:
+    f = "admix.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_no_admix.csv", "w+") as fout:
+    f = "no_admix.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+```
+
+# plots
+
+```{r plots, include=TRUE, eval=TRUE}
+
+momspp_admix <- read.table("admix++_expectations.txt") %>% select(!V2)
+momspp_no_admix <- read.table("no_admix++_expectations.txt") %>% select(V3)
+momspp <- bind_cols(momspp_admix, momspp_no_admix)
+names(momspp) <- c("stat", "admix", "no_admix")
+momspp$ratio <- momspp$admix / momspp$no_admix
+momspp <- momspp[-31,]
+momspp <- slice(momspp, 1:24, 31:52, 25:30) # re-orders rows to match moments.LD
+
+p <- ggplot(data=momspp, aes(x=stat, y=ratio))
+p <- p + geom_point(size=3) + theme_bw()
+p <- p + labs(title="moments++ admix/no-admix",
+                x="Moment", y="Value", shape="model")
+p <- p + theme(axis.title=element_text(size=12),
+               axis.text=element_text(size=10),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+               legend.position="bottom")
+
+py_admix <- read.csv("moments_LD_admix.csv") 
+py_no_admix <- read.csv("moments_LD_no_admix.csv") 
+py_moms <- as_tibble(cbind(names(py_admix), t(bind_rows(py_admix, py_no_admix))))
+names(py_moms) <- c("stat", "admix", "no_admix")
+py_moms$admix <- as.numeric(py_moms$admix)
+py_moms$no_admix <- as.numeric(py_moms$no_admix)
+py_moms$ratio <- py_moms$admix / py_moms$no_admix
+molten_py <- pivot_longer(py_moms, cols="ratio")
+
+q <- ggplot(data=molten_py, aes(x=stat, y=value))
+q <- q + geom_point(size=3) + theme_bw()
+q <- q + labs(title="moments.LD admix/no-admix",
+              x="Moment", y="Value", shape="model")
+q <- q + theme(axis.title=element_text(size=12),
+               axis.text=element_text(size=10),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+               legend.position="bottom")
+
+models <- bind_cols(momspp[,1:3], py_moms[,2:3])
+models <- head(models, - 6)
+names(models) <- c("stat", "admix++", "no-admix++", "admix_py", "no-admix_py")
+models$ratio_admix <- models$`admix++` / models$admix_py
+models$ratio_no_admix <- models$`no-admix++` / models$`no-admix_py`
+
+molten_admix <- pivot_longer(models, cols=starts_with("admix"))
+r <- ggplot(data=molten_admix, aes(x=stat, y=value, shape=name))
+r <- r + geom_point(size=3) + theme_bw()
+r <- r + labs(title="++ vs LD (pulse)", x="Moment", y="Value", shape="model")
+r <- r + scale_shape_manual(values=c(1, 2))
+r <- r + theme(axis.title=element_text(size=12),
+               axis.text=element_text(size=10),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+               legend.position="bottom")
+
+molten_no_admix <- pivot_longer(models, cols=starts_with("no-admix"))
+s <- ggplot(data=molten_no_admix, aes(x=stat, y=value, shape=name))
+s <- s + geom_point(size=3) + theme_bw()
+s <- s + labs(title="++ vs LD (no-pulse)", x="Moment", y="Value", shape="model")
+s <- s + scale_shape_manual(values=c(1, 2))
+s <- s + theme(axis.title=element_text(size=12),
+               axis.text=element_text(size=10),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+               legend.position="bottom")
+
+plot <- plot_grid(r, s, ncol = 2)
+plot
+
+molten_ratios <- pivot_longer(models, cols=starts_with("ratio"))
+t <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name))
+t <- t + geom_point(size=3) + theme_bw()
+t <- t + labs(title="++ / LD", x="Moment", y="Value", shape="model")
+t <- t + scale_shape_manual(values=c(1, 2))
+t <- t + theme(axis.title=element_text(size=12),
+               axis.text=element_text(size=10),
+               axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+               legend.position="bottom")
+t
+save_plot("ratios.pdf", t, base_height=12, base_width=12)
+
+```

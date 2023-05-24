@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 23/05/2023
+ * Last modified: 24/05/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 23/May/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 24/May/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -97,38 +97,50 @@ int main(int argc, char *argv[]) {
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
-     * must have epoch-specific recombination and mutation operators because they depend on pop indices (popss[i]),
+     * Must have epoch-specific recombination and mutation operators because they depend on pop indices,
      * even though inside Model we alias r and mu across epochs
      * NOTE Admixture is modeled as the only operator in an epoch of 1 generation
      */
 
-    if(!demes.getPulse(i).isZero(0))
+    if((start - end) == 1)
     {
-      operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
-      operators.back()->printDeltaLDMat(id + "_admix.csv", sslib);
+      if(!demes.getPulse(i).isZero(0))
+      {
+        operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
+        operators.back()->printDeltaLDMat(id + "_admix.csv", sslib);
+      }
+
+      else
+        throw bpp::Exception("Zero Admixture matrix assigned to 1-generation Epoch!");
     }
 
     else
     {
-      std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
+      if(demes.getPulse(i).isZero(0))
+      {
+        std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
 
-      std::vector<double> drift(0);
-      drift.reserve(demes.getPopsVec()[i].size());
+        std::vector<double> drift(0);
+        drift.reserve(demes.getPopsVec()[i].size());
 
-      // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
-      for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
-        drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
+        // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
+        for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
+          drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
 
-      std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
-      std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
-      std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
+        std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
+        std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
+        std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
 
-      if(demes.getNumPops(i) > 1) // && ! demes.getMig(i).isZero() ?
-        operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
+        if(demes.getNumPops(i) > 1) // && ! demes.getMig(i).isZero() ?
+          operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
 
-      operators.push_back(driftOp);
-      operators.push_back(recOp);
-      operators.push_back(mutOp);
+        operators.push_back(driftOp);
+        operators.push_back(recOp);
+        operators.push_back(mutOp);
+      }
+
+      else
+        throw bpp::Exception("Non-Zero Admixture matrix assigned to multi-generation Epoch!");
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
