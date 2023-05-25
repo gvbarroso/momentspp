@@ -244,9 +244,9 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
-      for(size_t i = 0; i < popsOverTime.size(); ++i)
+      /*for(size_t i = 0; i < popsOverTime.size(); ++i)
         for(size_t j = 0; j < popsOverTime[i].size(); ++j)
-          popsOverTime[i][j]->printAttributes(std::cout);
+          popsOverTime[i][j]->printAttributes(std::cout);*/
 
       // epochs are formalized (Epoch objects are instantiated) in the main function
       // their skeleton are prepared here:

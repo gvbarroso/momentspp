@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 24/05/2023
+ * Last modified: 25/05/2023
  * Source code for moments++
  *
  */
@@ -137,6 +137,10 @@ int main(int argc, char *argv[]) {
         operators.push_back(driftOp);
         operators.push_back(recOp);
         operators.push_back(mutOp);
+
+        // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
+        if(epochs.size() > 1 && epochs.back()->duration() == 1)
+          ++start;
       }
 
       else
