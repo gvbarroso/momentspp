@@ -31,7 +31,9 @@ source ~/.bashrc
 for((i=1;i<=6;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
 ```
 
-```{bash run-moments++, engine.opts='-i', include=FALSE, eval=TRUE}
+# Running moments++
+
+```{bash run-moments++, engine.opts='-i', include=TRUE, eval=TRUE, results=FALSE}
 
 source ~/.bashrc
 
@@ -43,7 +45,9 @@ momentspp params=opt.bpp FILE=model_5.yaml LABEL=model_5
 momentspp params=opt.bpp FILE=model_6.yaml LABEL=model_6
 ```
 
-```{python run-momentsLD, include=TRUE, eval=TRUE}
+# Running moments.LD
+
+```{python run-momentsLD, include=TRUE, eval=TRUE, results=FALSE}
 
 import moments.LD
 import demes
@@ -120,7 +124,9 @@ with open("moments_LD_model_6.csv", "w+") as fout:
     fout.write(l)
 ```
 
-```{r plots, include=TRUE, eval=TRUE}
+# Plots
+
+```{r plots, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
 
 # 3-populations (models m1-m4)
 mpp_m1 <- read.table("model_1_expectations.txt") %>% select(!V2)

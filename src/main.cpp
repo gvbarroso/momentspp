@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 24/May/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 25/May/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
       if(!demes.getPulse(i).isZero(0))
       {
         operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
-        //operators.back()->printDeltaLDMat(id + "_admix.csv", sslib);
+        operators.back()->printDeltaLDMat(id + "_admix.csv", sslib);
       }
 
       else
