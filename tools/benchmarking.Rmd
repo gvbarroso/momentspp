@@ -24,11 +24,11 @@ use_python("/usr/bin/python3")
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
 
-```{bash draw-models, engine.opts='-i', include=FALSE, eval=FALSE}
+```{bash draw-models, engine.opts='-i', include=FALSE, eval=TRUE}
 
 source ~/.bashrc
 
-for((i=1;i<=6;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
+for((i=1;i<=7;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
 ```
 
 # Running moments++
@@ -43,6 +43,7 @@ momentspp params=opt.bpp FILE=model_3.yaml LABEL=model_3
 momentspp params=opt.bpp FILE=model_4.yaml LABEL=model_4
 momentspp params=opt.bpp FILE=model_5.yaml LABEL=model_5
 momentspp params=opt.bpp FILE=model_6.yaml LABEL=model_6
+momentspp params=opt.bpp FILE=model_7.yaml LABEL=model_7
 ```
 
 # Running moments.LD
@@ -122,13 +123,23 @@ with open("moments_LD_model_6.csv", "w+") as fout:
     fout.write(l)
     l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
     fout.write(l)
+    
+with open("moments_LD_model_7.csv", "w+") as fout:
+    f = "model_7.yaml"
+    pops = ["A", "B", "C", "D", "E"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
 ```
 
 # Plots
 
 ```{r plots, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
 
-# 3-populations (models m1-m4)
+# 3 sampled populations (models m1-m4)
 mpp_m1 <- read.table("model_1_expectations.txt") %>% select(!V2)
 mpp_m2 <- read.table("model_2_expectations.txt") %>% select(V3)
 mpp_m3 <- read.table("model_3_expectations.txt") %>% select(V3)
@@ -168,7 +179,7 @@ p1 <- p1 + theme(axis.title=element_text(size=12),
 p1
 save_plot("ratios_1-4.pdf", p1, base_height=12, base_width=12)
 
-# 4-populations (models m5-m6)
+# 4 sampled populations (models m5-m6)
 mpp_m5 <- read.table("model_5_expectations.txt") %>% select(!V2)
 mpp_m6 <- read.table("model_6_expectations.txt") %>% select(V3)
 
@@ -203,6 +214,83 @@ p2 <- p2 + theme(axis.title=element_text(size=12),
 
 p2
 save_plot("ratios_5-6.pdf", p2, base_height=15, base_width=15)
+
+# 5 sampled populations (model m7)
+momspp <- read.table("model_7_expectations.txt") %>% select(!V2)
+names(momspp) <- c("stat", "m7++")
+momspp <- slice(momspp, 1:90, 107:226, 91:105) # to match moments.LD
+
+py_moms <- as_tibble(t(read.csv("moments_LD_model_7.csv")))
+names(py_moms) <- "m7py"
+
+ratios <- select(momspp, starts_with("m")) / select(py_moms, starts_with("m"))
+ratios <- bind_cols(momspp$stat, ratios)
+names(ratios) <- c("stat", "m7")
+
+molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
+p3 <- ggplot(data=molten_ratios, aes(x=stat, y=value))
+p3 <- p3 + geom_point(size=3) + theme_bw()
+p3 <- p3 + geom_hline(yintercept=0.99, linetype=2) 
+p3 <- p3 + geom_hline(yintercept=1.01, linetype=2)
+p3 <- p3 + labs(title="++ / LD", x="Moment", y="Ratio")
+p3 <- p3 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+
+p3
+save_plot("ratios_7.pdf", p3, base_height=18, base_width=18)
+```
+
+# Check-my-matrix
+
+```{python check-my-matrix, include=TRUE, eval=TRUE, results=TRUE}
+
+import moments.LD
+import demes
+import csv
+import numpy as np
+
+np.set_printoptions(threshold=10000)
+
+def pulse_migration(num_pops, pop0, pop1, f):
+    """
+    Pulse migration from pop0 into pop1 with proportion f.
+    """
+    # create the matrix that would build a new population via admixture
+    A = moments.LD.Matrices.admix_ld(num_pops, pop0, pop1, f)
+    # the last population created replaces pop1
+    mom_from = moments.LD.Util.moment_names(num_pops + 1)[0]
+    mom_to = moments.LD.Util.moment_names(num_pops)[0]
+    P = np.zeros((len(mom_to), len(mom_from)))
+    for i, m in enumerate(mom_to):
+        l = m.split("_")
+        for k in range(1, len(l)):
+            if l[k] == str(pop1):
+                l[k] = str(num_pops)
+        m_from = "_".join(l)
+        m_from = moments.LD.Util.map_moment(m_from)
+        j = mom_from.index(m_from)
+        P[i, j] = 1
+    return P.dot(A)
+
+# some hard coding never hurt anyone...  
+mat_LD = pulse_migration(3, 0, 1, 0.3)
+matpp = np.loadtxt('model_2_e_6_admix.csv', delimiter=",")
+print(((matpp - mat_LD)**2).sum())
+
+mat_LD = pulse_migration(4, 3, 0, 0.2)
+matpp = np.loadtxt('model_6_e_5_admix.csv', delimiter=",")
+print(((matpp - mat_LD)**2).sum())
+
+mat_LD = pulse_migration(4, 0, 1, 0.3)
+matpp = np.loadtxt('model_6_e_7_admix.csv', delimiter=",")
+print(((matpp - mat_LD)**2).sum())
+
+mat_LD = pulse_migration(5, 2, 4, 0.5)
+matpp = np.loadtxt('model_7_e_9_admix.csv', delimiter=",")
+print(matpp - mat_LD)
+print(((matpp - mat_LD)**2).sum())
 ```
 
 ```{bash clean-up, engine.opts='-i', include=FALSE, eval=TRUE}

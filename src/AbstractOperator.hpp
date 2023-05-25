@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 22/05/2022
+ * Last modified: 25/05/2022
  *
  */
 
@@ -106,6 +106,8 @@ public:
   }
 
   virtual void printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
+
+  virtual void printTransitionLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
 
 protected:
   // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator

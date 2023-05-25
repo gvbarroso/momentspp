@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 04/04/2023
- * Last modified: 04/04/2023
+ * Last modified: 25/05/2023
  *
  */
 
@@ -33,6 +33,33 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName, const SumSta
           matFile << mat.coeffRef(i, j);
 
           if(j < mat.cols() - 1)
+            matFile << ",";
+        }
+      }
+
+      matFile  << "\n";
+    }
+  }
+
+  matFile.close();
+}
+
+void AbstractOperator::printTransitionLDMat(const std::string& fileName, const SumStatsLibrary& sslib)
+{
+  std::ofstream matFile;
+  matFile.open(fileName);
+
+  for(int i = 0; i < transition_.rows(); ++i)
+  {
+    if(sslib.getMoment(i)->getPrefix() != "I" && sslib.getMoment(i)->getPrefix() != "H")
+    {
+      for(int j = 0; j < transition_.cols(); ++j)
+      {
+        if(sslib.getMoment(j)->getPrefix() != "I" && sslib.getMoment(j)->getPrefix() != "H")
+        {
+          matFile << transition_.coeffRef(i, j);
+
+          if(j < transition_.cols() - 1)
             matFile << ",";
         }
       }

@@ -259,10 +259,10 @@ void Demes::parse_(const std::string& fileName)
       recRates_.reserve(numEpochs);
 
       // second pass: organize pops within epochs
-      for(size_t i = 1; i < timeBounds.size(); ++i)
+      for(size_t i = 0; i < numEpochs; ++i)
       {
-        size_t epochStart = timeBounds[i - 1];
-        size_t epochEnd = timeBounds[i];
+        size_t epochStart = timeBounds[i];
+        size_t epochEnd = timeBounds[i + 1];
 
         for(size_t j = 0; j < popsOverTime.size(); ++j)
         {
@@ -273,7 +273,7 @@ void Demes::parse_(const std::string& fileName)
 
             if(popStart == epochStart && popEnd == epochEnd)
             {
-              pops_[i - 1].push_back(*itPop);
+              pops_[i].push_back(*itPop);
               break;
             }
           }
@@ -298,7 +298,7 @@ void Demes::parse_(const std::string& fileName)
 
       // search for populations with two ancestors: pick one of them to copy moments from,
       // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
-      for(size_t j = 1; j < timeBounds.size() - 1; ++j)
+      for(size_t j = 1; j < numEpochs; ++j)
       {
         for(size_t k = 0; k < pops_[j].size(); ++ k)
         {
@@ -418,7 +418,7 @@ void Demes::parse_(const std::string& fileName)
           f = proportions[0].as<double>();
 
         else
-          throw bpp::Exception("Demes::only a single 'proportion'(specified within brackets) per admixture 'pulse' is allowed!");
+          throw bpp::Exception("Demes::only a single 'proportion' (specified within brackets) per admixture 'pulse' is allowed!");
 
         std::string dest = pulses[i]["dest"].as<std::string>();
         size_t time = pulses[i]["time"].as<size_t>() - 1; // -1 to help define 1-gen epochs for admixture

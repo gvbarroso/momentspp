@@ -27,16 +27,16 @@ private:
   std::string name_; // human label, e.g. "Yoruba" or "DGN_Zambia"
   std::string description_;
 
-  // parents in previous epoch; they will be the same unless focal population is a result of admixture
+  // parents in previous epoch; leftParent_ & rightParent_ will be equal unless focal population is a result of admixture
   std::shared_ptr<Population> leftParent_;
   std::shared_ptr<Population> rightParent_;
 
-  std::pair<double, double> proportions_; // parental f and 1-f
+  std::pair<double, double> proportions_; // parental f and 1-f, only relevant if leftParent_ != rightParent_
 
-  size_t id_; // "i" as it appears in N_i parameters (Drift Operator) and m_ij parameters (Migration Operator)
-  size_t startTime_; // in units of generations (coming from past to present)
+  size_t id_; // "i" as it appears in N_i parameters (Drift) and m_ij parameters (Migration)
+  size_t startTime_; // in units of generations (decreasing from past to present)
   size_t endTime_; // in units of generations
-  size_t size_; // N_i in 1/N_i Drift parameters constant within each epoch
+  size_t size_; // N_i in 1/N_i Drift parameters (constant within each epoch)
 
   bool isDerivedLeftSelected_; // ... in this population
 

@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
       if(!demes.getPulse(i).isZero(0))
       {
         operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
-        operators.back()->printDeltaLDMat(id + "_admix.csv", sslib);
+        operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv", sslib);
       }
 
       else

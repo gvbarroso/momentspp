@@ -32,6 +32,7 @@ public:
   AbstractOperator(sslib.getPopIndices()),
   littleAdmixMat_(admixMat)
   {
+     // unlike model parameters in other operators, f->[0, 1] (ie, no "single event per generation" assumption)
     std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true);
     // for each pair of populations modeled in the epoch to which *this operator belongs
     for(size_t i = 0; i < popIndices_.size(); ++i)
