@@ -9,12 +9,13 @@ number_sections: true
 toc_depth: 3
 ---
   
-```{r setup, message=FALSE, warning=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 
 knitr::opts_chunk$set(echo=TRUE)
 
 library(tidyverse)
 library(cowplot)
+library(stringr)
 
 # for running moments.LD:
 library(reticulate)
@@ -23,17 +24,12 @@ use_python("/usr/bin/python3")
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
 
-# Validating and visualizing demes models
-
-```{bash draw-models, engine.opts='-i', include=TRUE, eval=TRUE}
+```{bash draw-models, engine.opts='-i', include=FALSE, eval=FALSE}
 
 source ~/.bashrc
 
 for((i=1;i<=6;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
-
 ```
-
-# Running moments++
 
 ```{bash run-moments++, engine.opts='-i', include=FALSE, eval=TRUE}
 
@@ -45,10 +41,7 @@ momentspp params=opt.bpp FILE=model_3.yaml LABEL=model_3
 momentspp params=opt.bpp FILE=model_4.yaml LABEL=model_4
 momentspp params=opt.bpp FILE=model_5.yaml LABEL=model_5
 momentspp params=opt.bpp FILE=model_6.yaml LABEL=model_6
-
 ```
-
-# Running moments.LD
 
 ```{python run-momentsLD, include=TRUE, eval=TRUE}
 
@@ -127,8 +120,6 @@ with open("moments_LD_model_6.csv", "w+") as fout:
     fout.write(l)
 ```
 
-# Plots
-
 ```{r plots, include=TRUE, eval=TRUE}
 
 # 3-populations (models m1-m4)
@@ -154,10 +145,13 @@ py_moms <- type_convert(py_moms)
 ratios <- select(momspp, starts_with("m")) / select(py_moms, starts_with("m"))
 ratios <- bind_cols(momspp$stat, ratios)
 names(ratios) <- c("stat", "m1", "m2", "m3", "m4")
+ratios$count_2 <- as.factor(str_count(ratios$stat, "2"))
 
 molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
-p1 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name))
+p1 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name, color=count_2))
 p1 <- p1 + geom_point(size=3) + theme_bw()
+p1 <- p1 + geom_hline(yintercept=0.99, linetype=2)
+p1 <- p1 + geom_hline(yintercept=1.01, linetype=2)
 p1 <- p1 + labs(title="++ / LD", x="Moment", y="Ratio", shape="Model")
 p1 <- p1 + scale_shape_manual(values=c(0, 1, 2, 3))
 p1 <- p1 + theme(axis.title=element_text(size=12),
@@ -187,10 +181,13 @@ py_moms <- type_convert(py_moms)
 ratios <- select(momspp, starts_with("m")) / select(py_moms, starts_with("m"))
 ratios <- bind_cols(momspp$stat, ratios)
 names(ratios) <- c("stat", "m5", "m6")
+ratios$count_4 <- as.factor(str_count(ratios$stat, "4"))
 
 molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
-p2 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name))
+p2 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name, color=count_4))
 p2 <- p2 + geom_point(size=3) + theme_bw()
+p2 <- p2 + geom_hline(yintercept=0.99, linetype=2) 
+p2 <- p2 + geom_hline(yintercept=1.01, linetype=2)
 p2 <- p2 + labs(title="++ / LD", x="Moment", y="Ratio", shape="Model")
 p2 <- p2 + scale_shape_manual(values=c(0, 1))
 p2 <- p2 + theme(axis.title=element_text(size=12),
@@ -199,6 +196,13 @@ p2 <- p2 + theme(axis.title=element_text(size=12),
                  legend.position="bottom")
 
 p2
-save_plot("ratios_5-6.pdf", p2, base_height=12, base_width=12)
+save_plot("ratios_5-6.pdf", p2, base_height=15, base_width=15)
+```
 
+```{bash clean-up, engine.opts='-i', include=FALSE, eval=TRUE}
+
+source ~/.bashrc
+
+rm *.txt
+rm *.csv
 ```

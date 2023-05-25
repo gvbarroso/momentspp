@@ -29,8 +29,8 @@ void Demes::parse_(const std::string& fileName)
   {
     YAML::Node pulses = model_["pulses"];
 
-    for(size_t i = 0; i < pulses.size(); ++i) // pulse by pulse
-      timeBounds.push_back(pulses[i]["time"].as<size_t>() - 1);
+    for(size_t i = 0; i < pulses.size(); ++i)
+      timeBounds.push_back(pulses[i]["time"].as<size_t>() - 1); // -1 to allow 1-gen epochs
   }
 
   for(YAML::const_iterator it = model_.begin(); it != model_.end(); ++it)
@@ -55,7 +55,7 @@ void Demes::parse_(const std::string& fileName)
         std::vector<std::shared_ptr<Population>> singlePopOverTime(0); // deme i is represented by a series of populations of piece-wise constant Ne
         YAML::Node popEpochs = pops[i]["epochs"];
 
-        for(size_t j = 0; j < popEpochs.size(); ++j) // epochs of focal pop i as they appear in the Demes (YAML) file
+        for(size_t j = 0; j < popEpochs.size(); ++j) // epochs of focal pop i as they appear in the Demes file
         {
           size_t endTime = 0;
           if(popEpochs[j]["end_time"])
@@ -535,7 +535,7 @@ void Demes::parse_(const std::string& fileName)
         {
           YAML::Node sel = meta["selection"];
 
-          std::cout << "TODO: list demes which experience selection on the left locus\n";
+          std::cout << "TODO: list demes which experience selection on the left locus\n"; // then pop->setSelectiveConstraint(bool)
           double s = 1e-3;
           size_t startTime = timeBounds.front();
           size_t endTime = 0;
