@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 24/05/2023
+ * Last modified: 26/05/2023
  *
  */
 
@@ -437,10 +437,10 @@ void Demes::parse_(const std::string& fileName)
             {
               // ancestral populations are found in the previous epoch
               if(pops_[j - 1][k]->getName() == dest)
-                row = k;
+                col = k;
 
               else if(pops_[j - 1][k]->getName() == source)
-                col = k;
+                row = k;
             }
 
             if(row == -1 || col == -1)

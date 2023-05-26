@@ -277,14 +277,18 @@ def pulse_migration(num_pops, pop0, pop1, f):
 # some hard coding never hurt anyone...  
 mat_LD = pulse_migration(3, 0, 1, 0.3)
 matpp = np.loadtxt('model_2_e_6_admix.csv', delimiter=",")
+
+print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
 mat_LD = pulse_migration(4, 3, 0, 0.2)
 matpp = np.loadtxt('model_6_e_5_admix.csv', delimiter=",")
+print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
 mat_LD = pulse_migration(4, 0, 1, 0.3)
 matpp = np.loadtxt('model_6_e_7_admix.csv', delimiter=",")
+print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
 mat_LD = pulse_migration(5, 2, 4, 0.5)
@@ -293,7 +297,7 @@ print(matpp - mat_LD)
 print(((matpp - mat_LD)**2).sum())
 ```
 
-```{bash clean-up, engine.opts='-i', include=FALSE, eval=TRUE}
+```{bash clean-up, engine.opts='-i', include=FALSE, eval=FALSE}
 
 source ~/.bashrc
 
