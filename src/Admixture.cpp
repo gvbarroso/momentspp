@@ -28,9 +28,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         ancFromId = popIndices_[i];
         ancToId = popIndices_[j];
         f = littleAdmixMat_(i, j);
-
-        std::cout << "from " << ancFromId << " to " << ancToId << ", f = " << f << std::endl;
-        std::cout << littleAdmixMat_ << std::endl;
       }
     }
 
@@ -45,9 +42,6 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           int row = sslib.findCompressedIndex(*it);
           int col = -1; // inits column index to out-of-bounds
-
-          (*it)->printAttributes(std::cout);
-          std::cout << "row: " << row << "\n\n";
 
           // contributions from moments of the same prefix
           for(auto it2nd = std::begin(sslib.getMoments()); it2nd != std::end(sslib.getMoments()); ++it2nd)
@@ -156,6 +150,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancToId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * f * std::pow(1. - f, 3.)));
               }
+
               // case 2: Dz TFT / TTF NOTE "forced" through some differences with the "naive" Mathematica notebook to match moments.LD admix matrix
               else if(((*it)->getPopIndices()[1] == ancToId && (*it)->getPopIndices()[2] == ancFromId) || ((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancToId))
               {
@@ -174,6 +169,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancFromId, ancToId));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * f * std::pow(1. - f, 2.)));
               }
+
               // case 3: Dz TFF
               else if((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancFromId)
               {
@@ -226,6 +222,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                   }
                 }
               }
+
               // case 5: Dz TFx / TxF
               else if((*it)->getPopIndices()[1] == ancFromId || (*it)->getPopIndices()[2] == ancFromId)
               {
@@ -240,6 +237,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                   }
                 }
               }
+
               // case 6: Dz Txx / Txx
               else
               {
@@ -250,7 +248,8 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*itCmp);
                     col = sslib.findCompressedIndex(tmp);
                     double c = std::pow(-1., tmp->countInstances(ancToId));
-                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * 4 * f * (1. - f)));
+                    double d = 2. * (1. + ((*it)->getPopIndices()[1] == (*it)->getPopIndices()[2]));
+                    coeffs.emplace_back(Eigen::Triplet<double>(row, col, c * d * f * (1. - f)));
                   }
                 }
               }

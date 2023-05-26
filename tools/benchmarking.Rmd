@@ -176,7 +176,6 @@ p1 <- p1 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-p1
 save_plot("ratios_1-4.pdf", p1, base_height=12, base_width=12)
 
 # 4 sampled populations (models m5-m6)
@@ -212,7 +211,6 @@ p2 <- p2 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-p2
 save_plot("ratios_5-6.pdf", p2, base_height=15, base_width=15)
 
 # 5 sampled populations (model m7)
@@ -238,7 +236,6 @@ p3 <- p3 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-p3
 save_plot("ratios_7.pdf", p3, base_height=18, base_width=18)
 ```
 
@@ -281,23 +278,41 @@ matpp = np.loadtxt('model_2_e_6_admix.csv', delimiter=",")
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
-mat_LD = pulse_migration(4, 3, 0, 0.2)
+mat_LD = pulse_migration(4, 0, 3, 0.2)
 matpp = np.loadtxt('model_6_e_5_admix.csv', delimiter=",")
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
+for i in range(len(mat_LD)):
+    if np.abs(mat_LD[i] - matpp[i]).sum() > 1e-15:
+        print(i, moments.LD.Util.moment_names(4)[0][i], np.abs(mat_LD[i] - matpp[i]).sum())
+        print(mat_LD[i])
+        print(matpp[i])
+        
 mat_LD = pulse_migration(4, 0, 1, 0.3)
 matpp = np.loadtxt('model_6_e_7_admix.csv', delimiter=",")
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
+for i in range(len(mat_LD)):
+    if np.abs(mat_LD[i] - matpp[i]).sum() > 1e-15:
+        print(i, moments.LD.Util.moment_names(4)[0][i], np.abs(mat_LD[i] - matpp[i]).sum())
+        print(mat_LD[i])
+        print(matpp[i])
+
 mat_LD = pulse_migration(5, 2, 4, 0.5)
 matpp = np.loadtxt('model_7_e_9_admix.csv', delimiter=",")
-print(matpp - mat_LD)
+print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
+
+for i in range(len(mat_LD)):
+    if np.abs(mat_LD[i] - matpp[i]).sum() > 1e-15:
+        print(i, moments.LD.Util.moment_names(5)[0][i], np.abs(mat_LD[i] - matpp[i]).sum())
+        print(mat_LD[i])
+        print(matpp[i])
 ```
 
-```{bash clean-up, engine.opts='-i', include=FALSE, eval=FALSE}
+```{bash clean-up, engine.opts='-i', include=FALSE, eval=TRUE}
 
 source ~/.bashrc
 

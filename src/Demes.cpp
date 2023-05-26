@@ -210,18 +210,12 @@ void Demes::parse_(const std::string& fileName)
         size_t epochStart = timeBounds[i - 1];
         size_t epochEnd = timeBounds[i];
 
-        //std::cout << "\nepoch start: " << epochStart << ", epoch end: " << epochEnd << "\n";
-
         for(size_t j = 0; j < popsOverTime.size(); ++j) // for each "deme"
         {
-          //std::cout << popsOverTime[j].front()->getName() << "\n";
-
           for(auto itPop = std::begin(popsOverTime[j]); itPop < std::end(popsOverTime[j]); ++itPop)
           {
             size_t popStart = (*itPop)->getStartTime();
             size_t popEnd = (*itPop)->getEndTime();
-
-            //std::cout << "pop start: " << popStart << ", pop end: " << popEnd << "\n";
 
             if(popStart == epochStart && popEnd < epochEnd) // must split
             {
@@ -243,10 +237,6 @@ void Demes::parse_(const std::string& fileName)
           }
         }
       }
-
-      /*for(size_t i = 0; i < popsOverTime.size(); ++i)
-        for(size_t j = 0; j < popsOverTime[i].size(); ++j)
-          popsOverTime[i][j]->printAttributes(std::cout);*/
 
       // epochs are formalized (Epoch objects are instantiated) in the main function
       // their skeleton are prepared here:

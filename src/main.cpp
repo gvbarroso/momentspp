@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 25/05/2023
+ * Last modified: 26/05/2023
  * Source code for moments++
  *
  */
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    epochs.back()->printAttributes(std::cout);
+    //epochs.back()->printAttributes(std::cout);
   }
 
   epochs[0]->pseudoSteadyState(); // only need to have steady state in the deepest epoch
