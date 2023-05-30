@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 26/05/2023
+ * Last modified: 30/05/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 26/May/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 30/May/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -131,8 +131,12 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
 
-        if(demes.getNumPops(i) > 1) // && ! demes.getMig(i).isZero() ?
+         // only *allow* model to optimize mig params in epochs where the demes model has non-zero mig
+        if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
+        {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
+          operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv", sslib);
+        }
 
         operators.push_back(driftOp);
         operators.push_back(recOp);
@@ -149,6 +153,10 @@ int main(int argc, char *argv[]) {
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
     //epochs.back()->printAttributes(std::cout);
+    std::ofstream fout;
+    fout.open(id + "_transition_matrix.txt");
+    fout << epochs.back()->getTransitionMatrix() << "\n";
+    fout.close();
   }
 
   epochs[0]->pseudoSteadyState(); // only need to have steady state in the deepest epoch

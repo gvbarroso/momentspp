@@ -28,7 +28,7 @@ knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 
 source ~/.bashrc
 
-for((i=1;i<=7;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
+for((i=1;i<=15;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
 ```
 
 # Running moments++
@@ -37,13 +37,7 @@ for((i=1;i<=7;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
 
 source ~/.bashrc
 
-momentspp params=opt.bpp FILE=model_1.yaml LABEL=model_1
-momentspp params=opt.bpp FILE=model_2.yaml LABEL=model_2
-momentspp params=opt.bpp FILE=model_3.yaml LABEL=model_3
-momentspp params=opt.bpp FILE=model_4.yaml LABEL=model_4
-momentspp params=opt.bpp FILE=model_5.yaml LABEL=model_5
-momentspp params=opt.bpp FILE=model_6.yaml LABEL=model_6
-momentspp params=opt.bpp FILE=model_7.yaml LABEL=model_7
+for((i=1;i<=15;i++)); do momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i; done
 ```
 
 # Running moments.LD
@@ -133,20 +127,108 @@ with open("moments_LD_model_7.csv", "w+") as fout:
     fout.write(l)
     l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
     fout.write(l)
+    
+with open("moments_LD_model_8.csv", "w+") as fout:
+    f = "model_8.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_9.csv", "w+") as fout:
+    f = "model_9.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_10.csv", "w+") as fout:
+    f = "model_10.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_11.csv", "w+") as fout:
+    f = "model_11.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_12.csv", "w+") as fout:
+    f = "model_12.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_13.csv", "w+") as fout:
+    f = "model_13.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_14.csv", "w+") as fout:
+    f = "model_14.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
+    
+with open("moments_LD_model_15.csv", "w+") as fout:
+    f = "model_15.yaml"
+    pops = ["A", "B", "C"]
+    y = simulate_ld(f, pops)
+    stats = moments.LD.Util.moment_names(len(pops))
+    l = ",".join(stats[0] + stats[1]) + "\n"
+    fout.write(l)
+    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+    fout.write(l)
 ```
 
 # Plots
 
 ```{r plots, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
 
-# 3 sampled populations (models m1-m4)
+# 3 sampled populations (models m1-m4 & m8-m11)
 mpp_m1 <- read.table("model_1_expectations.txt") %>% select(!V2)
 mpp_m2 <- read.table("model_2_expectations.txt") %>% select(V3)
 mpp_m3 <- read.table("model_3_expectations.txt") %>% select(V3)
 mpp_m4 <- read.table("model_4_expectations.txt") %>% select(V3)
+mpp_m8 <- read.table("model_8_expectations.txt") %>% select(V3)
+mpp_m9 <- read.table("model_9_expectations.txt") %>% select(V3)
+mpp_m10 <- read.table("model_10_expectations.txt") %>% select(V3)
+mpp_m11 <- read.table("model_11_expectations.txt") %>% select(V3)
+mpp_m12 <- read.table("model_12_expectations.txt") %>% select(V3)
+mpp_m13 <- read.table("model_13_expectations.txt") %>% select(V3)
+mpp_m14 <- read.table("model_14_expectations.txt") %>% select(V3)
+mpp_m15 <- read.table("model_15_expectations.txt") %>% select(V3)
 
-momspp <- bind_cols(mpp_m1, mpp_m2, mpp_m3, mpp_m4)
-names(momspp) <- c("stat", "m1++", "m2++", "m3++", "m4++")
+momspp <- bind_cols(mpp_m1, mpp_m2, mpp_m3, mpp_m4, mpp_m8, mpp_m9, mpp_m10, mpp_m11, mpp_m12, mpp_m13, mpp_m14, mpp_m15)
+names(momspp) <- c("stat", "m1++", "m2++", "m3++", "m4++", "m8++", "m9++", "m10++", "m11++", "m12++", "m13++", "m14++", "m15++")
 momspp <- momspp[-31,] # deletes dummy moment I
 momspp <- slice(momspp, 1:24, 31:52, 25:30) # re-orders rows to match moments.LD
 
@@ -154,29 +236,37 @@ py_m1 <- read.csv("moments_LD_model_1.csv")
 py_m2 <- read.csv("moments_LD_model_2.csv") 
 py_m3 <- read.csv("moments_LD_model_3.csv") 
 py_m4 <- read.csv("moments_LD_model_4.csv") 
+py_m8 <- read.csv("moments_LD_model_8.csv") 
+py_m9 <- read.csv("moments_LD_model_9.csv") 
+py_m10 <- read.csv("moments_LD_model_10.csv") 
+py_m11 <- read.csv("moments_LD_model_11.csv") 
+py_m12 <- read.csv("moments_LD_model_12.csv") 
+py_m13 <- read.csv("moments_LD_model_13.csv") 
+py_m14 <- read.csv("moments_LD_model_14.csv") 
+py_m15 <- read.csv("moments_LD_model_15.csv") 
 
-py_moms <- as_tibble(cbind(names(py_m1), t(bind_rows(py_m1, py_m2, py_m3, py_m4))))
-names(py_moms) <- c("stat", "m1py", "m2py", "m3py", "m4py")
+py_moms <- as_tibble(cbind(names(py_m1), t(bind_rows(py_m1, py_m2, py_m3, py_m4, py_m8, py_m9, py_m10, py_m11, py_m12, py_m13, py_m14, py_m15))))
+names(py_moms) <- c("stat", "m1py", "m2py", "m3py", "m4py", "m8py", "m9py", "m10py", "m11py", "m12py", "m13py", "m14py", "m15py")
 py_moms <- type_convert(py_moms)
 
 ratios <- select(momspp, starts_with("m")) / select(py_moms, starts_with("m"))
 ratios <- bind_cols(momspp$stat, ratios)
-names(ratios) <- c("stat", "m1", "m2", "m3", "m4")
+names(ratios) <- c("stat", "m1", "m2", "m3", "m4", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15")
 ratios$count_2 <- as.factor(str_count(ratios$stat, "2"))
 
-molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
+molten_ratios <- pivot_longer(ratios, cols=c("m1", "m8", "m12"))#cols=starts_with("m"))
 p1 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name, color=count_2))
 p1 <- p1 + geom_point(size=3) + theme_bw()
 p1 <- p1 + geom_hline(yintercept=0.99, linetype=2)
 p1 <- p1 + geom_hline(yintercept=1.01, linetype=2)
 p1 <- p1 + labs(title="++ / LD", x="Moment", y="Ratio", shape="Model")
-p1 <- p1 + scale_shape_manual(values=c(0, 1, 2, 3))
+p1 <- p1 + scale_shape_manual(values=(0:11))
 p1 <- p1 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("ratios_1-4.pdf", p1, base_height=12, base_width=12)
+save_plot("ratios_3-pops.pdf", p1, base_height=12, base_width=12)
 
 # 4 sampled populations (models m5-m6)
 mpp_m5 <- read.table("model_5_expectations.txt") %>% select(!V2)
@@ -211,7 +301,7 @@ p2 <- p2 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("ratios_5-6.pdf", p2, base_height=15, base_width=15)
+save_plot("ratios_4-pops.pdf", p2, base_height=15, base_width=15)
 
 # 5 sampled populations (model m7)
 momspp <- read.table("model_7_expectations.txt") %>% select(!V2)
@@ -236,7 +326,7 @@ p3 <- p3 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("ratios_7.pdf", p3, base_height=18, base_width=18)
+save_plot("ratios_5-pops.pdf", p3, base_height=18, base_width=18)
 ```
 
 # Check-my-matrix
@@ -310,9 +400,35 @@ for i in range(len(mat_LD)):
         print(i, moments.LD.Util.moment_names(5)[0][i], np.abs(mat_LD[i] - matpp[i]).sum())
         print(mat_LD[i])
         print(matpp[i])
+
+mig_mat = [ 
+        [0, 1e-4, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+        ]
+
+matpp = np.loadtxt('model_2_e_7_mig.csv', delimiter=",")
+mat_LD = moments.LD.Matrices.migration_ld(3, 2 * mig_mat).todense()
+print(((matpp - mat_LD)).sum())
+print(((matpp - mat_LD)**2).sum())
+
+
+mig_mat = [ 
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 1e-4, 0, 0]
+        ]
+
+matpp = np.loadtxt('model_7_e_10_mig.csv', delimiter=",")
+mat_LD = moments.LD.Matrices.migration_ld(5, 2 * mig_mat).todense()
+print(matpp - mat_LD)
+print(((matpp - mat_LD)).sum())
+print(((matpp - mat_LD)**2).sum())
 ```
 
-```{bash clean-up, engine.opts='-i', include=FALSE, eval=TRUE}
+```{bash clean-up, engine.opts='-i', include=FALSE, eval=FALSE}
 
 source ~/.bashrc
 
