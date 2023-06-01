@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 24/04/2023
+ * Last modified: 01/06/2023
  *
  */
 
@@ -54,7 +54,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               }
             }
 
-            if((*it)->hasPopIndex(j))
+            if((*it)->hasPopIndex(jd))
             {
               size_t p1 = popIds[0];
               if(p1 == jd)

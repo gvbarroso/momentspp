@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 23/05/2023
+ * Last modified: 31/05/2023
  *
  */
 
@@ -16,12 +16,21 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   {
     updateOperators_(params);
 
-    Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init
+    if(duration() > 1)
+    {
+      Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init
 
-    for(size_t i = 1; i < operators_.size(); ++i)
-      mat = mat * operators_[i]->getTransitionMatrix();
+      for(size_t i = 1; i < operators_.size(); ++i)
+        mat = mat * operators_[i]->getTransitionMatrix();
 
-    transitionMatrix_ = mat; // converts from sparse to dense format
+      transitionMatrix_ = mat; // converts from sparse to dense format
+    }
+
+    else
+    {
+      Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix();
+      transitionMatrix_ = mat; // converts from sparse to dense format
+    }
   }
 }
 
@@ -155,11 +164,20 @@ void Epoch::testSteadyState()
 
 void Epoch::init_()
 {
-  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init mat
+  if(duration() > 1)
+  {
+    Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init
 
-  for(size_t i = 1; i < operators_.size(); ++i)
-    mat = operators_[i]->getTransitionMatrix() * mat;
+    for(size_t i = 1; i < operators_.size(); ++i)
+      mat = mat * operators_[i]->getTransitionMatrix();
 
-  transitionMatrix_ = mat; // converts from sparse to dense format
+    transitionMatrix_ = mat; // converts from sparse to dense format
+  }
+
+  else
+  {
+    Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix();
+    transitionMatrix_ = mat; // converts from sparse to dense format
+  }
 }
 

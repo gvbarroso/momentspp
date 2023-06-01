@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 23/05/2023
+ * Last modified: 30/05/2023
  *
  */
 
@@ -28,10 +28,13 @@ void Model::computeExpectedSumStats()
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
   }
 
-  // final epoch
-  epochs_.back()->transferStatistics(expected_);
-  epochs_.back()->computeExpectedSumStats(expected_);
-  epochs_.back()->updateMoments(expected_); // updates inside sslib
+  if(epochs_.size() > 1)
+  {
+    // final epoch
+    epochs_.back()->transferStatistics(expected_);
+    epochs_.back()->computeExpectedSumStats(expected_);
+    epochs_.back()->updateMoments(expected_); // updates inside sslib
+  }
 }
 
 void Model::printAliasedMoments(std::ostream& stream)

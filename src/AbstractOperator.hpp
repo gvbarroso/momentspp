@@ -105,6 +105,11 @@ public:
     return transition_;
   }
 
+  const Eigen::SparseMatrix<double>& getIdentity()
+  {
+    return identity_;
+  }
+
   virtual void printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
 
   virtual void printTransitionLDMat(const std::string& fileName, const SumStatsLibrary& sslib);

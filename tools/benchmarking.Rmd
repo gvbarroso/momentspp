@@ -24,20 +24,41 @@ use_python("/usr/bin/python3")
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
 
-```{bash draw-models, engine.opts='-i', include=FALSE, eval=TRUE}
+```{bash draw-models, engine.opts='-i', include=FALSE, eval=FALSE}
 
 source ~/.bashrc
 
-for((i=1;i<=15;++i)); do demesdraw tubes model_$i.yaml model_$i.pdf; done
+for((i=1;i<=15;++i))
+do 
+  cd multi_epoch
+  demesdraw tubes model_$i.yaml model_$i.pdf
+  cd ../one_epoch
+  demesdraw tubes model_$i.yaml model_$i.pdf
+  cd ..
+done
 ```
 
 # Running moments++
 
-```{bash run-moments++, engine.opts='-i', include=TRUE, eval=TRUE, results=FALSE}
+```{bash run-moments++, engine.opts='-i', include=FALSE, eval=TRUE, results=FALSE}
 
 source ~/.bashrc
 
-for((i=1;i<=15;i++)); do momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i; done
+# expectations
+for((i=1;i<=15;i++))
+do
+  cd multi_epoch
+  momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i
+  cd ..
+done
+
+# steady state
+for((i=1;i<=12;i++))
+do 
+  cd one_epoch
+  momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i
+  cd ..
+done
 ```
 
 # Running moments.LD
@@ -46,161 +67,87 @@ for((i=1;i<=15;i++)); do momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model
 
 import moments.LD
 import demes
+import sys, os
+import numpy as np
 
 def simulate_ld(f, sampled_demes):
-    """
-    f: the demes filename
-    """
     g = demes.load(f)
     u = g.metadata["mutation"]["rate"]
     r = g.metadata["recombination"]["rate"]
 
     y = moments.LD.LDstats.from_demes(g, sampled_demes, r=r, u=u)
     return y
+  
+def get_parameters(g, Ne=1e4):
+    u = g.metadata["mutation"]["rate"]
+    r = g.metadata["recombination"]["rate"]
+    theta = 4 * Ne * u
+    rho = 4 * Ne * r
+    pop_ids = []
+    nus = []
+    for d in g.demes:
+        pop_ids.append(d.name)
+        nus.append(d.epochs[0].start_size / Ne)
+    num_pops = len(pop_ids)
+    m = np.zeros((num_pops, num_pops))
+    for mig in g.migrations:
+        source_idx = pop_ids.index(mig.source)
+        dest_idx = pop_ids.index(mig.dest)
+        rate = mig.rate
+        m[dest_idx, source_idx] = 2 * Ne * rate
+    return pop_ids, nus, theta, rho, m
+  
+def write_column(y, out_file):
+    mld, mh = moments.LD.Util.moment_names(y.num_pops)
+    # write D2
+    for m, v in zip(mld, y[0]):
+        if m.split("_")[0] == "DD":
+            out_file.write(str(v) + "\n")
+    # write Dz
+    for m, v in zip(mld, y[0]):
+        if m.split("_")[0] == "Dz":
+            out_file.write(str(v) + "\n")
+    # write H
+    for m, v in zip(mh, y[-1]):
+        out_file.write(str(v) + "\n")
+    # write pi2
+    for m, v in zip(mld, y[0]):
+        if m.split("_")[0] == "pi2":
+            out_file.write(str(v) + "\n")
 
-with open("moments_LD_model_1.csv", "w+") as fout:
-    f = "model_1.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
+for i in range(1, 13):
+    with open(f"one_epoch/model_{i}_steady_state_LD.txt", "w+") as out_file:
+        yaml_file = f"one_epoch/model_{i}.yaml"
+        g = demes.load(yaml_file)
+        pop_ids, nus, theta, rho, m = get_parameters(g)
+        y = moments.LD.LDstats.steady_state(nus, m=m, rho=rho, theta=theta, pop_ids=pop_ids)
+        write_column(y, out_file)
     
-with open("moments_LD_model_2.csv", "w+") as fout:
-    f = "model_2.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_3.csv", "w+") as fout:
-    f = "model_3.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_4.csv", "w+") as fout:
-    f = "model_4.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_5.csv", "w+") as fout:
-    f = "model_5.yaml"
-    pops = ["A", "B", "C", "D"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_6.csv", "w+") as fout:
-    f = "model_6.yaml"
-    pops = ["A", "B", "C", "D"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_7.csv", "w+") as fout:
-    f = "model_7.yaml"
+for i in range(1, 13):
+  with open(f"multi_epoch/moments_LD_model_{i}.csv", "w+") as fout:
+      f = f"multi_epoch/model_{i}.yaml"
+      pops = ["A", "B", "C"]
+      y = simulate_ld(f, pops)
+      stats = moments.LD.Util.moment_names(len(pops))
+      l = ",".join(stats[0] + stats[1]) + "\n"
+      fout.write(l)
+      l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+      fout.write(l)
+      
+for i in range(13, 15):
+  with open(f"multi_epoch/moments_LD_model_{i}.csv", "w+") as fout:
+      f = f"multi_epoch/model_{i}.yaml"
+      pops = ["A", "B", "C", "D"]
+      y = simulate_ld(f, pops)
+      stats = moments.LD.Util.moment_names(len(pops))
+      l = ",".join(stats[0] + stats[1]) + "\n"
+      fout.write(l)
+      l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+      fout.write(l)
+      
+with open(f"multi_epoch/moments_LD_model_15.csv", "w+") as fout:
+    f = f"multi_epoch/model_15.yaml"
     pops = ["A", "B", "C", "D", "E"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_8.csv", "w+") as fout:
-    f = "model_8.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_9.csv", "w+") as fout:
-    f = "model_9.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_10.csv", "w+") as fout:
-    f = "model_10.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_11.csv", "w+") as fout:
-    f = "model_11.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_12.csv", "w+") as fout:
-    f = "model_12.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_13.csv", "w+") as fout:
-    f = "model_13.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_14.csv", "w+") as fout:
-    f = "model_14.yaml"
-    pops = ["A", "B", "C"]
-    y = simulate_ld(f, pops)
-    stats = moments.LD.Util.moment_names(len(pops))
-    l = ",".join(stats[0] + stats[1]) + "\n"
-    fout.write(l)
-    l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-    fout.write(l)
-    
-with open("moments_LD_model_15.csv", "w+") as fout:
-    f = "model_15.yaml"
-    pops = ["A", "B", "C"]
     y = simulate_ld(f, pops)
     stats = moments.LD.Util.moment_names(len(pops))
     l = ",".join(stats[0] + stats[1]) + "\n"
@@ -211,86 +158,70 @@ with open("moments_LD_model_15.csv", "w+") as fout:
 
 # Plots
 
-```{r plots, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
+```{r multi-epoch, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
 
-# 3 sampled populations (models m1-m4 & m8-m11)
-mpp_m1 <- read.table("model_1_expectations.txt") %>% select(!V2)
-mpp_m2 <- read.table("model_2_expectations.txt") %>% select(V3)
-mpp_m3 <- read.table("model_3_expectations.txt") %>% select(V3)
-mpp_m4 <- read.table("model_4_expectations.txt") %>% select(V3)
-mpp_m8 <- read.table("model_8_expectations.txt") %>% select(V3)
-mpp_m9 <- read.table("model_9_expectations.txt") %>% select(V3)
-mpp_m10 <- read.table("model_10_expectations.txt") %>% select(V3)
-mpp_m11 <- read.table("model_11_expectations.txt") %>% select(V3)
-mpp_m12 <- read.table("model_12_expectations.txt") %>% select(V3)
-mpp_m13 <- read.table("model_13_expectations.txt") %>% select(V3)
-mpp_m14 <- read.table("model_14_expectations.txt") %>% select(V3)
-mpp_m15 <- read.table("model_15_expectations.txt") %>% select(V3)
+# 3 sampled populations 
+stats <- read.table("multi_epoch/model_1_expectations.txt") %>% select(V1)
+stats <- stats[-31,] # deletes Dummy moment
 
-momspp <- bind_cols(mpp_m1, mpp_m2, mpp_m3, mpp_m4, mpp_m8, mpp_m9, mpp_m10, mpp_m11, mpp_m12, mpp_m13, mpp_m14, mpp_m15)
-names(momspp) <- c("stat", "m1++", "m2++", "m3++", "m4++", "m8++", "m9++", "m10++", "m11++", "m12++", "m13++", "m14++", "m15++")
-momspp <- momspp[-31,] # deletes dummy moment I
-momspp <- slice(momspp, 1:24, 31:52, 25:30) # re-orders rows to match moments.LD
+num_models <- 12
+mpp <- as.data.frame(matrix(nrow=52, ncol=num_models))
+for(i in 1:num_models) {
+  mpp[,i] <- read.table(paste("multi_epoch/model_", i, "_expectations.txt", sep="")) %>% select(V3)
+}
 
-py_m1 <- read.csv("moments_LD_model_1.csv") 
-py_m2 <- read.csv("moments_LD_model_2.csv") 
-py_m3 <- read.csv("moments_LD_model_3.csv") 
-py_m4 <- read.csv("moments_LD_model_4.csv") 
-py_m8 <- read.csv("moments_LD_model_8.csv") 
-py_m9 <- read.csv("moments_LD_model_9.csv") 
-py_m10 <- read.csv("moments_LD_model_10.csv") 
-py_m11 <- read.csv("moments_LD_model_11.csv") 
-py_m12 <- read.csv("moments_LD_model_12.csv") 
-py_m13 <- read.csv("moments_LD_model_13.csv") 
-py_m14 <- read.csv("moments_LD_model_14.csv") 
-py_m15 <- read.csv("moments_LD_model_15.csv") 
+names(mpp) <- paste("m++", 1:num_models, sep="")
+mpp <- slice(mpp, 1:24, 32:52, 25:30) # to match moments.LD output
 
-py_moms <- as_tibble(cbind(names(py_m1), t(bind_rows(py_m1, py_m2, py_m3, py_m4, py_m8, py_m9, py_m10, py_m11, py_m12, py_m13, py_m14, py_m15))))
-names(py_moms) <- c("stat", "m1py", "m2py", "m3py", "m4py", "m8py", "m9py", "m10py", "m11py", "m12py", "m13py", "m14py", "m15py")
-py_moms <- type_convert(py_moms)
+py <- as.data.frame(matrix(nrow=num_models, ncol=51))
+for(i in 1:num_models) {
+  py[i,] <- read.csv(paste("multi_epoch/moments_LD_model_", i, ".csv", sep="")) 
+}
 
-ratios <- select(momspp, starts_with("m")) / select(py_moms, starts_with("m"))
-ratios <- bind_cols(momspp$stat, ratios)
-names(ratios) <- c("stat", "m1", "m2", "m3", "m4", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15")
-ratios$count_2 <- as.factor(str_count(ratios$stat, "2"))
+py <- as_tibble(t(py))
+names(py) <- paste("py_", 1:num_models, sep="")
+py <- type_convert(py)
 
-molten_ratios <- pivot_longer(ratios, cols=c("m1", "m8", "m12"))#cols=starts_with("m"))
-p1 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name, color=count_2))
+ratios <- select(mpp, starts_with("m")) / select(py, starts_with("py"))
+names(ratios) <- paste("m", 1:num_models, sep="")
+ratios$stat <- stats
+  
+molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
+
+p1 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name))
 p1 <- p1 + geom_point(size=3) + theme_bw()
 p1 <- p1 + geom_hline(yintercept=0.99, linetype=2)
 p1 <- p1 + geom_hline(yintercept=1.01, linetype=2)
-p1 <- p1 + labs(title="++ / LD", x="Moment", y="Ratio", shape="Model")
+p1 <- p1 + labs(title="++ / LD", x="Moment idx", y="Ratio", shape="Model")
 p1 <- p1 + scale_shape_manual(values=(0:11))
 p1 <- p1 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("ratios_3-pops.pdf", p1, base_height=12, base_width=12)
+save_plot("multi_epoch/ratios_3-pops.pdf", p1, base_height=12, base_width=12)
 
 # 4 sampled populations (models m5-m6)
-mpp_m5 <- read.table("model_5_expectations.txt") %>% select(!V2)
-mpp_m6 <- read.table("model_6_expectations.txt") %>% select(V3)
+mpp_m13 <- read.table("multi_epoch/model_13_expectations.txt") %>% select(!V2)
+mpp_m14 <- read.table("multi_epoch/model_14_expectations.txt") %>% select(V3)
 
-momspp <- bind_cols(mpp_m5, mpp_m6)
-names(momspp) <- c("stat", "m5++", "m6++")
-momspp <- momspp[-61,] # deletes dummy moment I
-momspp <- slice(momspp, 1:50, 61:115, 51:60) # re-orders rows to match moments.LD
+momspp <- bind_cols(mpp_m13, mpp_m14)
+names(momspp) <- c("stat", "m13++", "m14++")
+momspp <- slice(momspp, 1:50, 62:116, 51:60) # re-orders rows to match moments.LD
 
-py_m5 <- read.csv("moments_LD_model_5.csv") 
-py_m6 <- read.csv("moments_LD_model_6.csv") 
+py_m13 <- read.csv("multi_epoch/moments_LD_model_13.csv") 
+py_m14 <- read.csv("multi_epoch/moments_LD_model_14.csv") 
 
-py_moms <- as_tibble(cbind(names(py_m5), t(bind_rows(py_m5, py_m6))))
-names(py_moms) <- c("stat", "m5py", "m6py")
+py_moms <- as_tibble(cbind(names(py_m13), t(bind_rows(py_m13, py_m14))))
+names(py_moms) <- c("stat", "m13py", "m14py")
 py_moms <- type_convert(py_moms)
 
 ratios <- select(momspp, starts_with("m")) / select(py_moms, starts_with("m"))
 ratios <- bind_cols(momspp$stat, ratios)
-names(ratios) <- c("stat", "m5", "m6")
-ratios$count_4 <- as.factor(str_count(ratios$stat, "4"))
+names(ratios) <- c("stat", "m13", "m14")
 
 molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
-p2 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name, color=count_4))
+p2 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name))
 p2 <- p2 + geom_point(size=3) + theme_bw()
 p2 <- p2 + geom_hline(yintercept=0.99, linetype=2) 
 p2 <- p2 + geom_hline(yintercept=1.01, linetype=2)
@@ -301,19 +232,19 @@ p2 <- p2 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("ratios_4-pops.pdf", p2, base_height=15, base_width=15)
+save_plot("multi_epoch/ratios_4-pops.pdf", p2, base_height=15, base_width=15)
 
 # 5 sampled populations (model m7)
-momspp <- read.table("model_7_expectations.txt") %>% select(!V2)
-names(momspp) <- c("stat", "m7++")
+momspp <- read.table("multi_epoch/model_15_expectations.txt") %>% select(!V2)
+names(momspp) <- c("stat", "m15++")
 momspp <- slice(momspp, 1:90, 107:226, 91:105) # to match moments.LD
 
-py_moms <- as_tibble(t(read.csv("moments_LD_model_7.csv")))
-names(py_moms) <- "m7py"
+py_moms <- as_tibble(t(read.csv("multi_epoch/moments_LD_model_15.csv")))
+names(py_moms) <- "m15py"
 
 ratios <- select(momspp, starts_with("m")) / select(py_moms, starts_with("m"))
 ratios <- bind_cols(momspp$stat, ratios)
-names(ratios) <- c("stat", "m7")
+names(ratios) <- c("stat", "m15")
 
 molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
 p3 <- ggplot(data=molten_ratios, aes(x=stat, y=value))
@@ -326,7 +257,53 @@ p3 <- p3 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("ratios_5-pops.pdf", p3, base_height=18, base_width=18)
+save_plot("multi_epoch/ratios_5-pops.pdf", p3, base_height=18, base_width=18)
+```
+
+```{r one_epoch, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
+
+# these are 3-pop models
+stats <- read.table("one_epoch/model_1_expectations.txt") %>% select(V1)
+stats <- stats[-31,] # deletes Dummy moment
+num_models <- 12
+
+# steady state
+mpp <- as.data.frame(matrix(nrow=52, ncol=num_models))
+for(i in 1:num_models) {
+  mpp[,i] <- read.table(paste("one_epoch/model_", i, "_steady_state.txt", sep=""))
+}
+names(mpp) <- paste("m", 1:num_models, sep="")
+mpp <- mpp[-31,] # deletes Dummy moment
+
+py <- as.data.frame(matrix(nrow=num_models, ncol=51))
+for(i in 1:num_models) {
+  py[i,] <- t(read.csv(paste("one_epoch/model_", i, "_steady_state_LD.txt", sep=""), header=F))
+}
+
+py <- as_tibble(t(py))
+names(py) <- paste("py_", 1:num_models, sep="")
+py <- type_convert(py)
+
+ratios <- select(mpp, starts_with("m")) / select(py, starts_with("py"))
+names(ratios) <- paste("m", 1:num_models, sep="")
+ratios$stat <- stats
+
+molten_ratios <- pivot_longer(ratios, cols=starts_with("m"))
+molten_ratios$r <- rep(c(rep(1e-4, 3), rep(1e-5, 3), rep(1e-6, 3), rep(1e-7, 3)), 51)
+molten_ratios$m_AB <- rep(rep(c(1e-3, 1e-4, 1e-5), 4), 51)
+
+p4 <- ggplot(data=molten_ratios, aes(x=stat, y=value, shape=name))
+p4 <- p4 + geom_point(size=3) + theme_bw() + facet_grid(r~m_AB)
+p4 <- p4 + geom_hline(yintercept=0.99, linetype=2)
+p4 <- p4 + geom_hline(yintercept=1.01, linetype=2)
+p4 <- p4 + labs(title="++ / LD for r (rows) x m_AB (cols)", x="Moment idx", y="Ratio", shape="Model")
+p4 <- p4 + scale_shape_manual(values=(0:11))
+p4 <- p4 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+
+save_plot("one_epoch/steady_state_3-pops.pdf", p4, base_height=18, base_width=18)
 ```
 
 # Check-my-matrix
@@ -363,24 +340,13 @@ def pulse_migration(num_pops, pop0, pop1, f):
 
 # some hard coding never hurt anyone...  
 mat_LD = pulse_migration(3, 0, 1, 0.3)
-matpp = np.loadtxt('model_2_e_6_admix.csv', delimiter=",")
+matpp = np.loadtxt('multi_epoch/model_2_e_6_admix.csv', delimiter=",")
 
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
 mat_LD = pulse_migration(4, 0, 3, 0.2)
-matpp = np.loadtxt('model_6_e_5_admix.csv', delimiter=",")
-print(((matpp - mat_LD)).sum())
-print(((matpp - mat_LD)**2).sum())
-
-for i in range(len(mat_LD)):
-    if np.abs(mat_LD[i] - matpp[i]).sum() > 1e-15:
-        print(i, moments.LD.Util.moment_names(4)[0][i], np.abs(mat_LD[i] - matpp[i]).sum())
-        print(mat_LD[i])
-        print(matpp[i])
-        
-mat_LD = pulse_migration(4, 0, 1, 0.3)
-matpp = np.loadtxt('model_6_e_7_admix.csv', delimiter=",")
+matpp = np.loadtxt('multi_epoch/model_3_e_5_admix.csv', delimiter=",")
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
@@ -391,7 +357,7 @@ for i in range(len(mat_LD)):
         print(matpp[i])
 
 mat_LD = pulse_migration(5, 2, 4, 0.5)
-matpp = np.loadtxt('model_7_e_9_admix.csv', delimiter=",")
+matpp = np.loadtxt('multi_epoch/model_15_e_9_admix.csv', delimiter=",")
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
@@ -407,11 +373,17 @@ mig_mat = [
         [0, 0, 0]
         ]
 
-matpp = np.loadtxt('model_2_e_7_mig.csv', delimiter=",")
+matpp = np.loadtxt('multi_epoch/model_2_e_5_mig.csv', delimiter=",")
 mat_LD = moments.LD.Matrices.migration_ld(3, 2 * mig_mat).todense()
+#print(matpp - mat_LD)
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
 
+for i in range(len(mat_LD)):
+    if np.abs(mat_LD[i] - matpp[i]).sum() > 1e-15:
+        print(i, moments.LD.Util.moment_names(5)[0][i], np.abs(mat_LD[i] - matpp[i]).sum())
+        print(mat_LD[i])
+        print(matpp[i])
 
 mig_mat = [ 
         [0, 0, 0, 0, 0],
@@ -421,17 +393,32 @@ mig_mat = [
         [0, 0, 1e-4, 0, 0]
         ]
 
-matpp = np.loadtxt('model_7_e_10_mig.csv', delimiter=",")
+matpp = np.loadtxt('multi_epoch/model_15_e_10_mig.csv', delimiter=",")
 mat_LD = moments.LD.Matrices.migration_ld(5, 2 * mig_mat).todense()
-print(matpp - mat_LD)
+#print(matpp - mat_LD)
 print(((matpp - mat_LD)).sum())
 print(((matpp - mat_LD)**2).sum())
+
+for i in range(len(mat_LD)):
+    if np.abs(mat_LD[i] - matpp[i]).sum() > 1e-15:
+        print(i, moments.LD.Util.moment_names(5)[0][i], np.abs(mat_LD[i] - matpp[i]).sum())
+        print(mat_LD[i])
+        print(matpp[i])
 ```
 
-```{bash clean-up, engine.opts='-i', include=FALSE, eval=FALSE}
+```{bash clean-up, engine.opts='-i', include=FALSE, eval=TRUE}
 
 source ~/.bashrc
 
+cd multi_epoch
+
 rm *.txt
 rm *.csv
+
+cd ../one_epoch
+
+rm *.txt
+rm *.csv
+
+cd ..
 ```

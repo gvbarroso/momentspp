@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 30/May/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 01/Jun/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -152,14 +152,14 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    //epochs.back()->printAttributes(std::cout);
-    std::ofstream fout;
-    fout.open(id + "_transition_matrix.txt");
-    fout << epochs.back()->getTransitionMatrix() << "\n";
-    fout.close();
+    epochs.back()->printAttributes(std::cout);
   }
 
-  epochs[0]->pseudoSteadyState(); // only need to have steady state in the deepest epoch
+  epochs.front()->pseudoSteadyState(); // only need to have steady state in the deepest epoch
+  std::ofstream fss;
+  fss.open(options.getLabel() + "_steady_state.txt");
+  fss << epochs.front()->getSteadyState() << "\n";
+  fss.close();
 
   try
   {
