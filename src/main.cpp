@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "Please fill in a text file with the following options and execute from the command line:\nmomentspp params=file_name\n\n";
+    std::cout << "To use moments++, fill in a text file with the following options and execute from the command line:\nmomentspp params=file_name\n\n";
 
     std::cout << "label = # optional string, default = 'moments++'\n";
     std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the (starting) model\n";
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
       if(!demes.getPulse(i).isZero(0))
       {
         operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
-        operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv", sslib);
+        //operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv", sslib);
       }
 
       else
@@ -152,14 +152,10 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    epochs.back()->printAttributes(std::cout);
+    //epochs.back()->printAttributes(std::cout);
   }
 
   epochs.front()->pseudoSteadyState(); // only need to have steady state in the deepest epoch
-  std::ofstream fss;
-  fss.open(options.getLabel() + "_steady_state.txt");
-  fss << epochs.front()->getSteadyState() << "\n";
-  fss.close();
 
   try
   {
