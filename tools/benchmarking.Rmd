@@ -260,7 +260,7 @@ p3 <- p3 + theme(axis.title=element_text(size=12),
 save_plot("multi_epoch/ratios_5-pops.pdf", p3, base_height=18, base_width=18)
 ```
 
-```{r one_epoch, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
+```{r one_epoch, include=TRUE, eval=FALSE, results=FALSE, message=FALSE, warning=FALSE}
 
 # these are 3-pop models
 stats <- read.table("one_epoch/model_1_expectations.txt") %>% select(V1)
@@ -308,7 +308,7 @@ save_plot("one_epoch/steady_state_3-pops.pdf", p4, base_height=18, base_width=18
 
 # Check-my-matrix
 
-```{python check-my-matrix, include=TRUE, eval=TRUE, results=TRUE}
+```{python check-my-matrix, include=TRUE, eval=FALSE, results=TRUE}
 
 import moments.LD
 import demes
