@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 18/04/2023
+ * Last modified: 08/06/2023
  *
  */
 
@@ -31,6 +31,7 @@ private:
   bool compressMoments_; // see moments_ vs compressedBasis_ inside SumStatsLibrary::initMoments_()
   bool computeCI_;
   size_t numThreads_;
+  size_t factorOrder_; // how many (1-2p) factors to include
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
@@ -41,7 +42,8 @@ public:
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
-  numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4))
+  numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),
+  factorOrder_(bpp::ApplicationTools::getParameter<size_t>("factor_order", options, 1, "", true, 0))
   { }
   
 public:
@@ -83,6 +85,11 @@ public:
   size_t getNumThreads() const
   {
     return numThreads_;
+  }
+
+  size_t getFactorOrder() const
+  {
+    return factorOrder_;
   }
 
 };

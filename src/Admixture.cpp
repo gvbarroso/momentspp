@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 26/05/2023
+ * Last modified: 08/06/2023
  *
  */
 
@@ -66,14 +66,14 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
             if(p1 == ancToId)
               p1 = (*it)->getPopIndices()[1];
 
-            // reference moments to help track which other Dz/pi2 moments contribute to focal DD
-            std::shared_ptr<DzMoment> syntheticDz = std::make_shared<DzMoment>("Dz_" + bpp::TextTools::toString(p1) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId), 0.);
+            // reference moments to help track which other Dr/pi2 moments contribute to focal DD
+            std::shared_ptr<DrMoment> syntheticDr = std::make_shared<DrMoment>("Dr_" + bpp::TextTools::toString(p1) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId), 0.);
             std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId), 0., nullptr, nullptr);
 
             for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
             {
-              // contributions from Dz moments
-              if(syntheticDz->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
+              // contributions from Dr moments
+              if(syntheticDr->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
               {
                 col = sslib.findCompressedIndex(*itCmp);
 
@@ -102,14 +102,14 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
             }
           }
 
-          else if((*it)->getPrefix() == "Dz")
+          else if((*it)->getPrefix() == "Dr")
           {
             if((*it)->getPopIndices()[0] == ancToId) // has pi2 contributions
             {
-              // a reference pi2 moment to help track which other pi2 moments contribute to focal Dz
+              // a reference pi2 moment to help track which other pi2 moments contribute to focal Dr
               std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[2]), 0., nullptr, nullptr);
 
-              // case 1: Dz TTT
+              // case 1: Dr TTT
               if((*it)->countInstances(ancToId) == 3)
               {
                 col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
@@ -151,7 +151,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * f * std::pow(1. - f, 3.)));
               }
 
-              // case 2: Dz TFT / TTF NOTE "forced" through some differences with the "naive" Mathematica notebook to match moments.LD admix matrix
+              // case 2: Dr TFT / TTF NOTE "forced" through some differences with the "naive" Mathematica notebook to match moments.LD admix matrix
               else if(((*it)->getPopIndices()[1] == ancToId && (*it)->getPopIndices()[2] == ancFromId) || ((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancToId))
               {
                 col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
@@ -170,7 +170,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * f * std::pow(1. - f, 2.)));
               }
 
-              // case 3: Dz TFF
+              // case 3: Dr TFF
               else if((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancFromId)
               {
                 col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId));
@@ -195,7 +195,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * (1. - f)));
               }
 
-              // case 4: Dz TTx / TxT
+              // case 4: Dr TTx / TxT
               else if((*it)->getPopIndices()[1] == ancToId || (*it)->getPopIndices()[2] == ancToId)
               {
                 for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
@@ -223,7 +223,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 }
               }
 
-              // case 5: Dz TFx / TxF
+              // case 5: Dr TFx / TxF
               else if((*it)->getPopIndices()[1] == ancFromId || (*it)->getPopIndices()[2] == ancFromId)
               {
                 for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
@@ -238,7 +238,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 }
               }
 
-              // case 6: Dz Txx / Txx
+              // case 6: Dr Txx / Txx
               else
               {
                 for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)

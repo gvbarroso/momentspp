@@ -104,9 +104,9 @@ void Model::linkMoments_()
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
-      else if((*it)->getPrefix() == "Dz")
+      else if((*it)->getPrefix() == "Dr")
       {
-        // indices of populations in parental Dz*** moment, inits to out-of-bounds
+        // indices of populations in parental Dr*** moment, inits to out-of-bounds
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops();
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops();
         size_t prevP3 = epochs_[i - 1]->getSslib().getNumPops();
@@ -141,7 +141,7 @@ void Model::linkMoments_()
         else
           prevP3 = p3RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDzIndex(prevP1, prevP2, prevP3));
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDrIndex(prevP1, prevP2, prevP3));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 

@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 30/05/2023
+ * Last modified: 09/06/2023
  * Source code for moments++
  *
  */
@@ -12,9 +12,9 @@
 #include "Mutation.hpp"
 #include "Recombination.hpp"
 #include "Drift.hpp"
-#include "Migration.hpp"
-//#include "Selection.hpp"
-#include "Admixture.hpp"
+//#include "Migration.hpp"
+#include "Selection.hpp"
+//#include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 01/Jun/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 09/Jun/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -89,10 +89,10 @@ int main(int argc, char *argv[]) {
   {
     std::string id = "e_" + bpp::TextTools::toString(i);
 
-    size_t start = demes.getPopsVec()[i].front()->getStartTime();
-    size_t end = demes.getPopsVec()[i].front()->getEndTime();
+    size_t start = demes.getPopsVec()[i].front()->getStartTime(); // shared by all pops in epoch i
+    size_t end = demes.getPopsVec()[i].front()->getEndTime(); // shared by all pops in epoch i
 
-    SumStatsLibrary sslib(demes.getPopsVec()[i], options.compressMoments());
+    SumStatsLibrary sslib(demes.getPopsVec()[i], options.getFactorOrder(), options.compressMoments());
 
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
 

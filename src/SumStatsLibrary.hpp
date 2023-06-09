@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 05/05/2023
+ * Last modified: 08/06/2023
  */
 
 
@@ -25,7 +25,7 @@
 #include "Population.hpp"
 #include "Moment.hpp"
 #include "DdMoment.hpp"
-#include "DzMoment.hpp"
+#include "DrMoment.hpp"
 #include "HetMoment.hpp"
 #include "Pi2Moment.hpp"
 
@@ -37,9 +37,10 @@ class SumStatsLibrary
 private:
   size_t numPops_;
   size_t numDDStats_;
-  size_t numDzStats_;
+  size_t numDrStats_;
   size_t numHetStats_;
   size_t numPi2Stats_;
+  size_t factorOrder_; // maximum number of 1-2p factors attached to a Moment
 
   std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
   std::vector<std::shared_ptr<Moment>> moments_; // sorted alphabetically based on prefix_ and numerically based on popIndices_
@@ -49,20 +50,22 @@ public:
   SumStatsLibrary():
   numPops_(0),
   numDDStats_(0),
-  numDzStats_(0),
+  numDrStats_(0),
   numHetStats_(0),
   numPi2Stats_(0),
+  factorOrder_(0),
   popIndices_(0),
   moments_(0),
   basis_(0)
   { }
 
-  SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments):
+  SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, size_t factorOrder, bool compressMoments):
   numPops_(pops.size()),
-  numDDStats_(numPops_ * numPops_),
-  numDzStats_(numPops_ * numPops_ * numPops_),
-  numHetStats_(numPops_ * numPops_),
-  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
+  numDDStats_(0),
+  numDrStats_(0),
+  numHetStats_(0),
+  numPi2Stats_(0),
+  factorOrder_(factorOrder),
   popIndices_(0),
   moments_(0),
   basis_(0)
@@ -129,9 +132,9 @@ public:
     return numDDStats_;
   }
 
-  size_t getNumDzStats() const
+  size_t getNumDrStats() const
   {
-    return numDzStats_;
+    return numDrStats_;
   }
 
   size_t getNumHetStats() const
@@ -146,7 +149,7 @@ public:
 
   size_t getNumStats() const
   {
-    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + numPi2Stats_;
+    return 1 + numDDStats_ + numDrStats_ + numHetStats_ + numPi2Stats_;
   }
 
   size_t getSizeOfBasis() const
@@ -154,17 +157,22 @@ public:
     return basis_.size();
   }
 
+  size_t getFactorOrder() const
+  {
+    return factorOrder_;
+  }
+
   std::shared_ptr<Moment> getMoment(const std::string& name) const;
 
   std::shared_ptr<Moment> getMoment(size_t pos) const;
 
-  std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2) const;
+  std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2, size_t factorPower) const;
 
-  std::shared_ptr<DzMoment> getDzMoment(size_t id1, size_t id2, size_t id3) const;
+  std::shared_ptr<DrMoment> getDrMoment(size_t id1, size_t id2, size_t id3, size_t factorPower) const;
 
-  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2) const;
+  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2, size_t factorPower) const;
 
-  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const;
+  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const;
 
   std::shared_ptr<Pi2Moment> getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const;
 
@@ -180,18 +188,18 @@ public:
 
   size_t findPopIndexRank(size_t index) const;
 
-  size_t findDdIndex(size_t id1, size_t id2) const;
+  size_t findDdIndex(size_t id1, size_t id2, size_t factorPower) const;
 
-  size_t findDzIndex(size_t id1, size_t id2, size_t id3) const;
+  size_t findDrIndex(size_t id1, size_t id2, size_t id3, size_t factorPower) const;
 
-  size_t findHetIndex(size_t id1, size_t id2) const;
+  size_t findHetIndex(size_t id1, size_t id2, size_t factorPower) const;
 
   size_t getDummyIndexUncompressed() const
   {
-    return numDDStats_ + numDzStats_ + numHetStats_;
+    return numDDStats_ + numDrStats_ + numHetStats_;
   }
 
-  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const;
+  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const;
 
   size_t findCompressedIndex(std::shared_ptr<Moment> mom) const;
 
@@ -217,20 +225,29 @@ private:
     {
       auto x = a->getPopIndices();
       auto y = b->getPopIndices();
+
       assert(x.size() == y.size());
 
-      for(size_t i = 0; i < x.size(); ++i)
+      if(x != y)
       {
-        if(x[i] != y[i])
+        for(size_t i = 0; i < x.size(); ++i)
         {
-          lessThan = x[i] < y[i];
-          break;
+          if(x[i] != y[i])
+          {
+            lessThan = x[i] < y[i];
+            break;
+          }
         }
       }
+
+      else
+        lessThan = a->getFactorPower() < b->getFactorPower();
     }
 
     return lessThan;
   }
+
+  void countMoments_();
 
   // assign two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();

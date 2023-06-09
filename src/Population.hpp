@@ -36,7 +36,7 @@ private:
   size_t id_; // "i" as it appears in N_i parameters (Drift) and m_ij parameters (Migration)
   size_t startTime_; // in units of generations (decreasing from past to present)
   size_t endTime_; // in units of generations
-  size_t size_; // N_i in 1/N_i Drift parameters (constant within each epoch)
+  size_t size_; // N_i in 1/2*N_i Drift parameters (constant within each epoch)
 
   bool isDerivedLeftSelected_; // ... in this population
 

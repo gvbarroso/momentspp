@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 27/02/2023
+ * Last modified: 08/06/2023
  *
  */
 
@@ -56,7 +56,7 @@ public:
 
   bool hasSamePopIds(std::shared_ptr<Moment> other) override
   {
-    assert(std::dynamic_pointer_cast<DzMoment>(other) != nullptr);
+    assert(std::dynamic_pointer_cast<Pi2Moment>(other) != nullptr);
 
     bool test = 0;
 

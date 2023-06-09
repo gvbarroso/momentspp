@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 20/03/2023
+ * Last modified: 07/06/2023
  *
  */
 
@@ -30,23 +30,18 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     else if((*it)->getPrefix() == "pi2")
     {
       auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*it);
+      assert(tmp != nullptr);
 
-      if(tmp != nullptr)
-      {
-        // introducing 2-locus Het via mutation in right locus (when left already polymorphic)
-        col = tmp->getLeftHetStat()->getPosition();
-        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+      // introducing 2-locus Het via mutation in right locus (when left already polymorphic)
+      col = tmp->getLeftHetStat()->getPosition();
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
-        // introducing 2-locus Het via mutation in left locus (when right already polymorphic)
-        col = tmp->getRightHetStat()->getPosition();
-        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
-      }
-
-      else
-        throw bpp::Exception("Mutation::could not downcast pi2 moment: " + (*it)->getName());
+      // introducing 2-locus Het via mutation in left locus (when right already polymorphic)
+      col = tmp->getRightHetStat()->getPosition();
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
 
-    else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dz")
+    else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dr")
       throw bpp::Exception("Mutation::mis-specified Moment prefix: " + (*it)->getPrefix());
   }
 

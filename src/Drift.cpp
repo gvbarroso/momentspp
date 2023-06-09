@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 21/04/2023
+ * Last modified: 08/06/2023
  *
  */
 
@@ -33,7 +33,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -3.));
 
-          col = sslib.findCompressedIndex(sslib.findDzIndex(id, id, id));
+          col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, id));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
 
           col = sslib.findCompressedIndex(sslib.findPi2Index(id, id, id, id));
@@ -44,7 +44,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
-      else if((*it)->getPrefix() == "Dz")
+      else if((*it)->getPrefix() == "Dr")
       {
         if((*it)->getPopIndices()[0] == id) // if D_i_z**
         {
@@ -88,7 +88,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
-          col = sslib.findCompressedIndex(sslib.findDzIndex(id, id, id));
+          col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, id));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
@@ -104,10 +104,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
               if(id != jd && (*it)->hasPopIndex(jd))
               {
-                col = sslib.findCompressedIndex(sslib.findDzIndex(id, id, jd));
+                col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, jd));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
 
-                col = sslib.findCompressedIndex(sslib.findDzIndex(id, jd, id));
+                col = sslib.findCompressedIndex(sslib.findDrIndex(id, jd, id));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
               }
             }
@@ -126,10 +126,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               assert(diff.size() == 2);
               double f = 1. + (diff[0] == diff[1]);
 
-              col = sslib.findCompressedIndex(sslib.findDzIndex(id, diff[0], diff[1]));
+              col = sslib.findCompressedIndex(sslib.findDrIndex(id, diff[0], diff[1]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * 0.0625));
 
-              col = sslib.findCompressedIndex(sslib.findDzIndex(id, diff[1], diff[0]));
+              col = sslib.findCompressedIndex(sslib.findDrIndex(id, diff[1], diff[0]));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, f * 0.0625));
             }
           }

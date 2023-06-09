@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 16/05/2023
+ * Last modified: 09/06/2023
  *
  */
 
@@ -27,9 +27,9 @@ std::shared_ptr<Moment> SumStatsLibrary::getMoment(size_t pos) const
   return basis_[pos];
 }
 
-std::shared_ptr<DdMoment> SumStatsLibrary::getDdMoment(size_t id1, size_t id2) const
+std::shared_ptr<DdMoment> SumStatsLibrary::getDdMoment(size_t id1, size_t id2, size_t factorPower) const
 {
-  size_t focalMomIndex = findDdIndex(id1, id2);
+  size_t focalMomIndex = findDdIndex(id1, id2, factorPower);
   auto ret = std::dynamic_pointer_cast<DdMoment>(moments_[focalMomIndex]);
 
   if(ret != nullptr)
@@ -39,21 +39,21 @@ std::shared_ptr<DdMoment> SumStatsLibrary::getDdMoment(size_t id1, size_t id2) c
     throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: DD" + asString(id1) + asString(id2));
 }
 
-std::shared_ptr<DzMoment> SumStatsLibrary::getDzMoment(size_t id1, size_t id2, size_t id3) const
+std::shared_ptr<DrMoment> SumStatsLibrary::getDrMoment(size_t id1, size_t id2, size_t factorPower) const
 {
-  size_t focalMomIndex = findDzIndex(id1, id2, id3);
-  auto ret = std::dynamic_pointer_cast<DzMoment>(moments_[focalMomIndex]);
+  size_t focalMomIndex = findDrIndex(id1, id2, id3, factorPower);
+  auto ret = std::dynamic_pointer_cast<DrMoment>(moments_[focalMomIndex]);
 
   if(ret != nullptr)
     return ret;
 
   else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dz" + asString(id1) + asString(id2) + asString(id3));
+    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dr" + asString(id1) + asString(id2) + asString(id3));
 }
 
-std::shared_ptr<HetMoment> SumStatsLibrary::getHetMoment(size_t id1, size_t id2) const
+std::shared_ptr<HetMoment> SumStatsLibrary::getHetMoment(size_t id1, size_t id2, size_t factorPower) const
 {
-  size_t focalMomIndex = findHetIndex(id1, id2);
+  size_t focalMomIndex = findHetIndex(id1, id2, factorPower);
   auto ret = std::dynamic_pointer_cast<HetMoment>(moments_[focalMomIndex]);
 
   if(ret != nullptr)
@@ -63,9 +63,9 @@ std::shared_ptr<HetMoment> SumStatsLibrary::getHetMoment(size_t id1, size_t id2)
     throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: H" + asString(id1) + asString(id2));
 }
 
-std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const
+std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const
 {
-  size_t focalMomIndex = findPi2Index(id1, id2, id3, id4);
+  size_t focalMomIndex = findPi2Index(id1, id2, id3, id4, factorPower);
   auto ret = std::dynamic_pointer_cast<Pi2Moment>(moments_[focalMomIndex]);
 
   if(ret != nullptr)
@@ -80,12 +80,12 @@ std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(std::shared_ptr<HetMome
   assert(left != nullptr && right != nullptr);
   std::shared_ptr<Pi2Moment> ret = nullptr;
 
-  for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
+  for(size_t i = (numDDStats_ + numDrStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
   {
     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
     assert(tmp != nullptr);
 
-    if(left == tmp->getLeftHetStat() && right == tmp->getRightHetStat())
+    if(left == tmp->getLeftHetStat() && right == tmp->getRightHetStat()) // WARNING
       ret = tmp;
   }
 
@@ -104,40 +104,39 @@ size_t SumStatsLibrary::findPopIndexRank(size_t index) const // among all pop in
   return std::distance(std::begin(popIndices_), it); // indexed from 0
 }
 
-size_t SumStatsLibrary::findDdIndex(size_t id1, size_t id2) const
+size_t SumStatsLibrary::findDdIndex(size_t id1, size_t id2, size_t factorPower) const
 {
-  size_t rank1 = findPopIndexRank(id1);
-  size_t rank2 = findPopIndexRank(id2);
+  size_t r1 = findPopIndexRank(id1);
+  size_t r2 = findPopIndexRank(id2);
 
-  return rank1 * numPops_ + rank2;
+  return r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
 }
 
-size_t SumStatsLibrary::findDzIndex(size_t id1, size_t id2, size_t id3) const
+size_t SumStatsLibrary::findDrIndex(size_t id1, size_t id2, size_t factorPower) const
 {
-  size_t rank1 = findPopIndexRank(id1);
-  size_t rank2 = findPopIndexRank(id2);
-  size_t rank3 = findPopIndexRank(id3);
+  size_t r1 = findPopIndexRank(id1);
+  size_t r2 = findPopIndexRank(id2);
 
-  return numDDStats_ + rank1 * numPops_ * numPops_ + rank2 * numPops_ + rank3;
+  return numDDStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
 }
 
-size_t SumStatsLibrary::findHetIndex(size_t id1, size_t id2) const
+size_t SumStatsLibrary::findHetIndex(size_t id1, size_t id2, size_t factorPower) const
 {
-  size_t rank1 = findPopIndexRank(id1);
-  size_t rank2 = findPopIndexRank(id2);
+  size_t r1 = findPopIndexRank(id1);
+  size_t r2 = findPopIndexRank(id2);
 
-  return numDDStats_ + numDzStats_ + rank1 * numPops_ + rank2 ;
+  return numDDStats_ + numDrStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
 }
 
-size_t SumStatsLibrary::findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const
+size_t SumStatsLibrary::findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const
 {
-  size_t rank1 = findPopIndexRank(id1);
-  size_t rank2 = findPopIndexRank(id2);
-  size_t rank3 = findPopIndexRank(id3);
-  size_t rank4 = findPopIndexRank(id4);
+  size_t r1 = findPopIndexRank(id1);
+  size_t r2 = findPopIndexRank(id2);
+  size_t r3 = findPopIndexRank(id3);
+  size_t r4 = findPopIndexRank(id4);
 
   // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-  return 1 + numDDStats_ + numDzStats_ + numHetStats_ + rank1 * numPops_ * numPops_ * numPops_ + rank2 * numPops_ * numPops_ + rank3 * numPops_ + rank4;
+  return 1 + numDDStats_ + numDrStats_ + numHetStats_ + r1 * numPops_ * numPops_ * numPops_ * (factorOrder_ + 1) + r2 * numPops_ * numPops_ * (factorOrder_ + 1) + r3 * numPops_ * (factorOrder_ + 1) + r4 * (factorOrder_ + 1) + factorPower;
 }
 
 size_t SumStatsLibrary::findCompressedIndex(std::shared_ptr<Moment> mom) const
@@ -214,17 +213,43 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
   {
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
-      moments_.emplace_back(std::make_shared<DdMoment>("DD_" + asString(*itI) + "_" + asString(*itJ), 0.));
-      moments_.emplace_back(std::make_shared<HetMoment>("H_" + asString(*itI) + "_" + asString(*itJ), 0., false));
-      // H_01 = p_0(1-p_1); H_10 = p_1(1-p_0)
-      // insert H moments with isPutativelySelected_ == true based on pops
+      std::string name = "DD_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+
+      for(size_t i = 0; i < factorOrder_ + 1; ++i)
+      {
+        moments_.emplace_back(std::make_shared<DdMoment>(name, 0.));
+        name = name + "_" + asString(selectedPopIds.front()); // NOTE ad-hoc for 1-pop case
+      }
+
+      name = "H_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+      // NOTE distinguish Hl(true) and Hr(false)
+
+      for(size_t i = 0; i < factorOrder_ + 1; ++i)
+      {
+        moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false)); // H_01 = p_0(1-p_1); H_10 = p_1(1-p_0)
+        name = name + "_" + asString(selectedPopIds.front()); // NOTE ad-hoc for 1-pop case WARNING make 2 kinds of Het moments (taking true and false)
+      }
+
+      name = "Dr_" + asString(*itI) + "_" + asString(*itJ) + "_l"; // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
+
+      for(size_t i = 0; i < factorOrder_ + 1; ++i)
+      {
+        moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
+        name = name + "_" + asString(selectedPopIds.front()); // NOTE ad-hoc for 1-pop case
+      }
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {
-        moments_.emplace_back(std::make_shared<DzMoment>("Dz_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK), 0.));
-
         for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
-          moments_.emplace_back(std::make_shared<Pi2Moment>("pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL), 0., nullptr, nullptr));
+        {
+          name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_l";
+
+          for(size_t i = 0; i < factorOrder_ + 1; ++i)
+          {
+            moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
+            name = name + "_" + asString(selectedPopIds.front()); // NOTE ad-hoc for 1-pop case
+          }
+        }
       }
     }
   }
@@ -234,6 +259,9 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
 
   // determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
+  countMoments_();
+
+  printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);
@@ -241,16 +269,28 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
   linkPi2HetStats_();
   basis_ = moments_; // default
 
+  /* NOTE activate when aliasMoments_ is fixed for P > 1
   if(compress)
   {
     aliasMoments_(selectedPopIds);
     compressBasis_();
   }
+  */
+}
+
+void SumStatsLibrary::countMoments_()
+{
+  assert(moments_.size() != 0);
+
+  numDDStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "DD"; });
+  numDrStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Dr"; });
+  numPi2Stats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "pi2"; });
+  numHetStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "H"; });
 }
 
 void SumStatsLibrary::linkPi2HetStats_()
 {
-  for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
+  for(size_t i = (1 + numDDStats_ + numDrStats_ + numHetStats_); i < getNumStats(); ++i)
   {
     auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
     assert(tmpPi2 != nullptr);
@@ -259,9 +299,11 @@ void SumStatsLibrary::linkPi2HetStats_()
     size_t p2 = tmpPi2->getPopIndices()[1];
     size_t p3 = tmpPi2->getPopIndices()[2];
     size_t p4 = tmpPi2->getPopIndices()[3];
+    size_t x = tmpPi2->getFactorPower();
 
-    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2));
-    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4));
+    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p1, p2, x));
+    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetMoment(p3, p4, x));
+
     assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
     tmpPi2->setLeftHetStat(tmpHetLeft);
@@ -269,6 +311,7 @@ void SumStatsLibrary::linkPi2HetStats_()
   }
 }
 
+/* NOTE needs to be fixed when P > 1
 void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) // selection acts on the left locus by design
 {
   for(size_t i = 0; i < numDDStats_; ++i)
@@ -278,36 +321,42 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
 
-    if(pop1 != pop2) // NOTE check D* under selection, left and right
+    bool statusP1 = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
+    bool statusP2 = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) != std::end(selectedPopIds);
+
+    if((pop1 != pop2) && (statusP1 == statusP2))
       moments_[i]->insertAlias(getDdMoment(pop2, pop1));
   }
 
-  for(size_t i = numDDStats_; i < (numDDStats_ + numDzStats_); ++i)
+  // TODO when P > 1, use factorIds for aliasing permutations with same selective constraint
+  for(size_t i = numDDStats_; i < (numDDStats_ + numDrStats_); ++i)
   {
-    assert(moments_[i]->getPrefix() == "Dz");
+    assert(moments_[i]->getPrefix() == "Dr");
 
     size_t pop1 = moments_[i]->getPopIndices()[0];
     size_t pop2 = moments_[i]->getPopIndices()[1];
-    size_t pop3 = moments_[i]->getPopIndices()[2];
 
-    if(pop2 != pop3)
+    auto factorIds = moments_[i]->getFactorIndices();
+
+    for(size_t j = 0; j < factorIds.size(); ++j)
     {
-      bool pop2Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) != std::end(selectedPopIds);
-      bool pop3Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop3) != std::end(selectedPopIds);
+      bool sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), factorIds[j]) != std::end(selectedPopIds);
 
-      if(pop2Sel == pop3Sel) // if pop2 and pop3 share status of constraint
-        moments_[i]->insertAlias(getDzMoment(pop1, pop3, pop2));
+      if(sel)
+      {
+        moments_[i]->insertAlias(getDrMoment(pop1, p2));
+
     }
   }
 
-  for(size_t i = (numDDStats_ + numDzStats_); i < (numDDStats_ + numDzStats_ + numHetStats_); ++i)
+  for(size_t i = (numDDStats_ + numDrStats_); i < (numDDStats_ + numDrStats_ + numHetStats_); ++i)
   {
     assert(moments_[i]->getPrefix() == "H");
 
     auto tmp = std::dynamic_pointer_cast<HetMoment>(moments_[i]);
 
-    size_t pop1 = tmp->getPopIndices()[0]; // left locus, potentially under selection
-    size_t pop2 = tmp->getPopIndices()[1]; // right locus, always neutral by construction of summary statistics stored in Data class
+    size_t pop1 = tmp->getPopIndices()[0]; // derived allele, potentially under selection
+    size_t pop2 = tmp->getPopIndices()[1]; // ancestral allele, neutral by construction
 
     if(pop1 != pop2)
     {
@@ -326,14 +375,14 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
   }
 
   // Pi2 stats are aliased if both their left and right H's are aliased OR if focal pops don't experience selection and there's a left-right permutation
-  for(size_t i = (numDDStats_ + numDzStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
+  for(size_t i = (numDDStats_ + numDrStats_ + numHetStats_ + 1); i < getNumStats(); ++i)
   {
     assert(moments_[i]->getPrefix() == "pi2");
 
     auto left1 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i])->getLeftHetStat();
     auto right1 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i])->getRightHetStat();
 
-    for(size_t j = (numDDStats_ + numDzStats_ + numHetStats_ + 1); j < getNumStats(); ++j)
+    for(size_t j = (numDDStats_ + numDrStats_ + numHetStats_ + 1); j < getNumStats(); ++j)
     {
       if(i != j)
       {
@@ -358,6 +407,7 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
     }
   }
 }
+*/
 
 void SumStatsLibrary::compressBasis_()
 {

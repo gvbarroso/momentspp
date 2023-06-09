@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 17/05/2023
+ * Last modified: 09/06/2023
  *
  */
 
@@ -28,11 +28,12 @@ class Moment
 {
 
 protected:
-  std::string name_; // e.g. "Dz_110"
-  std::string prefix_; // e.g. "Dz"
-  std::vector<size_t> popIndices_;
+  std::string name_; // e.g. "pi2_1100_l_00"
+  std::string prefix_; // e.g. "pi2"
+  std::vector<size_t> popIndices_; // population indices associated with main statistic
+  std::vector<size_t> factorIndices_; // population indices associalted with each (1-2p) factor
   size_t position_; // within the Y vector and SumStatsLibrary basis_
-  double value_;
+  double value_; // expectation
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry
   std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations)
@@ -42,6 +43,7 @@ public:
   name_(""),
   prefix_(""),
   popIndices_(0),
+  factorIndices_(0),
   position_(0),
   value_(0.),
   parent_(nullptr),
@@ -52,6 +54,7 @@ public:
   name_(name),
   prefix_(""),
   popIndices_(0),
+  factorIndices_(0),
   position_(0),
   value_(value),
   parent_(nullptr),
@@ -103,6 +106,16 @@ public:
   const std::vector<size_t>& getPopIndices() const
   {
     return popIndices_;
+  }
+
+  const std::vector<size_t>& getFactorIndices() const
+  {
+    return factorIndices_;
+  }
+
+  size_t getFactorPower()
+  {
+    return factorIndices_.size();
   }
 
   size_t getPosition() const
@@ -276,7 +289,18 @@ public:
     if(splitName.size() > 1)
     {
       for(size_t i = 1; i < splitName.size(); ++i)
-        popIndices_.push_back(std::stoul(splitName[i]));
+      {
+        if(splitName[i] != "l")
+          popIndices_.push_back(std::stoul(splitName[i]));
+
+        else
+        {
+          for(size_t j = i + 1; j < splitName.size(); ++j)
+            factorIndices_.push_back(std::stoul(splitName[j]));
+
+          break;
+        }
+      }
     }
   }
 

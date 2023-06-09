@@ -11,9 +11,10 @@ SET(momentspp_CPP
   SumStatsLibrary.cpp
   AbstractOperator.cpp
   Drift.cpp
-  Migration.cpp
+  #Migration.cpp
   Mutation.cpp
-  Admixture.cpp
+  #Admixture.cpp
+  Selection.cpp
   Recombination.cpp
   Epoch.cpp
   Model.cpp

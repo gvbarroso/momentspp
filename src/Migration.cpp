@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 01/06/2023
+ * Last modified: 08/06/2023
  *
  */
 
@@ -64,38 +64,38 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
               size_t p3 = jd;
 
               double f = static_cast<double>(p2 == p3) / 2. - 0.25;
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              col = sslib.findCompressedIndex(sslib.findDrIndex(p1, p2, p3));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p3, p2));
+              col = sslib.findCompressedIndex(sslib.findDrIndex(p1, p3, p2));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
 
               p2 = jd;
 
               f = static_cast<double>(p2 == p3) / 2. - 0.25;
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              col = sslib.findCompressedIndex(sslib.findDrIndex(p1, p2, p3));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
 
               p2 = id;
               p3 = id;
 
               f = static_cast<double>(p2 == p3) / 2. - 0.25;
-              col = sslib.findCompressedIndex(sslib.findDzIndex(p1, p2, p3));
+              col = sslib.findCompressedIndex(sslib.findDrIndex(p1, p2, p3));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, childPopIdCount * f));
             }
           }
 
-          else if((*it)->getPrefix() == "Dz")
+          else if((*it)->getPrefix() == "Dr")
           {
             std::vector<size_t> popIds = (*it)->getPopIndices();
 
-            for(size_t l = 0; l < popIds.size(); ++ l) // contributions from the Dz cols
+            for(size_t l = 0; l < popIds.size(); ++ l) // contributions from the Dr cols
             {
               if(popIds[l] == jd) // if entry matches childPopId
               {
                 popIds[l] = id; // assign to focal parentPopId
-                col = sslib.findCompressedIndex(sslib.findDzIndex(popIds[0], popIds[1], popIds[2]));
+                col = sslib.findCompressedIndex(sslib.findDrIndex(popIds[0], popIds[1], popIds[2]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
-                col = sslib.findCompressedIndex(sslib.findDzIndex(popIds[0], popIds[2], popIds[1]));
+                col = sslib.findCompressedIndex(sslib.findDrIndex(popIds[0], popIds[2], popIds[1]));
                 coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.5));
                 popIds[l] = jd; // recycle
               }

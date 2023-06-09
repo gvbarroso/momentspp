@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 30/05/2023
+ * Last modified: 08/06/2023
  *
  */
 
@@ -71,7 +71,7 @@ void Demes::parse_(const std::string& fileName)
           }
 
           // each instance of pop i (one per epoch) is treated as a different Population object in moments++
-          singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, false));
+          singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, true)); // WARNING bool hasSelection
         }
 
         if(pops[i]["ancestors"])
