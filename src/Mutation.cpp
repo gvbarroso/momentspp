@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 07/06/2023
+ * Last modified: 14/06/2023
  *
  */
 
@@ -21,7 +21,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     int row = it - std::begin(sslib.getBasis());
     int col = -1;
 
-    if((*it)->getPrefix() == "H")
+    if((*it)->getPrefix() == "Hl" || (*it)->getPrefix() == "Hr")
     {
       col = sslib.findCompressedIndex(sslib.getDummyIndexUncompressed()); // for a homogeneous system
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));

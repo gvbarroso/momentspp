@@ -113,7 +113,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         }
       }
 
-      else if((*it)->getPrefix() == "H") // NOTE Hl(true)
+      else if((*it)->getPrefix() == "Hl")
       {
         if(popIdCount == 2)
         {

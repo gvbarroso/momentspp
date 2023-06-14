@@ -44,13 +44,19 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
     }
 
-    else if((*it)->getPrefix() == "H") // NOTE Hl(true)
+    else if((*it)->getPrefix() == "Hl")
     {
       col = sslib.findCompressedIndex(sslib.findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
 
       col = sslib.findCompressedIndex(sslib.findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
+    }
+
+    else if((*it)->getPrefix() == "Hr")
+    {
+      col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], 0));
+      coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
     }
 
     else if((*it)->getPrefix() == "pi2")
@@ -60,8 +66,6 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
       col = sslib.findCompressedIndex(sslib.findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x - 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
-
-      // WARNING single-pop ad-hoc:
 
       col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));

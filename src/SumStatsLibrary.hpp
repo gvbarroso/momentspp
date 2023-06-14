@@ -38,7 +38,8 @@ private:
   size_t numPops_;
   size_t numDDStats_;
   size_t numDrStats_;
-  size_t numHetStats_;
+  size_t numHetLeftStats_; // left locus, potentially under selection
+  size_t numHetRightStats_; // right locus, neutral
   size_t numPi2Stats_;
   size_t factorOrder_; // maximum number of 1-2p factors attached to a Moment
 
@@ -51,7 +52,8 @@ public:
   numPops_(0),
   numDDStats_(0),
   numDrStats_(0),
-  numHetStats_(0),
+  numHetLeftStats_(0),
+  numHetRightStats_(0),
   numPi2Stats_(0),
   factorOrder_(0),
   popIndices_(0),
@@ -63,7 +65,8 @@ public:
   numPops_(pops.size()),
   numDDStats_(0),
   numDrStats_(0),
-  numHetStats_(0),
+  numHetLeftStats_(0),
+  numHetRightStats_(0),
   numPi2Stats_(0),
   factorOrder_(factorOrder),
   popIndices_(0),
@@ -137,9 +140,14 @@ public:
     return numDrStats_;
   }
 
-  size_t getNumHetStats() const
+  size_t getNumHetLeftStats() const
   {
-    return numHetStats_;
+    return numHetLeftStats_;
+  }
+
+  size_t getNumHetRightStats() const
+  {
+    return numHetRightStats_;
   }
 
   size_t getNumPi2Stats() const
@@ -149,7 +157,7 @@ public:
 
   size_t getNumStats() const
   {
-    return 1 + numDDStats_ + numDrStats_ + numHetStats_ + numPi2Stats_;
+    return 1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + numPi2Stats_;
   }
 
   size_t getSizeOfBasis() const
@@ -170,7 +178,9 @@ public:
 
   std::shared_ptr<DrMoment> getDrMoment(size_t id1, size_t id2, size_t factorPower) const;
 
-  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2, size_t factorPower) const;
+  std::shared_ptr<HetMoment> getHetLeftMoment(size_t id1, size_t id2, size_t factorPower) const;
+
+  std::shared_ptr<HetMoment> getHetRightMoment(size_t id1, size_t id2, size_t factorPower) const;
 
   std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const;
 
@@ -192,11 +202,13 @@ public:
 
   size_t findDrIndex(size_t id1, size_t id2, size_t factorPower) const;
 
-  size_t findHetIndex(size_t id1, size_t id2, size_t factorPower) const;
+  size_t findHetLeftIndex(size_t id1, size_t id2, size_t factorPower) const;
+
+  size_t findHetRightIndex(size_t id1, size_t id2, size_t factorPower) const;
 
   size_t getDummyIndexUncompressed() const
   {
-    return numDDStats_ + numDrStats_ + numHetStats_;
+    return numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_;
   }
 
   size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const;
