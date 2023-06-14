@@ -123,10 +123,16 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(x >= 2)
           {
             double z = (x * (x - 1)) / 2.;
-            col = sslib.findCompressedIndex(sslib.findHetIndex(id, id, x - 2));
+            col = sslib.findCompressedIndex(sslib.findHetLeftIndex(id, id, x - 2));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, z));
           }
         }
+      }
+
+      else if((*it)->getPrefix() == "Hr")
+      {
+        if(popIdCount == 2)
+          coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
       }
 
       else if((*it)->getPrefix() != "I")

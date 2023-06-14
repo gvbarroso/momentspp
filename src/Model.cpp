@@ -136,9 +136,9 @@ void Model::linkMoments_()
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
-      else if((*it)->getPrefix() == "H")
+      else if((*it)->getPrefix() == "Hl")
       {
-        // indices of populations in parental H_** moment
+        // indices of populations in parental Hl_** moment
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
 
@@ -162,7 +162,37 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetIndex(prevP1, prevP2, x));
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetLeftIndex(prevP1, prevP2, x));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
+      }
+
+      else if((*it)->getPrefix() == "Hr")
+      {
+        // indices of populations in parental Hr_** moment
+        size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+        size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+
+        size_t focalP1 = (*it)->getPopIndices()[0];
+        size_t p1LeftParentId = epochs_[i]->fetchPop(focalP1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i]->fetchPop(focalP1)->getRightParent()->getId();
+
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
+          prevP1 = p1LeftParentId;
+
+        else // focalP1 is formed by admixture of two populations in previous epoch
+          prevP1 = p1RightParentId;
+
+        size_t focalP2 = (*it)->getPopIndices()[1];
+        size_t p2LeftParentId = epochs_[i]->fetchPop(focalP2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i]->fetchPop(focalP2)->getRightParent()->getId();
+
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
+          prevP2 = p2LeftParentId;
+
+        else
+          prevP2 = p2RightParentId;
+
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetRightIndex(prevP1, prevP2));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 

@@ -46,10 +46,10 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
     else if((*it)->getPrefix() == "Hl")
     {
-      col = sslib.findCompressedIndex(sslib.findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
+      col = sslib.findCompressedIndex(sslib.findHetLeftIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
 
-      col = sslib.findCompressedIndex(sslib.findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
+      col = sslib.findCompressedIndex(sslib.findHetLeftIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
     }
 

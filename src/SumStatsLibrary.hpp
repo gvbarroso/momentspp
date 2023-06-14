@@ -180,7 +180,7 @@ public:
 
   std::shared_ptr<HetMoment> getHetLeftMoment(size_t id1, size_t id2, size_t factorPower) const;
 
-  std::shared_ptr<HetMoment> getHetRightMoment(size_t id1, size_t id2, size_t factorPower) const;
+  std::shared_ptr<HetMoment> getHetRightMoment(size_t id1, size_t id2) const;
 
   std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const;
 
@@ -204,7 +204,7 @@ public:
 
   size_t findHetLeftIndex(size_t id1, size_t id2, size_t factorPower) const;
 
-  size_t findHetRightIndex(size_t id1, size_t id2, size_t factorPower) const;
+  size_t findHetRightIndex(size_t id1, size_t id2) const;
 
   size_t getDummyIndexUncompressed() const
   {

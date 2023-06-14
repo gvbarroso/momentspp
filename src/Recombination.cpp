@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/06/2023
+ * Last modified: 14/06/2023
  *
  */
 
@@ -26,7 +26,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     else if((*it)->getPrefix() == "Dr")
       coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
 
-    else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "H" && (*it)->getPrefix() != "pi2")
+    else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "Hl" && (*it)->getPrefix() != "Hr" && (*it)->getPrefix() != "pi2")
       throw bpp::Exception("Recombination::mis-specified Moment prefix: " + (*it)->getPrefix());
   }
 

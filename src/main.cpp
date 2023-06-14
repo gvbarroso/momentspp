@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 09/06/2023
+ * Last modified: 14/06/2023
  * Source code for moments++
  *
  */
@@ -12,8 +12,8 @@
 #include "Mutation.hpp"
 #include "Recombination.hpp"
 #include "Drift.hpp"
-//#include "Migration.hpp"
 #include "Selection.hpp"
+//#include "Migration.hpp"
 //#include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
@@ -132,6 +132,7 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
         std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
+        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(1e-3, ic, sslib); // TODO set selection strength as metadata in Demes
 
          // only *allow* model to optimize mig params in epochs where the demes model has non-zero mig
         /*if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
@@ -143,6 +144,7 @@ int main(int argc, char *argv[]) {
         operators.push_back(driftOp);
         operators.push_back(recOp);
         operators.push_back(mutOp);
+        operators.push_back(selOp);
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
