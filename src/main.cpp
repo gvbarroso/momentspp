@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 09/Jun/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 14/Jun/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -104,14 +104,16 @@ int main(int argc, char *argv[]) {
 
     if((start - end) == 1)
     {
-      if(!demes.getPulse(i).isZero(0))
+      throw bpp::Exception("Attempted to buid Admixture operator under selection model!");
+
+      /*if(!demes.getPulse(i).isZero(0))
       {
         operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
         //operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv", sslib);
       }
 
       else
-        throw bpp::Exception("Zero Admixture matrix assigned to 1-generation Epoch!");
+        throw bpp::Exception("Zero Admixture matrix assigned to 1-generation Epoch!");*/
     }
 
     else
@@ -132,11 +134,11 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
 
          // only *allow* model to optimize mig params in epochs where the demes model has non-zero mig
-        if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
+        /*if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
           operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv", sslib);
-        }
+        }*/
 
         operators.push_back(driftOp);
         operators.push_back(recOp);

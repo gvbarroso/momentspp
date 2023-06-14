@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 08/06/2023
+ * Last modified: 14/06/2023
  */
 
 
@@ -168,7 +168,7 @@ public:
 
   std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2, size_t factorPower) const;
 
-  std::shared_ptr<DrMoment> getDrMoment(size_t id1, size_t id2, size_t id3, size_t factorPower) const;
+  std::shared_ptr<DrMoment> getDrMoment(size_t id1, size_t id2, size_t factorPower) const;
 
   std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2, size_t factorPower) const;
 
@@ -190,7 +190,7 @@ public:
 
   size_t findDdIndex(size_t id1, size_t id2, size_t factorPower) const;
 
-  size_t findDrIndex(size_t id1, size_t id2, size_t id3, size_t factorPower) const;
+  size_t findDrIndex(size_t id1, size_t id2, size_t factorPower) const;
 
   size_t findHetIndex(size_t id1, size_t id2, size_t factorPower) const;
 

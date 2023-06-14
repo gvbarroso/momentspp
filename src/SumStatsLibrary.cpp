@@ -41,14 +41,14 @@ std::shared_ptr<DdMoment> SumStatsLibrary::getDdMoment(size_t id1, size_t id2, s
 
 std::shared_ptr<DrMoment> SumStatsLibrary::getDrMoment(size_t id1, size_t id2, size_t factorPower) const
 {
-  size_t focalMomIndex = findDrIndex(id1, id2, id3, factorPower);
+  size_t focalMomIndex = findDrIndex(id1, id2, factorPower);
   auto ret = std::dynamic_pointer_cast<DrMoment>(moments_[focalMomIndex]);
 
   if(ret != nullptr)
     return ret;
 
   else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dr" + asString(id1) + asString(id2) + asString(id3));
+    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dr" + asString(id1) + asString(id2));
 }
 
 std::shared_ptr<HetMoment> SumStatsLibrary::getHetMoment(size_t id1, size_t id2, size_t factorPower) const

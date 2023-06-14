@@ -25,48 +25,48 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
     if((*it)->getPrefix() == "DD")
     {
-      col = sslib.findCompressedIndex(findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
+      col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + x/2.)));
 
-      col = sslib.findCompressedIndex(findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
+      col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
     }
 
     else if((*it)->getPrefix() == "Dr")
     {
-      col = sslib.findCompressedIndex(findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
+      col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
 
-      col = sslib.findCompressedIndex(findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
+      col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
 
-      col = sslib.findCompressedIndex(findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
+      col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
     }
 
     else if((*it)->getPrefix() == "H") // NOTE Hl(true)
     {
-      col = sslib.findCompressedIndex(findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
+      col = sslib.findCompressedIndex(sslib.findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
 
-      col = sslib.findCompressedIndex(findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
+      col = sslib.findCompressedIndex(sslib.findHetIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
     }
 
     else if((*it)->getPrefix() == "pi2")
     {
-      col = sslib.findCompressedIndex(findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x + 1));
+      col = sslib.findCompressedIndex(sslib.findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x + 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
 
-      col = sslib.findCompressedIndex(findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x - 1));
+      col = sslib.findCompressedIndex(sslib.findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x - 1));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
 
       // WARNING single-pop ad-hoc:
 
-      col = sslib.findCompressedIndex(findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
+      col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
 
-      col = sslib.findCompressedIndex(findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 2));
+      col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 2));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, -0.25));
     }
 
@@ -86,17 +86,11 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
 void Selection::updateMatrices_()
 {
-  std::string paramName = "";
+  std::string paramName = "s";
 
-  for(size_t i = 0; i < matrices_.size(); ++i)
-  {
-    paramName = "s_" + bpp::TexTools::toString(i);
+  double prevVal = prevParams_.getParameterValue(paramName);
+  double newVal = getParameterValue(paramName);
 
-    double prevVal = prevParams_.getParameterValue(paramName);
-    double newVal = getParameterValue(paramName); // from within itself
-
-    matrices_[i] *= (newVal / prevVal);
-  }
-
+  matrices_.front() *= (newVal / prevVal);
   prevParams_.matchParametersValues(getParameters());
 }

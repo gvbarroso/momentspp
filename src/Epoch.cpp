@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 01/06/2023
+ * Last modified: 14/06/2023
  *
  */
 
@@ -142,6 +142,8 @@ void Epoch::pseudoSteadyState()
 void Epoch::testSteadyState()
 {
   if(pops_.size() > 1)
+    throw bpp::Exception("Selection model does not allow P > 1!");
+  /*if(pops_.size() > 1)
   {
     for(size_t i = 0; i < operators_.size(); ++i)
     {
@@ -150,7 +152,7 @@ void Epoch::testSteadyState()
       if(tmp != nullptr)
         tmp->testFlow();
     }
-  }
+  }*/
 }
 
 void Epoch::init_()

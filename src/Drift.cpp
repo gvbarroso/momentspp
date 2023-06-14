@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 13/06/2023
+ * Last modified: 14/06/2023
  *
  */
 
@@ -35,8 +35,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       int row = it - std::begin(sslib.getBasis());
       int col = -1;
 
-      size_t popIdCount = (*it)->countInstances(id); // count of i (focal pop ID) in moment's name
-      size_t x = (*it)->getFactorPower(); // count of (1-2p) factors on focal moment
+      size_t popIdCount = (*it)->countInstances(id);
+      size_t x = (*it)->getFactorPower();
 
       if((*it)->getPrefix() == "DD")
       {
@@ -96,10 +96,13 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         coeffs.emplace_back(Eigen::Triplet<double>(row, row, n));
 
+        col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x + 1));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. + x/2.));
+
         if(x >= 1)
         {
-          col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, 1));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+          col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x - 1));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, (-2. * x) / 4.));
 
           if(x >= 2)
           {
@@ -110,10 +113,20 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         }
       }
 
-      else if((*it)->getPrefix() == "H")
+      else if((*it)->getPrefix() == "H") // NOTE Hl(true)
       {
         if(popIdCount == 2)
-          coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+        {
+          double y = - ((x + 2) * (x + 1)) / 2.;
+          coeffs.emplace_back(Eigen::Triplet<double>(row, row, y));
+
+          if(x >= 2)
+          {
+            double z = (x * (x - 1)) / 2.;
+            col = sslib.findCompressedIndex(sslib.findHetIndex(id, id, x - 2));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, z));
+          }
+        }
       }
 
       else if((*it)->getPrefix() != "I")
