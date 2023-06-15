@@ -36,7 +36,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       int col = -1;
 
       size_t popIdCount = (*it)->countInstances(id);
-      size_t x = (*it)->getFactorPower();
+      int x = (*it)->getFactorPower();
 
       if((*it)->getPrefix() == "DD")
       {
@@ -47,15 +47,18 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, j));
 
-          if(x >= 2)
+          if(x > 1)
           {
             double y = (x * (x - 1)) / 2.;
             col = sslib.findCompressedIndex(sslib.findDdIndex(id, id, x - 2));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
           }
 
-          col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x + 1));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+          if(x < sslib.getFactorOrder())
+          {
+            col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x + 1));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+          }
 
           col = sslib.findCompressedIndex(sslib.findPi2Index(id, id, id, id, x));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
@@ -73,12 +76,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
             coeffs.emplace_back(Eigen::Triplet<double>(row, row, l));
 
-            if(x >= 1)
+            if(x > 0)
             {
               col = sslib.findCompressedIndex(sslib.findDdIndex(id, id, x - 1));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 2. * x));
 
-              if(x >= 2)
+              if(x > 1)
               {
                 double y = (x * (x - 1)) / 2.;
                 col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x - 2));
@@ -96,15 +99,18 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         coeffs.emplace_back(Eigen::Triplet<double>(row, row, n));
 
-        col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x + 1));
-        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. + x/2.));
+        if(x < sslib.getFactorOrder())
+        {
+          col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x + 1));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. + x/2.));
+        }
 
-        if(x >= 1)
+        if(x > 0)
         {
           col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x - 1));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, (-2. * x) / 4.));
 
-          if(x >= 2)
+          if(x > 1)
           {
             double y = (x * (x - 1)) / 2.;
             col = sslib.findCompressedIndex(sslib.findPi2Index(id, id, id, id, x - 2));
@@ -120,7 +126,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           double y = - ((x + 2) * (x + 1)) / 2.;
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, y));
 
-          if(x >= 2)
+          if(x > 1)
           {
             double z = (x * (x - 1)) / 2.;
             col = sslib.findCompressedIndex(sslib.findHetLeftIndex(id, id, x - 2));

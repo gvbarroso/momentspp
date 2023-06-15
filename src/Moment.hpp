@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 09/06/2023
+ * Last modified: 15/06/2023
  *
  */
 
@@ -113,9 +113,9 @@ public:
     return factorIndices_;
   }
 
-  size_t getFactorPower()
+  int getFactorPower()
   {
-    return factorIndices_.size();
+    return static_cast<int>(factorIndices_.size());
   }
 
   size_t getPosition() const

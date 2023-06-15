@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 14/06/2023
+ * Last modified: 15/06/2023
  */
 
 
@@ -165,9 +165,9 @@ public:
     return basis_.size();
   }
 
-  size_t getFactorOrder() const
+  int getFactorOrder() const
   {
-    return factorOrder_;
+    return static_cast<int>(factorOrder_);
   }
 
   std::shared_ptr<Moment> getMoment(const std::string& name) const;
