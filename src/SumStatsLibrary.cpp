@@ -233,43 +233,59 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
   {
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
-      std::string name = "DD_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+      std::string name = "DD_" + asString(*itI) + "_" + asString(*itJ);
 
       for(size_t i = 0; i < factorOrder_ + 1; ++i)
       {
         moments_.emplace_back(std::make_shared<DdMoment>(name, 0.));
-        name = name + "_" + asString(selectedPopIds.front());
+
+        if(i == 0)
+          name += "_l";
+
+        name += "_" + asString(selectedPopIds.front());
       }
 
-      name = "Hl_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+      name = "Hl_" + asString(*itI) + "_" + asString(*itJ);
 
       for(size_t i = 0; i < factorOrder_ + 1; ++i)
       {
         moments_.emplace_back(std::make_shared<HetMoment>(name, 0., true)); // Hl_01 = p_0(1-p_1); Hl_10 = p_1(1-p_0)
-        name = name + "_" + asString(selectedPopIds.front());
+
+        if(i == 0)
+          name += "_l";
+
+        name += "_" + asString(selectedPopIds.front());
       }
 
       name = "Hr_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false)); // Hr_01 = p_0(1-p_1); Hr_10 = p_1(1-p_0)
 
-      name = "Dr_" + asString(*itI) + "_" + asString(*itJ) + "_l"; // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
+      name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
 
       for(size_t i = 0; i < factorOrder_ + 1; ++i)
       {
         moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
-        name = name + "_" + asString(selectedPopIds.front());
+
+        if(i == 0)
+          name += "_l";
+
+        name += "_" + asString(selectedPopIds.front());
       }
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
       {
         for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
         {
-          name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_l";
+          name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL);
 
           for(size_t i = 0; i < factorOrder_ + 1; ++i)
           {
             moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
-            name = name + "_" + asString(selectedPopIds.front());
+
+            if(i == 0)
+              name += "_l";
+
+            name += "_" + asString(selectedPopIds.front());
           }
         }
       }
@@ -283,7 +299,7 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
   countMoments_();
 
-  //printMoments(std::cout);
+  printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);

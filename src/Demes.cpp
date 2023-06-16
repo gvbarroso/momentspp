@@ -511,7 +511,7 @@ void Demes::parse_(const std::string& fileName)
       {
         YAML::Node sel = meta["selection"];
 
-        std::cout << "TODO: list demes which experience selection on the left locus\n"; // then pop->setSelectiveConstraint(bool)
+        //TODO: list demes which experience selection on the left locus, then pop->setSelectiveConstraint(bool)
         double s = 0.;
         size_t startTime = timeBounds.front();
         size_t endTime = 0;

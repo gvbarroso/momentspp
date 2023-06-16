@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
       //model->getParameters().printParameters(std::cout);
-      //model->getIndependentParameters().printParameters(std::cout);
+      model->getIndependentParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
       std::string file = model->getName() + "_expectations.txt";
