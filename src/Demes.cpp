@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 08/06/2023
+ * Last modified: 16/06/2023
  *
  */
 
@@ -247,6 +247,7 @@ void Demes::parse_(const std::string& fileName)
       pulses_.resize(numEpochs);
       mutRates_.reserve(numEpochs);
       recRates_.reserve(numEpochs);
+      selCoeffs_.reserve(numEpochs);
 
       // second pass: organize pops within epochs
       for(size_t i = 0; i < numEpochs; ++i)
@@ -273,10 +274,9 @@ void Demes::parse_(const std::string& fileName)
       // inits parameters for the different operators
       for(size_t i = 0; i < numEpochs; ++i)
       {
-        double rate = 1e-8; // default mu and r
-
-        mutRates_.emplace_back(rate);
-        recRates_.emplace_back(rate);
+        mutRates_.emplace_back(1e-8);
+        recRates_.emplace_back(1e-6);
+        selCoeffs_.emplace_back(1e-3);
 
         size_t p = pops_[i].size();
         Eigen::MatrixXd mat(p, p);
@@ -518,8 +518,8 @@ void Demes::parse_(const std::string& fileName)
 
         for(size_t j = 0; j < sel.size(); ++j) // sel period by sel period
         {
-          if(sel["s"])
-            s = sel["s"].as<double>();
+          if(sel["rate"])
+            s = sel["rate"].as<double>();
 
           if(sel[j]["start_time"])
             startTime = sel["start_time"].as<size_t>();

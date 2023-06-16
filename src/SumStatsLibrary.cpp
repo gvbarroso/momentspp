@@ -283,7 +283,7 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
   countMoments_();
 
-  printMoments(std::cout);
+  //printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);

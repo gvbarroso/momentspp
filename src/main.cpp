@@ -132,9 +132,9 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
         std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
-        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(1e-3, ic, sslib); // TODO set selection strength as metadata in Demes
+        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeff(i), ic, sslib);
 
-         // only *allow* model to optimize mig params in epochs where the demes model has non-zero mig
+        // only *allow* model to optimize mig params in epochs where the demes model has non-zero mig
         /*if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
@@ -162,7 +162,11 @@ int main(int argc, char *argv[]) {
     //epochs.back()->printAttributes(std::cout);
   }
 
-  epochs.front()->pseudoSteadyState(); // only need to have steady state in the deepest epoch
+  epochs.front()->computeSteadyState(); // only need to have steady state in the deepest epoch
+
+  std::ofstream fs(options.getLabel() + "_steady_state.txt");
+  fs << epochs.front()->getSteadyState() << "\n";
+  fs.close();
 
   try
   {

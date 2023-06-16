@@ -17,7 +17,6 @@
 #include <memory>
 #include <utility>
 #include <algorithm>
-#include <map>
 
 
 class Population
@@ -54,15 +53,15 @@ public:
   isDerivedLeftSelected_(0)
   { }
 
-  Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t size, bool hasSelection):
+  Population(const std::string& name, const std::string& desc, size_t id, size_t start, size_t end, size_t size, bool hasSelection):
   name_(name),
-  description_(description),
+  description_(desc),
   leftParent_(nullptr),
   rightParent_(nullptr),
   proportions_(std::make_pair(0.5, 0.5)),
   id_(id),
-  startTime_(startTime),
-  endTime_(endTime),
+  startTime_(start),
+  endTime_(end),
   size_(size),
   isDerivedLeftSelected_(hasSelection)
   { }
