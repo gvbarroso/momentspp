@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 14/06/2023
+ * Last modified: 19/06/2023
  *
  */
 
@@ -60,6 +60,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
           }
 
+          else // WARNING
+          {
+            col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+          }
+
           col = sslib.findCompressedIndex(sslib.findPi2Index(id, id, id, id, x));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
@@ -102,6 +108,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         if(x < sslib.getFactorOrder())
         {
           col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x + 1));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. + x/2.));
+        }
+
+        else // WARNING
+        {
+          col = sslib.findCompressedIndex(sslib.findDrIndex(id, id, x));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. + x/2.));
         }
 

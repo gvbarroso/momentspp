@@ -43,7 +43,7 @@ public:
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),
-  factorOrder_(bpp::ApplicationTools::getParameter<size_t>("factor_order", options, 1, "", true, 0))
+  factorOrder_(bpp::ApplicationTools::getParameter<size_t>("factor_order", options, 0, "", true, 0))
   { }
   
 public:

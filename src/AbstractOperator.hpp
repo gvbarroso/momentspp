@@ -110,9 +110,9 @@ public:
     return identity_;
   }
 
-  virtual void printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
+  virtual void printDeltaLDMat(const std::string& fileName);
 
-  virtual void printTransitionLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
+  virtual void printTransitionLDMat(const std::string& fileName);
 
 protected:
   // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator

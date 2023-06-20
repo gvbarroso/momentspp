@@ -121,7 +121,10 @@ size_t SumStatsLibrary::findDdIndex(size_t id1, size_t id2, size_t factorPower) 
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  return r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+  size_t ret = r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+
+  assert(ret < numDDStats_);
+  return ret;
 }
 
 size_t SumStatsLibrary::findDrIndex(size_t id1, size_t id2, size_t factorPower) const
@@ -129,7 +132,10 @@ size_t SumStatsLibrary::findDrIndex(size_t id1, size_t id2, size_t factorPower) 
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  return numDDStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+  size_t ret = numDDStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+
+  assert(ret >= numDDStats_ && ret < (numDDStats_ + numDrStats_));
+  return ret;
 }
 
 size_t SumStatsLibrary::findHetLeftIndex(size_t id1, size_t id2, size_t factorPower) const
@@ -137,7 +143,10 @@ size_t SumStatsLibrary::findHetLeftIndex(size_t id1, size_t id2, size_t factorPo
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  return numDDStats_ + numDrStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+  size_t ret = numDDStats_ + numDrStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+
+  assert(ret >= (numDDStats_ + numDrStats_) && ret < (numDDStats_ + numDrStats_ + numHetLeftStats_));
+  return ret;
 }
 
 size_t SumStatsLibrary::findHetRightIndex(size_t id1, size_t id2) const
@@ -145,7 +154,10 @@ size_t SumStatsLibrary::findHetRightIndex(size_t id1, size_t id2) const
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  return numDDStats_ + numDrStats_ + numHetLeftStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1);
+  size_t ret = numDDStats_ + numDrStats_ + numHetLeftStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1);
+
+  assert(ret >= (numDDStats_ + numDrStats_ + numHetLeftStats_) && ret < (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_));
+  return ret;
 }
 
 size_t SumStatsLibrary::findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const
@@ -156,7 +168,10 @@ size_t SumStatsLibrary::findPi2Index(size_t id1, size_t id2, size_t id3, size_t 
   size_t r4 = findPopIndexRank(id4);
 
   // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-  return 1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + r1 * numPops_ * numPops_ * numPops_ * (factorOrder_ + 1) + r2 * numPops_ * numPops_ * (factorOrder_ + 1) + r3 * numPops_ * (factorOrder_ + 1) + r4 * (factorOrder_ + 1) + factorPower;
+  size_t ret = 1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + r1 * numPops_ * numPops_ * numPops_ * (factorOrder_ + 1) + r2 * numPops_ * numPops_ * (factorOrder_ + 1) + r3 * numPops_ * (factorOrder_ + 1) + r4 * (factorOrder_ + 1) + factorPower;
+
+  assert(ret >= (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_) && ret < (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + numPi2Stats_));
+  return ret;
 }
 
 size_t SumStatsLibrary::findCompressedIndex(std::shared_ptr<Moment> mom) const
@@ -299,7 +314,7 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
   countMoments_();
 
-  printMoments(std::cout);
+  //printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);

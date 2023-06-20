@@ -37,21 +37,13 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 15/Jun/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 20/Jun/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
 
   std::cout << "\nCompiled on: " << __DATE__ << std::endl;
   std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
-
-
-  /* NOTE
-   * what if both left and right loci are under selection, potentially with different selection coefficients, even opposite signs
-   * selection constrained to a particular epoch
-   * epoch-specific mutation rates to test the hypothesis of change in mu along human lineage (wrt eg chimps)?
-   * alias N's from adjacent epochs to reduce parameter space
-   */
 
   if(argc == 1)
   {
@@ -147,7 +139,7 @@ int main(int argc, char *argv[]) {
         operators.push_back(selOp);
 
         for(size_t x = 0; x < operators.size(); ++x)
-          operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv", sslib);
+          operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)

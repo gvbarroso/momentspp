@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 15/06/2023
+ * Last modified: 19/06/2023
  *
  */
 
@@ -31,6 +31,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + x/2.)));
       }
 
+      else // WARNING
+      {
+        col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + x/2.)));
+      }
+
       if(x > 0)
       {
         col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
@@ -43,6 +49,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       if(x < sslib.getFactorOrder())
       {
         col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
+      }
+
+      else // WARNING
+      {
+        col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
       }
 
@@ -61,6 +73,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       if(x < sslib.getFactorOrder())
       {
         col = sslib.findCompressedIndex(sslib.findHetLeftIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 1));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
+      }
+
+      else // WARNING
+      {
+        col = sslib.findCompressedIndex(sslib.findHetLeftIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
       }
 
@@ -85,6 +103,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
       }
 
+      else // WARNING
+      {
+        col = sslib.findCompressedIndex(sslib.findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
+      }
+
       if(x > 0)
       {
         col = sslib.findCompressedIndex(sslib.findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x - 1));
@@ -97,6 +121,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       if((x + 1) < sslib.getFactorOrder())
       {
         col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 2));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, -0.25));
+      }
+
+      else // WARNING
+      {
+        col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], sslib.getFactorOrder()));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, -0.25));
       }
     }
