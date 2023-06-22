@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 19/06/2023
+ * Last modified: 21/06/2023
  *
  */
 
@@ -64,8 +64,17 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, -x/2.));
       }
 
-      col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
-      coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+      if(x < sslib.getFactorOrder())
+      {
+        col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+      }
+
+      else // WARNING
+      {
+        col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+      }
     }
 
     else if((*it)->getPrefix() == "Hl")
@@ -118,7 +127,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
       coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));
 
-      if((x + 1) < sslib.getFactorOrder())
+      if(x < sslib.getFactorOrder())
       {
         col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x + 2));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, -0.25));

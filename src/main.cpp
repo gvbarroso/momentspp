@@ -113,6 +113,7 @@ int main(int argc, char *argv[]) {
       if(demes.getPulse(i).isZero(0))
       {
         std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
+        std::shared_ptr<bpp::IntervalConstraint> icSel = std::make_shared<bpp::IntervalConstraint>(-1e-2, 0., true, true);
 
         std::vector<double> drift(0);
         drift.reserve(demes.getPopsVec()[i].size());
@@ -124,7 +125,7 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
         std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
-        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeff(i), ic, sslib);
+        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeff(i), icSel, sslib);
 
         // only *allow* model to optimize mig params in epochs where the demes model has non-zero mig
         /*if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
