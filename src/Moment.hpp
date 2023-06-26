@@ -224,23 +224,9 @@ public:
     return ret;
   }
 
-  size_t popIndexDistance(const std::shared_ptr<Moment> other) const
-  {
-    assert(typeid(*this) == typeid(*other.get()));
-
-    size_t dist = 0;
-    for(size_t i = 0; i < popIndices_.size(); ++i)
-    {
-      if(popIndices_[i] != other->getPopIndices()[i])
-        ++dist;
-    }
-
-    return dist;
-  }
-
   size_t popIndexDistance(const std::shared_ptr<Moment> other)
   {
-    assert(typeid(*this) == typeid(*other.get()));
+    static_assert(std::is_same_v<decltype(*this), decltype(*other.get())>);
 
     size_t dist = 0;
     for(size_t i = 0; i < popIndices_.size(); ++i)
@@ -260,7 +246,7 @@ public:
   // directional, tells if *this can be reached by other* via Admixture
   bool isAdmixAdjacent(const std::shared_ptr<Moment> other, size_t fromId, size_t toId)
   {
-    if(typeid(*this) != typeid(*other.get()))
+    if(!std::is_same_v<decltype(*this), decltype(*other.get())>)
       return 0;
 
     bool eval = 1;
