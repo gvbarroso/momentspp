@@ -1,0 +1,5 @@
+label = $(LABEL)
+stats_file = none
+demes_file = $(FILE)
+compress_moments = 1
+factor_order = $(ORDER)

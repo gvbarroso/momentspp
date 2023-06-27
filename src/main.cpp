@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        for(size_t x = 0; x < operators.size(); ++x)
-          operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
+        //for(size_t x = 0; x < operators.size(); ++x)
+          //operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
