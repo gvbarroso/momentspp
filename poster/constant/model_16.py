@@ -1,8 +1,8 @@
 import moments.TwoLocus
 import numpy as np
 
-Ne = 1e4
-s = -1e-4
+Ne = 5e4
+s = -1e-5
 u = 1e-7
 r = 1e-5
 
@@ -10,15 +10,13 @@ gammas = [2 * Ne * s, 2 * Ne * s, 0] # selection on [AB, Ab, aB] haplotypes, res
 rho = 4 * Ne * r
 theta = 4 * Ne * u
 
-if np.abs(2 * Ne * s) > 20:
-    print("Strong selection, approximations may break down")
 
 #print("2Ns   =", 2 * Ne * s)
 #print("rho   =", rho)
 #print("theta =", theta)
 
 
-n_samples = 40
+n_samples = 80
 
 F = moments.TwoLocus.Demographics.equilibrium(
     n_samples, rho=rho, theta=theta, sel_params=gammas
