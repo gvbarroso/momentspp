@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 23/05/2023
+ * Last modified: 29/06/2023
  *
  */
 
@@ -220,6 +220,8 @@ public:
   void updateMoments(const Eigen::VectorXd& y);
 
   void printRecursions(std::ostream& stream);
+
+  void printTransitionMat(const std::string& fileName) const;
 
   void pseudoSteadyState();
 

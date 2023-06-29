@@ -52,8 +52,9 @@ void AbstractOperator::printTransitionLDMat(const std::string& fileName)
       if(j < transition_.cols() - 1)
         matFile << ",";
 
-      matFile  << "\n";
     }
+
+    matFile  << "\n";
   }
 
   matFile.close();

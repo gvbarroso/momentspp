@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 14/06/2023
+ * Last modified: 29/06/2023
  *
  */
 
@@ -74,7 +74,7 @@ void Epoch::printRecursions(std::ostream& stream)
       int pos = static_cast<int>(ssl_.getBasis()[i]->getPosition()); // row in delta matrix
       stream << "\u0394[" << ssl_.getBasis()[i]->getName() << "] = ";
 
-      for(size_t j = 0; j < operators_.size(); ++j) // admixture not included here because coefficients are more complex
+      for(size_t j = 0; j < operators_.size(); ++j) // admixture coefficients are more complex
       {
         for(size_t k = 0; k < operators_[j]->getParameters().size(); ++k)
         {
@@ -102,6 +102,27 @@ void Epoch::printRecursions(std::ostream& stream)
       stream << "\n";
     }
   }
+}
+
+void Epoch::printTransitionMat(const std::string& fileName) const
+{
+  std::ofstream matFile;
+  matFile.open(fileName);
+
+  for(int i = 0; i < transitionMatrix_.rows(); ++i)
+  {
+    for(int j = 0; j < transitionMatrix_.cols(); ++j)
+    {
+      matFile << transitionMatrix_.coeffRef(i, j);
+
+      if(j < transitionMatrix_.cols() - 1)
+        matFile << ",";
+    }
+
+    matFile  << "\n";
+  }
+
+  matFile.close();
 }
 
 void Epoch::computeSteadyState()

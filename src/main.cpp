@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 26/Jun/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 29/Jun/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        //for(size_t x = 0; x < operators.size(); ++x)
-          //operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
+        for(size_t x = 0; x < operators.size(); ++x)
+          operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
@@ -152,7 +152,8 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    //epochs.back()->printAttributes(std::cout);
+    epochs.back()->printRecursions(std::cout);
+    epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
   }
 
   epochs.front()->computeSteadyState(); // only need to have steady state in the deepest epoch
