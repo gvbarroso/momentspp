@@ -83,7 +83,7 @@ void Epoch::printRecursions(std::ostream& stream)
 
           auto mat = operators_[j]->getMatrix(k); // hard copy delta matrix
 
-          if(param.getValue() > 0.)
+          if(param.getValue() != 0.)
             mat = mat / param.getValue(); // convert back to coefficients
 
           for(int l = 0; l < mat.cols(); ++l)

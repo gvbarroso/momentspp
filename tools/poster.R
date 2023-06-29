@@ -159,7 +159,7 @@ p5 <- p5 + theme(axis.title=element_text(size=12),
                  legend.position="bottom")
 
 
-moms <- plot_grid(p1, p2, p3, p4, p5, ncol=1, rel_heights = c(1, 1, 1, 1, 1.55))
+moms <- plot_grid(p1, p2, p3, p4, p5, ncol=1, rel_heights = c(1, 1, 1, 1, 1.5))
 save_plot("moms_sel.pdf", moms, base_height=10, base_width=20)
 
 # comparing to moments.TwoLocus
@@ -177,14 +177,14 @@ tbl_py$stats <- commom_stats
 tbl_py[tbl_py$stats=="Hl_0_0", 1] <- tbl_py[tbl_py$stats=="Hl_0_0", 1] / 2
 tbl_py[tbl_py$stats=="Hr_0_0", 1] <- tbl_py[tbl_py$stats=="Hr_0_0", 1] / 2
 
-tbl_pp <- tbl_c[tbl_c$order==100,]
-tbl_pp$ratio <- tbl_pp$vals / tbl_py$vals
-
+tbl_pp <- tbl_c %>% group_by(order) %>% mutate(ratio = vals / tbl_py$vals)
 tbl_pp <- tbl_pp[tbl_pp$r < 1e-3,]
+tbl_pp <- tbl_pp[tbl_pp$s > -100,]
 
-p6 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio)) + facet_wrap(~s, nrow=1)
+p6 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
 p6 <- p6 + geom_point(size=3) + theme_bw()
 p6 <- p6 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p6 <- p6 + scale_shape_manual(values=(4:0))
 p6 <- p6 + labs(title=NULL, x=NULL, y=expression(D^2), shape="Order (1-2p)")
 p6 <- p6 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -194,9 +194,10 @@ p6 <- p6 + theme(axis.title=element_text(size=12),
                  legend.position="none")
 
 
-p7 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio)) + facet_wrap(~s, nrow=1)
+p7 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
 p7 <- p7 + geom_point(size=3) + theme_bw()
 p7 <- p7 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p7 <- p7 + scale_shape_manual(values=(4:0))
 p7 <- p7 + labs(title=NULL, x=NULL, y=expression(Dz), shape="Order (1-2p)")
 p7 <- p7 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -207,9 +208,10 @@ p7 <- p7 + theme(axis.title=element_text(size=12),
                  legend.position="none")
 
 
-p8 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio)) + facet_wrap(~s, nrow=1)
+p8 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
 p8 <- p8 + geom_point(size=3) + theme_bw()
 p8 <- p8 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p8 <- p8 + scale_shape_manual(values=(4:0))
 p8 <- p8 + labs(title=NULL, x=NULL, y=expression(H[l]), shape="Order (1-2p)")
 p8 <- p8 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -220,9 +222,10 @@ p8 <- p8 + theme(axis.title=element_text(size=12),
                  legend.position="none")
 
 
-p9 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio)) + facet_wrap(~s, nrow=1)
+p9 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
 p9 <- p9 + geom_point(size=3) + theme_bw()
 p9 <- p9 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p9 <- p9 + scale_shape_manual(values=(4:0))
 p9 <- p9 + labs(title=NULL, x=NULL, y=expression(H[r]), shape="Order (1-2p)")
 p9 <- p9 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -233,9 +236,10 @@ p9 <- p9 + theme(axis.title=element_text(size=12),
                  legend.position="none")
 
 
-p10 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio)) + facet_wrap(~s, nrow=1)
+p10 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
 p10 <- p10 + geom_point(size=3) + theme_bw()
 p10 <- p10 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p10 <- p10 + scale_shape_manual(values=(4:0))
 p10 <- p10 + labs(title=NULL, x="r", y=expression(pi[2]), shape="Order (1-2p)")
 p10 <- p10 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
