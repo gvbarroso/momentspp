@@ -23,15 +23,36 @@ vals <- numeric()
 for(i in 1:length(model)) {
   for(j in 1:length(order)) {
     
-    tbl <- read.table(paste("constant/m", model[i], "_", order[j], "_expectations.txt", sep=""))
-    tbl <- subset(tbl, V1 %in% commom_stats)$V3
+    x <- read.table(paste("constant/mu_1e-7/m", model[i], "_", order[j], "_expectations.txt", sep=""))
+    x <- subset(x, V1 %in% commom_stats)$V3
     
-    vals <- c(vals, tbl)
+    vals <- c(vals, x)
+  }
+}
+
+for(i in 1:length(model)) {
+  for(j in 1:length(order)) {
+    
+    x <- read.table(paste("constant/mu_1e-8/m", model[i], "_", order[j], "_expectations.txt", sep=""))
+    x <- subset(x, V1 %in% commom_stats)$V3
+    
+    vals <- c(vals, x)
+  }
+}
+
+for(i in 1:length(model)) {
+  for(j in 1:length(order)) {
+    
+    x <- read.table(paste("constant/mu_1e-9/m", model[i], "_", order[j], "_expectations.txt", sep=""))
+    x <- subset(x, V1 %in% commom_stats)$V3
+    
+    vals <- c(vals, x)
   }
 }
 
 tbl_c <- as.data.frame(vals)
 tbl_c$stats <- commom_stats
+tbl_c$mu <- c(rep(1e-7, 750), rep(1e-8, 750), rep(1e-9, 750))
 
 y <- numeric()
 for(i in 1:30) { 
@@ -49,15 +70,102 @@ tbl_c$r <- rep(c(rep(1e-8, 25), rep(1e-7, 25), rep(1e-6, 25), rep(1e-5, 25), rep
 tbl_c$s <- 2*5e+4*c(rep(0, 150), rep(-1e-6, 150), rep(-1e-5, 150), rep(-1e-4, 150), rep(-1e-3, 150))
 tbl_c$demo <- "constant"
 
+q1 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[1],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
+q1 <- q1 + geom_point(size=3) + theme_bw()
+q1 <- q1 + scale_shape_manual(values=(4:0))
+q1 <- q1 + scale_color_manual(values=c("black", "red", "blue"))
+q1 <- q1 + scale_x_log10(breaks = r)
+q1 <- q1 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q1 <- q1 + labs(title=NULL, x="r", y=expression(D^2), shape="Order (1-2p)", color="Mu")
+q1 <- q1 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 legend.position="bottom")
+
+q2 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[2],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
+q2 <- q2 + geom_point(size=3) + theme_bw()
+q2 <- q2 + scale_shape_manual(values=(4:0))
+q2 <- q2 + scale_color_manual(values=c("black", "red", "blue"))
+q2 <- q2 + scale_x_log10(breaks = r)
+q2 <- q2 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q2 <- q2 + labs(title=NULL, x="r", y=expression(Dz), shape="Order (1-2p)", color="Mu")
+q2 <- q2 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 legend.position="bottom")
+
+q3 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[3],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
+q3 <- q3 + geom_point(size=3) + theme_bw()
+q3 <- q3 + scale_shape_manual(values=(4:0))
+q3 <- q3 + scale_color_manual(values=c("black", "red", "blue"))
+q3 <- q3 + scale_x_log10(breaks = r)
+q3 <- q3 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q3 <- q3 + labs(title=NULL, x="r", y=expression(H[l]), shape="Order (1-2p)", color="Mu")
+q3 <- q3 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 legend.position="bottom")
+
+q4 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[4],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
+q4 <- q4 + geom_point(size=3) + theme_bw()
+q4 <- q4 + scale_shape_manual(values=(4:0))
+q4 <- q4 + scale_color_manual(values=c("black", "red", "blue"))
+q4 <- q4 + scale_x_log10(breaks = r)
+q4 <- q4 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q4 <- q4 + labs(title=NULL, x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
+q4 <- q4 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 legend.position="bottom")
+
+t <- tbl_c[tbl_c$stats==commom_stats[4],]
+q4b <- ggplot(data=t[t$mu==1e-7,], aes(x=r, y=vals, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
+q4b <- q4b + geom_point(size=3) + theme_bw()
+q4b <- q4b + scale_shape_manual(values=(4:0))
+q4b <- q4b + scale_x_log10(breaks = r)
+q4b <- q4b + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q4b <- q4b + labs(title="Mu=1e-7", x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
+q4b <- q4b + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 legend.position="bottom")
+
+q4c <- ggplot(data=t[t$mu==1e-8,], aes(x=r, y=vals, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
+q4c <- q4c + geom_point(size=3) + theme_bw()
+q4c <- q4c + scale_shape_manual(values=(4:0))
+q4c <- q4c + scale_x_log10(breaks = r)
+q4c <- q4c + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q4c <- q4c + labs(title="Mu=1e-8", x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
+q4c <- q4c + theme(axis.title=element_text(size=12),
+                   axis.text=element_text(size=10),
+                   legend.position="bottom")
+
+q4d <- ggplot(data=t[t$mu==1e-9,], aes(x=r, y=vals, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
+q4d <- q4d + geom_point(size=3) + theme_bw()
+q4d <- q4d + scale_shape_manual(values=(4:0))
+q4d <- q4d + scale_x_log10(breaks = r)
+q4d <- q4d + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q4d <- q4d + labs(title="Mu=1e-9", x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
+q4d <- q4d + theme(axis.title=element_text(size=12),
+                   axis.text=element_text(size=10),
+                   legend.position="bottom")
+
+
+q5 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[5],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
+q5 <- q5 + geom_point(size=3) + theme_bw()
+q5 <- q5 + scale_shape_manual(values=(4:0))
+q5 <- q5 + scale_color_manual(values=c("black", "red", "blue"))
+q5 <- q5 + scale_x_log10(breaks = r)
+q5 <- q5 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+q5 <- q5 + labs(title=NULL, x="r", y=expression(pi[2]), shape="Order (1-2p)", color="Mu")
+q5 <- q5 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 legend.position="bottom")
+
 # 10x growth
 vals <- numeric()
 for(i in 1:length(model)) {
   for(j in 1:length(order)) {
     
-    tbl <- read.table(paste("growth/m", model[i], "_", order[j], "_expectations.txt", sep=""))
-    tbl <- subset(tbl, V1 %in% commom_stats)$V3
+    x <- read.table(paste("growth/m", model[i], "_", order[j], "_expectations.txt", sep=""))
+    x <- subset(x, V1 %in% commom_stats)$V3
     
-    vals <- c(vals, tbl)
+    vals <- c(vals, x)
   }
 }
 
@@ -79,17 +187,21 @@ tbl_g$order <- z
 tbl_g$r <- rep(c(rep(1e-8, 25), rep(1e-7, 25), rep(1e-6, 25), rep(1e-5, 25), rep(1e-4, 25), rep(1e-3, 25)), 5)
 tbl_g$s <- 2*5e+4*c(rep(0, 150), rep(-1e-6, 150), rep(-1e-5, 150), rep(-1e-4, 150), rep(-1e-3, 150))
 tbl_g$demo <- "10x_growth"
+tbl_g$mu <- 1e-8
 
-tbl <- rbind.data.frame(tbl_c, tbl_g)
-write.table(tbl, "sel_models.csv", quote=F, sep=",")
+tbl <- rbind.data.frame(tbl_c[tbl_c$mu == 1e-8,], tbl_g)
+#write.table(tbl, "sel_models.csv", quote=F, sep=",")
 
-p1 <- ggplot(data=tbl[tbl$stats==commom_stats[1],], aes(x=r, y=vals, shape=as.factor(order), color=demo)) + facet_wrap(~s, nrow=1)
+# for normalizing
+pi2 <- tbl[tbl$stats==commom_stats[5],]$vals
+
+p1 <- ggplot(data=tbl[tbl$stats==commom_stats[1],], aes(x=r, y=vals / pi2, shape=as.factor(order), color=demo)) + facet_wrap(~s, nrow=1)
 p1 <- p1 + geom_point(size=3) + theme_bw()
 p1 <- p1 + scale_shape_manual(values=(4:0))
 p1 <- p1 + scale_color_manual(values=c("black", "red"))
 p1 <- p1 + scale_x_log10(breaks = r)
 p1 <- p1 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
-p1 <- p1 + labs(title=NULL, x=NULL, y=expression(D^2), shape="Order (1-2p)")
+p1 <- p1 + labs(title=NULL, x=NULL, y=expression(sigma[d]^2), shape="Order (1-2p)")
 p1 <- p1 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.title.x=element_blank(),
@@ -98,13 +210,13 @@ p1 <- p1 + theme(axis.title=element_text(size=12),
                  legend.position="none")
 
 
-p2 <- ggplot(data=tbl[tbl$stats==commom_stats[2],], aes(x=r, y=vals, shape=as.factor(order), color=demo)) + facet_wrap(~s, nrow=1)
+p2 <- ggplot(data=tbl[tbl$stats==commom_stats[2],], aes(x=r, y=vals / pi2, shape=as.factor(order), color=demo)) + facet_wrap(~s, nrow=1)
 p2 <- p2 + geom_point(size=3) + theme_bw()
 p2 <- p2 + scale_shape_manual(values=(4:0))
 p2 <- p2 + scale_color_manual(values=c("black", "red"))
 p2 <- p2 + scale_x_log10(breaks = r)
 p2 <- p2 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
-p2 <- p2 + labs(title=NULL, x=NULL, y=expression(Dz), shape="Order (1-2p)")
+p2 <- p2 + labs(title=NULL, x=NULL, y=expression(Dz / pi2), shape="Order (1-2p)")
 p2 <- p2 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.title.x=element_blank(),
@@ -166,8 +278,8 @@ save_plot("moms_sel.pdf", moms, base_height=10, base_width=20)
 vals <- numeric()
 for(i in 1:length(model)) {
     
-  tbl <- read.table(paste("constant/m", model[i], "_py.txt", sep=""))$V3
-  vals <- c(vals, tbl)
+  x <- read.table(paste("constant/mu_1e-8/m", model[i], "_py.txt", sep=""))$V3
+  vals <- c(vals, x)
 }
 
 tbl_py <- as.data.frame(vals)
@@ -177,7 +289,7 @@ tbl_py$stats <- commom_stats
 tbl_py[tbl_py$stats=="Hl_0_0", 1] <- tbl_py[tbl_py$stats=="Hl_0_0", 1] / 2
 tbl_py[tbl_py$stats=="Hr_0_0", 1] <- tbl_py[tbl_py$stats=="Hr_0_0", 1] / 2
 
-tbl_pp <- tbl_c %>% group_by(order) %>% mutate(ratio = vals / tbl_py$vals)
+tbl_pp <- tbl[tbl$demo == "constant",] %>% group_by(order) %>% mutate(ratio = vals / tbl_py$vals)
 tbl_pp <- tbl_pp[tbl_pp$r < 1e-3,]
 tbl_pp <- tbl_pp[tbl_pp$s > -100,]
 
