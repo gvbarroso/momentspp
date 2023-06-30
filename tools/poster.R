@@ -247,7 +247,7 @@ p4 <- p4 + geom_point(size=3) + theme_bw()
 p4 <- p4 + scale_shape_manual(values=(4:0))
 p4 <- p4 + scale_color_manual(values=c("black", "red"))
 p4 <- p4 + scale_x_log10(breaks = r)
-p4 <- p4 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
+p4 <- p4 + scale_y_log10(labels = function(x) format(x, scientific = TRUE), limits=c(1e-5, 1.02e-3)) 
 p4 <- p4 + labs(title=NULL, x=NULL, y=expression(H[r]), shape="Order (1-2p)")
 p4 <- p4 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
