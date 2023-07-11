@@ -2,8 +2,8 @@ import moments.TwoLocus
 import numpy as np
 
 Ne = 5e4
-s = -1e-3
-u = 1e-8
+s = -1e-4
+u = 1e-7
 r = 1e-4
 
 gammas = [2 * Ne * s, 2 * Ne * s, 0] # selection on [AB, Ab, aB] haplotypes, resp

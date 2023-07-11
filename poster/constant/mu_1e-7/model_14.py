@@ -3,7 +3,7 @@ import numpy as np
 
 Ne = 5e4
 s = -1e-5
-u = 1e-8
+u = 1e-7
 r = 1e-7
 
 gammas = [2 * Ne * s, 2 * Ne * s, 0] # selection on [AB, Ab, aB] haplotypes, resp

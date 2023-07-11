@@ -12,4 +12,4 @@ metadata:
   recombination:
     rate: 1e-3
   selection:
-    rate: -1e-4
+    rate: -5e-5
