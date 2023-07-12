@@ -386,5 +386,96 @@ r  <- c(1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8)
 f <- c(0, 0.1, 0.2, 0.4, 0.6, 0.8, 1)
 params <- crossing(f, r)
 
+commom_stats <- read.table("m1_expectations.txt")$V1
+model <- 1:42
+
+vals <- numeric()
+for(i in 1:length(model)) {
+    
+  x <- read.table(paste("m", model[i], "_expectations.txt", sep=""))
+  vals <- c(vals, x$V3)
+}
+
+tbl_n <- as.data.frame(vals)
+tbl_n$stats <- commom_stats
+
+y <- numeric()
+for(i in model) { 
+  y <- c(y, rep(i, length(commom_stats)))
+}
+tbl_n$model <- y
+
+tbl_n$r <- rep(c(rep(1e-8, length(commom_stats)), rep(1e-7, length(commom_stats)), rep(1e-6, length(commom_stats)), rep(1e-5, length(commom_stats)), rep(1e-4, length(commom_stats)), rep(1e-3, length(commom_stats))), 7)
+tbl_n$f <- c(rep(0, 6 * length(commom_stats)), rep(0.1, 6 * length(commom_stats)), rep(0.2, 6 * length(commom_stats)), rep(0.4, 6 * length(commom_stats)), rep(0.6, 6 * length(commom_stats)), rep(0.8, 6 * length(commom_stats)), rep(1, 6 * length(commom_stats)))
+
+
+r1 <- ggplot(data=tbl_n[tbl_n$stats==commom_stats[1],], aes(x=r, y=vals)) + facet_wrap(~f, nrow=1)
+r1 <- r1 + geom_point(size=3) + theme_bw()
+r1 <- r1 + scale_x_log10(breaks = r)
+r1 <- r1 + scale_y_continuous(labels = function(x) format(x, scientific = TRUE))
+r1 <- r1 + labs(title=NULL, x=NULL, y=expression(D[11]))
+r1 <- r1 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),
+                 legend.position="none")
+
+
+r2 <- ggplot(data=tbl_n[tbl_n$stats==commom_stats[2],], aes(x=r, y=vals)) + facet_wrap(~f, nrow=1)
+r2 <- r2 + geom_point(size=3) + theme_bw()
+r2 <- r2 + scale_x_log10(breaks = r)
+r2 <- r2 + scale_y_continuous(labels = function(x) format(x, scientific = TRUE))
+r2 <- r2 + labs(title=NULL, x=NULL, y=expression(D[1]*D[2]))
+r2 <- r2 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+
+r3 <- ggplot(data=tbl_n[tbl_n$stats==commom_stats[5],], aes(x=r, y=vals)) + facet_wrap(~f, nrow=1)
+r3 <- r3 + geom_point(size=3) + theme_bw()
+r3 <- r3 + scale_x_log10(breaks = r)
+r3 <- r3 + scale_y_continuous(labels = function(x) format(x, scientific = TRUE))
+r3 <- r3 + labs(title=NULL, x=NULL, y=expression(D[1]*(1-2*p[1])*(1-2*p[2])))
+r3 <- r3 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),   
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+r4 <- ggplot(data=tbl_n[tbl_n$stats==commom_stats[7],], aes(x=r, y=vals)) + facet_wrap(~f, nrow=1)
+r4 <- r4 + geom_point(size=3) + theme_bw()
+r4 <- r4 + scale_x_log10(breaks = r)
+r4 <- r4 + scale_y_continuous(labels = function(x) format(x, scientific = TRUE))
+r4 <- r4 + labs(title=NULL, x=NULL, y=expression(D[2]*(1-2*p[1])*(1-2*p[1])))
+r4 <- r4 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+r5 <- ggplot(data=tbl_n[tbl_n$stats==commom_stats[17],], aes(x=r, y=vals)) + facet_wrap(~f, nrow=1)
+r5 <- r5 + geom_point(size=3) + theme_bw()
+r5 <- r5 + scale_x_log10(breaks=r)
+r5 <- r5 + scale_y_continuous(labels = function(x) format(x, scientific = TRUE))
+r5 <- r5 + labs(title=NULL, x=NULL, y=expression(pi[1212]))
+r5 <- r5 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.text.x = element_text(angle = 90),
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+
+
+moms <- plot_grid(r1, r2, r3, r4, r5, ncol=1, rel_heights = c(1, 1, 1, 1, 1.3))
+save_plot("moms_neutral.pdf", moms, base_height=10, base_width=30)
 
 
