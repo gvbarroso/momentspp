@@ -1,5 +1,5 @@
 
-setwd("~/Devel/momentspp/poster/selected_1-pop")
+setwd("~/Devel/momentspp/poster/")
 
 library(tidyverse)
 library(cowplot)
@@ -79,9 +79,7 @@ q1 <- q1 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q1 <- q1 + labs(title=NULL, x="r", y=expression(D^2), shape="Order (1-2p)", color="Mu")
 q1 <- q1 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
-                 axis.text.x = element_text(angle = 90),
                  legend.position="bottom")
-ggsave("DD_mut_rates.pdf", q1, device="pdf", width=16, height=12)
 
 q2 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[2],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
 q2 <- q2 + geom_point(size=3) + theme_bw()
@@ -92,9 +90,7 @@ q2 <- q2 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q2 <- q2 + labs(title=NULL, x="r", y=expression(Dz), shape="Order (1-2p)", color="Mu")
 q2 <- q2 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
-                 axis.text.x = element_text(angle = 90),
                  legend.position="bottom")
-ggsave("Dz_mut_rates.pdf", q2, device="pdf", width=16, height=12)
 
 q3 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[3],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
 q3 <- q3 + geom_point(size=3) + theme_bw()
@@ -105,9 +101,7 @@ q3 <- q3 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q3 <- q3 + labs(title=NULL, x="r", y=expression(H[l]), shape="Order (1-2p)", color="Mu")
 q3 <- q3 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
-                 axis.text.x = element_text(angle = 90),
                  legend.position="bottom")
-ggsave("Hl_mut_rates.pdf", q3, device="pdf", width=16, height=12)
 
 q4 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[4],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
 q4 <- q4 + geom_point(size=3) + theme_bw()
@@ -118,9 +112,7 @@ q4 <- q4 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q4 <- q4 + labs(title=NULL, x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
 q4 <- q4 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
-                 axis.text.x = element_text(angle = 90),
                  legend.position="bottom")
-ggsave("Hr_mut_rates.pdf", q4, device="pdf", width=16, height=12)
 
 t <- tbl_c[tbl_c$stats==commom_stats[4],]
 q4b <- ggplot(data=t[t$mu==1e-7,], aes(x=r, y=vals, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
@@ -130,10 +122,8 @@ q4b <- q4b + scale_x_log10(breaks = r)
 q4b <- q4b + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q4b <- q4b + labs(title="Mu=1e-7", x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
 q4b <- q4b + theme(axis.title=element_text(size=12),
-                   axis.text=element_text(size=10),
-                   axis.text.x = element_text(angle = 90),
-                   legend.position="bottom")
-ggsave("Hr_mu_1e-7.pdf", q4b, device="pdf", width=16, height=12)
+                 axis.text=element_text(size=10),
+                 legend.position="bottom")
 
 q4c <- ggplot(data=t[t$mu==1e-8,], aes(x=r, y=vals, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
 q4c <- q4c + geom_point(size=3) + theme_bw()
@@ -143,9 +133,7 @@ q4c <- q4c + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q4c <- q4c + labs(title="Mu=1e-8", x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
 q4c <- q4c + theme(axis.title=element_text(size=12),
                    axis.text=element_text(size=10),
-                   axis.text.x = element_text(angle = 90),
                    legend.position="bottom")
-ggsave("Hr_mu_1e-8.pdf", q4c, device="pdf", width=16, height=12)
 
 q4d <- ggplot(data=t[t$mu==1e-9,], aes(x=r, y=vals, shape=as.factor(order))) + facet_wrap(~s, nrow=1)
 q4d <- q4d + geom_point(size=3) + theme_bw()
@@ -155,9 +143,7 @@ q4d <- q4d + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q4d <- q4d + labs(title="Mu=1e-9", x="r", y=expression(H[r]), shape="Order (1-2p)", color="Mu")
 q4d <- q4d + theme(axis.title=element_text(size=12),
                    axis.text=element_text(size=10),
-                   axis.text.x = element_text(angle = 90),
                    legend.position="bottom")
-ggsave("Hr_mu_1e-9.pdf", q4d, device="pdf", width=16, height=12)
 
 
 q5 <- ggplot(data=tbl_c[tbl_c$stats==commom_stats[5],], aes(x=r, y=vals, shape=as.factor(order), color=as.factor(mu))) + facet_wrap(~s, nrow=1)
@@ -169,9 +155,7 @@ q5 <- q5 + scale_y_log10(labels = function(x) format(x, scientific = TRUE))
 q5 <- q5 + labs(title=NULL, x="r", y=expression(pi[2]), shape="Order (1-2p)", color="Mu")
 q5 <- q5 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
-                 axis.text.x = element_text(angle = 90),
                  legend.position="bottom")
-ggsave("pi2_mut_rates.pdf", q5, device="pdf", width=16, height=12)
 
 # 10x growth
 vals <- numeric()
@@ -377,11 +361,7 @@ p10 <- p10 + theme(axis.title=element_text(size=12),
 moms_comp <- plot_grid(p6, p7, p8, p9, p10, ncol=1, rel_heights = c(1, 1, 1, 1, 1.3))
 save_plot("moms_++_vs_py.pdf", moms_comp, base_height=10, base_width=20)
 
-
-#
-
-setwd("~/Devel/momentspp/poster/neutral_2-pops")
-
+# 2-pops neutral
 r  <- c(1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8)
 f <- c(0, 0.1, 0.2, 0.4, 0.6, 0.8, 1)
 params <- crossing(f, r)
