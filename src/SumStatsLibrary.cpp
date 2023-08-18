@@ -231,7 +231,7 @@ void SumStatsLibrary::printBasis(std::ostream& stream)
     basis_[i]->printAttributes(stream);
 }
 
-void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compress)
+void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compress) // TODO deal with no populations under selection
 {
   moments_.reserve(getNumStats());
 

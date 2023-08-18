@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 16/06/2023
+ * Last modified: 18/07/2023
  *
  */
 
@@ -71,7 +71,7 @@ void Demes::parse_(const std::string& fileName)
           }
 
           // each instance of pop i (one per epoch) is treated as a different Population object in moments++
-          singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, true)); // WARNING bool hasSelection
+          singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, false)); // default selective status for all pops == false
         }
 
         if(pops[i]["ancestors"])
@@ -195,7 +195,7 @@ void Demes::parse_(const std::string& fileName)
           timeBounds.push_back(popsOverTime[i][j]->getStartTime());
           timeBounds.push_back(popsOverTime[i][j]->getEndTime());
 
-          // NOTE introducing 1-generation epoch to handle admixture that forms new population
+          // introducing 1-generation epoch to handle admixture that forms new population
           if(popsOverTime[i][j]->hasDistinctParents())
             timeBounds.push_back(popsOverTime[i][j]->getStartTime() - 1);
         }
@@ -238,8 +238,8 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
-      // epochs are formalized (Epoch objects are instantiated) in the main function
-      // their skeleton are prepared here:
+      // epochs are formalized (Epoch objects are instantiated) in the main function inside main.cpp
+      // their skeletons are prepared here:
       size_t numEpochs = timeBounds.size() - 1;
 
       pops_.resize(numEpochs);
@@ -439,7 +439,7 @@ void Demes::parse_(const std::string& fileName)
     {
       YAML::Node meta = it->second;
 
-      if(meta["mutation"])
+      if(meta["mutation"])// TODO improve-->make epoch specific
       {
         YAML::Node muts = meta["mutation"];
 
@@ -473,7 +473,7 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
-      if(meta["recombination"])
+      if(meta["recombination"])// TODO improve-->make epoch specific
       {
         YAML::Node recs = meta["recombination"];
 
@@ -507,25 +507,33 @@ void Demes::parse_(const std::string& fileName)
         }
       }
 
-      if(meta["selection"])
+      if(meta["selection"]) // TODO improve-->make epoch specific
       {
         YAML::Node sel = meta["selection"];
 
-        //TODO: list demes which experience selection on the left locus, then pop->setSelectiveConstraint(bool)
         double s = 0.;
         size_t startTime = timeBounds.front();
         size_t endTime = 0;
+        std::vector<std::string> selectedPops(0);
 
-        for(size_t j = 0; j < sel.size(); ++j) // sel period by sel period
-        {
+        //for(size_t j = 0; j < sel.size(); ++j) // sel period by sel period
+        //{
+
           if(sel["rate"])
             s = sel["rate"].as<double>();
 
-          if(sel[j]["start_time"])
-            startTime = sel["start_time"].as<size_t>();
+          if(sel["demes"])
+          {
+            for(size_t k = 0; k < sel["demes"].size(); ++k)
+              selectedPops.push_back(sel["demes"][k].as<std::string>());
+          }
 
-          if(sel[j]["end_time"])
-            endTime = sel["end_time"].as<size_t>();
+          for(size_t k = 0; k < pops_.size(); ++k) // for each epoch, set (updates) selective status of populations
+          {
+            for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
+              if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
+                (*itPop)->setSelectiveConstraint(true);
+          }
 
           bool match = 1;
           for(size_t k = 1; k < timeBounds.size(); ++k)
@@ -539,7 +547,7 @@ void Demes::parse_(const std::string& fileName)
 
           if(!match)
             throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
-        }
+        //}
       }
     } // exits 'metadata' field of Demes file
   }
