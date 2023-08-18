@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 14/06/2023
+ * Last modified: 18/07/2023
  * Source code for moments++
  *
  */
@@ -37,13 +37,18 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 30/Jun/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 18/Jul/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
 
   std::cout << "\nCompiled on: " << __DATE__ << std::endl;
   std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
+
+  /*
+   * NOTE
+   * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
+   */
 
   if(argc == 1)
   {
@@ -72,6 +77,9 @@ int main(int argc, char *argv[]) {
   Eigen::setNbThreads(options.getNumThreads());
 
   Demes demes(options.getDemesFilePath());
+
+  if(!(options.getFactorOrder() > 0))
+    throw bpp::Exception("Non-positive Factor Order!");
 
   size_t numEpochs = demes.getNumEpochs();
   std::vector<std::shared_ptr<Epoch>> epochs(0);

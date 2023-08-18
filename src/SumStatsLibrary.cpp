@@ -277,6 +277,7 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
 
       name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
 
+      // TODO change for multi-pop case
       for(size_t i = 0; i < factorOrder_ + 2; ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
       {
         moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));

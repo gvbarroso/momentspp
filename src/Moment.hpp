@@ -288,6 +288,23 @@ public:
         }
       }
     }
+
+    // aesthetics
+    std::string nome = prefix_;
+    for(size_t i = 0; i < popIndices_.size(); ++i)
+      nome = nome + "_" + bpp::TextTools::toString(popIndices_[i]);
+
+    std::vector<size_t> indices = factorIndices_;
+    std::sort(std::begin(indices), std::end(indices));
+    indices.erase(std::unique(std::begin(indices), std::end(indices)), std::end(indices));
+
+    for(size_t i = 0; i < indices.size(); ++i)
+    {
+      size_t count = std::count(std::begin(factorIndices_), std::end(factorIndices_), indices[i]);
+      nome = nome + "_(1-2p" + bpp::TextTools::toString(indices[i]) + ")^" + bpp::TextTools::toString(count);
+    }
+
+    name_ = nome;
   }
 
 };
