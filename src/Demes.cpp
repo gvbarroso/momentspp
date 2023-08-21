@@ -532,7 +532,7 @@ void Demes::parse_(const std::string& fileName)
         {
           for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
             if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
-              (*itPop)->setSelectiveConstraint(true);
+              (*itPop)->setSelectiveConstraint(true); // false by default
         }
 
         //std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
