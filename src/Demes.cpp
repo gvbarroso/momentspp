@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 18/07/2023
+ * Last modified: 21/08/2023
  *
  */
 
@@ -276,7 +276,7 @@ void Demes::parse_(const std::string& fileName)
       {
         mutRates_.emplace_back(1e-8);
         recRates_.emplace_back(1e-6);
-        selCoeffs_.emplace_back(1e-3);
+        selCoeffs_.emplace_back(0.);
 
         size_t p = pops_[i].size();
         Eigen::MatrixXd mat(p, p);
@@ -433,13 +433,12 @@ void Demes::parse_(const std::string& fileName)
       }
     } // exits 'pulses' field of Demes file
 
-    // move to custom fields for moments++ (mutation, recombination, selection)
-    // NOTE: this field must be placed last in the demes file
-    else if(it->first.as<std::string>() == "metadata")
+    // we now move on to custom fields for moments++ (mutation, recombination, selection)
+    else if(it->first.as<std::string>() == "metadata") // NOTE: this field must be placed last in the demes file
     {
       YAML::Node meta = it->second;
 
-      if(meta["mutation"])// TODO improve-->make epoch specific
+      if(meta["mutation"]) // TODO add demes field
       {
         YAML::Node muts = meta["mutation"];
 
@@ -447,33 +446,32 @@ void Demes::parse_(const std::string& fileName)
         size_t startTime = timeBounds.front();
         size_t endTime = 0;
 
-        for(size_t j = 0; j < muts.size(); ++j)
+        if(muts["start_time"])
+          startTime = muts["start_time"].as<size_t>();
+
+        if(muts["end_time"])
+          endTime = muts["end_time"].as<size_t>();
+
+        if(muts["rate"])
+          rate = muts["rate"].as<double>();
+
+        //std::cout << "mut: " << rate << "," << startTime << "-" << endTime << "\n";
+
+        bool match = 0;
+        for(size_t k = 1; k < timeBounds.size(); ++k)
         {
-          if(muts["rate"])
-            rate = muts["rate"].as<double>();
-
-          if(muts["start_time"])
-              startTime = muts["start_time"].as<size_t>();
-
-          if(muts["end_time"])
-            endTime = muts["end_time"].as<size_t>();
-
-          bool match = 1;
-          for(size_t k = 1; k < timeBounds.size(); ++k)
+          if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
           {
-            if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
-              mutRates_[k - 1] = rate;
-
-            else
-              match = 0;
+            mutRates_[k - 1] = rate;
+            match = 1;
           }
-
-          if(!match)
-            throw bpp::Exception("Demes::start_time and end_time of 'mutation' do not match the span of any epoch!");
         }
+
+        if(!match)
+          throw bpp::Exception("Demes::start_time and end_time of 'mutation' do not match the span of any epoch!");
       }
 
-      if(meta["recombination"])// TODO improve-->make epoch specific
+      if(meta["recombination"]) // TODO add demes field
       {
         YAML::Node recs = meta["recombination"];
 
@@ -481,33 +479,32 @@ void Demes::parse_(const std::string& fileName)
         size_t startTime = timeBounds.front();
         size_t endTime = 0;
 
-        for(size_t j = 0; j < recs.size(); ++j)
+        if(recs["start_time"])
+          startTime = recs["start_time"].as<size_t>();
+
+        if(recs["end_time"])
+          endTime = recs["end_time"].as<size_t>();
+
+        if(recs["rate"])
+          rate = recs["rate"].as<double>();
+
+        //std::cout << "rec: " << rate << "," << startTime << "-" << endTime << "\n";
+
+        bool match = 0;
+        for(size_t k = 1; k < timeBounds.size(); ++k)
         {
-          if(recs["rate"])
-            rate = recs["rate"].as<double>();
-
-          if(recs["start_time"])
-            startTime = recs["start_time"].as<size_t>();
-
-          if(recs["end_time"])
-            endTime = recs["end_time"].as<size_t>();
-
-          bool match = 1;
-          for(size_t k = 1; k < timeBounds.size(); ++k)
+          if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
           {
-            if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
-              recRates_[k - 1] = rate;
-
-            else
-              match = 0;
+            recRates_[k - 1] = rate;
+            match = 1;
           }
-
-          if(!match)
-            throw bpp::Exception("Demes::start_time and end_time of 'recombination' do not match the span of any epoch!");
         }
+
+        if(!match)
+          throw bpp::Exception("Demes::start_time and end_time of 'recombination' do not match the span of any epoch!");
       }
 
-      if(meta["selection"]) // TODO improve-->make epoch specific
+      if(meta["selection"])
       {
         YAML::Node sel = meta["selection"];
 
@@ -516,38 +513,42 @@ void Demes::parse_(const std::string& fileName)
         size_t endTime = 0;
         std::vector<std::string> selectedPops(0);
 
-        //for(size_t j = 0; j < sel.size(); ++j) // sel period by sel period
-        //{
+        if(sel["start_time"])
+          startTime = sel["start_time"].as<size_t>();
 
-          if(sel["rate"])
-            s = sel["rate"].as<double>();
+        if(sel["end_time"])
+          endTime = sel["end_time"].as<size_t>();
 
-          if(sel["demes"])
+        if(sel["rate"])
+          s = sel["rate"].as<double>();
+
+        if(sel["demes"])
+        {
+          for(size_t k = 0; k < sel["demes"].size(); ++k)
+            selectedPops.push_back(sel["demes"][k].as<std::string>());
+        }
+
+        for(size_t k = 0; k < pops_.size(); ++k) // for each epoch, set (updates) selective status of populations
+        {
+          for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
+            if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
+              (*itPop)->setSelectiveConstraint(true);
+        }
+
+        //std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
+
+        bool match = 0;
+        for(size_t k = 1; k < timeBounds.size(); ++k)
+        {
+          if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
           {
-            for(size_t k = 0; k < sel["demes"].size(); ++k)
-              selectedPops.push_back(sel["demes"][k].as<std::string>());
+            selCoeffs_[k - 1] = s;
+            match = 1;
           }
+        }
 
-          for(size_t k = 0; k < pops_.size(); ++k) // for each epoch, set (updates) selective status of populations
-          {
-            for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
-              if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
-                (*itPop)->setSelectiveConstraint(true);
-          }
-
-          bool match = 1;
-          for(size_t k = 1; k < timeBounds.size(); ++k)
-          {
-            if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
-              selCoeffs_[k - 1] = s;
-
-            else
-              match = 0;
-          }
-
-          if(!match)
-            throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
-        //}
+        if(!match)
+          throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
       }
     } // exits 'metadata' field of Demes file
   }

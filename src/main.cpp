@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 18/07/2023
+ * Last modified: 21/08/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 18/Jul/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Aug/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -147,8 +147,8 @@ int main(int argc, char *argv[]) {
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        //for(size_t x = 0; x < operators.size(); ++x)
-          //operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
+        for(size_t x = 0; x < operators.size(); ++x)
+          operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
@@ -166,9 +166,9 @@ int main(int argc, char *argv[]) {
 
   epochs.front()->computeSteadyState(); // only need to have steady state in the deepest epoch
 
-  std::ofstream fs(options.getLabel() + "_steady_state.txt");
-  fs << epochs.front()->getSteadyState() << "\n";
-  fs.close();
+  //std::ofstream fs(options.getLabel() + "_steady_state.txt");
+  //fs << epochs.front()->getSteadyState() << "\n";
+  //fs.close();
 
   try
   {
