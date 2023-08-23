@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 21/06/2023
+ * Last modified: 23/08/2023
  *
  */
 
@@ -9,7 +9,7 @@
 #include "Selection.hpp"
 
 
-void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
+void Selection::setUpMatrices_(const SumStatsLibrary& sslib) // NOTE uses zero-order moment-closure approximation
 {
   size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(1);
@@ -21,7 +21,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
     int row = it - std::begin(sslib.getBasis());
     int col = -1;
 
-    int x = (*it)->getFactorPower(); // count of (1-2p) factors on focal moment
+    int x = (*it)->getFactorPower(); // count of (1-2p_x) factors on focal moment
 
     if((*it)->getPrefix() == "DD")
     {
@@ -31,7 +31,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + x/2.)));
       }
 
-      else // NOTE
+      else
       {
         col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + x/2.)));
@@ -52,7 +52,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
       }
 
-      else // NOTE
+      else
       {
         col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
@@ -70,7 +70,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
       }
 
-      else // NOTE
+      else
       {
         col = sslib.findCompressedIndex(sslib.findDdIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x - 1));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
@@ -85,7 +85,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
       }
 
-      else // NOTE
+      else
       {
         col = sslib.findCompressedIndex(sslib.findHetLeftIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], x));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
@@ -112,7 +112,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
       }
 
-      else // NOTE
+      else
       {
         col = sslib.findCompressedIndex(sslib.findPi2Index((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], (*it)->getPopIndices()[2], (*it)->getPopIndices()[3], x));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + x/2.)));
@@ -133,7 +133,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, -0.25));
       }
 
-      else // NOTE
+      else
       {
         col = sslib.findCompressedIndex(sslib.findDrIndex((*it)->getPopIndices()[0], (*it)->getPopIndices()[1], sslib.getFactorOrder()));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, -0.25));

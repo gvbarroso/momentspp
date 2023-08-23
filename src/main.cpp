@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 21/08/2023
+ * Last modified: 23/08/2023
  * Source code for moments++
  *
  */
@@ -13,8 +13,8 @@
 #include "Recombination.hpp"
 #include "Drift.hpp"
 #include "Selection.hpp"
-//#include "Migration.hpp"
-//#include "Admixture.hpp"
+#include "Migration.hpp"
+#include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 21/Aug/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 23/Aug/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
   Demes demes(options.getDemesFilePath());
 
   if(!(options.getFactorOrder() > 0))
-    throw bpp::Exception("Non-positive Factor Order!");
+    throw bpp::Exception("Main::Non-positive Factor Order!");
 
   size_t numEpochs = demes.getNumEpochs();
   std::vector<std::shared_ptr<Epoch>> epochs(0);
@@ -98,22 +98,19 @@ int main(int argc, char *argv[]) {
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * Must have epoch-specific recombination and mutation operators because they depend on pop indices,
-     * even though inside Model we alias r and mu across epochs
-     * NOTE Admixture is modeled as the only operator in an epoch of 1 generation
+     * even though inside Model class we alias r and mu across epochs
      */
 
-    if((start - end) == 1)
+    if((start - end) == 1) // Admixture is modeled as the only operator in an epoch of 1 generation
     {
-      throw bpp::Exception("Attempted to buid Admixture operator under selection model!");
-
-      /*if(!demes.getPulse(i).isZero(0))
+      if(!demes.getPulse(i).isZero(0))
       {
         operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
         //operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv", sslib);
       }
 
       else
-        throw bpp::Exception("Zero Admixture matrix assigned to 1-generation Epoch!");*/
+        throw bpp::Exception("Main::Zero Admixture matrix assigned to 1-generation Epoch!");
     }
 
     else
@@ -135,20 +132,20 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
         std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeff(i), icSel, sslib);
 
-        // only *allow* model to optimize mig params in epochs where the demes model has non-zero mig
-        /*if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
+        // only *allow* model to include mig params in epochs where the demes model has non-zero mig
+        if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
-          operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv", sslib);
-        }*/
+          operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv");
+        }
 
         operators.push_back(driftOp);
         operators.push_back(recOp);
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        for(size_t x = 0; x < operators.size(); ++x)
-          operators[x]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(x) + ".csv");
+        for(size_t j = 0; j < operators.size(); ++j)
+          operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
@@ -156,7 +153,7 @@ int main(int argc, char *argv[]) {
       }
 
       else
-        throw bpp::Exception("Non-Zero Admixture matrix assigned to multi-generation Epoch!");
+        throw bpp::Exception("Main::Non-Zero Admixture matrix assigned to multi-generation Epoch!");
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));

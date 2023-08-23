@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 15/06/2023
+ * Last modified: 23/08/2023
  */
 
 
@@ -41,9 +41,10 @@ private:
   size_t numHetLeftStats_; // left locus, potentially under selection
   size_t numHetRightStats_; // right locus, neutral
   size_t numPi2Stats_;
-  size_t factorOrder_; // maximum number of 1-2p factors attached to a Moment
+  size_t factorOrder_; // maximum number of 1-2p_x factors attached to a Moment
+  size_t factorComb_; // number of ways we can attach 1-2p_x factors to a given moment, used to find moment indices quickly (NOTE working for P == 2)
 
-  std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
+  std::vector<size_t> popIndices_; // among all Moments in the Epoch to which *this belongs, stored for bookkeeping
   std::vector<std::shared_ptr<Moment>> moments_; // sorted alphabetically based on prefix_ and numerically based on popIndices_
   std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, based on symmetries
 
@@ -56,6 +57,7 @@ public:
   numHetRightStats_(0),
   numPi2Stats_(0),
   factorOrder_(0),
+  factorComb_(0),
   popIndices_(0),
   moments_(0),
   basis_(0)
@@ -69,6 +71,7 @@ public:
   numHetRightStats_(0),
   numPi2Stats_(0),
   factorOrder_(factorOrder),
+  factorComb_(0),
   popIndices_(0),
   moments_(0),
   basis_(0)
@@ -253,7 +256,7 @@ private:
       }
 
       else
-        lessThan = a->getFactorPower() < b->getFactorPower();
+        lessThan = a->getFactorPower() < b->getFactorPower(); // WARNING
     }
 
     return lessThan;

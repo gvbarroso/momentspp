@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 14/06/2023
+ * Last modified: 23/08/2023
  *
  */
 
@@ -121,7 +121,7 @@ size_t SumStatsLibrary::findDdIndex(size_t id1, size_t id2, size_t factorPower) 
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  size_t ret = r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+  size_t ret = r1 * numPops_ * factorComb_ + r2 * factorComb_ + factorPower;
 
   assert(ret < numDDStats_);
   return ret;
@@ -132,7 +132,7 @@ size_t SumStatsLibrary::findDrIndex(size_t id1, size_t id2, size_t factorPower) 
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  size_t ret = numDDStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+  size_t ret = numDDStats_ + r1 * numPops_ * factorComb_ + r2 * factorComb_ + factorPower;
 
   assert(ret >= numDDStats_ && ret < (numDDStats_ + numDrStats_));
   return ret;
@@ -143,7 +143,7 @@ size_t SumStatsLibrary::findHetLeftIndex(size_t id1, size_t id2, size_t factorPo
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  size_t ret = numDDStats_ + numDrStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1) + factorPower;
+  size_t ret = numDDStats_ + numDrStats_ + r1 * numPops_ * factorComb_ + r2 * factorComb_ + factorPower;
 
   assert(ret >= (numDDStats_ + numDrStats_) && ret < (numDDStats_ + numDrStats_ + numHetLeftStats_));
   return ret;
@@ -154,7 +154,7 @@ size_t SumStatsLibrary::findHetRightIndex(size_t id1, size_t id2) const
   size_t r1 = findPopIndexRank(id1);
   size_t r2 = findPopIndexRank(id2);
 
-  size_t ret = numDDStats_ + numDrStats_ + numHetLeftStats_ + r1 * numPops_ * (factorOrder_ + 1) + r2 * (factorOrder_ + 1);
+  size_t ret = numDDStats_ + numDrStats_ + numHetLeftStats_ + r1 * numPops_ * factorComb_ + r2 * factorComb_;
 
   assert(ret >= (numDDStats_ + numDrStats_ + numHetLeftStats_) && ret < (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_));
   return ret;
@@ -168,7 +168,7 @@ size_t SumStatsLibrary::findPi2Index(size_t id1, size_t id2, size_t id3, size_t 
   size_t r4 = findPopIndexRank(id4);
 
   // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-  size_t ret = 1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + r1 * numPops_ * numPops_ * numPops_ * (factorOrder_ + 1) + r2 * numPops_ * numPops_ * (factorOrder_ + 1) + r3 * numPops_ * (factorOrder_ + 1) + r4 * (factorOrder_ + 1) + factorPower;
+  size_t ret = 1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + r1 * numPops_ * numPops_ * numPops_ * factorComb_ + r2 * numPops_ * numPops_ * factorComb_ + r3 * numPops_ * factorComb_ + r4 * factorComb_ + factorPower;
 
   assert(ret >= (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_) && ret < (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + numPi2Stats_));
   return ret;
@@ -231,7 +231,7 @@ void SumStatsLibrary::printBasis(std::ostream& stream)
     basis_[i]->printAttributes(stream);
 }
 
-void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compress) // TODO deal with no populations under selection
+void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compress) // NOTE written for P == 1 or P == 2
 {
   moments_.reserve(getNumStats());
 
@@ -249,43 +249,107 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
       std::string name = "DD_" + asString(*itI) + "_" + asString(*itJ);
+      moments_.emplace_back(std::make_shared<DdMoment>(name, 0.)); // from the canonical Ragsdale-Gravel basis
 
       for(size_t i = 0; i < factorOrder_ + 1; ++i)
       {
-        moments_.emplace_back(std::make_shared<DdMoment>(name, 0.));
+        int x = i;
 
-        if(i == 0)
-          name += "_l";
+        for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+        {
+          if(i > 0 || j > 0)
+          {
+            name = "DD_" + asString(*itI) + "_" + asString(*itJ) + "_l";
 
-        name += "_" + asString(selectedPopIds.front());
+            for(size_t l = 0; l < x; ++l)
+              name += "_" + asString(selectedPopIds[0]); // WARNING
+
+            for(size_t l = 0; l < j; ++l)
+              name += "_" + asString(selectedPopIds[1]); // WARNING
+
+            moments_.emplace_back(std::make_shared<DdMoment>(name, 0.));
+          }
+        }
+
+        --x;
+      }
+
+      name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
+      moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
+
+      for(size_t i = 0; i < factorOrder_ + 2; ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
+      {
+        int x = i;
+
+        for(size_t j = 0; j < (factorOrder_ + 2) - i; ++j)
+        {
+          if(i > 0 || j > 0)
+          {
+            name = "Dr_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+
+            for(size_t l = 0; l < x; ++l)
+              name += "_" + asString(selectedPopIds[0]); // WARNING
+
+            for(size_t l = 0; l < j; ++l)
+              name += "_" + asString(selectedPopIds[1]); // WARNING
+
+            moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
+          }
+        }
+
+        --x;
       }
 
       name = "Hl_" + asString(*itI) + "_" + asString(*itJ);
+      moments_.emplace_back(std::make_shared<HetMoment>(name, 0., true)); // Hl_01 = p_0(1-p_1); Hl_10 = p_1(1-p_0)
 
       for(size_t i = 0; i < factorOrder_ + 1; ++i)
       {
-        moments_.emplace_back(std::make_shared<HetMoment>(name, 0., true)); // Hl_01 = p_0(1-p_1); Hl_10 = p_1(1-p_0)
+        int x = i;
 
-        if(i == 0)
-          name += "_l";
+        for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+        {
+          if(i > 0 || j > 0)
+          {
+            name = "Hl_" + asString(*itI) + "_" + asString(*itJ) + "_l";
 
-        name += "_" + asString(selectedPopIds.front());
+            for(size_t l = 0; l < x; ++l)
+              name += "_" + asString(selectedPopIds[0]); // WARNING
+
+            for(size_t l = 0; l < j; ++l)
+              name += "_" + asString(selectedPopIds[1]); // WARNING
+
+            moments_.emplace_back(std::make_shared<HetMoment>(name, 0., true));
+          }
+        }
+
+        --x;
       }
 
       name = "Hr_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false)); // Hr_01 = p_0(1-p_1); Hr_10 = p_1(1-p_0)
 
-      name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
-
-      // TODO change for multi-pop case
-      for(size_t i = 0; i < factorOrder_ + 2; ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
+      for(size_t i = 0; i < factorOrder_ + 1; ++i)
       {
-        moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
+        int x = i;
 
-        if(i == 0)
-          name += "_l";
+        for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+        {
+          if(i > 0 || j > 0)
+          {
+            name = "Hr_" + asString(*itI) + "_" + asString(*itJ) + "_l";
 
-        name += "_" + asString(selectedPopIds.front());
+            for(size_t l = 0; l < x; ++l)
+              name += "_" + asString(selectedPopIds[0]); // WARNING
+
+            for(size_t l = 0; l < j; ++l)
+              name += "_" + asString(selectedPopIds[1]); // WARNING
+
+            moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false));
+          }
+        }
+
+        --x;
       }
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
@@ -293,15 +357,29 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
         for(auto itL = std::begin(popIndices_); itL != std::end(popIndices_); ++itL)
         {
           name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL);
+          moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
 
           for(size_t i = 0; i < factorOrder_ + 1; ++i)
           {
-            moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
+            int x = i;
 
-            if(i == 0)
-              name += "_l";
+            for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+            {
+              if(i > 0 || j > 0)
+              {
+                name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_l";
 
-            name += "_" + asString(selectedPopIds.front());
+                for(size_t l = 0; l < x; ++l)
+                  name += "_" + asString(selectedPopIds[0]); // WARNING
+
+                for(size_t l = 0; l < j; ++l)
+                  name += "_" + asString(selectedPopIds[1]); // WARNING
+
+                moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
+              }
+            }
+
+            --x;
           }
         }
       }
@@ -341,6 +419,12 @@ void SumStatsLibrary::countMoments_()
   numPi2Stats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "pi2"; });
   numHetLeftStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hl"; });
   numHetRightStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hr"; });
+
+  size_t comb = 1;
+  for(size_t i = 0; i < factorOrder_; ++i)
+    comb += i;
+
+  factorComb_ = comb;
 }
 
 void SumStatsLibrary::linkPi2HetStats_()
@@ -354,9 +438,9 @@ void SumStatsLibrary::linkPi2HetStats_()
     size_t p2 = tmpPi2->getPopIndices()[1];
     size_t p3 = tmpPi2->getPopIndices()[2];
     size_t p4 = tmpPi2->getPopIndices()[3];
-    size_t x = tmpPi2->getFactorPower();
+    size_t factorPower = tmpPi2->getFactorPower();
 
-    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetLeftMoment(p1, p2, x));
+    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetLeftMoment(p1, p2, factorPower));
     auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetRightMoment(p3, p4));
 
     assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
