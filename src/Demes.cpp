@@ -118,7 +118,7 @@ void Demes::parse_(const std::string& fileName)
                   }
 
                   if(match == 0)
-                    throw bpp::Exception("Demes::could not find ancestor of pop " + name + "at specified start_time!");
+                    throw bpp::Exception("Demes::demes::could not find ancestor of pop " + name + "at specified start_time!");
                 }
 
                 break;
@@ -135,7 +135,7 @@ void Demes::parse_(const std::string& fileName)
             double g = pops[i]["proportions"][1].as<double>();
 
             if((f + g) != 1.)
-              throw bpp::Exception("Demes::ancestral admixture proportions don't sum to 1.0!");
+              throw bpp::Exception("Demes::demes::ancestral admixture proportions don't sum to 1.0!");
 
             if(child->getSize() == 0)
               throw bpp::Exception("Demes::demes with two ancestors must have specified start_size's!");
@@ -167,11 +167,11 @@ void Demes::parse_(const std::string& fileName)
             }
 
             if(child->getLeftParent() == nullptr || child->getRightParent() == nullptr)
-              throw bpp::Exception("Demes::could not find ancestors of pop " + child->getName() + " (both must have an epoch's end_time matching " + child->getName() + "'s start_time)");
+              throw bpp::Exception("Demes::demes::could not find ancestors of pop " + child->getName() + " (both must have an epoch's end_time matching " + child->getName() + "'s start_time)");
           }
 
           else if(pops[i]["ancestors"].size() > 2)
-            throw bpp::Exception("Demes::more than two ancestors specified for a single population!");
+            throw bpp::Exception("Demes::demes::more than two ancestors specified for a single population!");
         } // exists 'ancestors' field
 
         for(size_t k = 1; k < singlePopOverTime.size(); ++k)
@@ -324,19 +324,19 @@ void Demes::parse_(const std::string& fileName)
           source = migs[i]["source"].as<std::string>();
 
         else
-          throw bpp::Exception("Demes::'migrations' field must explicitly speficy 'source'!");
+          throw bpp::Exception("Demes::'migrations' field must explicitly specify 'source'!");
 
         if(migs[i]["dest"])
           dest = migs[i]["dest"].as<std::string>();
 
         else
-          throw bpp::Exception("Demes::'migrations' field must explicitly speficy 'dest'!");
+          throw bpp::Exception("Demes::'migrations' field must explicitly specify 'dest'!");
 
         if(migs[i]["rate"])
           rate = migs[i]["rate"].as<double>();
 
         else
-          throw bpp::Exception("Demes::'migrations' field must explicitly speficy 'rate'!");
+          throw bpp::Exception("Demes::'migrations' field must explicitly specify 'rate'!");
 
         if(migs[i]["start_time"])
           startTime = migs[i]["start_time"].as<size_t>();
@@ -370,7 +370,7 @@ void Demes::parse_(const std::string& fileName)
         }
 
         if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of 'migrations' in Demes file do not match the span of any epoch!");
+          throw bpp::Exception("Demes::migrations::start_time and end_time of 'migrations' in Demes file do not match the span of any epoch!");
       }
     } // exits 'migrations' field of Demes file
 
@@ -390,7 +390,7 @@ void Demes::parse_(const std::string& fileName)
           source = sources[0].as<std::string>();
 
         else
-          throw bpp::Exception("Demes::only a single 'source' pop. (specified within brackets) per admixture 'pulse' is allowed!");
+          throw bpp::Exception("Demes::pulses::only a single 'source' pop. (specified within brackets) per admixture 'pulse' is allowed!");
 
         if(proportions.size() == 1)
           f = proportions[0].as<double>();
@@ -422,14 +422,14 @@ void Demes::parse_(const std::string& fileName)
             }
 
             if(row == -1 || col == -1)
-              throw bpp::Exception("Demes::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
+              throw bpp::Exception("Demes::pulses::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
 
             pulses_[j - 1](row, col) = f;  // "from" (f), "to" (1-f, ommited)
           }
         }
 
         if(!valid)
-          throw bpp::Exception("Demes::time of admixture pulse must match the start of an epoch!");
+          throw bpp::Exception("Demes::pulses::time of admixture pulse must match the start of an epoch!");
       }
     } // exits 'pulses' field of Demes file
 
@@ -468,7 +468,7 @@ void Demes::parse_(const std::string& fileName)
         }
 
         if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of 'mutation' do not match the span of any epoch!");
+          throw bpp::Exception("Demes::metadata::start_time and end_time of 'mutation' do not match the span of any epoch!");
       }
 
       if(meta["recombination"]) // TODO add demes field
@@ -501,7 +501,7 @@ void Demes::parse_(const std::string& fileName)
         }
 
         if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of 'recombination' do not match the span of any epoch!");
+          throw bpp::Exception("Demes::metadata::start_time and end_time of 'recombination' do not match the span of any epoch!");
       }
 
       if(meta["selection"])
@@ -534,6 +534,9 @@ void Demes::parse_(const std::string& fileName)
             if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
               (*itPop)->setSelectiveConstraint(true); // false by default
         }
+
+        if(selectedPops.size() == 0 || selectedPops.size() > pops_.size())
+          throw bpp::Exception("Demes::metadata::mis-specified populations under selection");
 
         //std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
 

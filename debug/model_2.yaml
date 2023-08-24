@@ -3,7 +3,11 @@ demes:
   - name: X
     epochs:
       - end_time: 0
-        start_size: 50000
+        start_size: 5000
+  - name: Y
+    epochs:
+      - end_time: 0
+        start_size: 10000
 metadata:
   mutation:
     rate: 1e-7

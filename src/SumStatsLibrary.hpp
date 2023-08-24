@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 23/08/2023
+ * Last modified: 24/08/2023
  */
 
 
@@ -264,10 +264,10 @@ private:
 
   void countMoments_();
 
-  // assign two HetMoment pointers to each Pi2Moment (left and right loci)
+  // assigns two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();
 
-  // the next two method exploit symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection:
+  // exploits symmetry among statistics to reduce size of basis, given constraints imposed by selection
   void aliasMoments_(const std::vector<size_t>& selectedPopIds);
 
   void compressBasis_();

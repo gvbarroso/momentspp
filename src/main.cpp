@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 23/08/2023
+ * Last modified: 24/08/2023
  * Source code for moments++
  *
  */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 23/Aug/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 25/Aug/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
         if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
-          operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv");
+          //operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv");
         }
 
         operators.push_back(driftOp);
@@ -144,8 +144,8 @@ int main(int argc, char *argv[]) {
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        for(size_t j = 0; j < operators.size(); ++j)
-          operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
+        //for(size_t j = 0; j < operators.size(); ++j)
+          //operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
@@ -163,10 +163,6 @@ int main(int argc, char *argv[]) {
 
   epochs.front()->computeSteadyState(); // only need to have steady state in the deepest epoch
 
-  //std::ofstream fs(options.getLabel() + "_steady_state.txt");
-  //fs << epochs.front()->getSteadyState() << "\n";
-  //fs.close();
-
   try
   {
     if(options.getDataFilePath() == "none")
@@ -174,8 +170,7 @@ int main(int argc, char *argv[]) {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
-      //model->getParameters().printParameters(std::cout);
-      model->getIndependentParameters().printParameters(std::cout);
+      model->getIndependentParameters().printParameters(std::cout); //model->getParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
       std::string file = model->getName() + "_expectations.txt";
@@ -184,7 +179,7 @@ int main(int argc, char *argv[]) {
       model->printAliasedMoments(fout);
 
       fout.close();
-      std::cout << "Check " << file << ".\n\n";
+      std::cout << "\nCheck " << file << ".\n\n";
     }
 
     else

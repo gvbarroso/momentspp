@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 23/08/2023
+ * Last modified: 24/08/2023
  *
  */
 
@@ -231,7 +231,7 @@ void SumStatsLibrary::printBasis(std::ostream& stream)
     basis_[i]->printAttributes(stream);
 }
 
-void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compress) // NOTE written for P == 1 or P == 2
+void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compress) // TODO fix when focal Epoch doesn't have selection
 {
   moments_.reserve(getNumStats());
 
@@ -244,6 +244,16 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
       selectedPopIds.emplace_back((*it)->getId());
   }
 
+  size_t comb = 1;
+
+  if(selectedPopIds.size() > 0)
+  {
+    for(size_t i = 0; i < factorOrder_; ++i)
+      comb += i;
+  }
+
+  factorComb_ = comb;
+
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
@@ -251,105 +261,145 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
       std::string name = "DD_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<DdMoment>(name, 0.)); // from the canonical Ragsdale-Gravel basis
 
-      for(size_t i = 0; i < factorOrder_ + 1; ++i)
+      for(size_t i = 0; i < (factorOrder_ + 1); ++i) // for each factor id count
       {
-        int x = i;
+        std::vector<size_t> factorIds(i);
 
-        for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+        for(size_t j = 0; j < selectedPopIds.size(); ++j) // for each (selected) pop
         {
-          if(i > 0 || j > 0)
+          for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+            factorIds[k] = selectedPopIds[j];
+
+          std::string nome = name + "_l";
+          for(size_t m = 0; m < i; ++m)
+            nome = nome + "_" + asString(factorIds[m]);
+
+          std::cout << nome << std::endl;
+          moments_.emplace_back(std::make_shared<DdMoment>(nome, 0.));
+
+          for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
           {
-            name = "DD_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+            for(size_t l = 0; l < selectedPopIds.size(); ++l)
+            {
+              factorIds[k] = selectedPopIds[l]; // switches (selected) pop id at position
 
-            for(size_t l = 0; l < x; ++l)
-              name += "_" + asString(selectedPopIds[0]); // WARNING
+              nome = name + "_l";
+              for(size_t m = 0; m < i; ++m)
+                nome = nome + "_" + asString(factorIds[m]);
 
-            for(size_t l = 0; l < j; ++l)
-              name += "_" + asString(selectedPopIds[1]); // WARNING
-
-            moments_.emplace_back(std::make_shared<DdMoment>(name, 0.));
+              std::cout << nome << std::endl;
+              moments_.emplace_back(std::make_shared<DdMoment>(nome, 0.));
+            }
           }
         }
-
-        --x;
       }
 
       name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
       moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
 
-      for(size_t i = 0; i < factorOrder_ + 2; ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
+      for(size_t i = 0; i < (factorOrder_ + 2); ++i) // for each factor id count NOTE Dr stats include one factor of (1-2p) more than other stats
       {
-        int x = i;
+        std::vector<size_t> factorIds(i);
 
-        for(size_t j = 0; j < (factorOrder_ + 2) - i; ++j)
+        for(size_t j = 0; j < selectedPopIds.size(); ++j) // for each (selected) pop
         {
-          if(i > 0 || j > 0)
+          for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+            factorIds[k] = selectedPopIds[j];
+
+          std::string nome = name + "_l";
+          for(size_t m = 0; m < i; ++m)
+            nome = nome + "_" + asString(factorIds[m]);
+
+          std::cout << nome << std::endl;
+          moments_.emplace_back(std::make_shared<DrMoment>(nome, 0.));
+
+          for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
           {
-            name = "Dr_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+            for(size_t l = 0; l < selectedPopIds.size(); ++l)
+            {
+              factorIds[k] = selectedPopIds[l]; // switches (selected) pop id at position
 
-            for(size_t l = 0; l < x; ++l)
-              name += "_" + asString(selectedPopIds[0]); // WARNING
+              nome = name + "_l";
+              for(size_t m = 0; m < i; ++m)
+                nome = nome + "_" + asString(factorIds[m]);
 
-            for(size_t l = 0; l < j; ++l)
-              name += "_" + asString(selectedPopIds[1]); // WARNING
-
-            moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
+              std::cout << nome << std::endl;
+              moments_.emplace_back(std::make_shared<DrMoment>(nome, 0.));
+            }
           }
         }
-
-        --x;
       }
 
       name = "Hl_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<HetMoment>(name, 0., true)); // Hl_01 = p_0(1-p_1); Hl_10 = p_1(1-p_0)
 
-      for(size_t i = 0; i < factorOrder_ + 1; ++i)
+      for(size_t i = 0; i < (factorOrder_ + 1); ++i) // for each factor id count
       {
-        int x = i;
+        std::vector<size_t> factorIds(i);
 
-        for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+        for(size_t j = 0; j < selectedPopIds.size(); ++j) // for each (selected) pop
         {
-          if(i > 0 || j > 0)
+          for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+            factorIds[k] = selectedPopIds[j];
+
+          std::string nome = name + "_l";
+          for(size_t m = 0; m < i; ++m)
+            nome = nome + "_" + asString(factorIds[m]);
+
+          std::cout << nome << std::endl;
+          moments_.emplace_back(std::make_shared<HetMoment>(nome, 0., true));
+
+          for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
           {
-            name = "Hl_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+            for(size_t l = 0; l < selectedPopIds.size(); ++l)
+            {
+              factorIds[k] = selectedPopIds[l]; // switches (selected) pop id at position
 
-            for(size_t l = 0; l < x; ++l)
-              name += "_" + asString(selectedPopIds[0]); // WARNING
+              nome = name + "_l";
+              for(size_t m = 0; m < i; ++m)
+                nome = nome + "_" + asString(factorIds[m]);
 
-            for(size_t l = 0; l < j; ++l)
-              name += "_" + asString(selectedPopIds[1]); // WARNING
-
-            moments_.emplace_back(std::make_shared<HetMoment>(name, 0., true));
+              std::cout << nome << std::endl;
+              moments_.emplace_back(std::make_shared<HetMoment>(nome, 0., true));
+            }
           }
         }
-
-        --x;
       }
 
       name = "Hr_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false)); // Hr_01 = p_0(1-p_1); Hr_10 = p_1(1-p_0)
 
-      for(size_t i = 0; i < factorOrder_ + 1; ++i)
+      for(size_t i = 0; i < (factorOrder_ + 1); ++i) // for each factor id count
       {
-        int x = i;
+        std::vector<size_t> factorIds(i);
 
-        for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+        for(size_t j = 0; j < selectedPopIds.size(); ++j) // for each (selected) pop
         {
-          if(i > 0 || j > 0)
+          for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+            factorIds[k] = selectedPopIds[j];
+
+          std::string nome = name + "_l";
+          for(size_t m = 0; m < i; ++m)
+            nome = nome + "_" + asString(factorIds[m]);
+
+          std::cout << nome << std::endl;
+          moments_.emplace_back(std::make_shared<HetMoment>(nome, 0., false));
+
+          for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
           {
-            name = "Hr_" + asString(*itI) + "_" + asString(*itJ) + "_l";
+            for(size_t l = 0; l < selectedPopIds.size(); ++l)
+            {
+              factorIds[k] = selectedPopIds[l]; // switches (selected) pop id at position
 
-            for(size_t l = 0; l < x; ++l)
-              name += "_" + asString(selectedPopIds[0]); // WARNING
+              nome = name + "_l";
+              for(size_t m = 0; m < i; ++m)
+                nome = nome + "_" + asString(factorIds[m]);
 
-            for(size_t l = 0; l < j; ++l)
-              name += "_" + asString(selectedPopIds[1]); // WARNING
-
-            moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false));
+              std::cout << nome << std::endl;
+              moments_.emplace_back(std::make_shared<HetMoment>(nome, 0., false));
+            }
           }
         }
-
-        --x;
       }
 
       for(auto itK = std::begin(popIndices_); itK != std::end(popIndices_); ++itK)
@@ -359,27 +409,37 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
           name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL);
           moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
 
-          for(size_t i = 0; i < factorOrder_ + 1; ++i)
+          for(size_t i = 0; i < (factorOrder_ + 1); ++i) // for each factor id count
           {
-            int x = i;
+            std::vector<size_t> factorIds(i);
 
-            for(size_t j = 0; j < (factorOrder_ + 1) - i; ++j)
+            for(size_t j = 0; j < selectedPopIds.size(); ++j) // for each (selected) pop
             {
-              if(i > 0 || j > 0)
+              for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+                factorIds[k] = selectedPopIds[j];
+
+              std::string nome = name + "_l";
+              for(size_t m = 0; m < i; ++m)
+                nome = nome + "_" + asString(factorIds[m]);
+
+              std::cout << nome << std::endl;
+              moments_.emplace_back(std::make_shared<Pi2Moment>(nome, 0., nullptr, nullptr));
+
+              for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
               {
-                name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL) + "_l";
+                for(size_t l = 0; l < selectedPopIds.size(); ++l)
+                {
+                  factorIds[k] = selectedPopIds[l]; // switches (selected) pop id at position
 
-                for(size_t l = 0; l < x; ++l)
-                  name += "_" + asString(selectedPopIds[0]); // WARNING
+                  nome = name + "_l";
+                  for(size_t m = 0; m < i; ++m)
+                    nome = nome + "_" + asString(factorIds[m]);
 
-                for(size_t l = 0; l < j; ++l)
-                  name += "_" + asString(selectedPopIds[1]); // WARNING
-
-                moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
+                  std::cout << nome << std::endl;
+                  moments_.emplace_back(std::make_shared<Pi2Moment>(nome, 0., nullptr, nullptr));
+                }
               }
             }
-
-            --x;
           }
         }
       }
@@ -393,7 +453,7 @@ void SumStatsLibrary::initMoments_(const std::vector<std::shared_ptr<Population>
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
   countMoments_();
 
-  //printMoments(std::cout);
+  printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);
@@ -419,12 +479,6 @@ void SumStatsLibrary::countMoments_()
   numPi2Stats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "pi2"; });
   numHetLeftStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hl"; });
   numHetRightStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hr"; });
-
-  size_t comb = 1;
-  for(size_t i = 0; i < factorOrder_; ++i)
-    comb += i;
-
-  factorComb_ = comb;
 }
 
 void SumStatsLibrary::linkPi2HetStats_()
