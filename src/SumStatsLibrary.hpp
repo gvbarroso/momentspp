@@ -89,7 +89,7 @@ public:
       throw bpp::Exception("SumStatsLibrary::non-unique population indices!");
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
-    initMoments_(pops, compressMoments);
+    initMoments_(compressMoments);
   }
 
 public:
@@ -227,7 +227,7 @@ public:
   void printBasis(std::ostream& stream);
 
 private:
-  void initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments);
+  void initMoments_(bool compressMoments);
 
   static bool compareMoments_(std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
   {
