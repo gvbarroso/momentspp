@@ -15,6 +15,6 @@ metadata:
     rate: 1e-5
   selection:
     rate: -1e-4
-    demes: [X, Y]
+    demes: [X]
     #start_time: 7000
     #end_time: 3000

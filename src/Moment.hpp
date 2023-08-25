@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 15/06/2023
+ * Last modified: 25/08/2023
  *
  */
 
@@ -288,6 +288,9 @@ public:
         }
       }
     }
+
+    // to compare *this and other moments more easily
+    std::sort(std::begin(factorIndices_), std::end(factorIndices_));
 
     // aesthetics
     std::string nome = prefix_;

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 24/08/2023
+ * Last modified: 25/08/2023
  */
 
 
@@ -63,7 +63,7 @@ public:
   basis_(0)
   { }
 
-  SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, size_t factorOrder, bool compressMoments):
+  SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, size_t factorOrder, bool compress):
   numPops_(pops.size()),
   numDDStats_(0),
   numDrStats_(0),
@@ -89,7 +89,7 @@ public:
       throw bpp::Exception("SumStatsLibrary::non-unique population indices!");
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
-    initMoments_(compressMoments);
+    initMoments_(compress);
   }
 
 public:
@@ -227,7 +227,7 @@ public:
   void printBasis(std::ostream& stream);
 
 private:
-  void initMoments_(bool compressMoments);
+  void initMoments_(bool compress);
 
   static bool compareMoments_(std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
   {
@@ -238,25 +238,49 @@ private:
 
     else
     {
-      auto x = a->getPopIndices();
-      auto y = b->getPopIndices();
+      auto aPops = a->getPopIndices();
+      auto bPops = b->getPopIndices();
 
-      assert(x.size() == y.size());
+      assert(aPops.size() == bPops.size());
 
-      if(x != y)
+      if(aPops != bPops)
       {
-        for(size_t i = 0; i < x.size(); ++i)
+        for(size_t i = 0; i < aPops.size(); ++i)
         {
-          if(x[i] != y[i])
+          if(aPops[i] != bPops[i])
           {
-            lessThan = x[i] < y[i];
+            lessThan = aPops[i] < bPops[i];
             break;
           }
         }
       }
 
       else
-        lessThan = a->getFactorPower() < b->getFactorPower(); // WARNING
+      {
+        if(a->getFactorPower() != b->getFactorPower())
+          lessThan = a->getFactorPower() < b->getFactorPower();
+
+        else
+        {
+          // these are sorted by design inside each Moment object
+          auto aFactors = a->getFactorIndices();
+          auto bFactors = b->getFactorIndices();
+
+          assert(aFactors.size() == bFactors.size());
+
+          if(aFactors != bFactors)
+          {
+            for(size_t i = 0; i < aFactors.size(); ++i)
+            {
+              if(aFactors[i] != bFactors[i])
+              {
+                lessThan = aFactors[i] < bFactors[i];
+                break;
+              }
+            }
+          }
+        }
+      }
     }
 
     return lessThan;

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 23/08/2023
+ * Last modified: 25/08/2023
  *
  */
 
@@ -9,7 +9,8 @@
 #include "Selection.hpp"
 
 
-void Selection::setUpMatrices_(const SumStatsLibrary& sslib) // NOTE uses zero-order moment-closure approximation
+// uses zero-order moment-closure approximation
+void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(1);
@@ -18,6 +19,8 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib) // NOTE uses zero-o
 
   for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
   {
+    // TODO check if populations involved in the focal moment have selection
+
     int row = it - std::begin(sslib.getBasis());
     int col = -1;
 

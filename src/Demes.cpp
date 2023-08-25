@@ -535,10 +535,7 @@ void Demes::parse_(const std::string& fileName)
               (*itPop)->setSelectiveConstraint(true); // false by default
         }
 
-        if(selectedPops.size() == 0 || selectedPops.size() > pops_.size())
-          throw bpp::Exception("Demes::metadata::mis-specified populations under selection");
-
-        //std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
+        std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
 
         bool match = 0;
         for(size_t k = 1; k < timeBounds.size(); ++k)
