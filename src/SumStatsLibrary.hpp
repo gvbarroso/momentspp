@@ -175,19 +175,9 @@ public:
 
   std::shared_ptr<Moment> getMoment(const std::string& name) const;
 
+  std::shared_ptr<Moment> getMoment(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const;
+
   std::shared_ptr<Moment> getMoment(size_t pos) const;
-
-  std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2, size_t factorPower) const;
-
-  std::shared_ptr<DrMoment> getDrMoment(size_t id1, size_t id2, size_t factorPower) const;
-
-  std::shared_ptr<HetMoment> getHetLeftMoment(size_t id1, size_t id2, size_t factorPower) const;
-
-  std::shared_ptr<HetMoment> getHetRightMoment(size_t id1, size_t id2) const;
-
-  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const;
-
-  std::shared_ptr<Pi2Moment> getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const;
 
   std::shared_ptr<Moment> getDummyMoment() const
   {
@@ -199,22 +189,10 @@ public:
     return basis_[findCompressedIndex(getDummyIndexUncompressed())];
   }
 
-  size_t findPopIndexRank(size_t index) const;
-
-  size_t findDdIndex(size_t id1, size_t id2, size_t factorPower) const;
-
-  size_t findDrIndex(size_t id1, size_t id2, size_t factorPower) const;
-
-  size_t findHetLeftIndex(size_t id1, size_t id2, size_t factorPower) const;
-
-  size_t findHetRightIndex(size_t id1, size_t id2) const;
-
   size_t getDummyIndexUncompressed() const
   {
     return numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_;
   }
-
-  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, size_t factorPower) const;
 
   size_t findCompressedIndex(std::shared_ptr<Moment> mom) const;
 

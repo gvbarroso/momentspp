@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 24/08/2023
+ * Last modified: 28/08/2023
  * Source code for moments++
  *
  */

@@ -24,6 +24,7 @@ public:
     setUpMatrices_(sslib);
   }
 
+  // TODO make val a vector, one s per pop
   Selection(double val, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices())
   {

@@ -508,7 +508,7 @@ void Demes::parse_(const std::string& fileName)
       {
         YAML::Node sel = meta["selection"];
 
-        double s = 0.;
+        double s = 0.; // TODO make a vector, one per pop
         size_t startTime = timeBounds.front();
         size_t endTime = 0;
         std::vector<std::string> selectedPops(0);

@@ -12,9 +12,13 @@
 std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) const
 {
   auto ptr = std::find_if(std::begin(moments_), std::end(moments_), [&tmp](const auto& obj) { return tmp.lock() == obj.lock(); });
-  assert(ptr != std::end(moments_));
 
-  return *ptr;
+  if(ptr != std::end(moments_))
+    return *ptr;
+
+  else
+    throw bpp::Exception("SumStatsLibrary::could not find stat " name);
+
   /*std::shared_ptr<Moment> ptr = nullptr;
   for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
   {
@@ -26,156 +30,14 @@ std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) cons
   return ptr;*/
 }
 
+std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
+{
+  return getMoment(assembleName_(prefix, popIds, factorIds));
+}
+
 std::shared_ptr<Moment> SumStatsLibrary::getMoment(size_t pos) const
 {
   return basis_[pos];
-}
-
-std::shared_ptr<DdMoment> SumStatsLibrary::getDdMoment(size_t id1, size_t id2, size_t power) const
-{
-  size_t focalMomIndex = findDdIndex(id1, id2, power);
-  auto ret = std::dynamic_pointer_cast<DdMoment>(moments_[focalMomIndex]);
-
-  if(ret != nullptr)
-    return ret;
-
-  else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: DD" + asString(id1) + asString(id2));
-}
-
-std::shared_ptr<DrMoment> SumStatsLibrary::getDrMoment(size_t id1, size_t id2, size_t power) const
-{
-  size_t focalMomIndex = findDrIndex(id1, id2, power);
-  auto ret = std::dynamic_pointer_cast<DrMoment>(moments_[focalMomIndex]);
-
-  if(ret != nullptr)
-    return ret;
-
-  else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Dr" + asString(id1) + asString(id2));
-}
-
-std::shared_ptr<HetMoment> SumStatsLibrary::getHetLeftMoment(size_t id1, size_t id2, size_t power) const
-{
-  size_t focalMomIndex = findHetLeftIndex(id1, id2, power);
-  auto ret = std::dynamic_pointer_cast<HetMoment>(moments_[focalMomIndex]);
-
-  if(ret != nullptr)
-    return ret;
-
-  else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Hl" + asString(id1) + asString(id2));
-}
-
-std::shared_ptr<HetMoment> SumStatsLibrary::getHetRightMoment(size_t id1, size_t id2) const
-{
-  size_t focalMomIndex = findHetRightIndex(id1, id2);
-  auto ret = std::dynamic_pointer_cast<HetMoment>(moments_[focalMomIndex]);
-
-  if(ret != nullptr)
-    return ret;
-
-  else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Hr" + asString(id1) + asString(id2));
-}
-
-std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4, size_t power) const
-{
-  size_t focalMomIndex = findPi2Index(id1, id2, id3, id4, power);
-  auto ret = std::dynamic_pointer_cast<Pi2Moment>(moments_[focalMomIndex]);
-
-  if(ret != nullptr)
-    return ret;
-
-  else
-    throw bpp::Exception("SumStatsLibrary::bad dynamic_pointer_cast attempt: Pi2" + asString(id1) + asString(id2) + asString(id3) + asString(id3));
-}
-
-std::shared_ptr<Pi2Moment> SumStatsLibrary::getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const
-{
-  assert(left != nullptr && right != nullptr);
-  std::shared_ptr<Pi2Moment> ret = nullptr;
-
-  for(size_t i = (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + 1); i < getNumStats(); ++i)
-  {
-    auto tmp = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
-    assert(tmp != nullptr);
-
-    if(left == tmp->getLeftHetStat() && right == tmp->getRightHetStat()) // WARNING
-      ret = tmp;
-  }
-
-  if(ret != nullptr)
-    return ret;
-
-  else
-    throw bpp::Exception("SumStatsLibrary::could not find pi2 stat for " + left->getName() + " + " + right->getName());
-}
-
-size_t SumStatsLibrary::findPopIndexRank(size_t index) const // among all pop indices
-{
-  auto it = std::find(std::begin(popIndices_), std::end(popIndices_), index);
-  assert(it != std::end(popIndices_));
-
-  return std::distance(std::begin(popIndices_), it); // indexed from 0
-}
-
-size_t SumStatsLibrary::findDdIndex(size_t id1, size_t id2, size_t power) const
-{
-  size_t r1 = findPopIndexRank(id1);
-  size_t r2 = findPopIndexRank(id2);
-
-  size_t ret = r1 * numPops_ * factorComb_ + r2 * factorComb_ + power;
-
-  assert(ret < numDDStats_);
-  return ret;
-}
-
-size_t SumStatsLibrary::findDrIndex(size_t id1, size_t id2, size_t power) const
-{
-  size_t r1 = findPopIndexRank(id1);
-  size_t r2 = findPopIndexRank(id2);
-
-  size_t ret = numDDStats_ + r1 * numPops_ * factorComb_ + r2 * factorComb_ + power;
-
-  assert(ret >= numDDStats_ && ret < (numDDStats_ + numDrStats_));
-  return ret;
-}
-
-size_t SumStatsLibrary::findHetLeftIndex(size_t id1, size_t id2, size_t power) const
-{
-  size_t r1 = findPopIndexRank(id1);
-  size_t r2 = findPopIndexRank(id2);
-
-  size_t ret = numDDStats_ + numDrStats_ + r1 * numPops_ * factorComb_ + r2 * factorComb_ + power;
-
-  assert(ret >= (numDDStats_ + numDrStats_) && ret < (numDDStats_ + numDrStats_ + numHetLeftStats_));
-  return ret;
-}
-
-size_t SumStatsLibrary::findHetRightIndex(size_t id1, size_t id2) const
-{
-  size_t r1 = findPopIndexRank(id1);
-  size_t r2 = findPopIndexRank(id2);
-
-  size_t ret = numDDStats_ + numDrStats_ + numHetLeftStats_ + r1 * numPops_ + r2; // no (1-2p_x) factor attached to Hr moments
-
-  assert(ret >= (numDDStats_ + numDrStats_ + numHetLeftStats_) && ret < (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_));
-  return ret;
-}
-
-size_t SumStatsLibrary::findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4, size_t power) const
-{
-  size_t r1 = findPopIndexRank(id1);
-  size_t r2 = findPopIndexRank(id2);
-  size_t r3 = findPopIndexRank(id3);
-  size_t r4 = findPopIndexRank(id4);
-
-  // 1 + because of dummy Moment "I_" after "H_**" to make system homogeneous(see initMoments_())
-  size_t ret = 1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + r1 * numPops_ * numPops_ * numPops_ * factorComb_ + r2 * numPops_ * numPops_ * factorComb_ + r3 * numPops_ * factorComb_ + r4 * factorComb_ + power;
-
-  assert(ret >= (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_) && ret < (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + numPi2Stats_));
-  return ret;
 }
 
 size_t SumStatsLibrary::findCompressedIndex(std::shared_ptr<Moment> mom) const
@@ -411,7 +273,6 @@ std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std:
   return name;
 }
 
-
 void SumStatsLibrary::countMoments_()
 {
   assert(moments_.size() != 0);
@@ -500,7 +361,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
         bool leftEq = left1 == left2 || left1->hasAlias(left2);
         bool rightEq = right1 == right2 || right1->hasAlias(right2);
 
-        bool leftRightPermut = 0; // permutations share selective status
+        bool leftRightPermut = 0; // permutations share selective status, CANNOT be true ATM because all HetLeft stats are being treated as necessarily constrained
         if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained()))
         {
           if(left1->hasAlias(right2) && left2->hasAlias(right1))
