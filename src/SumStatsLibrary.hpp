@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 25/08/2023
+ * Last modified: 28/08/2023
  */
 
 
@@ -286,13 +286,16 @@ private:
     return lessThan;
   }
 
+  // for searching / comparing
+  std::string assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds);
+
   void countMoments_();
 
   // assigns two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();
 
   // exploits symmetry among statistics to reduce size of basis, given constraints imposed by selection
-  void aliasMoments_(const std::vector<size_t>& selectedPopIds);
+  void aliasMoments_();
 
   void compressBasis_();
 

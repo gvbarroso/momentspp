@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 25/08/2023
+ * Last modified: 28/08/2023
  *
  */
 
@@ -11,7 +11,11 @@
 
 std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) const
 {
-  std::shared_ptr<Moment> ptr = nullptr;
+  auto ptr = std::find_if(std::begin(moments_), std::end(moments_), [&tmp](const auto& obj) { return tmp.lock() == obj.lock(); });
+  assert(ptr != std::end(moments_));
+
+  return *ptr;
+  /*std::shared_ptr<Moment> ptr = nullptr;
   for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
   {
     if((*itMom)->getName() == name)
@@ -19,7 +23,7 @@ std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) cons
   }
 
   assert(ptr != nullptr);
-  return ptr;
+  return ptr;*/
 }
 
 std::shared_ptr<Moment> SumStatsLibrary::getMoment(size_t pos) const
@@ -276,20 +280,20 @@ void SumStatsLibrary::initMoments_(bool compress)
       name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
       moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
 
-      for(size_t i = 1; i < (factorOrder_ + 2); ++i) // for each factor id count NOTE Dr stats include one factor of (1-2p) more than other stats
+      for(size_t i = 1; i < (factorOrder_ + 2); ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
       {
         std::vector<size_t> factorIds(i);
 
-        for(size_t j = 0; j < popIndices_.size(); ++j) // for each pop
+        for(size_t j = 0; j < popIndices_.size(); ++j)
         {
-          for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+          for(size_t k = 0; k < i; ++k)
             factorIds[k] = popIndices_[j];
 
-          for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
+          for(size_t k = 0; k < i; ++k)
           {
             for(size_t l = 0; l < popIndices_.size(); ++l)
             {
-              factorIds[k] = popIndices_[l]; // switches pop id at position
+              factorIds[k] = popIndices_[l];
 
               std::string nome = name + "_l";
               for(size_t m = 0; m < i; ++m)
@@ -304,20 +308,20 @@ void SumStatsLibrary::initMoments_(bool compress)
       name = "Hl_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<HetMoment>(name, 0., true)); // Hl_01 = p_0(1-p_1); Hl_10 = p_1(1-p_0)
 
-      for(size_t i = 1; i < (factorOrder_ + 1); ++i) // for each factor id count
+      for(size_t i = 1; i < (factorOrder_ + 1); ++i)
       {
         std::vector<size_t> factorIds(i);
 
-        for(size_t j = 0; j < popIndices_.size(); ++j) // for each pop
+        for(size_t j = 0; j < popIndices_.size(); ++j)
         {
-          for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+          for(size_t k = 0; k < i; ++k)
             factorIds[k] = popIndices_[j];
 
-          for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
+          for(size_t k = 0; k < i; ++k)
           {
             for(size_t l = 0; l < popIndices_.size(); ++l)
             {
-              factorIds[k] = popIndices_[l]; // switches pop id at position
+              factorIds[k] = popIndices_[l];
 
               std::string nome = name + "_l";
               for(size_t m = 0; m < i; ++m)
@@ -329,6 +333,7 @@ void SumStatsLibrary::initMoments_(bool compress)
         }
       }
 
+      // Hr stats don't require training factors of (1-2p_x)
       name = "Hr_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false)); // Hr_01 = p_0(1-p_1); Hr_10 = p_1(1-p_0)
 
@@ -339,20 +344,20 @@ void SumStatsLibrary::initMoments_(bool compress)
           name = "pi2_" + asString(*itI) + "_" + asString(*itJ) + "_" + asString(*itK) + "_" + asString(*itL);
           moments_.emplace_back(std::make_shared<Pi2Moment>(name, 0., nullptr, nullptr));
 
-          for(size_t i = 1; i < (factorOrder_ + 1); ++i) // for each factor id count
+          for(size_t i = 1; i < (factorOrder_ + 1); ++i)
           {
             std::vector<size_t> factorIds(i);
 
-            for(size_t j = 0; j < popIndices_.size(); ++j) // for each pop
+            for(size_t j = 0; j < popIndices_.size(); ++j)
             {
-              for(size_t k = 0; k < i; ++k) // init factor ids to focal pop id in all positions
+              for(size_t k = 0; k < i; ++k)
                 factorIds[k] = popIndices_[j];
 
-              for(size_t k = 0; k < i; ++k) // for each position in factor ids vector
+              for(size_t k = 0; k < i; ++k)
               {
                 for(size_t l = 0; l < popIndices_.size(); ++l)
                 {
-                  factorIds[k] = popIndices_[l]; // switches pop id at position
+                  factorIds[k] = popIndices_[l];
 
                   std::string nome = name + "_l";
                   for(size_t m = 0; m < i; ++m)
@@ -381,26 +386,48 @@ void SumStatsLibrary::initMoments_(bool compress)
 
   if(compress)
   {
-    aliasMoments_(selectedPopIds);
+    aliasMoments_();
     compressBasis_();
   }
 }
+
+std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds)
+{
+  std::string name = prefix;
+  for(size_t i = 0; i < popIds.size(); ++i)
+    name = name + "_" + asString(popIds[i]);
+
+  if(factorIds.size() > 0)
+  {
+    for(size_t i = 0; i < popIds.size(); ++i)
+    {
+      size_t count = std::count(std::begin(factorIds), std::end(factorIds), popIds[i]);
+
+      if(count > 0)
+        name = name + "_(1-2p" + asString(popIds[i]) + ")^" + asString(count);
+    }
+  }
+
+  return name;
+}
+
 
 void SumStatsLibrary::countMoments_()
 {
   assert(moments_.size() != 0);
 
-  // deletes duplicates and determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
+  // deletes duplicates introduced by clumsy creation of moments
+  // and determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
   moments_.erase(std::unique(std::begin(moments_), std::end(moments_),
                              [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
                              { return (a->getName() == b->getName() ? true : false); }), std::end(moments_));
 
-  numDDStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "DD"; });
-  numDrStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Dr"; });
-  numPi2Stats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "pi2"; });
-  numHetLeftStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hl"; });
-  numHetRightStats_ = std::count_if(std::begin(moments_), std::end(moments_), [] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hr"; });
+  numDDStats_ = std::count_if(std::begin(moments_), std::end(moments_), [=] (std::shared_ptr<Moment> m) { return m->getPrefix() == "DD"; });
+  numDrStats_ = std::count_if(std::begin(moments_), std::end(moments_), [=] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Dr"; });
+  numPi2Stats_ = std::count_if(std::begin(moments_), std::end(moments_), [=] (std::shared_ptr<Moment> m) { return m->getPrefix() == "pi2"; });
+  numHetLeftStats_ = std::count_if(std::begin(moments_), std::end(moments_), [=] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hl"; });
+  numHetRightStats_ = std::count_if(std::begin(moments_), std::end(moments_), [=] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hr"; });
 
   std::cout << numDDStats_ << "," << numDrStats_  << "," << numPi2Stats_  << "," << numHetLeftStats_  << "," << numHetRightStats_  << "\n";
 }
@@ -412,14 +439,19 @@ void SumStatsLibrary::linkPi2HetStats_()
     auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
     assert(tmpPi2 != nullptr);
 
-    size_t p1 = tmpPi2->getPopIndices()[0];
-    size_t p2 = tmpPi2->getPopIndices()[1];
-    size_t p3 = tmpPi2->getPopIndices()[2];
-    size_t p4 = tmpPi2->getPopIndices()[3];
-    size_t power = tmpPi2->getFactorPower();
+    std::vector<size_t> popsLeft(0);
+    std::vector<size_t> popsRight(0);
 
-    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getHetLeftMoment(p1, p2, power));
-    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getHetRightMoment(p3, p4));
+    popsLeft.reserve(2);
+    popsRight.reserve(2);
+
+    popsLeft.emplace_back(tmpPi2->getPopIndices()[0]);
+    popsLeft.emplace_back(tmpPi2->getPopIndices()[1]);
+    popsRight.emplace_back(tmpPi2->getPopIndices()[2]);
+    popsRight.emplace_back(tmpPi2->getPopIndices()[3]);
+
+    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmpPi2->getFactorIndices()));
+    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, tmpPi2->getFactorIndices()));
 
     assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
@@ -428,89 +460,27 @@ void SumStatsLibrary::linkPi2HetStats_()
   }
 }
 
-// NOTE needs to be fixed when P > 1
-void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) // selection acts on the left locus by design
+void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by design
 {
   assert(numDDStats_ > 0 && numDrStats_ > 0 & numHetLeftStats_ > 0 && numHetRightStats_ > 0 && numPi2Stats_ > 0);
 
-  for(size_t i = 0; i < numDDStats_; ++i)
+  for(size_t i = 0; i < (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_); ++i)
   {
-    assert(moments_[i]->getPrefix() == "DD");
+    std::vector<size_t> pops(0);
+    pops.reserve(2);
 
-    size_t pop1 = moments_[i]->getPopIndices()[0];
-    size_t pop2 = moments_[i]->getPopIndices()[1];
-    size_t power = moments_[i]-> getFactorPower();
+    pops.emplace_back(moments_[i]->getPopIndices()[1]);
+    pops.emplace_back(moments_[i]->getPopIndices()[0]);
 
-    auto candidate = getDdMoment(pop2, pop1, power);
+    auto candidate = getMoment(assembleName_(moments_[i]->getPrefix(), pops, moments_[i]->getFactorIndices()));
 
-    //bool statusP1 = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
-    //bool statusP2 = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop2) != std::end(selectedPopIds);
-
-    if((pop1 != pop2) && (moments_[i]->getFactorIndices() == candidate->getFactorIndices()))
+    if(pop1 != pop2)
       moments_[i]->insertAlias(candidate);
   }
 
-  for(size_t i = numDDStats_; i < (numDDStats_ + numDrStats_); ++i)
-  {
-    assert(moments_[i]->getPrefix() == "Dr");
-
-    size_t pop1 = moments_[i]->getPopIndices()[0];
-    size_t pop2 = moments_[i]->getPopIndices()[1];
-    size_t power = moments_[i]-> getFactorPower();
-
-    auto factorIds = moments_[i]->getFactorIndices();
-
-    for(size_t j = 0; j < factorIds.size(); ++j)
-    {
-      bool sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), factorIds[j]) != std::end(selectedPopIds);
-
-      if(sel)
-      {
-        moments_[i]->insertAlias(getDrMoment(pop2, pop1));
-      }
-    }
-  }
-
-  for(size_t i = (numDDStats_ + numDrStats_); i < (numDDStats_ + numDrStats_ + numHetLeftStats_); ++i)
-  {
-    assert(moments_[i]->getPrefix() == "Hl"); // HetMoment concerns left locus, potentially under selection
-
-    auto tmp = std::dynamic_pointer_cast<HetMoment>(moments_[i]);
-
-    size_t pop1 = tmp->getPopIndices()[0];
-    size_t pop2 = tmp->getPopIndices()[1];
-    size_t power = moments_[i]-> getFactorPower();
-
-    auto candidate = getHetMoment(pop2, pop1, power);
-
-    if(pop1 != pop2)
-    {
-      bool pop1Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
-      bool pop2Sel = std::find(std::begin(selectedPopIds), std::end(selectedPopIds), pop1) != std::end(selectedPopIds);
-
-      if(pop1Sel == pop2Sel && ) // if pop1 and pop2 share status of constraint
-        moments_[i]->insertAlias();
-    }
-  }
-
-  for(size_t i = (numDDStats_ + numDrStats_ + numHetLeftStats_); i < (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_); ++i)
-  {
-    assert(moments_[i]->getPrefix() == "Hr"); // HetMoment concerns left locus, neutral by construction
-
-    auto tmp = std::dynamic_pointer_cast<HetMoment>(moments_[i]);
-
-    size_t pop1 = tmp->getPopIndices()[0];
-    size_t pop2 = tmp->getPopIndices()[1];
-
-    if(pop1 != pop2)
-      moments_[i]->insertAlias(getHetMoment(pop2, pop1));
-  }
-
-  // Pi2 stats are aliased if both their left and right H's are aliased OR if focal pops don't experience selection and there's a left-right permutation
+  // Pi2 stats are aliased if both their left and right H's are aliased OR if there's a left-right permutation
   for(size_t i = (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + 1); i < getNumStats(); ++i)
   {
-    assert(moments_[i]->getPrefix() == "pi2");
-
     auto left1 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i])->getLeftHetStat();
     auto right1 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i])->getRightHetStat();
 
@@ -527,13 +497,13 @@ void SumStatsLibrary::aliasMoments_(const std::vector<size_t>& selectedPopIds) /
 
         assert(left2 != nullptr && right2 != nullptr);
 
-        bool leftEq = left1 == left2 || left1->hasSamePopIds(left2);
-        bool rightEq = right1 == right2 || right1->hasSamePopIds(right2);
+        bool leftEq = left1 == left2 || left1->hasAlias(left2);
+        bool rightEq = right1 == right2 || right1->hasAlias(right2);
 
         bool leftRightPermut = 0; // permutations share selective status
         if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained()))
         {
-          if(left1->hasSamePopIds(right2) && left2->hasSamePopIds(right1))
+          if(left1->hasAlias(right2) && left2->hasAlias(right1))
             leftRightPermut = 1;
         }
 

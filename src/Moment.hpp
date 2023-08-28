@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 25/08/2023
+ * Last modified: 28/08/2023
  *
  */
 
@@ -28,7 +28,7 @@ class Moment
 {
 
 protected:
-  std::string name_; // e.g. "pi2_1100_l_00"
+  std::string name_; // e.g. "pi2_1100_l_00", names is unique to *this Moment
   std::string prefix_; // e.g. "pi2"
   std::vector<size_t> popIndices_; // population indices associated with main statistic
   std::vector<size_t> factorIndices_; // population indices associalted with each (1-2p) factor
@@ -36,7 +36,7 @@ protected:
   double value_; // expectation
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry
-  std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations)
+  std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permutations with same expectations)
 
 public:
   Moment():
@@ -90,7 +90,7 @@ public:
 
   virtual bool hasSamePopIds(std::shared_ptr<Moment> mom)
   {
-    return mom->getPopIndices() == popIndices_; // default, needed for DummyMoment "I" (Base)
+    return mom->getPopIndices() == popIndices_; // default, needed for DummyMoment "I"
   }
 
   const std::string& getName() const
@@ -116,6 +116,16 @@ public:
   int getFactorPower()
   {
     return static_cast<int>(factorIndices_.size());
+  }
+
+  int getPopFactorPower(size_t index)
+  {
+    return std::count(std::begin(factorIndices_), std::end(factorIndices_), index);
+  }
+
+  int getPopFactorPower(size_t index) const
+  {
+    return std::count(std::begin(factorIndices_), std::end(factorIndices_), index);
   }
 
   size_t getPosition() const
@@ -206,7 +216,7 @@ public:
     std::weak_ptr<Moment> tmp = mom;
 
     auto pos = std::find_if(std::begin(aliases_), std::end(aliases_), [&tmp](const auto& obj)
-                            { return tmp.lock() == obj.lock(); }); // WARNING
+                            { return tmp.lock() == obj.lock(); }); // WARNING add ->getName()?
 
     return pos != std::end(aliases_);
   }
@@ -289,7 +299,7 @@ public:
       }
     }
 
-    // to compare *this and other moments more easily
+    // sorts to compare *this and other moments more easily
     std::sort(std::begin(factorIndices_), std::end(factorIndices_));
 
     // aesthetics
@@ -304,7 +314,9 @@ public:
     for(size_t i = 0; i < indices.size(); ++i)
     {
       size_t count = std::count(std::begin(factorIndices_), std::end(factorIndices_), indices[i]);
-      nome = nome + "_(1-2p" + bpp::TextTools::toString(indices[i]) + ")^" + bpp::TextTools::toString(count);
+
+      if(count > 0) // NOTE new
+        nome = nome + "_(1-2p" + bpp::TextTools::toString(indices[i]) + ")^" + bpp::TextTools::toString(count);
     }
 
     name_ = nome;
