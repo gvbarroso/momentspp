@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 28/08/2023
+ * Last modified: 29/08/2023
  *
  */
 
@@ -17,7 +17,7 @@ std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) cons
     return *ptr;
 
   else
-    throw bpp::Exception("SumStatsLibrary::could not find stat " name);
+    throw bpp::Exception("SumStatsLibrary::could not find stat " + name);
 
   /*std::shared_ptr<Moment> ptr = nullptr;
   for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
@@ -261,7 +261,7 @@ std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std:
 
   if(factorIds.size() > 0)
   {
-    for(size_t i = 0; i < popIds.size(); ++i)
+    for(size_t i = 0; i < popIndices_.size(); ++i)
     {
       size_t count = std::count(std::begin(factorIds), std::end(factorIds), popIds[i]);
 
@@ -297,8 +297,8 @@ void SumStatsLibrary::linkPi2HetStats_()
 {
   for(size_t i = (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_); i < getNumStats(); ++i)
   {
-    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
-    assert(tmpPi2 != nullptr);
+    auto tmp = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
+    assert(tmp != nullptr);
 
     std::vector<size_t> popsLeft(0);
     std::vector<size_t> popsRight(0);
@@ -306,18 +306,19 @@ void SumStatsLibrary::linkPi2HetStats_()
     popsLeft.reserve(2);
     popsRight.reserve(2);
 
-    popsLeft.emplace_back(tmpPi2->getPopIndices()[0]);
-    popsLeft.emplace_back(tmpPi2->getPopIndices()[1]);
-    popsRight.emplace_back(tmpPi2->getPopIndices()[2]);
-    popsRight.emplace_back(tmpPi2->getPopIndices()[3]);
+    popsLeft.emplace_back(tmp->getPopIndices()[0]);
+    popsLeft.emplace_back(tmp->getPopIndices()[1]);
+    popsRight.emplace_back(tmp->getPopIndices()[2]);
+    popsRight.emplace_back(tmp->getPopIndices()[3]);
 
-    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmpPi2->getFactorIndices()));
-    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, tmpPi2->getFactorIndices()));
+    // WARNING "Hl", popsLeft, tmp->getFactorIndices() ---> are pi2 stats composed of Het moments with same (1-2p_x) factor??
+    auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmp->getFactorIndices()));
+    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, tmp->getFactorIndices()));
 
     assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
-    tmpPi2->setLeftHetStat(tmpHetLeft);
-    tmpPi2->setRightHetStat(tmpHetRight);
+    tmp->setLeftHetStat(tmpHetLeft);
+    tmp->setRightHetStat(tmpHetRight);
   }
 }
 
@@ -330,12 +331,13 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
     std::vector<size_t> pops(0);
     pops.reserve(2);
 
+    // finding candidate alias moments by inverting order of pop ids, NOTE: does this work for Dr moments as well?
     pops.emplace_back(moments_[i]->getPopIndices()[1]);
     pops.emplace_back(moments_[i]->getPopIndices()[0]);
 
     auto candidate = getMoment(assembleName_(moments_[i]->getPrefix(), pops, moments_[i]->getFactorIndices()));
 
-    if(pop1 != pop2)
+    if(pops[0] != pops[1])
       moments_[i]->insertAlias(candidate);
   }
 
@@ -347,7 +349,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 
     assert(left1 != nullptr && right1 != nullptr);
 
-    for(size_t j = (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + 1); j < getNumStats(); ++j)
+    for(size_t j = (1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_); j < getNumStats(); ++j)
     {
       if(i != j)
       {
@@ -361,7 +363,8 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
         bool leftEq = left1 == left2 || left1->hasAlias(left2);
         bool rightEq = right1 == right2 || right1->hasAlias(right2);
 
-        bool leftRightPermut = 0; // permutations share selective status, CANNOT be true ATM because all HetLeft stats are being treated as necessarily constrained
+        bool leftRightPermut = 0; // permutations share selective status
+        // NOTE CANNOT be true ATM because all HetLeft stats are being treated as necessarily constrained
         if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained()))
         {
           if(left1->hasAlias(right2) && left2->hasAlias(right1))
@@ -377,6 +380,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 
 void SumStatsLibrary::compressBasis_()
 {
+  // reset, default was basis_ = moments_
   basis_.clear();
   basis_.reserve(moments_.size());
 
