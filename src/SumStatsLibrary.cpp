@@ -256,7 +256,7 @@ void SumStatsLibrary::initMoments_(bool compress)
   // includes "Dummy" Moment to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.emplace_back(std::make_shared<Moment>("I", 1.));
   countMoments_();
-  //printMoments(std::cout);
+  printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);
@@ -273,6 +273,14 @@ void SumStatsLibrary::initMoments_(bool compress)
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
 {
+  /*std::cout << prefix << ";";
+  for(auto& i : popIds)
+    std::cout << i << ",";
+
+  std::cout << ";";
+  for(auto& i : factorIds)
+    std::cout << i << ",";*/
+
   std::string name = prefix;
   for(size_t i = 0; i < popIds.size(); ++i)
     name = name + "_" + asString(popIds[i]);
@@ -281,13 +289,14 @@ std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std:
   {
     for(size_t i = 0; i < popIndices_.size(); ++i)
     {
-      size_t count = std::count(std::begin(factorIds), std::end(factorIds), popIds[i]);
+      size_t count = std::count(std::begin(factorIds), std::end(factorIds), popIndices_[i]);
 
       if(count > 0)
-        name = name + "_(1-2p" + asString(popIds[i]) + ")^" + asString(count);
+        name = name + "_(1-2p" + asString(popIndices_[i]) + ")^" + asString(count);
     }
   }
 
+  std::cout << name << "\n";
   return name;
 }
 

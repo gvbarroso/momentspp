@@ -22,8 +22,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
     std::vector<Eigen::Triplet<double>> coeffs(0);
     coeffs.reserve(sizeOfBasis);
 
+    std::cout << "\nSelection pop " << id << "\n";
+
     for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
     {
+      (*it)->printAttributes(std::cout);
+
       int row = it - std::begin(sslib.getBasis());
       int col = -1;
 
