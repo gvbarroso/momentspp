@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 14/06/2022
+ * Last modified: 29/08/2022
  *
  */
 
@@ -24,11 +24,13 @@ public:
     setUpMatrices_(sslib);
   }
 
-  // TODO make val a vector, one s per pop
-  Selection(double val, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Selection(const std::vector<double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices())
   {
-    addParameter_(new bpp::Parameter("s", val, ic));
+    // for each population modeled in the epoch *this operator belongs to, add s parameter
+    for(size_t i = 0; i < popIndices_.size(); ++i)
+      addParameter_(new bpp::Parameter("s_" + bpp::TextTools::toString(popIndices_[i]), vals[i], ic));
+
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);
   }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/06/2023
+ * Last modified: 29/08/2023
  *
  */
 
@@ -28,9 +28,8 @@ void Model::computeExpectedSumStats()
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
   }
 
-  if(epochs_.size() > 1)
+  if(epochs_.size() > 1) // final epoch
   {
-    // final epoch
     epochs_.back()->transferStatistics(expected_);
     epochs_.back()->computeExpectedSumStats(expected_);
     epochs_.back()->updateMoments(expected_); // updates inside sslib
@@ -74,7 +73,8 @@ void Model::linkMoments_()
     // for each moment in focal epoch, set "parent" in previous epoch using population ancestry
     for(auto it = std::begin(epochs_[i]->getBasis()); it != std::end(epochs_[i]->getBasis()); ++it)
     {
-      size_t x = (*it)->getFactorPower();
+      std::vector<size_t> popIds(0);
+      std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
       if((*it)->getPrefix() == "DD")
       {
@@ -102,7 +102,8 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDdIndex(prevP1, prevP2, x));
+        popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("DD", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -132,7 +133,8 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDrIndex(prevP1, prevP2, x));
+        popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Dr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -162,7 +164,8 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetLeftIndex(prevP1, prevP2, x));
+        popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hl", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -192,7 +195,8 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetRightIndex(prevP1, prevP2));
+        popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -244,7 +248,8 @@ void Model::linkMoments_()
         else
           prevP4 = p4RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findPi2Index(prevP1, prevP2, prevP3, prevP4, x));
+        popIds = { prevP1, prevP2, prevP3, prevP4 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("pi2", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 

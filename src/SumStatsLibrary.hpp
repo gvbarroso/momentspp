@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 28/08/2023
+ * Last modified: 29/08/2023
  */
 
 
@@ -198,6 +198,8 @@ public:
 
   size_t findCompressedIndex(size_t uncompressedIndex) const;
 
+  void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
+
   Eigen::VectorXd fetchYvec();
 
   void printMoments(std::ostream& stream);
@@ -265,7 +267,7 @@ private:
   }
 
   // for searching / comparing
-  std::string assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds);
+  std::string assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const;
 
   void countMoments_();
 

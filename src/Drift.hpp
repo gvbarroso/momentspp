@@ -28,7 +28,7 @@ public:
   AbstractOperator(sslib.getPopIndices())
   {
     // for each population modeled in the epoch *this operator belongs to, add Ne parameter
-    for(size_t i = 0; i < popIndices_.size(); ++i)  // i-th coal rate corresponds top popIndex[i]
+    for(size_t i = 0; i < popIndices_.size(); ++i)
       addParameter_(new bpp::Parameter("1/2N_" + bpp::TextTools::toString(popIndices_[i]), vals[i], ic));
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters

@@ -11,7 +11,7 @@
 
 std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) const
 {
-  auto ptr = std::find_if(std::begin(moments_), std::end(moments_), [&tmp](const auto& obj) { return tmp.lock() == obj.lock(); });
+  auto ptr = std::find_if(std::begin(moments_), std::end(moments_), [=](std::shared_ptr<Moment> tmp) { return tmp->getName() == name; });
 
   if(ptr != std::end(moments_))
     return *ptr;
@@ -73,6 +73,24 @@ size_t SumStatsLibrary::findCompressedIndex(size_t uncompressedIndex) const
 
   else
     throw bpp::Exception("SumStatsLibrary::could not find compressed index for " + mom->getName());
+}
+
+void SumStatsLibrary::dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const
+{
+  assert(std::count(std::begin(factorIds), std::end(factorIds), focalPopId) >= removeCount);
+
+  int counter = 0;
+  for(auto it = std::begin(factorIds); it != std::end(factorIds);)
+  {
+    if(*it == focalPopId && counter < removeCount)
+    {
+      it = factorIds.erase(it);
+      ++counter;
+    }
+
+    else
+      ++it;
+  }
 }
 
 Eigen::VectorXd SumStatsLibrary::fetchYvec()
@@ -238,7 +256,7 @@ void SumStatsLibrary::initMoments_(bool compress)
   // includes "Dummy" Moment to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.emplace_back(std::make_shared<Moment>("I", 1.));
   countMoments_();
-  printMoments(std::cout);
+  //printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);
@@ -253,7 +271,7 @@ void SumStatsLibrary::initMoments_(bool compress)
   }
 }
 
-std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds)
+std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
 {
   std::string name = prefix;
   for(size_t i = 0; i < popIds.size(); ++i)
@@ -290,7 +308,7 @@ void SumStatsLibrary::countMoments_()
   numHetLeftStats_ = std::count_if(std::begin(moments_), std::end(moments_), [=] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hl"; });
   numHetRightStats_ = std::count_if(std::begin(moments_), std::end(moments_), [=] (std::shared_ptr<Moment> m) { return m->getPrefix() == "Hr"; });
 
-  std::cout << numDDStats_ << "," << numDrStats_  << "," << numPi2Stats_  << "," << numHetLeftStats_  << "," << numHetRightStats_  << "\n";
+  ///std::cout << numDDStats_ << "," << numDrStats_  << "," << numPi2Stats_  << "," << numHetLeftStats_  << "," << numHetRightStats_  << "\n";
 }
 
 void SumStatsLibrary::linkPi2HetStats_()
@@ -300,6 +318,7 @@ void SumStatsLibrary::linkPi2HetStats_()
     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
     assert(tmp != nullptr);
 
+    std::vector<size_t> dummy(0); // for searching Hr stat
     std::vector<size_t> popsLeft(0);
     std::vector<size_t> popsRight(0);
 
@@ -311,9 +330,8 @@ void SumStatsLibrary::linkPi2HetStats_()
     popsRight.emplace_back(tmp->getPopIndices()[2]);
     popsRight.emplace_back(tmp->getPopIndices()[3]);
 
-    // WARNING "Hl", popsLeft, tmp->getFactorIndices() ---> are pi2 stats composed of Het moments with same (1-2p_x) factor??
     auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmp->getFactorIndices()));
-    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, tmp->getFactorIndices()));
+    auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, dummy));
 
     assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
@@ -324,7 +342,7 @@ void SumStatsLibrary::linkPi2HetStats_()
 
 void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by design
 {
-  assert(numDDStats_ > 0 && numDrStats_ > 0 & numHetLeftStats_ > 0 && numHetRightStats_ > 0 && numPi2Stats_ > 0);
+  assert((numDDStats_ > 0) && (numDrStats_ > 0) & (numHetLeftStats_ > 0) && (numHetRightStats_ > 0) && (numPi2Stats_ > 0));
 
   for(size_t i = 0; i < (numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_); ++i)
   {

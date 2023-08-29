@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 28/08/2023
+ * Last modified: 29/08/2023
  * Source code for moments++
  *
  */
@@ -13,8 +13,8 @@
 #include "Recombination.hpp"
 #include "Drift.hpp"
 #include "Selection.hpp"
-#include "Migration.hpp"
-#include "Admixture.hpp"
+//#include "Migration.hpp"
+//#include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 28/Aug/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 29/Aug/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -103,14 +103,14 @@ int main(int argc, char *argv[]) {
 
     if((start - end) == 1) // Admixture is modeled as the only operator in an epoch of 1 generation
     {
-      if(!demes.getPulse(i).isZero(0))
+      /*if(!demes.getPulse(i).isZero(0))
       {
         operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
         //operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv", sslib);
       }
 
       else
-        throw bpp::Exception("Main::Zero Admixture matrix assigned to 1-generation Epoch!");
+        throw bpp::Exception("Main::Zero Admixture matrix assigned to 1-generation Epoch!");*/
     }
 
     else
@@ -127,17 +127,23 @@ int main(int argc, char *argv[]) {
         for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
           drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
 
+        std::vector<double> sel(0);
+        sel.reserve(demes.getPopsVec()[i].size());
+
+        for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
+          sel.emplace_back(demes.getSelCoeff(i)); // NOTE ATM this is just replicating the same s for all pops-->change this in Demes class
+
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
         std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
-        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeff(i), icSel, sslib);
+        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(sel, icSel, sslib);
 
-        // only *allow* model to include mig params in epochs where the demes model has non-zero mig
+        /*// only *allow* model to include mig params in epochs where the demes model has non-zero mig
         if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
           //operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv");
-        }
+        }*/
 
         operators.push_back(driftOp);
         operators.push_back(recOp);

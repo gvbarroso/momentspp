@@ -162,7 +162,7 @@ void Epoch::pseudoSteadyState()
 
 void Epoch::testSteadyState()
 {
-  if(pops_.size() > 1)
+  /*if(pops_.size() > 1)
   {
     for(size_t i = 0; i < operators_.size(); ++i)
     {
@@ -171,7 +171,7 @@ void Epoch::testSteadyState()
       if(tmp != nullptr)
         tmp->testFlow();
     }
-  }
+  }*/
 }
 
 void Epoch::init_()
