@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 29/08/2023
+ * Last modified: 30/08/2023
  *
  */
 
@@ -18,16 +18,6 @@ std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& name) cons
 
   else
     throw bpp::Exception("SumStatsLibrary::could not find stat " + name);
-
-  /*std::shared_ptr<Moment> ptr = nullptr;
-  for(auto itMom = std::begin(moments_); itMom != std::end(moments_); ++itMom)
-  {
-    if((*itMom)->getName() == name)
-      ptr = *itMom;
-  }
-
-  assert(ptr != nullptr);
-  return ptr;*/
 }
 
 std::shared_ptr<Moment> SumStatsLibrary::getMoment(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
@@ -46,7 +36,7 @@ size_t SumStatsLibrary::findCompressedIndex(std::shared_ptr<Moment> mom) const
 
   for(size_t j = 0; j < basis_.size(); ++j)
   {
-    if(basis_[j] == mom || basis_[j]->hasAlias(mom))
+    if(basis_[j]->getName() == mom->getName() || basis_[j]->hasAlias(mom))
       ret = j;
   }
 
@@ -256,7 +246,7 @@ void SumStatsLibrary::initMoments_(bool compress)
   // includes "Dummy" Moment to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.emplace_back(std::make_shared<Moment>("I", 1.));
   countMoments_();
-  printMoments(std::cout);
+  //printMoments(std::cout);
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);
@@ -273,14 +263,6 @@ void SumStatsLibrary::initMoments_(bool compress)
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
 {
-  /*std::cout << prefix << ";";
-  for(auto& i : popIds)
-    std::cout << i << ",";
-
-  std::cout << ";";
-  for(auto& i : factorIds)
-    std::cout << i << ",";*/
-
   std::string name = prefix;
   for(size_t i = 0; i < popIds.size(); ++i)
     name = name + "_" + asString(popIds[i]);
@@ -296,7 +278,6 @@ std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std:
     }
   }
 
-  std::cout << name << "\n";
   return name;
 }
 

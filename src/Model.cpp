@@ -75,6 +75,21 @@ void Model::linkMoments_()
     {
       std::vector<size_t> popIds(0);
       std::vector<size_t> factorIds = (*it)->getFactorIndices();
+      for(size_t j = 0; j < factorIds.size(); ++j)
+      {
+        size_t prevFactorPop = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+        size_t focalFactorPop = factorIds[j];
+        size_t factorPopLeftParentId = epochs_[i]->fetchPop(focalFactorPop)->getLeftParent()->getId();
+        size_t factorPopRightParentId = epochs_[i]->fetchPop(focalFactorPop)->getRightParent()->getId();
+
+        if(factorPopLeftParentId == factorPopRightParentId) // population [carry-forward / split] between epochs
+          prevFactorPop = factorPopLeftParentId;
+
+        else
+          prevFactorPop = factorPopRightParentId;
+
+        factorIds[j] = prevFactorPop; // replaces
+      }
 
       if((*it)->getPrefix() == "DD")
       {

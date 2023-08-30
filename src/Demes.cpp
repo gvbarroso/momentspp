@@ -511,7 +511,11 @@ void Demes::parse_(const std::string& fileName)
         double s = 0.; // TODO make a vector, one per pop
         size_t startTime = timeBounds.front();
         size_t endTime = 0;
-        std::vector<std::string> selectedPops(0);
+
+        std::vector<std::string> selectedPops(0); // inits to default = all populations under selection
+        for(size_t k = 0; k < pops_.size(); ++k)
+          for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
+            selectedPops.push_back((*itPop)->getName());
 
         if(sel["start_time"])
           startTime = sel["start_time"].as<size_t>();
@@ -524,6 +528,8 @@ void Demes::parse_(const std::string& fileName)
 
         if(sel["demes"])
         {
+          selectedPops.clear(); // clears default
+
           for(size_t k = 0; k < sel["demes"].size(); ++k)
             selectedPops.push_back(sel["demes"][k].as<std::string>());
         }
@@ -535,7 +541,7 @@ void Demes::parse_(const std::string& fileName)
               (*itPop)->setSelectiveConstraint(true); // false by default
         }
 
-        std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
+        //std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
 
         bool match = 0;
         for(size_t k = 1; k < timeBounds.size(); ++k)

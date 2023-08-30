@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 29/Aug/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 30/Aug/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -46,7 +46,6 @@ int main(int argc, char *argv[]) {
   std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
 
   /*
-   * NOTE
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
    */
 

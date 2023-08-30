@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 28/08/2023
+ * Last modified: 30/08/2023
  *
  */
 
@@ -216,7 +216,7 @@ public:
     std::weak_ptr<Moment> tmp = mom;
 
     auto pos = std::find_if(std::begin(aliases_), std::end(aliases_), [&tmp](const auto& obj)
-                            { return tmp.lock() == obj.lock(); }); // WARNING add ->getName()?
+                            { return tmp.lock()->getName() == obj.lock()->getName(); });
 
     return pos != std::end(aliases_);
   }
