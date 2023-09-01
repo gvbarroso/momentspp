@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 21/08/2023
+ * Last modified: 31/08/2023
  *
  */
 
@@ -33,529 +33,476 @@ void Demes::parse_(const std::string& fileName)
       timeBounds.push_back(pulses[i]["time"].as<size_t>() - 1); // -1 to allow 1-gen epochs
   }
 
-  for(YAML::const_iterator it = model_.begin(); it != model_.end(); ++it)
+  if(model_["demes"])
   {
-    if(it->first.as<std::string>() == "demes")
+    YAML::Node pops = model_["demes"];
+
+    for(size_t i = 0; i < pops.size(); ++i) // deme by deme, pop index (i) is fixed by order of listing demes in Demes file
     {
-      YAML::Node pops = it->second;
+      // NOTE: stats file should match pop names and/or indices in Demes file
+      std::string name = pops[i]["name"].as<std::string>();
+      std::string des = "none";
 
-      for(size_t i = 0; i < pops.size(); ++i) // deme by deme, pop index (i) is fixed by order of listing demes in Demes file
+      if(pops[i]["description"])
+        des = pops[i]["description"].as<std::string>();
+
+      size_t startTime = std::numeric_limits<int>::max();
+      if(pops[i]["start_time"] && pops[i]["start_time"].as<std::string>() != ".inf")
+        startTime = pops[i]["start_time"].as<int>();
+
+      std::vector<std::shared_ptr<Population>> singlePopOverTime(0); // deme i is represented by a series of populations of piece-wise constant Ne
+      YAML::Node popEpochs = pops[i]["epochs"];
+
+      for(size_t j = 0; j < popEpochs.size(); ++j) // epochs of focal pop i as they appear in the Demes file
       {
-        // NOTE: stats file should match pop names and/or indices in Demes file
-        std::string name = pops[i]["name"].as<std::string>();
-        std::string des = "none";
+        size_t endTime = 0;
+        if(popEpochs[j]["end_time"])
+          endTime = popEpochs[j]["end_time"].as<int>();
 
-        if(pops[i]["description"])
-          des = pops[i]["description"].as<std::string>();
-
-        size_t startTime = std::numeric_limits<int>::max();
-        if(pops[i]["start_time"] && pops[i]["start_time"].as<std::string>() != ".inf")
-          startTime = pops[i]["start_time"].as<int>();
-
-        std::vector<std::shared_ptr<Population>> singlePopOverTime(0); // deme i is represented by a series of populations of piece-wise constant Ne
-        YAML::Node popEpochs = pops[i]["epochs"];
-
-        for(size_t j = 0; j < popEpochs.size(); ++j) // epochs of focal pop i as they appear in the Demes file
+        size_t size = 0;
+        if(popEpochs[j]["start_size"])
         {
-          size_t endTime = 0;
-          if(popEpochs[j]["end_time"])
-            endTime = popEpochs[j]["end_time"].as<int>();
+          size = popEpochs[j]["start_size"].as<int>();
 
-          size_t size = 0;
-          if(popEpochs[j]["start_size"])
-          {
-            size = popEpochs[j]["start_size"].as<int>();
-
-            if(popEpochs[j]["end_size"] && popEpochs[j]["end_size"] != popEpochs[j]["start_size"])
-              throw bpp::Exception("Demes::[start_size] and [end_size] must be equal within each epoch!");
-          }
-
-          // each instance of pop i (one per epoch) is treated as a different Population object in moments++
-          singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, false)); // default selective status for all pops == false
+          if(popEpochs[j]["end_size"] && popEpochs[j]["end_size"] != popEpochs[j]["start_size"])
+            throw bpp::Exception("Demes::[start_size] and [end_size] must be equal within each epoch!");
         }
 
-        if(pops[i]["ancestors"])
+        // each instance of pop i (one per epoch) is treated as a different Population object in moments++
+        singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, false)); // default selective status for all pops == false
+      }
+
+      if(pops[i]["ancestors"])
+      {
+        std::shared_ptr<Population> child = singlePopOverTime.front(); // most ancient instance of pop i
+
+        if(pops[i]["ancestors"].size() == 1)
         {
-          std::shared_ptr<Population> child = singlePopOverTime.front(); // most ancient instance of pop i
+          std::string ancName = pops[i]["ancestors"][0].as<std::string>();
 
-          if(pops[i]["ancestors"].size() == 1)
+          for(size_t k = 0; k < popsOverTime.size(); ++k)
           {
-            std::string ancName = pops[i]["ancestors"][0].as<std::string>();
-
-            for(size_t k = 0; k < popsOverTime.size(); ++k)
+            if(popsOverTime[k].back()->getName() == ancName)
             {
-              if(popsOverTime[k].back()->getName() == ancName)
+              if(startTime == std::numeric_limits<int>::max())
               {
-                if(startTime == std::numeric_limits<int>::max())
+                std::shared_ptr<Population> parent = popsOverTime[k].back();
+
+                child->setLeftParent(parent);
+                child->setRightParent(parent);
+                child->setStartTime(parent->getEndTime());
+
+                if(child->getSize() == 0)
+                  child->setSize(parent->getSize());
+              }
+
+              else
+              {
+                bool match = 0;
+                for(size_t l = 0; l < popsOverTime[k].size(); ++l)
                 {
-                  std::shared_ptr<Population> parent = popsOverTime[k].back();
-
-                  child->setLeftParent(parent);
-                  child->setRightParent(parent);
-                  child->setStartTime(parent->getEndTime());
-
-                  if(child->getSize() == 0)
-                    child->setSize(parent->getSize());
-                }
-
-                else
-                {
-                  bool match = 0;
-                  for(size_t l = 0; l < popsOverTime[k].size(); ++l)
+                  if(startTime == popsOverTime[k][l]->getEndTime())
                   {
-                    if(startTime == popsOverTime[k][l]->getEndTime())
-                    {
-                      std::shared_ptr<Population> parent = popsOverTime[k][l];
+                    std::shared_ptr<Population> parent = popsOverTime[k][l];
 
-                      child->setLeftParent(parent);
-                      child->setRightParent(parent);
+                    child->setLeftParent(parent);
+                    child->setRightParent(parent);
 
-                      if(child->getSize() == 0)
-                        child->setSize(parent->getSize());
+                    if(child->getSize() == 0)
+                      child->setSize(parent->getSize());
 
-                      match = 1;
-                    }
+                    match = 1;
                   }
-
-                  if(match == 0)
-                    throw bpp::Exception("Demes::demes::could not find ancestor of pop " + name + "at specified start_time!");
                 }
 
-                break;
-              }
-            }
-          }
-
-          else if(pops[i]["ancestors"].size() == 2)
-          {
-            std::string ancNameFirst = pops[i]["ancestors"][0].as<std::string>();
-            std::string ancNameSecond = pops[i]["ancestors"][1].as<std::string>();
-
-            double f = pops[i]["proportions"][0].as<double>();
-            double g = pops[i]["proportions"][1].as<double>();
-
-            if((f + g) != 1.)
-              throw bpp::Exception("Demes::demes::ancestral admixture proportions don't sum to 1.0!");
-
-            if(child->getSize() == 0)
-              throw bpp::Exception("Demes::demes with two ancestors must have specified start_size's!");
-
-            if(child->getStartTime() == std::numeric_limits<int>::max())
-              throw bpp::Exception("Demes::demes with two ancestors must have specified start_time's!");
-
-            child->setProportions(std::make_pair(f, g));
-
-            for(size_t k = 0; k < popsOverTime.size(); ++k)
-            {
-              if(popsOverTime[k].front()->getName() == ancNameFirst)
-              {
-                for(size_t l = 0; l < popsOverTime[k].size(); ++l)
-                {
-                  if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
-                    child->setLeftParent(popsOverTime[k][l]); // treated as source population in pulse of admixture
-                }
+                if(match == 0)
+                  throw bpp::Exception("Demes::demes::could not find ancestor of pop " + name + "at specified start_time!");
               }
 
-              else if(popsOverTime[k].front()->getName() == ancNameSecond)
-              {
-                for(size_t l = 0; l < popsOverTime[k].size(); ++l)
-                {
-                  if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
-                    child->setRightParent(popsOverTime[k][l]); // child will "copy" stats from right parent
-                }
-              }
-            }
-
-            if(child->getLeftParent() == nullptr || child->getRightParent() == nullptr)
-              throw bpp::Exception("Demes::demes::could not find ancestors of pop " + child->getName() + " (both must have an epoch's end_time matching " + child->getName() + "'s start_time)");
-          }
-
-          else if(pops[i]["ancestors"].size() > 2)
-            throw bpp::Exception("Demes::demes::more than two ancestors specified for a single population!");
-        } // exists 'ancestors' field
-
-        for(size_t k = 1; k < singlePopOverTime.size(); ++k)
-        {
-          singlePopOverTime[k]->setLeftParent(singlePopOverTime[k - 1]);
-          singlePopOverTime[k]->setRightParent(singlePopOverTime[k - 1]);
-          singlePopOverTime[k]->setStartTime(singlePopOverTime[k - 1]->getEndTime());
-
-          if(singlePopOverTime[k]->getSize() == 0)
-            singlePopOverTime[k]->setSize(singlePopOverTime[k - 1]->getSize());
-        }
-
-        popsOverTime.push_back(singlePopOverTime);
-      } // ends loop over demes
-
-      // slice time into epochs based on populations time boundaries
-      for(size_t i = 0; i < popsOverTime.size(); ++i)
-      {
-        for(size_t j = 0; j < popsOverTime[i].size(); ++j)
-        {
-          timeBounds.push_back(popsOverTime[i][j]->getStartTime());
-          timeBounds.push_back(popsOverTime[i][j]->getEndTime());
-
-          // introducing 1-generation epoch to handle admixture that forms new population
-          if(popsOverTime[i][j]->hasDistinctParents())
-            timeBounds.push_back(popsOverTime[i][j]->getStartTime() - 1);
-        }
-      }
-
-      std::sort(std::begin(timeBounds), std::end(timeBounds), std::greater<int>()); // descending order
-      timeBounds.erase(std::unique(std::begin(timeBounds), std::end(timeBounds)), std::end(timeBounds));
-
-      // first pass: split populations that span more than one epoch
-      for(size_t i = 1; i < timeBounds.size(); ++i)
-      {
-        size_t epochStart = timeBounds[i - 1];
-        size_t epochEnd = timeBounds[i];
-
-        for(size_t j = 0; j < popsOverTime.size(); ++j) // for each "deme"
-        {
-          for(auto itPop = std::begin(popsOverTime[j]); itPop < std::end(popsOverTime[j]); ++itPop)
-          {
-            size_t popStart = (*itPop)->getStartTime();
-            size_t popEnd = (*itPop)->getEndTime();
-
-            if(popStart == epochStart && popEnd < epochEnd) // must split
-            {
-              std::shared_ptr<Population> splitLeft = std::make_shared<Population>(*(*itPop).get()); // more ancient instance of pop
-              std::shared_ptr<Population> splitRight = std::make_shared<Population>(*(*itPop).get()); // more recent instance of pop
-
-              splitLeft->setEndTime(epochEnd);
-
-              splitRight->setStartTime(splitLeft->getEndTime());
-              splitRight->setEndTime(popEnd);
-              splitRight->setLeftParent(splitLeft);
-              splitRight->setRightParent(splitLeft);
-
-              itPop = popsOverTime[j].erase(itPop);
-              itPop = popsOverTime[j].insert(itPop, splitRight);
-              itPop = popsOverTime[j].insert(itPop, splitLeft);
-              itPop = std::next(itPop, 1);
-            }
-          }
-        }
-      }
-
-      // epochs are formalized (Epoch objects are instantiated) in the main function inside main.cpp
-      // their skeletons are prepared here:
-      size_t numEpochs = timeBounds.size() - 1;
-
-      pops_.resize(numEpochs);
-      migRates_.resize(numEpochs);
-      pulses_.resize(numEpochs);
-      mutRates_.reserve(numEpochs);
-      recRates_.reserve(numEpochs);
-      selCoeffs_.reserve(numEpochs);
-
-      // second pass: organize pops within epochs
-      for(size_t i = 0; i < numEpochs; ++i)
-      {
-        size_t epochStart = timeBounds[i];
-        size_t epochEnd = timeBounds[i + 1];
-
-        for(size_t j = 0; j < popsOverTime.size(); ++j)
-        {
-          for(auto itPop = std::begin(popsOverTime[j]); itPop < std::end(popsOverTime[j]); ++itPop)
-          {
-            size_t popStart = (*itPop)->getStartTime();
-            size_t popEnd = (*itPop)->getEndTime();
-
-            if(popStart == epochStart && popEnd == epochEnd)
-            {
-              pops_[i].push_back(*itPop);
               break;
             }
           }
         }
-      }
 
-      // inits parameters for the different operators
-      for(size_t i = 0; i < numEpochs; ++i)
-      {
-        mutRates_.emplace_back(1e-8);
-        recRates_.emplace_back(1e-6);
-        selCoeffs_.emplace_back(0.);
-
-        size_t p = pops_[i].size();
-        Eigen::MatrixXd mat(p, p);
-        mat.setZero();
-
-        migRates_[i] = mat; // littleMigMat_ inside Migration class
-        pulses_[i] = mat; // littleAdmixMat_ inside Admixture class
-      }
-
-      // search for populations with two ancestors: pick one of them to copy moments from,
-      // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
-      for(size_t j = 1; j < numEpochs; ++j)
-      {
-        for(size_t k = 0; k < pops_[j].size(); ++ k)
+        else if(pops[i]["ancestors"].size() == 2)
         {
-          int row = -1;
-          int col = k;
+          std::string ancNameFirst = pops[i]["ancestors"][0].as<std::string>();
+          std::string ancNameSecond = pops[i]["ancestors"][1].as<std::string>();
 
-          if(pops_[j][k]->hasDistinctParents()) // admixture forms a new population
+          double f = pops[i]["proportions"][0].as<double>();
+          double g = pops[i]["proportions"][1].as<double>();
+
+          if((f + g) != 1.)
+            throw bpp::Exception("Demes::demes::ancestral admixture proportions don't sum to 1.0!");
+
+          if(child->getSize() == 0)
+            throw bpp::Exception("Demes::demes with two ancestors must have specified start_size's!");
+
+          if(child->getStartTime() == std::numeric_limits<int>::max())
+            throw bpp::Exception("Demes::demes with two ancestors must have specified start_time's!");
+
+          child->setProportions(std::make_pair(f, g));
+
+          for(size_t k = 0; k < popsOverTime.size(); ++k)
           {
-            // search for (left) ancestral population in the current (1-generation) epoch
-            for(size_t l = 0; l < pops_[j].size(); ++ l)
-              if(pops_[j][l]->getName() == pops_[j][k]->getLeftParent()->getName())
-                row = l;
+            if(popsOverTime[k].front()->getName() == ancNameFirst)
+            {
+              for(size_t l = 0; l < popsOverTime[k].size(); ++l)
+              {
+                if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
+                  child->setLeftParent(popsOverTime[k][l]); // treated as source population in pulse of admixture
+              }
+            }
 
-            pulses_[j](row, col) = pops_[j][k]->getProportions().first;
+            else if(popsOverTime[k].front()->getName() == ancNameSecond)
+            {
+              for(size_t l = 0; l < popsOverTime[k].size(); ++l)
+              {
+                if(popsOverTime[k][l]->getEndTime() == child->getStartTime())
+                  child->setRightParent(popsOverTime[k][l]); // child will "copy" stats from right parent
+              }
+            }
+          }
+
+          if(child->getLeftParent() == nullptr || child->getRightParent() == nullptr)
+            throw bpp::Exception("Demes::demes::could not find ancestors of pop " + child->getName() + " (both must have an epoch's end_time matching " + child->getName() + "'s start_time)");
+        }
+
+        else if(pops[i]["ancestors"].size() > 2)
+          throw bpp::Exception("Demes::demes::more than two ancestors specified for a single population!");
+      } // exists 'ancestors' field
+
+      for(size_t k = 1; k < singlePopOverTime.size(); ++k)
+      {
+        singlePopOverTime[k]->setLeftParent(singlePopOverTime[k - 1]);
+        singlePopOverTime[k]->setRightParent(singlePopOverTime[k - 1]);
+        singlePopOverTime[k]->setStartTime(singlePopOverTime[k - 1]->getEndTime());
+
+        if(singlePopOverTime[k]->getSize() == 0)
+          singlePopOverTime[k]->setSize(singlePopOverTime[k - 1]->getSize());
+      }
+
+      popsOverTime.push_back(singlePopOverTime);
+    } // ends loop over demes
+
+    // slice time into epochs based on populations time boundaries
+    for(size_t i = 0; i < popsOverTime.size(); ++i)
+    {
+      for(size_t j = 0; j < popsOverTime[i].size(); ++j)
+      {
+        timeBounds.push_back(popsOverTime[i][j]->getStartTime());
+        timeBounds.push_back(popsOverTime[i][j]->getEndTime());
+
+        // introducing 1-generation epoch to handle admixture that forms new population
+        if(popsOverTime[i][j]->hasDistinctParents())
+          timeBounds.push_back(popsOverTime[i][j]->getStartTime() - 1);
+      }
+    }
+
+    std::sort(std::begin(timeBounds), std::end(timeBounds), std::greater<int>()); // descending order
+    timeBounds.erase(std::unique(std::begin(timeBounds), std::end(timeBounds)), std::end(timeBounds));
+
+    // first pass: split populations that span more than one epoch
+    for(size_t i = 1; i < timeBounds.size(); ++i)
+    {
+      size_t epochStart = timeBounds[i - 1];
+      size_t epochEnd = timeBounds[i];
+
+      for(size_t j = 0; j < popsOverTime.size(); ++j) // for each "deme"
+      {
+        for(auto itPop = std::begin(popsOverTime[j]); itPop < std::end(popsOverTime[j]); ++itPop)
+        {
+          size_t popStart = (*itPop)->getStartTime();
+          size_t popEnd = (*itPop)->getEndTime();
+
+          if(popStart == epochStart && popEnd < epochEnd) // must split
+          {
+            std::shared_ptr<Population> splitLeft = std::make_shared<Population>(*(*itPop).get()); // more ancient instance of pop
+            std::shared_ptr<Population> splitRight = std::make_shared<Population>(*(*itPop).get()); // more recent instance of pop
+
+            splitLeft->setEndTime(epochEnd);
+
+            splitRight->setStartTime(splitLeft->getEndTime());
+            splitRight->setEndTime(popEnd);
+            splitRight->setLeftParent(splitLeft);
+            splitRight->setRightParent(splitLeft);
+
+            itPop = popsOverTime[j].erase(itPop);
+            itPop = popsOverTime[j].insert(itPop, splitRight);
+            itPop = popsOverTime[j].insert(itPop, splitLeft);
+            itPop = std::next(itPop, 1);
           }
         }
       }
-    } // exits 'demes' field of Demes file
+    }
 
-    else if(it->first.as<std::string>() == "migrations")
+    // Epoch objects are instantiated in the main function inside main.cpp
+    // their skeletons are prepared here:
+    size_t numEpochs = timeBounds.size() - 1;
+
+    pops_.resize(numEpochs);
+    migRates_.resize(numEpochs);
+    pulses_.resize(numEpochs);
+    mutRates_.reserve(numEpochs);
+    recRates_.reserve(numEpochs);
+    selCoeffs_.reserve(numEpochs);
+
+    // second pass: organize pops within epochs
+    for(size_t i = 0; i < numEpochs; ++i)
     {
-      YAML::Node migs = it->second;
+      size_t epochStart = timeBounds[i];
+      size_t epochEnd = timeBounds[i + 1];
 
-      std::string source = "";
-      std::string dest = "";
-      double rate = 0.;
-      size_t startTime = std::numeric_limits<int>::max();
-      size_t endTime = 0;
-
-      for(size_t i = 0; i < migs.size(); ++i) // mig period by mig period
+      for(size_t j = 0; j < popsOverTime.size(); ++j)
       {
-        if(migs[i]["source"])
-          source = migs[i]["source"].as<std::string>();
-
-        else
-          throw bpp::Exception("Demes::'migrations' field must explicitly specify 'source'!");
-
-        if(migs[i]["dest"])
-          dest = migs[i]["dest"].as<std::string>();
-
-        else
-          throw bpp::Exception("Demes::'migrations' field must explicitly specify 'dest'!");
-
-        if(migs[i]["rate"])
-          rate = migs[i]["rate"].as<double>();
-
-        else
-          throw bpp::Exception("Demes::'migrations' field must explicitly specify 'rate'!");
-
-        if(migs[i]["start_time"])
-          startTime = migs[i]["start_time"].as<size_t>();
-
-        if(migs[i]["end_time"])
-          endTime = migs[i]["end_time"].as<size_t>();
-
-        bool match = 0;
-        for(size_t j = 1; j < timeBounds.size(); ++j)
+        for(auto itPop = std::begin(popsOverTime[j]); itPop < std::end(popsOverTime[j]); ++itPop)
         {
-          // minding 1-gen epochs introduced by admixture
-          if((startTime == timeBounds[j - 1] || (startTime - 1) == timeBounds[j - 1]) && endTime == timeBounds[j])
+          size_t popStart = (*itPop)->getStartTime();
+          size_t popEnd = (*itPop)->getEndTime();
+
+          if(popStart == epochStart && popEnd == epochEnd)
           {
-            int row = -1;
-            int col = -1;
-
-            for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
-            {
-              if(pops_[j - 1][k]->getName() == source)
-                row = k;
-
-              else if(pops_[j - 1][k]->getName() == dest)
-                col = k;
-            }
-
-            migRates_[j - 1](row, col) = rate;
-
-            match = 1;
+            pops_[i].push_back(*itPop);
             break;
           }
         }
-
-        if(!match)
-          throw bpp::Exception("Demes::migrations::start_time and end_time of 'migrations' in Demes file do not match the span of any epoch!");
       }
-    } // exits 'migrations' field of Demes file
+    }
 
-    else if(it->first.as<std::string>() == "pulses")
+    // inits parameters for the different operators
+    for(size_t i = 0; i < numEpochs; ++i)
     {
-      YAML::Node pulses = it->second;
+      mutRates_.emplace_back(1e-8);
+      recRates_.emplace_back(1e-6);
+      selCoeffs_.emplace_back(0.);
 
-      for(size_t i = 0; i < pulses.size(); ++i) // pulse by pulse
-      {
-        YAML::Node sources = pulses[i]["sources"];
-        YAML::Node proportions = pulses[i]["proportions"];
+      size_t p = pops_[i].size();
+      Eigen::MatrixXd mat(p, p);
+      mat.setZero();
 
-        std::string source = "";
-        double f = -1.;
+      migRates_[i] = mat; // littleMigMat_ inside Migration class
+      pulses_[i] = mat; // littleAdmixMat_ inside Admixture class
+    }
 
-        if(sources.size() == 1)
-          source = sources[0].as<std::string>();
-
-        else
-          throw bpp::Exception("Demes::pulses::only a single 'source' pop. (specified within brackets) per admixture 'pulse' is allowed!");
-
-        if(proportions.size() == 1)
-          f = proportions[0].as<double>();
-
-        else
-          throw bpp::Exception("Demes::only a single 'proportion' (specified within brackets) per admixture 'pulse' is allowed!");
-
-        std::string dest = pulses[i]["dest"].as<std::string>();
-        size_t time = pulses[i]["time"].as<size_t>() - 1; // -1 to help define 1-gen epochs for admixture
-
-        bool valid = 0;
-        for(size_t j = 1; j < timeBounds.size(); ++j)
-        {
-          if(time == timeBounds[j])
-          {
-            valid = 1;
-
-            int row = -1;
-            int col = -1;
-
-            for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
-            {
-              // ancestral populations are found in the previous epoch
-              if(pops_[j - 1][k]->getName() == dest)
-                col = k;
-
-              else if(pops_[j - 1][k]->getName() == source)
-                row = k;
-            }
-
-            if(row == -1 || col == -1)
-              throw bpp::Exception("Demes::pulses::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
-
-            pulses_[j - 1](row, col) = f;  // "from" (f), "to" (1-f, ommited)
-          }
-        }
-
-        if(!valid)
-          throw bpp::Exception("Demes::pulses::time of admixture pulse must match the start of an epoch!");
-      }
-    } // exits 'pulses' field of Demes file
-
-    // we now move on to custom fields for moments++ (mutation, recombination, selection)
-    else if(it->first.as<std::string>() == "metadata") // NOTE: this field must be placed last in the demes file
+    // search for populations with two ancestors: pick one of them to copy moments from,
+    // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
+    for(size_t j = 1; j < numEpochs; ++j)
     {
-      YAML::Node meta = it->second;
-
-      if(meta["mutation"]) // TODO add demes field
+      for(size_t k = 0; k < pops_[j].size(); ++ k)
       {
-        YAML::Node muts = meta["mutation"];
+        int row = -1;
+        int col = k;
 
-        double rate = 1e-8;
-        size_t startTime = timeBounds.front();
+        if(pops_[j][k]->hasDistinctParents()) // admixture forms a new population
+        {
+          // search for (left) ancestral population in the current (1-generation) epoch
+          for(size_t l = 0; l < pops_[j].size(); ++ l)
+            if(pops_[j][l]->getName() == pops_[j][k]->getLeftParent()->getName())
+              row = l;
+
+          pulses_[j](row, col) = pops_[j][k]->getProportions().first;
+        }
+      }
+    }
+  } // exits 'demes' field of Demes file
+
+  if(model_["migrations"])
+  {
+    YAML::Node migs = model_["migrations"];
+
+    std::string source = "";
+    std::string dest = "";
+    double rate = 0.;
+    size_t startTime = std::numeric_limits<int>::max();
+    size_t endTime = 0;
+
+    for(size_t i = 0; i < migs.size(); ++i) // mig period by mig period
+    {
+      if(migs[i]["source"])
+        source = migs[i]["source"].as<std::string>();
+
+      else
+        throw bpp::Exception("Demes::'migrations' field must explicitly specify 'source'!");
+
+      if(migs[i]["dest"])
+        dest = migs[i]["dest"].as<std::string>();
+
+      else
+        throw bpp::Exception("Demes::'migrations' field must explicitly specify 'dest'!");
+
+      if(migs[i]["rate"])
+        rate = migs[i]["rate"].as<double>();
+
+      else
+        throw bpp::Exception("Demes::'migrations' field must explicitly specify 'rate'!");
+
+      if(migs[i]["start_time"])
+        startTime = migs[i]["start_time"].as<size_t>();
+
+      if(migs[i]["end_time"])
+        endTime = migs[i]["end_time"].as<size_t>();
+
+      bool match = 0;
+      for(size_t j = 1; j < timeBounds.size(); ++j)
+      {
+        // minding 1-gen epochs introduced by admixture
+        if((startTime == timeBounds[j - 1] || (startTime - 1) == timeBounds[j - 1]) && endTime == timeBounds[j])
+        {
+          int row = -1;
+          int col = -1;
+
+          for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
+          {
+            if(pops_[j - 1][k]->getName() == source)
+              row = k;
+
+            else if(pops_[j - 1][k]->getName() == dest)
+              col = k;
+          }
+
+          migRates_[j - 1](row, col) = rate;
+
+          match = 1;
+          break;
+        }
+      }
+
+      if(!match)
+        throw bpp::Exception("Demes::migrations::start_time and end_time of 'migrations' in Demes file do not match the span of any epoch!");
+    }
+  } // exits 'migrations' field of Demes file
+
+  if(model_["pulses"])
+  {
+    YAML::Node pulses = model_["pulses"];
+
+    for(size_t i = 0; i < pulses.size(); ++i) // pulse by pulse
+    {
+      YAML::Node sources = pulses[i]["sources"];
+      YAML::Node proportions = pulses[i]["proportions"];
+
+      std::string source = "";
+      double f = -1.;
+
+      if(sources.size() == 1)
+        source = sources[0].as<std::string>();
+
+      else
+        throw bpp::Exception("Demes::pulses::only a single 'source' pop. (specified within brackets) per admixture 'pulse' is allowed!");
+
+      if(proportions.size() == 1)
+        f = proportions[0].as<double>();
+
+      else
+        throw bpp::Exception("Demes::only a single 'proportion' (specified within brackets) per admixture 'pulse' is allowed!");
+
+      std::string dest = pulses[i]["dest"].as<std::string>();
+      size_t time = pulses[i]["time"].as<size_t>() - 1; // -1 to help define 1-gen epochs for admixture
+
+      bool valid = 0;
+      for(size_t j = 1; j < timeBounds.size(); ++j)
+      {
+        if(time == timeBounds[j])
+        {
+          valid = 1;
+
+          int row = -1;
+          int col = -1;
+
+          for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
+          {
+            // ancestral populations are found in the previous epoch
+            if(pops_[j - 1][k]->getName() == dest)
+              col = k;
+
+            else if(pops_[j - 1][k]->getName() == source)
+              row = k;
+          }
+
+          if(row == -1 || col == -1)
+            throw bpp::Exception("Demes::pulses::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
+
+          pulses_[j - 1](row, col) = f;  // "from" (f), "to" (1-f, ommited)
+        }
+      }
+
+      if(!valid)
+        throw bpp::Exception("Demes::pulses::time of admixture pulse must match the start of an epoch!");
+    }
+  } // exits 'pulses' field of Demes file
+
+  // we now move on to custom fields for moments++ (mutation, recombination, selection)
+  if(model_["metadata"])
+  {
+    YAML::Node meta = model_["metadata"];
+
+    for(size_t i = 0; i < meta.size(); ++i) // meta by meta (mutation, recombination, selection)
+    {
+      std::string name = meta[i]["name"].as<std::string>();
+
+      size_t startTime = std::numeric_limits<int>::max();
+      if(meta[i]["start_time"] && meta[i]["start_time"].as<std::string>() != ".inf")
+        startTime = meta[i]["start_time"].as<int>();
+
+      YAML::Node rateEpochs = meta[i]["epochs"];
+
+      for(size_t j = 0; j < rateEpochs.size(); ++j)
+      {
         size_t endTime = 0;
+        if(rateEpochs[j]["end_time"]) // TODO make start_time inherit previous end_time when multiple end_times are present (cf "demes") field above
+          endTime = rateEpochs[j]["end_time"].as<int>();
 
-        if(muts["start_time"])
-          startTime = muts["start_time"].as<size_t>();
+        double rate = 0.; // TODO make this a vector to accomodate different sel coeffs per population
+        if(rateEpochs[j]["rate"])
+          rate = rateEpochs[j]["rate"].as<double>();
 
-        if(muts["end_time"])
-          endTime = muts["end_time"].as<size_t>();
+        if(name == "selection")
+        {
+          std::vector<std::string> selectedPops(0); // inits to default = all populations under selection
+          for(size_t k = 0; k < pops_.size(); ++k)
+            for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
+              selectedPops.push_back((*itPop)->getName());
 
-        if(muts["rate"])
-          rate = muts["rate"].as<double>();
+          if(rateEpochs[j]["demes"])
+          {
+            selectedPops.clear(); // clears default
 
-        //std::cout << "mut: " << rate << "," << startTime << "-" << endTime << "\n";
+            for(size_t k = 0; k < rateEpochs[j]["demes"].size(); ++k)
+              selectedPops.push_back(rateEpochs[j]["demes"][k].as<std::string>());
+          }
+
+          for(size_t k = 0; k < pops_.size(); ++k) // for each epoch, set (updates) selective status of populations
+          {
+            for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
+              if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
+                (*itPop)->setSelectiveConstraint(true); // false by default
+          }
+        }
 
         bool match = 0;
         for(size_t k = 1; k < timeBounds.size(); ++k)
         {
           if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
           {
-            mutRates_[k - 1] = rate;
+            if(name == "selection")
+              selCoeffs_[k - 1] = rate;
+
+            else if(name == "mutation")
+              mutRates_[k - 1] = rate;
+
+            else if(name == "recombination")
+              recRates_[k - 1] = rate;
+
+            else
+              throw bpp::Exception("Demes::mis-specified metadata entry!");
+
             match = 1;
           }
         }
 
         if(!match)
-          throw bpp::Exception("Demes::metadata::start_time and end_time of 'mutation' do not match the span of any epoch!");
+          throw bpp::Exception("Demes::start_time and end_time of " + name + " do not match the span of any epoch!");
       }
-
-      if(meta["recombination"]) // TODO add demes field
-      {
-        YAML::Node recs = meta["recombination"];
-
-        double rate = 1e-8;
-        size_t startTime = timeBounds.front();
-        size_t endTime = 0;
-
-        if(recs["start_time"])
-          startTime = recs["start_time"].as<size_t>();
-
-        if(recs["end_time"])
-          endTime = recs["end_time"].as<size_t>();
-
-        if(recs["rate"])
-          rate = recs["rate"].as<double>();
-
-        //std::cout << "rec: " << rate << "," << startTime << "-" << endTime << "\n";
-
-        bool match = 0;
-        for(size_t k = 1; k < timeBounds.size(); ++k)
-        {
-          if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
-          {
-            recRates_[k - 1] = rate;
-            match = 1;
-          }
-        }
-
-        if(!match)
-          throw bpp::Exception("Demes::metadata::start_time and end_time of 'recombination' do not match the span of any epoch!");
-      }
-
-      if(meta["selection"])
-      {
-        YAML::Node sel = meta["selection"];
-
-        double s = 0.; // TODO make a vector, one per pop
-        size_t startTime = timeBounds.front();
-        size_t endTime = 0;
-
-        std::vector<std::string> selectedPops(0); // inits to default = all populations under selection
-        for(size_t k = 0; k < pops_.size(); ++k)
-          for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
-            selectedPops.push_back((*itPop)->getName());
-
-        if(sel["start_time"])
-          startTime = sel["start_time"].as<size_t>();
-
-        if(sel["end_time"])
-          endTime = sel["end_time"].as<size_t>();
-
-        if(sel["rate"])
-          s = sel["rate"].as<double>();
-
-        if(sel["demes"])
-        {
-          selectedPops.clear(); // clears default
-
-          for(size_t k = 0; k < sel["demes"].size(); ++k)
-            selectedPops.push_back(sel["demes"][k].as<std::string>());
-        }
-
-        for(size_t k = 0; k < pops_.size(); ++k) // for each epoch, set (updates) selective status of populations
-        {
-          for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
-            if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
-              (*itPop)->setSelectiveConstraint(true); // false by default
-        }
-
-        //std::cout << "sel: " << s << "," << startTime << "-" << endTime << "\n";
-
-        bool match = 0;
-        for(size_t k = 1; k < timeBounds.size(); ++k)
-        {
-          if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
-          {
-            selCoeffs_[k - 1] = s;
-            match = 1;
-          }
-        }
-
-        if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of 'selection' do not match the span of any epoch!");
-      }
-    } // exits 'metadata' field of Demes file
-  }
+    }
+  } // exits 'metadata' field of Demes file
 }

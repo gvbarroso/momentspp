@@ -1,4 +1,11 @@
 time_units: generations
+metadata:
+  mutation:
+    rate: 1e-7
+  recombination:
+    rate: 1e-5
+  selection:
+    rate: -1e-6
 demes:
   - name: X
     epochs:
@@ -8,10 +15,3 @@ demes:
     epochs:
       - end_time: 0
         start_size: 10000
-metadata:
-  mutation:
-    rate: 1e-7
-  recombination:
-    rate: 1e-5
-  selection:
-    rate: -1e-6
