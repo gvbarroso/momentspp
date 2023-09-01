@@ -38,7 +38,7 @@ class AbstractOperator: public bpp::AbstractParameterAliasable
 {
 
 protected:
-  // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
+  // flexible vector: one matrix per population (Drift, Mutation, Recombination and Selection) or pair thereof (Migration, Admixture)
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into transition_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 29/08/2023
+ * Last modified: 01/09/2023
  *
  */
 
@@ -52,6 +52,8 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeCompositeLogLikelihood_()
 {
+  assert(data_ != nullptr);
+
   double cll = 0.;
   /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
   {
@@ -61,6 +63,23 @@ void Model::computeCompositeLogLikelihood_()
   }*/
 
   compLogLikelihood_ = cll;
+}
+
+void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
+{
+  // epoch[0] should never be 1-generation only (ie, an "Admixture epoch")
+  // hence should always have a full set of parameters, including 'u' and 'r'
+  // TODO decide whether to aliase u, r and s among populations from the same epoch
+  // TODO to alias over pops: alias for each pop in same epoch
+  // TODO to alias over epochs: check population names, get their indices, alias wrt epoch 0
+  for(size_t i = 1; i < epochs_.size(); ++i)
+  {
+    if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".u"))
+      aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
+
+    if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".r"))
+      aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
+  }
 }
 
 // this method defines the relationships among moments from different epochs (w.r.t population indices)

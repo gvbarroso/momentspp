@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
 
   /*
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
+   * 2. Signed D
    */
 
   if(argc == 1)

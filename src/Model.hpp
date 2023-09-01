@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 24/05/2023
+ * Last modified: 01/09/2023
  *
  */
 
@@ -36,16 +36,16 @@ class Model: public bpp::AbstractParameterAliasable, public bpp::Function
 {
 
 private:
-  std::string name_; // model label / id
+  std::string name_; // model label
   std::vector<std::string> frozenParams_;
-  std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own params and operators
+  std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own set of params and operators
   std::shared_ptr<Data> data_;
 
   Eigen::VectorXd expected_;
   double compLogLikelihood_;
 
 public:
-  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, std::shared_ptr<Data> data):
+  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, std::shared_ptr<Data> data = nullptr):
   AbstractParameterAliasable(""),
   name_(name),
   frozenParams_(0),
@@ -56,44 +56,6 @@ public:
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       addParameters_((*it)->getParameters());
-
-    // epoch[0] should never be 1-generation only (ie, be an "Admixture epoch")
-    // hence should always have a full set of parameters, including 'u' and 'r'
-    // TODO decide whether to aliase u, r and s among populations from the same epoch
-    for(size_t i = 1; i < epochs_.size(); ++i)
-    {
-      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".u"))
-        aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
-
-      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".r"))
-        aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
-    }
-
-    linkMoments_();
-  }
-
-  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs):
-  AbstractParameterAliasable(""),
-  name_(name),
-  frozenParams_(0),
-  epochs_(epochs),
-  data_(nullptr),
-  expected_(),
-  compLogLikelihood_(-1.)
-  {
-    for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
-      addParameters_((*it)->getParameters());
-
-    // epoch[0] should never be 1-generation only (ie, be an "Admixture epoch")
-    // hence should always have a full set of parameters, including 'u' and 'r'
-    for(size_t i = 1; i < epochs_.size(); ++i)
-    {
-      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".u"))
-        aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
-
-      if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".r"))
-        aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
-    }
 
     linkMoments_();
   }
@@ -183,6 +145,8 @@ public:
   void computeExpectedSumStats();
 
   void printAliasedMoments(std::ostream& stream);
+
+  void compressParameters(bool aliasOverEpochs, bool aliasOverPops);
 
 private:
   void linkMoments_();
