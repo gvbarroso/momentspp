@@ -11,13 +11,12 @@ demes:
 metadata:
   - name: mutation
     epochs:
-      - rate: 1e-6
+      - rates: [1e-6]
   - name: recombination
     epochs:
-      - rate: 1e-5
+      - rates: [1e-5]
   - name: selection
     start_time: 7000
     epochs:
-      - rate: -1e-4
-        demes: [X]
+      - rates: [-1e-4]
         end_time: 3000

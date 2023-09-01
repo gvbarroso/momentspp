@@ -104,7 +104,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
         }
 
-        else if(popIdPower > 0) // WARNING used to be just else
+        else if(popIdPower > 0) // WARNING used to be just 'else'
         {
           popIds = { (*it)->getPopIndices()[0], (*it)->getPopIndices()[1] };
           factorIds = (*it)->getFactorIndices();

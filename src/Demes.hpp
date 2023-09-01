@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 01/05/2023
+ * Last modified: 01/09/2023
  *
  */
 
@@ -70,21 +70,23 @@ private:
 
   // following (outer) vectors store one object per epoch:
   std::vector<std::vector<std::shared_ptr<Population>>> pops_;
-  std::vector<double> mutRates_;
-  std::vector<double> recRates_;
-  std::vector<double> selCoeffs_;
   std::vector<Eigen::MatrixXd> migRates_;
   std::vector<Eigen::MatrixXd> pulses_;
+
+  // following (outer) vectors store one object per epoch per population:
+  std::vector<std::vector<double>> mutRates_;
+  std::vector<std::vector<double>> recRates_;
+  std::vector<std::vector<double>> selCoeffs_;
 
 public:
   Demes(const std::string& file):
   model_(),
   pops_(0),
+  migRates_(0),
+  pulses_(0),
   mutRates_(0),
   recRates_(0),
-  selCoeffs_(0),
-  migRates_(0),
-  pulses_(0)
+  selCoeffs_(0)
   {
     parse_(file);
   }
@@ -92,11 +94,11 @@ public:
   Demes():
   model_(),
   pops_(0),
+  migRates_(0),
+  pulses_(0),
   mutRates_(0),
   recRates_(0),
-  selCoeffs_(0),
-  migRates_(0),
-  pulses_(0)
+  selCoeffs_(0)
   { }
 
 public:
@@ -148,27 +150,17 @@ public:
     return pops_[epoch].size();
   }
 
-  double getMu(size_t epoch)
+  const std::vector<double>& getMus(size_t epoch) const
   {
     return mutRates_[epoch];
   }
 
-  double getMu(size_t epoch) const
-  {
-    return mutRates_[epoch];
-  }
-
-  double getRec(size_t epoch)
+  const std::vector<double>& getRecs(size_t epoch) const
   {
     return recRates_[epoch];
   }
 
-  double getRec(size_t epoch) const
-  {
-    return recRates_[epoch];
-  }
-
-  double getSelCoeff(size_t epoch) const
+  const std::vector<double>& getSelCoeffs(size_t epoch) const
   {
     return selCoeffs_[epoch];
   }
@@ -193,14 +185,16 @@ public:
     return pulses_[epoch];
   }
 
-  void setMu(size_t epoch, double mu)
+  void setMus(size_t epoch, double mu)
   {
-    mutRates_[epoch] = mu;
+    for(size_t i = 0; i < pops_[i].size(); ++i)
+      mutRates_[epoch][i] = mu;
   }
 
-  void setRec(size_t epoch, double rec)
+  void setRecs(size_t epoch, double rec)
   {
-    recRates_[epoch] = rec;
+    for(size_t i = 0; i < pops_[i].size(); ++i)
+      recRates_[epoch][i] = rec;
   }
 
   void setPops(size_t epoch, const std::vector<std::shared_ptr<Population>>& pops)

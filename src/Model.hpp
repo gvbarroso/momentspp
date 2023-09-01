@@ -59,6 +59,7 @@ public:
 
     // epoch[0] should never be 1-generation only (ie, be an "Admixture epoch")
     // hence should always have a full set of parameters, including 'u' and 'r'
+    // TODO decide whether to aliase u, r and s among populations from the same epoch
     for(size_t i = 1; i < epochs_.size(); ++i)
     {
       if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".u"))

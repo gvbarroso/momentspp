@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 29/08/2023
+ * Last modified: 01/09/2023
  * Source code for moments++
  *
  */
@@ -26,10 +26,7 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "*                 moments++  version 0.0.1                       *" << std::endl;
-  std::cout << "*                                                                *" << std::endl;
-  std::cout << "*                   \"Barrilete Cosmico\"                          *" << std::endl;
-  std::cout << "*                                                                *" << std::endl;
+  std::cout << "*                  moments++  version 0.0.1                      *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*            Two-site recursions                                 *" << std::endl;
@@ -37,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 31/Aug/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 01/Sep/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -53,13 +50,9 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "To use moments++, fill in a text file with the following options and execute from the command line:\nmomentspp params=file_name\n\n";
 
-    std::cout << "label = # optional string, default = 'moments++'\n";
     std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the (starting) model\n";
-    std::cout << "stats_file = # optional, relative path to file listing observed summary statistics from sampled populations, default = 'none'\n\n";
-
-    std::cout << "optimizer = # optional string, default = 'BFGS'\n";
+    std::cout << "stats_file = # optional, relative path to file listing observed summary statistics from sampled populations\n";
     std::cout << "tolerance = # optional double, default = 1e-6\n";
-    std::cout << "compress_moments = # optional boolean, default = TRUE\n";
     std::cout << "num_threads = # optional unsigned int, default = num_cores / 2\n";
 
     std::cout << "For more information, please email gvbarroso@gmail.com " << std::endl;
@@ -79,6 +72,8 @@ int main(int argc, char *argv[]) {
 
   if(!(options.getFactorOrder() > 0))
     throw bpp::Exception("Main::Non-positive Factor Order!");
+
+  std::cout << "Assembling Operators and Epoch objects..."; std::cout.flush();
 
   size_t numEpochs = demes.getNumEpochs();
   std::vector<std::shared_ptr<Epoch>> epochs(0);
@@ -126,16 +121,10 @@ int main(int argc, char *argv[]) {
         for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
           drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
 
-        std::vector<double> sel(0);
-        sel.reserve(demes.getPopsVec()[i].size());
-
-        for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
-          sel.emplace_back(demes.getSelCoeff(i)); // NOTE ATM this is just replicating the same s for all pops-->change this in Demes class
-
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
-        std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRec(i), ic, sslib);
-        std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMu(i), ic, sslib);
-        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(sel, icSel, sslib);
+        std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRecs(i), ic, sslib);
+        std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMus(i), ic, sslib);
+        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeffs(i), icSel, sslib);
 
         /*// only *allow* model to include mig params in epochs where the demes model has non-zero mig
         if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
@@ -168,11 +157,13 @@ int main(int argc, char *argv[]) {
 
   epochs.front()->computeSteadyState(); // only need to have steady state in the deepest epoch
 
+  std::cout << "done.\n\nBuilding Model now.";
+
   try
   {
     if(options.getDataFilePath() == "none")
     {
-      std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n";
+      std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
 
       model->getIndependentParameters().printParameters(std::cout); //model->getParameters().printParameters(std::cout);
@@ -189,7 +180,7 @@ int main(int argc, char *argv[]) {
 
     else
     {
-      std::cout << "\nstats_file provided, moments++ will optimize parameters for input data.\n";
+      std::cout << "\nStats_file provided, moments++ will optimize parameters for input data.\n";
       std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
 

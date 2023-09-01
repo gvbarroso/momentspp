@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 21/04/2023
+ * Last modified: 01/09/2023
  *
  */
 
@@ -24,10 +24,12 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Mutation(double initValue, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Mutation(const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices())
   {
-    addParameter_(new bpp::Parameter("u", initValue, ic));
+    // for each population modeled in the epoch *this operator belongs to, add mu parameter
+    for(size_t i = 0; i < popIndices_.size(); ++i)
+      addParameter_(new bpp::Parameter("u_" + bpp::TextTools::toString(popIndices_[i]), initVals[i], ic));
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);

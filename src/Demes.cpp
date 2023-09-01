@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 31/08/2023
+ * Last modified: 01/09/2023
  *
  */
 
@@ -9,11 +9,9 @@
 
 void Demes::parse_(const std::string& fileName)
 {
-  std::cout << "\nParsing " << fileName << "\n";
-  model_ = YAML::LoadFile(fileName);
+  std::cout << "\nParsing " << fileName << "..."; std::cout.flush();
 
-  if(model_["description"])
-    std::cout << "model: " << model_["description"] << "\n\n";
+  model_ = YAML::LoadFile(fileName);
 
   if(model_["defaults"])
     throw bpp::Exception("Demes::defaults are not allowed!");
@@ -69,7 +67,7 @@ void Demes::parse_(const std::string& fileName)
         }
 
         // each instance of pop i (one per epoch) is treated as a different Population object in moments++
-        singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, false)); // default selective status for all pops == false
+        singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, true));
       }
 
       if(pops[i]["ancestors"])
@@ -243,9 +241,9 @@ void Demes::parse_(const std::string& fileName)
     pops_.resize(numEpochs);
     migRates_.resize(numEpochs);
     pulses_.resize(numEpochs);
-    mutRates_.reserve(numEpochs);
-    recRates_.reserve(numEpochs);
-    selCoeffs_.reserve(numEpochs);
+    mutRates_.resize(numEpochs);
+    recRates_.resize(numEpochs);
+    selCoeffs_.resize(numEpochs);
 
     // second pass: organize pops within epochs
     for(size_t i = 0; i < numEpochs; ++i)
@@ -267,21 +265,28 @@ void Demes::parse_(const std::string& fileName)
           }
         }
       }
+
+      mutRates_[i].resize(pops_[i].size());
+      recRates_[i].resize(pops_[i].size());
+      selCoeffs_[i].resize(pops_[i].size());
     }
 
-    // inits parameters for the different operators
+    // inits parameters for the different operators with default values
     for(size_t i = 0; i < numEpochs; ++i)
     {
-      mutRates_.emplace_back(1e-8);
-      recRates_.emplace_back(1e-6);
-      selCoeffs_.emplace_back(0.);
-
       size_t p = pops_[i].size();
       Eigen::MatrixXd mat(p, p);
       mat.setZero();
 
       migRates_[i] = mat; // littleMigMat_ inside Migration class
       pulses_[i] = mat; // littleAdmixMat_ inside Admixture class
+
+      for(size_t j = 0; j < pops_[i].size(); ++j)
+      {
+        mutRates_[i][j] = 1e-6;
+        recRates_[i][j] = 1e-5;
+        selCoeffs_[i][j] = 0.;
+      }
     }
 
     // search for populations with two ancestors: pick one of them to copy moments from,
@@ -455,57 +460,65 @@ void Demes::parse_(const std::string& fileName)
         if(j > 0)
           startTime = rateEpochs[j - 1]["end_time"].as<int>();
 
-        double rate = 0.; // TODO make this a vector to accomodate different sel coeffs per population
-        if(rateEpochs[j]["rate"])
-          rate = rateEpochs[j]["rate"].as<double>();
-
-        if(name == "selection")
+        //std::cout << name << ": " << startTime << "-" << endTime << "\n";
+        if(rateEpochs[j]["rates"])
         {
-          std::vector<std::string> selectedPops(0); // inits to default = all populations under selection
-          for(size_t k = 0; k < pops_.size(); ++k)
-            for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
-              selectedPops.push_back((*itPop)->getName());
+          YAML::Node rates = rateEpochs[j]["rates"]; // one rate per pop present in epoch j
 
-          if(rateEpochs[j]["demes"])
+          bool match = 0;
+          for(size_t k = 0; k < (timeBounds.size() - 1); ++k) // for each epoch k
           {
-            selectedPops.clear(); // clears default
+            if((startTime == timeBounds[k] && endTime == timeBounds[k + 1]) || (startTime == timeBounds.front() && endTime == 0))
+            {
+              match = 1;
 
-            for(size_t k = 0; k < rateEpochs[j]["demes"].size(); ++k)
-              selectedPops.push_back(rateEpochs[j]["demes"][k].as<std::string>());
+              if(rates.size() == 1) // single rate applied to all populations of epoch k
+              {
+                for(size_t l = 0; l < pops_[k].size(); ++l)
+                {
+                  if(name == "selection")
+                    selCoeffs_[k][l] = rates[0].as<double>();
+
+                  else if(name == "mutation")
+                    mutRates_[k][l] = rates[0].as<double>();
+
+                  else if(name == "recombination")
+                    recRates_[k][l] = rates[0].as<double>();
+
+                  else
+                    throw bpp::Exception("Demes::mis-specified metadata entry!");
+                }
+              }
+
+              else if(rates.size() != pops_[k].size())
+                throw bpp::Exception("mis-specified number of " + name + " rates for epoch: " + bpp::TextTools::toString(startTime) + " to " + bpp::TextTools::toString(endTime) + " generations ago.");
+
+              else
+              {
+                for(size_t l = 0; l < rates.size(); ++l) // one rate specified for each population of epoch k
+                {
+                  if(name == "selection")
+                    selCoeffs_[k][l] = rates[l].as<double>();
+
+                  else if(name == "mutation")
+                    mutRates_[k][l] = rates[l].as<double>();
+
+                  else if(name == "recombination")
+                    recRates_[k][l] = rates[l].as<double>();
+
+                  else
+                    throw bpp::Exception("Demes::mis-specified metadata entry!");
+                }
+              }
+            }
           }
 
-          for(size_t k = 0; k < pops_.size(); ++k) // for each epoch, set (updates) selective status of populations
-          {
-            for(auto itPop = std::begin(pops_[k]); itPop != std::end(pops_[k]); ++itPop)
-              if(std::find(std::begin(selectedPops), std::end(selectedPops), (*itPop)->getName()) != std::end(selectedPops))
-                (*itPop)->setSelectiveConstraint(true); // false by default
-          }
+          if(!match)
+            throw bpp::Exception("Demes::start_time and end_time of " + name + " metadata do not match the span of any epoch!");
         }
-
-        bool match = 0;
-        for(size_t k = 1; k < timeBounds.size(); ++k)
-        {
-          if((startTime == timeBounds[k - 1] && endTime == timeBounds[k]) || (startTime == timeBounds.front() && endTime == 0))
-          {
-            if(name == "selection")
-              selCoeffs_[k - 1] = rate;
-
-            else if(name == "mutation")
-              mutRates_[k - 1] = rate;
-
-            else if(name == "recombination")
-              recRates_[k - 1] = rate;
-
-            else
-              throw bpp::Exception("Demes::mis-specified metadata entry!");
-
-            match = 1;
-          }
-        }
-
-        if(!match)
-          throw bpp::Exception("Demes::start_time and end_time of " + name + " do not match the span of any epoch!");
       }
     }
   } // exits 'metadata' field of Demes file
+
+  std::cout << "done.\n";
 }
