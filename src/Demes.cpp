@@ -449,8 +449,11 @@ void Demes::parse_(const std::string& fileName)
       for(size_t j = 0; j < rateEpochs.size(); ++j)
       {
         size_t endTime = 0;
-        if(rateEpochs[j]["end_time"]) // TODO make start_time inherit previous end_time when multiple end_times are present (cf "demes") field above
+        if(rateEpochs[j]["end_time"])
           endTime = rateEpochs[j]["end_time"].as<int>();
+
+        if(j > 0)
+          startTime = rateEpochs[j - 1]["end_time"].as<int>();
 
         double rate = 0.; // TODO make this a vector to accomodate different sel coeffs per population
         if(rateEpochs[j]["rate"])
