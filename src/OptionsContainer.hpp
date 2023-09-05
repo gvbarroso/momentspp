@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 08/06/2023
+ * Last modified: 05/09/2023
  *
  */
 
@@ -28,6 +28,8 @@ private:
   std::string numericalOptimizer_;
 
   double tolerance_; // for numerical optimization
+  bool aliasOverEpochs_; // whether to alias parameters (r_*, u_*, s_*) over Epochs, see Model::compressParameters()
+  bool aliasOverPops_; // whether to alias parameters (r_*, u_*, s_*) over Populations, see Model::compressParameters()
   bool compressMoments_; // see moments_ vs compressedBasis_ inside SumStatsLibrary::initMoments_()
   bool computeCI_;
   size_t numThreads_;
@@ -40,6 +42,8 @@ public:
   dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, false, true, "", false, "none", 0)),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "NewtonRhapson", "", true, 4)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
+  aliasOverEpochs_(bpp::ApplicationTools::getParameter<bool>("alias_epochs_params", options, true, "", true, 4)),
+  aliasOverPops_(bpp::ApplicationTools::getParameter<bool>("alias_pops_params", options, true, "", true, 4)),
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),
@@ -70,6 +74,16 @@ public:
   double getTolerance() const
   {
     return tolerance_;
+  }
+
+  bool aliasEpochsParams() const
+  {
+    return aliasOverEpochs_;
+  }
+
+  bool aliasPopsParams() const
+  {
+    return aliasOverPops_;
   }
 
   bool compressMoments() const

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/09/2023
+ * Last modified: 05/09/2023
  *
  */
 
@@ -68,17 +68,86 @@ void Model::computeCompositeLogLikelihood_()
 void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
 {
   // epoch[0] should never be 1-generation only (ie, an "Admixture epoch")
-  // hence should always have a full set of parameters, including 'u' and 'r'
-  // TODO decide whether to aliase u, r and s among populations from the same epoch
-  // TODO to alias over pops: alias for each pop in same epoch
-  // TODO to alias over epochs: check population names, get their indices, alias wrt epoch 0
-  for(size_t i = 1; i < epochs_.size(); ++i)
-  {
-    if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".u"))
-      aliasParameters(epochs_[0]->getName() + ".u", epochs_[i]->getName() + ".u");
+  // hence it should always have a full set of parameters, ie, including 'u_*', 'r_*', and 's_*'
 
-    if(epochs_[i]->hasParameter(epochs_[i]->getName() + ".r"))
-      aliasParameters(epochs_[0]->getName() + ".r", epochs_[i]->getName() + ".r");
+  // NOTE the order of the following two aliasing dimensions (over populations and over epochs) matters!
+  // as implemented, we should first go over populations
+
+  // alias u, r and s among populations from the same epoch IFF they have identical (starting) values
+  if(aliasOverPops)
+  {
+    std::cout << "Aliasing parameters over populations.\n";
+
+    for(size_t i = 0; i < epochs_.size(); ++i)
+    {
+      for(size_t j = 0; j < epochs_[i]->getNumPops(); ++j)
+      {
+        size_t jd = epochs_[i]->getPops()[j]->getId();
+        std::string rj = "r_" + bpp::TextTools::toString(jd);
+        std::string uj = "u_" + bpp::TextTools::toString(jd);
+        std::string sj = "s_" + bpp::TextTools::toString(jd);
+
+        for(size_t k = j + 1; k < epochs_[i]->getNumPops(); ++k)
+        {
+          size_t kd = epochs_[i]->getPops()[k]->getId();
+          std::string rk = "r_" + bpp::TextTools::toString(kd);
+          std::string uk = "u_" + bpp::TextTools::toString(kd);
+          std::string sk = "s_" + bpp::TextTools::toString(kd);
+
+          if(epochs_[i]->getParameter(rj).getValue() == epochs_[i]->getParameter(rk).getValue())
+          {
+            epochs_[i]->aliasParameters(rj, rk);
+            aliasParameters(epochs_[i]->getName() + "." + rj, epochs_[i]->getName() + "." + rk);
+          }
+
+          if(epochs_[i]->getParameter(uj).getValue() == epochs_[i]->getParameter(uk).getValue())
+          {
+            epochs_[i]->aliasParameters(uj, uk);
+            aliasParameters(epochs_[i]->getName() + "." + uj, epochs_[i]->getName() + "." + uk);
+          }
+
+          if(epochs_[i]->getParameter(sj).getValue() == epochs_[i]->getParameter(sk).getValue())
+          {
+            epochs_[i]->aliasParameters(sj, sk);
+            aliasParameters(epochs_[i]->getName() + "." + sj, epochs_[i]->getName() + "." + sk);
+          }
+        }
+      }
+    }
+  }
+
+  if(aliasOverEpochs)
+  {
+    std::cout << "Aliasing parameters over epochs.\n";
+
+    for(size_t i = 1; i < epochs_.size(); ++i)
+    {
+      for(size_t j = 0; j < epochs_[i]->getNumPops(); ++j)
+      {
+        size_t jd = epochs_[i]->getPops()[j]->getId();
+        size_t pd = epochs_[i]->getPops()[j]->getLeftParent()->getId(); // WARNING getLeftParent()
+
+        // rates from population jd
+        std::string rj = "r_" + bpp::TextTools::toString(jd);
+        std::string uj = "u_" + bpp::TextTools::toString(jd);
+        std::string sj = "s_" + bpp::TextTools::toString(jd);
+
+        // rates based on its parental pop id
+        std::string rp = "r_" + bpp::TextTools::toString(pd);
+        std::string up = "u_" + bpp::TextTools::toString(pd);
+        std::string sp = "s_" + bpp::TextTools::toString(pd);
+
+        // only alias if populations share NAME
+        if(epochs_[i]->hasIndependentParameter(rj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+          aliasParameters(epochs_[i - 1]->getName() + "." + rp, epochs_[i]->getName() + "." + rj);
+
+        if(epochs_[i]->hasIndependentParameter(uj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+          aliasParameters(epochs_[i - 1]->getName() + "." + up, epochs_[i]->getName() + "." + uj);
+
+        if(epochs_[i]->hasIndependentParameter(sj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+          aliasParameters(epochs_[i - 1]->getName() + "." + sp, epochs_[i]->getName() + "." + sj);
+      }
+    }
   }
 }
 

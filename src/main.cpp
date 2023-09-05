@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 01/Sep/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 05/Sep/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -53,6 +53,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the (starting) model\n";
     std::cout << "stats_file = # optional, relative path to file listing observed summary statistics from sampled populations\n";
+    std::cout << "compress_parameters = # optional boolean, whether to alias r, u and s over Epochs, default = true / 2\n";
     std::cout << "tolerance = # optional double, default = 1e-6\n";
     std::cout << "num_threads = # optional unsigned int, default = num_cores / 2\n";
 
@@ -166,8 +167,7 @@ int main(int argc, char *argv[]) {
     {
       std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n\n";
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
-
-      model->getIndependentParameters().printParameters(std::cout); //model->getParameters().printParameters(std::cout);
+      model->getIndependentParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
       std::string file = model->getName() + "_expectations.txt";
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
       model->printAliasedMoments(fout);
 
       fout.close();
-      std::cout << "\nCheck " << file << ".\n\n";
+      std::cout << "\nCheck output file " << file << ".\n\n";
     }
 
     else
@@ -184,6 +184,9 @@ int main(int argc, char *argv[]) {
       std::cout << "\nStats_file provided, moments++ will optimize parameters for input data.\n";
       std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath());
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
+      model->compressParameters(options.aliasEpochsParams(), options.aliasPopsParams());
+      std::cout << "\n\nList of parameters to be optimized:\n";
+      model->getIndependentParameters().printParameters(std::cout);
 
       OptimizationWrapper optimizer(options);
       optimizer.fitModel(model.get());
