@@ -42,8 +42,7 @@ private:
   size_t endGen_;
 
   std::vector<std::shared_ptr<Population>> pops_;
-  // each operator contains Eigen matrices and a subset of the parameters
-  std::vector<std::shared_ptr<AbstractOperator>> operators_;
+  std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
   Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::VectorXd steadYstate_; // based on the parameters of *this epoch

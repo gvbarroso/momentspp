@@ -44,10 +44,8 @@ metadata:
       - end_time: 0
         rates: [1e-5, 1e-3]
   - name: selection
-    start_time: .inf
+    start_time: 10000
     epochs:
-      - end_time: 10000
-        rates: [-1e-6]
       - end_time: 5000
         rates: [-1e-4, -1e-5]
       - end_time: 2000

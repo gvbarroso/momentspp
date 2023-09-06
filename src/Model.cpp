@@ -125,7 +125,7 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
       for(size_t j = 0; j < epochs_[i]->getNumPops(); ++j)
       {
         size_t jd = epochs_[i]->getPops()[j]->getId();
-        size_t pd = epochs_[i]->getPops()[j]->getLeftParent()->getId(); // WARNING getLeftParent()
+        size_t pd = epochs_[i]->getPops()[j]->getLeftParent()->getId(); // WARNING getLeftParent() [dangerous when there is admixture]
 
         // rates from population jd
         std::string rj = "r_" + bpp::TextTools::toString(jd);
