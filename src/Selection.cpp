@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 30/08/2023
+ * Last modified: 05/09/2023
  *
  */
 
@@ -31,6 +31,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       int row = it - std::begin(sslib.getBasis());
       int col = -1;
 
+      size_t popIdCount = (*it)->countInstances(id); // count of id in moment's name (not counting (1-2p) factors)
       int popIdPower = (*it)->getPopFactorPower(id); // count of (1-2p_x) factors on focal moment
 
       std::vector<size_t> popIds(0);
@@ -44,7 +45,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           factorIds.push_back(id);
 
           col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + popIdPower/2.)));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdCount + popIdPower/2.)));
         }
 
         else
