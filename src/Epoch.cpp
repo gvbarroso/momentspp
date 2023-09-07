@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 23/08/2023
+ * Last modified: 07/09/2023
  *
  */
 
@@ -141,7 +141,7 @@ void Epoch::computeSteadyState()
 
   // I moment embodies scaling constant used by Eigen
   steadYstate_ = es.eigenvectors().col(idx).real();
-  steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getDummyIndexUncompressed()));
+  steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getMoment("I")));
 
   updateMoments(steadYstate_);
 }

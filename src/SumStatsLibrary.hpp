@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 29/08/2023
+ * Last modified: 07/09/2023
  */
 
 
@@ -36,11 +36,6 @@ class SumStatsLibrary
 
 private:
   size_t numPops_;
-  size_t numDDStats_;
-  size_t numDrStats_;
-  size_t numHetLeftStats_; // left locus, potentially under selection
-  size_t numHetRightStats_; // right locus, neutral
-  size_t numPi2Stats_;
   size_t factorOrder_; // maximum number of 1-2p_x factors attached to a Moment
   size_t factorComb_; // number of ways we can attach 1-2p_x factors to a given moment, used to find moment indices quickly (NOTE working for P == 2)
 
@@ -51,11 +46,6 @@ private:
 public:
   SumStatsLibrary():
   numPops_(0),
-  numDDStats_(0),
-  numDrStats_(0),
-  numHetLeftStats_(0),
-  numHetRightStats_(0),
-  numPi2Stats_(0),
   factorOrder_(0),
   factorComb_(0),
   popIndices_(0),
@@ -65,11 +55,6 @@ public:
 
   SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, size_t factorOrder, bool compress):
   numPops_(pops.size()),
-  numDDStats_(0),
-  numDrStats_(0),
-  numHetLeftStats_(0),
-  numHetRightStats_(0),
-  numPi2Stats_(0),
   factorOrder_(factorOrder),
   factorComb_(0),
   popIndices_(0),
@@ -133,39 +118,14 @@ public:
     return basis_;
   }
 
-  size_t getNumDDStats() const
+  size_t getSizeOfBasis() const
   {
-    return numDDStats_;
-  }
-
-  size_t getNumDrStats() const
-  {
-    return numDrStats_;
-  }
-
-  size_t getNumHetLeftStats() const
-  {
-    return numHetLeftStats_;
-  }
-
-  size_t getNumHetRightStats() const
-  {
-    return numHetRightStats_;
-  }
-
-  size_t getNumPi2Stats() const
-  {
-    return numPi2Stats_;
+    return basis_.size();
   }
 
   size_t getNumStats() const
   {
-    return 1 + numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_ + numPi2Stats_;
-  }
-
-  size_t getSizeOfBasis() const
-  {
-    return basis_.size();
+    return moments_.size();
   }
 
   int getFactorOrder() const
@@ -178,21 +138,6 @@ public:
   std::shared_ptr<Moment> getMoment(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const;
 
   std::shared_ptr<Moment> getMoment(size_t pos) const;
-
-  std::shared_ptr<Moment> getDummyMoment() const
-  {
-    return moments_[getDummyIndexUncompressed()];
-  }
-
-  std::shared_ptr<Moment> getDummyMomentCompressed() const
-  {
-    return basis_[findCompressedIndex(getDummyIndexUncompressed())];
-  }
-
-  size_t getDummyIndexUncompressed() const
-  {
-    return numDDStats_ + numDrStats_ + numHetLeftStats_ + numHetRightStats_;
-  }
 
   size_t findCompressedIndex(std::shared_ptr<Moment> mom) const;
 
@@ -269,7 +214,7 @@ private:
   // for searching / comparing
   std::string assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const;
 
-  void countMoments_();
+  void cleanBasis_();
 
   // assigns two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();

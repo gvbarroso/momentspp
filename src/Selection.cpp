@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 06/09/2023
+ * Last modified: 07/09/2023
  *
  */
 
@@ -9,7 +9,7 @@
 #include "Selection.hpp"
 
 
-// uses zero-order moment-closure approximation
+// uses zero-order moment-closure approximation (truncation)
 void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters().size();
@@ -303,7 +303,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
         }
 
-        // WARNING on contributions from Dr collecting only from pop ids 0 and 1 (left), maybe makes sense?
+        // NOTE on contributions from Dr collecting only from pop ids 0 and 1 (left), maybe makes sense?
         factorIds = (*it)->getFactorIndices();
 
         col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));

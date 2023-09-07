@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 05/09/2023
+ * Last modified: 07/09/2023
  *
  */
 
@@ -357,7 +357,7 @@ void Model::linkMoments_()
       }
 
       else if((*it)->getPrefix() == "I")
-        (*it)->setParent(epochs_[i - 1]->getSslib().getDummyMomentCompressed());
+        (*it)->setParent(epochs_[i - 1]->getSslib().getMoment("I"));
 
       //(*it)->printAttributes(std::cout);
     } // ends loop over moments

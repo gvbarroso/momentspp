@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 01/09/2023
+ * Last modified: 07/09/2023
  *
  */
 
@@ -29,6 +29,9 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
 
       else if((*it)->getPrefix() == "Dr")
+        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+
+      else if((*it)->getPrefix() == "D")
         coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
 
       else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "Hl" && (*it)->getPrefix() != "Hr" && (*it)->getPrefix() != "pi2")

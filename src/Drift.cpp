@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 01/09/2023
+ * Last modified: 07/09/2023
  *
  */
 
@@ -22,6 +22,11 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     coeffs.reserve(sizeOfBasis);
 
     //std::cout << "\nDrift pop " << id << "\n";
+
+    int a = -2;
+    int b = -1;
+    int c = 2;
+    int d = 1;
 
     int j = 0;
     int k = -3;
@@ -44,6 +49,26 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
       std::vector<size_t> popIds(0);
       std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
+      if((*it)->getPrefix() == "D")
+      {
+        a += b;
+        --b;
+
+        coeffs.emplace_back(Eigen::Triplet<double>(row, row, a));
+
+        if(popIdPower > 1) // WARNING check if it is popIdPower or simply (*it)->getFactorPower()
+        {
+          c += d;
+          ++d;
+
+          factorIds = (*it)->getFactorIndices();
+          sslib.dropFactorIds(factorIds, id, 2);
+
+          col = sslib.findCompressedIndex(sslib.getMoment("D", popIds, factorIds));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, c));
+        }
+      }
 
       if((*it)->getPrefix() == "DD")
       {

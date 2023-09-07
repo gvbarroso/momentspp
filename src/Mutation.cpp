@@ -29,7 +29,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 
       if((*it)->getPrefix() == "Hl" || (*it)->getPrefix() == "Hr")
       {
-        col = sslib.findCompressedIndex(sslib.getDummyIndexUncompressed()); // for a homogeneous system
+        col = sslib.findCompressedIndex(sslib.getMoment("I")); // for a homogeneous system
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
       }
 
