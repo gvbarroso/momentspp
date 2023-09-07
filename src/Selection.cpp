@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 05/09/2023
+ * Last modified: 06/09/2023
  *
  */
 
@@ -43,7 +43,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdCount + popIdPower/2.)));
         }
 
-        else
+        else // truncate
         {
           col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + popIdPower/2.)));
@@ -51,7 +51,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
         if(popIdPower > 0)
         {
-          factorIds = (*it)->getFactorIndices();
+          factorIds = (*it)->getFactorIndices(); // reset
           sslib.dropFactorIds(factorIds, id, 1);
 
           col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
@@ -72,7 +72,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
           }
 
-          else
+          else // truncate
           {
             col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
@@ -80,7 +80,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           if(popIdPower > 0)
           {
-            factorIds = (*it)->getFactorIndices();
+            factorIds = (*it)->getFactorIndices(); // reset
             sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -90,15 +90,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           // DD contributions
           if((*it)->getFactorPower() < sslib.getFactorOrder())
           {
-            factorIds = (*it)->getFactorIndices();
+            factorIds = (*it)->getFactorIndices(); // reset
 
             col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
           }
 
-          else if(popIdPower > 0) // WARNING used to be just 'else'
+          else if(popIdPower > 0) // NOTE used to be just 'else'
           {
-            factorIds = (*it)->getFactorIndices();
+            factorIds = (*it)->getFactorIndices(); // reset
             sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
@@ -110,44 +110,172 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if(popIds[0] == id)
           {
+            if((*it)->getFactorPower() < sslib.getFactorOrder())
+            {
+              factorIds.push_back(id);
+
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+            }
+
+            else // truncate
+            {
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+            }
+
+            if(popIdPower > 0)
+            {
+              factorIds = (*it)->getFactorIndices(); // reset
+              sslib.dropFactorIds(factorIds, id, 1);
+
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
+            }
           }
 
           else // if(popIds[1] == id)
           {
+            if((*it)->getFactorPower() < sslib.getFactorOrder())
+            {
+              factorIds.push_back(id);
+
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+            }
+
+            else // truncate
+            {
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+            }
+
+            if(popIdPower > 0)
+            {
+              factorIds = (*it)->getFactorIndices(); // reset
+              sslib.dropFactorIds(factorIds, id, 1);
+
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
+            }
+
+            // DD contributions
+            if((*it)->getFactorPower() < sslib.getFactorOrder())
+            {
+              factorIds = (*it)->getFactorIndices(); // reset
+
+              col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+            }
+
+            else if(popIdPower > 0) // NOTE used to be just 'else'
+            {
+              factorIds = (*it)->getFactorIndices(); // reset
+              sslib.dropFactorIds(factorIds, id, 1);
+
+              col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
+            }
           }
         }
       }
 
       else if((*it)->getPrefix() == "Hl")
       {
-        if((*it)->getFactorPower() < sslib.getFactorOrder())
+        if(popIdCount == 2)
         {
-          factorIds.push_back(id);
+          if((*it)->getFactorPower() < sslib.getFactorOrder())
+          {
+            factorIds.push_back(id);
 
-          col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+            col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+          }
+
+          else // truncate
+          {
+            col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+          }
+
+          if(popIdPower > 0)
+          {
+            factorIds = (*it)->getFactorIndices(); // reset
+            sslib.dropFactorIds(factorIds, id, 1);
+
+            col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
+          }
         }
 
         else
         {
-          col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
-        }
+          coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1./2.));
 
-        if(popIdPower > 0)
-        {
-          factorIds = (*it)->getFactorIndices();
-          sslib.dropFactorIds(factorIds, id, 1);
+          if((*it)->getFactorPower() < sslib.getFactorOrder())
+          {
+            factorIds.push_back(id);
 
-          col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
+            col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower)/2.));
+          }
+
+          else // truncate
+          {
+            col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower)/2.));
+          }
+
+          if(popIdPower > 0)
+          {
+            factorIds = (*it)->getFactorIndices(); // reset
+            sslib.dropFactorIds(factorIds, id, 1);
+
+            col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
+          }
         }
       }
 
       else if((*it)->getPrefix() == "Hr")
       {
-        col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, { 0 }));
-        coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+        if(popIdCount == 2)
+        {
+          col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+        }
+
+        else if(popIdCount == 1)
+        {
+          col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
+
+          col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds)); // TODO include D^1 stats in Basis
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
+
+          if(popIdPower > 0)
+          {
+            if((*it)->getFactorPower() < sslib.getFactorOrder())
+            {
+              factorIds.push_back(id);
+
+              col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdPower/2.)));
+            }
+
+            else // truncate
+            {
+              col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdPower/2.)));
+            }
+
+            factorIds = (*it)->getFactorIndices(); // reset
+            sslib.dropFactorIds(factorIds, id, 1);
+
+            col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
+          }
+        }
       }
 
       else if((*it)->getPrefix() == "pi2")
