@@ -157,12 +157,11 @@ void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    //std::cout << "\nepoch " << epochs_[i]->getName() << "\n";
     // for each moment in focal epoch, set "parent" in previous epoch using population ancestry
     for(auto it = std::begin(epochs_[i]->getBasis()); it != std::end(epochs_[i]->getBasis()); ++it)
     {
-      std::vector<size_t> popIds(0);
       std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
       for(size_t j = 0; j < factorIds.size(); ++j)
       {
         size_t prevFactorPop = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
@@ -179,7 +178,27 @@ void Model::linkMoments_()
         factorIds[j] = prevFactorPop; // replaces
       }
 
-      if((*it)->getPrefix() == "DD")
+      if((*it)->getPrefix() == "D")
+      {
+        // indices of populations in parental D_* moment, inits to out-of-bounds
+        size_t prevP = epochs_[i - 1]->getSslib().getNumPops();
+
+        size_t focalP = (*it)->getPopIndices()[0];
+        size_t pLeftParentId = epochs_[i]->fetchPop(focalP)->getLeftParent()->getId();
+        size_t pRightParentId = epochs_[i]->fetchPop(focalP)->getRightParent()->getId();
+
+        if(pLeftParentId == pRightParentId) // population [carry-forward / split] between epochs
+          prevP = pLeftParentId;
+
+        else
+          prevP = pRightParentId;
+
+        std::vector<size_t>  popIds = { prevP };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("D", popIds, factorIds));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
+      }
+
+      else if((*it)->getPrefix() == "DD")
       {
         // indices of populations in parental DD_** moment, inits to out-of-bounds
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops();
@@ -205,7 +224,7 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        popIds = { prevP1, prevP2 };
+        std::vector<size_t> popIds = { prevP1, prevP2 };
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("DD", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
@@ -236,7 +255,7 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        popIds = { prevP1, prevP2 };
+        std::vector<size_t> popIds = { prevP1, prevP2 };
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Dr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
@@ -267,7 +286,7 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        popIds = { prevP1, prevP2 };
+        std::vector<size_t> popIds = { prevP1, prevP2 };
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hl", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
@@ -298,7 +317,7 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        popIds = { prevP1, prevP2 };
+        std::vector<size_t> popIds = { prevP1, prevP2 };
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
@@ -351,7 +370,7 @@ void Model::linkMoments_()
         else
           prevP4 = p4RightParentId;
 
-        popIds = { prevP1, prevP2, prevP3, prevP4 };
+        std::vector<size_t> popIds = { prevP1, prevP2, prevP3, prevP4 };
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("pi2", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
@@ -359,7 +378,6 @@ void Model::linkMoments_()
       else if((*it)->getPrefix() == "I")
         (*it)->setParent(epochs_[i - 1]->getSslib().getMoment("I"));
 
-      //(*it)->printAttributes(std::cout);
     } // ends loop over moments
   } // ends loop over epochs
 }

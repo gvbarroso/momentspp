@@ -47,7 +47,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
       }
 
-      else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dr")
+      else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dr" && (*it)->getPrefix() != "D")
         throw bpp::Exception("Mutation::mis-specified Moment prefix: " + (*it)->getPrefix());
     }
 

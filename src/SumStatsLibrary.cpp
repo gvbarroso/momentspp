@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 07/09/2023
+ * Last modified: 08/09/2023
  *
  */
 
@@ -65,7 +65,7 @@ size_t SumStatsLibrary::findCompressedIndex(size_t uncompressedIndex) const
     throw bpp::Exception("SumStatsLibrary::could not find compressed index for " + mom->getName());
 }
 
-void SumStatsLibrary::dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const // TODO make this copy and return the updated vector
+void SumStatsLibrary::dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const
 {
   assert(std::count(std::begin(factorIds), std::end(factorIds), focalPopId) >= removeCount);
 
@@ -358,7 +358,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 
   for(size_t i = 0; i < getNumStats(); ++i)
   {
-    if(moments_[i]->getPrefix() != "pi2")
+    if((moments_[i]->getPrefix() != "pi2") && (moments_[i]->getPrefix() != "D") && (moments_[i]->getPrefix() != "I"))
     {
       std::vector<size_t> pops(0);
       pops.reserve(2);
@@ -374,7 +374,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
     }
   }
 
-  // Pi2 stats are aliased if both their left and right H's are aliased OR if there's a left-right permutation
+  // pi2 stats are aliased if both their left and right H's are aliased
   for(size_t i = 0; i < getNumStats(); ++i)
   {
     if(moments_[i]->getPrefix() == "pi2")
@@ -396,16 +396,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
           bool leftEq = left1 == left2 || left1->hasAlias(left2);
           bool rightEq = right1 == right2 || right1->hasAlias(right2);
 
-          bool leftRightPermut = 0; // permutations share selective status
-
-          // NOTE CANNOT be true ATM because all HetLeft stats are being treated as necessarily constrained
-          if((left1->isConstrained() == right2->isConstrained()) && (left2->isConstrained() == right1->isConstrained()))
-          {
-            if(left1->hasAlias(right2) && left2->hasAlias(right1))
-              leftRightPermut = 1;
-          }
-
-          if((leftEq && rightEq) || leftRightPermut)
+          if(leftEq && rightEq)
             moments_[i]->insertAlias(std::dynamic_pointer_cast<Pi2Moment>(moments_[j]));
         }
       }
@@ -436,4 +427,3 @@ void SumStatsLibrary::compressBasis_()
   for(size_t i = 0; i < basis_.size(); ++i)
     basis_[i]->setPosition(i);
 }
-

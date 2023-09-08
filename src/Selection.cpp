@@ -32,7 +32,36 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
       std::vector<size_t> popIds = (*it)->getPopIndices();
 
-      if((*it)->getPrefix() == "DD")
+      if((*it)->getPrefix() == "D")
+      {
+        if((*it)->getFactorPower() < sslib.getFactorOrder())
+        {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
+          factorIds.push_back(id);
+
+          col = sslib.findCompressedIndex(sslib.getMoment("D", popIds, factorIds));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+        }
+
+        else // truncate
+        {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
+          col = sslib.findCompressedIndex(sslib.getMoment("D", popIds, factorIds));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
+        }
+
+        if(popIdPower > 0)
+        {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
+          sslib.dropFactorIds(factorIds, id, 1);
+
+          col = sslib.findCompressedIndex(sslib.getMoment("D", popIds, factorIds));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
+        }
+      }
+
+      else if((*it)->getPrefix() == "DD")
       {
         if((*it)->getFactorPower() < sslib.getFactorOrder())
         {
@@ -301,7 +330,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         }
       }
 
-      else if((*it)->getPrefix() == "pi2")
+      /*else if((*it)->getPrefix() == "pi2")
       {
         if((*it)->getFactorPower() < sslib.getFactorOrder())
         {
@@ -353,8 +382,8 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         }
       }
 
-      else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "DD" && (*it)->getPrefix() != "Dr")
-        throw bpp::Exception("Mutation::mis-specified Moment prefix: " + (*it)->getPrefix());
+      else if((*it)->getPrefix() != "I")
+        throw bpp::Exception("Selection::mis-specified Moment prefix: " + (*it)->getPrefix()); */
     }
 
     Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
