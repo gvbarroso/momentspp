@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 07/Sep/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 08/Sep/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -44,7 +44,6 @@ int main(int argc, char *argv[]) {
 
   /*
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
-   * 2. Signed D
    */
 
   if(argc == 1)

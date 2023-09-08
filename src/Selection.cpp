@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 07/09/2023
+ * Last modified: 08/09/2023
  *
  */
 
@@ -31,12 +31,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       int popIdPower = (*it)->getPopFactorPower(id); // count of (1-2p_x) factors on focal moment
 
       std::vector<size_t> popIds = (*it)->getPopIndices();
-      std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
       if((*it)->getPrefix() == "DD")
       {
         if((*it)->getFactorPower() < sslib.getFactorOrder())
         {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
           factorIds.push_back(id);
 
           col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
@@ -45,13 +45,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
         else // truncate
         {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
           col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, (2. + popIdPower/2.)));
         }
 
         if(popIdPower > 0)
         {
-          factorIds = (*it)->getFactorIndices(); // reset
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
           sslib.dropFactorIds(factorIds, id, 1);
 
           col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
@@ -66,6 +68,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           // Dr contributions
           if((*it)->getFactorPower() < sslib.getFactorOrder())
           {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             factorIds.push_back(id);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -74,13 +77,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else // truncate
           {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
             col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
           }
 
           if(popIdPower > 0)
           {
-            factorIds = (*it)->getFactorIndices(); // reset
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -90,7 +95,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           // DD contributions
           if((*it)->getFactorPower() < sslib.getFactorOrder())
           {
-            factorIds = (*it)->getFactorIndices(); // reset
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
             col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
@@ -98,7 +103,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else if(popIdPower > 0) // NOTE used to be just 'else'
           {
-            factorIds = (*it)->getFactorIndices(); // reset
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
@@ -112,6 +117,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             if((*it)->getFactorPower() < sslib.getFactorOrder())
             {
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
               factorIds.push_back(id);
 
               col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -120,13 +126,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
             else // truncate
             {
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
               col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
             }
 
             if(popIdPower > 0)
             {
-              factorIds = (*it)->getFactorIndices(); // reset
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
               col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -138,6 +146,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             if((*it)->getFactorPower() < sslib.getFactorOrder())
             {
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
               factorIds.push_back(id);
 
               col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -146,13 +155,14 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
             else // truncate
             {
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
               col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
             }
 
             if(popIdPower > 0)
             {
-              factorIds = (*it)->getFactorIndices(); // reset
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
               col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -162,7 +172,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             // DD contributions
             if((*it)->getFactorPower() < sslib.getFactorOrder())
             {
-              factorIds = (*it)->getFactorIndices(); // reset
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
               col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
@@ -170,7 +180,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
             else if(popIdPower > 0) // NOTE used to be just 'else'
             {
-              factorIds = (*it)->getFactorIndices(); // reset
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
               col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
@@ -186,6 +196,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           if((*it)->getFactorPower() < sslib.getFactorOrder())
           {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             factorIds.push_back(id);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
@@ -194,13 +205,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else // truncate
           {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
             col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
           }
 
           if(popIdPower > 0)
           {
-            factorIds = (*it)->getFactorIndices(); // reset
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
@@ -214,6 +227,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           if((*it)->getFactorPower() < sslib.getFactorOrder())
           {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             factorIds.push_back(id);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
@@ -222,13 +236,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           else // truncate
           {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
             col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower)/2.));
           }
 
           if(popIdPower > 0)
           {
-            factorIds = (*it)->getFactorIndices(); // reset
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Hl", popIds, factorIds));
@@ -241,22 +257,27 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       {
         if(popIdCount == 2)
         {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
         }
 
         else if(popIdCount == 1)
         {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
-          col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds)); // TODO include D^1 stats in Basis
+          col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
           if(popIdPower > 0)
           {
             if((*it)->getFactorPower() < sslib.getFactorOrder())
             {
+              factorIds = (*it)->getFactorIndices();
               factorIds.push_back(id);
 
               col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
@@ -265,11 +286,13 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
             else // truncate
             {
+              factorIds = (*it)->getFactorIndices();
+
               col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdPower/2.)));
             }
 
-            factorIds = (*it)->getFactorIndices(); // reset
+            factorIds = (*it)->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
@@ -282,6 +305,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       {
         if((*it)->getFactorPower() < sslib.getFactorOrder())
         {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
           factorIds.push_back(id);
 
           col = sslib.findCompressedIndex(sslib.getMoment("pi2", popIds, factorIds));
@@ -290,13 +314,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
         else
         {
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
           col = sslib.findCompressedIndex(sslib.getMoment("pi2", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, (1. + popIdPower/2.)));
         }
 
         if(popIdPower > 0)
         {
-          factorIds = (*it)->getFactorIndices();
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
           sslib.dropFactorIds(factorIds, id, 1);
 
           col = sslib.findCompressedIndex(sslib.getMoment("pi2", popIds, factorIds));
@@ -304,7 +330,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         }
 
         // NOTE on contributions from Dr collecting only from pop ids 0 and 1 (left), maybe makes sense?
-        factorIds = (*it)->getFactorIndices();
+        std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
         col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, 0.25));

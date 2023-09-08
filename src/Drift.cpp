@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 07/09/2023
+ * Last modified: 08/09/2023
  *
  */
 
@@ -20,8 +20,6 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     size_t id = popIndices_[i];
     std::vector<Eigen::Triplet<double>> coeffs(0);
     coeffs.reserve(sizeOfBasis);
-
-    //std::cout << "\nDrift pop " << id << "\n";
 
     int a = -2;
     int b = -1;
@@ -48,7 +46,6 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       int popIdPower = (*it)->getPopFactorPower(id);
 
       std::vector<size_t> popIds(0);
-      std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
       if((*it)->getPrefix() == "D")
       {
@@ -57,12 +54,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         coeffs.emplace_back(Eigen::Triplet<double>(row, row, a));
 
-        if(popIdPower > 1) // WARNING check if it is popIdPower or simply (*it)->getFactorPower()
+        if(popIdPower > 1)
         {
           c += d;
           ++d;
 
-          factorIds = (*it)->getFactorIndices();
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
           sslib.dropFactorIds(factorIds, id, 2);
 
           col = sslib.findCompressedIndex(sslib.getMoment("D", popIds, factorIds));
@@ -79,6 +76,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, j));
 
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
           popIds = { id, id, id, id };
           col = sslib.findCompressedIndex(sslib.getMoment("pi2", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
@@ -90,7 +88,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
           if(popIdPower > 1)
           {
-            factorIds = (*it)->getFactorIndices();
+            factorIds = (*it)->getFactorIndices(); // reset
             sslib.dropFactorIds(factorIds, id, 2);
 
             popIds = { id, id };
@@ -115,7 +113,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             if(popIdPower > 0)
             {
               popIds = { id, id };
-              factorIds = (*it)->getFactorIndices();
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
               col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
@@ -142,7 +140,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.emplace_back(Eigen::Triplet<double>(row, row, n));
 
         popIds = { id, id };
-        factorIds = (*it)->getFactorIndices();
+        std::vector<size_t> factorIds = (*it)->getFactorIndices();
         factorIds.push_back(id);
 
         col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
@@ -176,7 +174,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(popIdPower > 1)
           {
             popIds = { id, id };
-            factorIds = (*it)->getFactorIndices();
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 2);
 
             double z = (popIdPower * (popIdPower - 1)) / 2.;
