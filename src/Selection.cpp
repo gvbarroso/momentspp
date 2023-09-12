@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 08/09/2023
+ * Last modified: 12/09/2023
  *
  */
 
@@ -301,32 +301,6 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
-
-          if(popIdPower > 0)
-          {
-            if((*it)->getFactorPower() < sslib.getFactorOrder())
-            {
-              factorIds = (*it)->getFactorIndices();
-              factorIds.push_back(id);
-
-              col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdPower/2.)));
-            }
-
-            else // truncate
-            {
-              factorIds = (*it)->getFactorIndices();
-
-              col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdPower/2.)));
-            }
-
-            factorIds = (*it)->getFactorIndices();
-            sslib.dropFactorIds(factorIds, id, 1);
-
-            col = sslib.findCompressedIndex(sslib.getMoment("Hr", popIds, factorIds));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
-          }
         }
       }
 

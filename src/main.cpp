@@ -44,6 +44,8 @@ int main(int argc, char *argv[]) {
 
   /*
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
+   * 2. BGS SFS
+   * 3. BGS in non-equilibrium populations
    */
 
   if(argc == 1)
@@ -52,7 +54,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the (starting) model\n";
     std::cout << "stats_file = # optional, relative path to file listing observed summary statistics from sampled populations\n";
-    std::cout << "tolerance = # optional double, default = 1e-6\n";
+    std::cout << "tolerance = # optional double, threshold of likelihood improvement for stopping otimization, default = 1e-6\n";
     std::cout << "num_threads = # optional unsigned int, default = num_cores / 2\n";
 
     std::cout << "For more information, please email gvbarroso@gmail.com " << std::endl;
