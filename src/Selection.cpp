@@ -357,7 +357,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
       }
 
       else if((*it)->getPrefix() != "I")
-        throw bpp::Exception("Selection::mis-specified Moment prefix: " + (*it)->getPrefix()); */
+        throw bpp::Exception("Selection::mis-specified Moment prefix: " + (*it)->getPrefix());*/
     }
 
     Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);

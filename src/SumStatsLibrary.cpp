@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 08/09/2023
+ * Last modified: 12/09/2023
  *
  */
 
@@ -358,7 +358,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 
   for(size_t i = 0; i < getNumStats(); ++i)
   {
-    if((moments_[i]->getPrefix() != "pi2") && (moments_[i]->getPrefix() != "D") && (moments_[i]->getPrefix() != "I"))
+    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Dr"))
     {
       std::vector<size_t> pops(0);
       pops.reserve(2);
