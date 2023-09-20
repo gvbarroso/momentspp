@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 30/08/2023
+ * Last modified: 20/09/2023
  *
  */
 
@@ -164,6 +164,11 @@ public:
     return std::adjacent_find(std::begin(popIndices_), std::end(popIndices_), std::not_equal_to<size_t>()) != std::end(popIndices_);
   }
 
+  bool hasCrossPopFactors()
+  {
+    return std::adjacent_find(std::begin(factorIndices_), std::end(factorIndices_), std::not_equal_to<size_t>()) != std::end(factorIndices_);
+  }
+
   void setValueFromParent()
   {
     value_ = parent_->getValue();
@@ -308,20 +313,20 @@ public:
       nome = nome + "_" + bpp::TextTools::toString(popIndices_[i]);
 
     std::vector<size_t> indices = factorIndices_;
-    std::sort(std::begin(indices), std::end(indices));
     indices.erase(std::unique(std::begin(indices), std::end(indices)), std::end(indices));
 
     for(size_t i = 0; i < indices.size(); ++i)
     {
       size_t count = std::count(std::begin(factorIndices_), std::end(factorIndices_), indices[i]);
 
-      if(count > 0) // NOTE new
+      if(count > 0)
         nome = nome + "_(1-2p" + bpp::TextTools::toString(indices[i]) + ")^" + bpp::TextTools::toString(count);
     }
 
     name_ = nome;
   }
 
+  std::sort(std::begin(popIndices_), std::end(popIndices_)); // NOTE new, added on 20/09/2023
 };
 
 #endif
