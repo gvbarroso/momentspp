@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 20/09/2023
+ * Last modified: 21/09/2023
  *
  */
 
@@ -204,6 +204,28 @@ public:
   bool hasPopIndex(size_t index)
   {
     return !(std::find(std::begin(popIndices_), std::end(popIndices_), index) == std::end(popIndices_));
+  }
+
+  bool hasAnyOfPopIndices(const std::vector<size_t>& ids) const
+  {
+    for(size_t i = 0; i < ids.size(); ++i)
+    {
+      if(!(std::find(std::begin(popIndices_), std::end(popIndices_), ids[i]) == std::end(popIndices_)))
+        return true;
+    }
+
+    return false;
+  }
+
+  bool hasAllOfPopIndices(const std::vector<size_t>& ids) const
+  {
+    for(size_t i = 0; i < ids.size(); ++i)
+    {
+      if((std::find(std::begin(popIndices_), std::end(popIndices_), ids[i]) == std::end(popIndices_)))
+        return false;
+    }
+
+    return true;
   }
 
   size_t countInstances(size_t index) const

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 20/09/2023
+ * Last modified: 21/09/2023
  *
  */
 
@@ -282,7 +282,7 @@ void SumStatsLibrary::initMoments_(bool compress)
   basis_ = moments_; // default
 
   if(compress)
-    {
+  {
     aliasMoments_();
     compressBasis_();
   }
@@ -308,7 +308,7 @@ std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std:
   return name;
 }
 
-void SumStatsLibrary::cleanBasis_() // NOTE do we ever need cross-pop factors in pi2 stats?! TODO check if by Drift?
+void SumStatsLibrary::cleanBasis_()
 {
   assert(moments_.size() != 0);
 
@@ -320,12 +320,16 @@ void SumStatsLibrary::cleanBasis_() // NOTE do we ever need cross-pop factors in
                              [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
                              { return (a->getName() == b->getName() ? true : false); }), std::end(moments_));
 
-  // pi2 moments of kind pi2_id_id_*_* need not have cross-pop factors
+  // NOTE we only need cross-pop factors in pi2 stats for migration and admixture
+  // pi2 moments of kind pi2_id_id_*_* need only factors of (1-2p_id) for selection
   for(auto it = std::begin(moments_); it != std::end(moments_);)
   {
-    if((*it)->getPrefix() == "pi2") // WARNING triple-check
+    if((*it)->getPrefix() == "pi2")
     {
-      if(!(*it)->getLeftHetStat()->isCrossPop() /*&& !(*it)->getLeftRightStat()->isCrossPop()*/ && !(*it)->getLeftHetStat()->hasSamePopIds((*it)->getLeftRightStat()) && (*it)->hasCrossPopFactors())
+      if((*it)->hasCrossPopFactors())
+        it = moments_.erase(it);
+
+      else if(!(*it)->getLeftHetStat()->isCrossPop() && !(*it)->getLeftHetStat()->hasSamePopIds((*it)->getLeftRightStat()) && !(*it)->getLeftHetStat()->hasAllOfPopIndices((*it)->getFactorIndices()))
         it = moments_.erase(it);
 
       else
