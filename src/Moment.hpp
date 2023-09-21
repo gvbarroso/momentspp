@@ -346,9 +346,9 @@ public:
     }
 
     name_ = nome;
-  }
 
-  std::sort(std::begin(popIndices_), std::end(popIndices_)); // NOTE new, added on 20/09/2023
+    std::sort(std::begin(popIndices_), std::end(popIndices_)); // NOTE new, added on 20/09/2023
+  }
 };
 
 #endif

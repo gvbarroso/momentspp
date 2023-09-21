@@ -500,7 +500,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         else if(popIds[0] != id && popIds[1] == id && countRight == 2)
         {
           // Dr contributions
-          factorIds = (*it)->getFactorIndices();
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 4.));

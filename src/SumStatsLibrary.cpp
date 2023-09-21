@@ -324,12 +324,16 @@ void SumStatsLibrary::cleanBasis_()
   // pi2 moments of kind pi2_id_id_*_* need only factors of (1-2p_id) for selection
   for(auto it = std::begin(moments_); it != std::end(moments_);)
   {
-    if((*it)->getPrefix() == "pi2")
+    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*it);
+
+    if(tmpPi2 != nullptr)
     {
-      if((*it)->hasCrossPopFactors())
+      auto tmpHl = tmpPi2->getLeftHetStat();
+
+      if(tmpPi2->hasCrossPopFactors())
         it = moments_.erase(it);
 
-      else if(!(*it)->getLeftHetStat()->isCrossPop() && !(*it)->getLeftHetStat()->hasSamePopIds((*it)->getLeftRightStat()) && !(*it)->getLeftHetStat()->hasAllOfPopIndices((*it)->getFactorIndices()))
+      else if(!tmpHl->isCrossPop() && !tmpHl->hasSamePopIds(tmpPi2->getRightHetStat()) && !tmpHl->hasAllOfPopIndices(tmpPi2->getFactorIndices()))
         it = moments_.erase(it);
 
       else
