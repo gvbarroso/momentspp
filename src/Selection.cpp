@@ -559,7 +559,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         }
 
         // case: pi2_*_*_id_id
-        else if(countLeft == 0 && countRight == 2) // NOTE triple-check
+        else if(countLeft == 0 && countRight == 2)
         {
           std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
@@ -587,14 +587,14 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 8.));
 
           // Dr contributions
-          factorIds = (*it)->getFactorIndices();
+          factorIds = (*it)->getFactorIndices(); // reset
 
-          col = sslib.findCompressedIndex(sslib.getMoment("Dr", { popIds[0], popIds[1] }, factorIds));
+          col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, popIds[0] }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 8.));
 
           factorIds.push_back(popIds[0]);
           factorIds.push_back(popIds[1]);
-          col = sslib.findCompressedIndex(sslib.getMoment("Dr", { popIds[0], popIds[1] }, factorIds));
+          col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, popIds[0] }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 8.));
         }
       }

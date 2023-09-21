@@ -273,12 +273,9 @@ void SumStatsLibrary::initMoments_(bool compress)
 
   // includes "Dummy" Moment to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.emplace_back(std::make_shared<Moment>("I", 1.));
-  cleanBasis_();
-
-  for(size_t i = 0; i < moments_.size(); ++i)
-    moments_[i]->setPosition(i);
 
   linkPi2HetStats_();
+  cleanBasis_();
   basis_ = moments_; // default
 
   if(compress)
@@ -286,6 +283,8 @@ void SumStatsLibrary::initMoments_(bool compress)
     aliasMoments_();
     compressBasis_();
   }
+
+  printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
@@ -339,7 +338,13 @@ void SumStatsLibrary::cleanBasis_()
       else
         ++it;
     }
+
+    else
+      ++it;
   }
+
+  for(size_t i = 0; i < moments_.size(); ++i)
+    moments_[i]->setPosition(i);
 }
 
 void SumStatsLibrary::linkPi2HetStats_()
@@ -379,7 +384,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 
   for(size_t i = 0; i < getNumStats(); ++i)
   {
-    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Dr"))
+    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Dr") || (moments_[i]->getPrefix() == "Hr")) // NOTE sometimes, alias Hl's as well
     {
       std::vector<size_t> pops(0);
       pops.reserve(2);
@@ -395,13 +400,22 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
     }
   }
 
-  // pi2 stats are aliased if both their left and right H's are aliased
+  // pi2 stats are aliased if their Hl are the same and and their Hr are aliased
   for(size_t i = 0; i < getNumStats(); ++i)
   {
     if(moments_[i]->getPrefix() == "pi2")
     {
-      auto left1 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i])->getLeftHetStat();
-      auto right1 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i])->getRightHetStat();
+      auto tmpPi2First = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
+
+      std::cout << "model:\n";
+      tmpPi2First->printAttributes(std::cout);
+      tmpPi2First->getLeftHetStat()->printAttributes(std::cout);
+      tmpPi2First->getRightHetStat()->printAttributes(std::cout);
+
+      auto left1 = tmpPi2First->getLeftHetStat();
+      auto right1 = tmpPi2First->getRightHetStat();
+
+      //left1->printAttributes(std::cout);
 
       assert(left1 != nullptr && right1 != nullptr);
 
@@ -409,16 +423,28 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
       {
         if(moments_[j]->getPrefix() == "pi2")
         {
-          auto left2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getLeftHetStat();
-          auto right2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[j])->getRightHetStat();
+          auto tmpPi2Second = std::dynamic_pointer_cast<Pi2Moment>(moments_[j]);
+
+          std::cout << "\ncomp:\n";
+          tmpPi2Second->printAttributes(std::cout);
+          tmpPi2Second->getLeftHetStat()->printAttributes(std::cout);
+          tmpPi2Second->getRightHetStat()->printAttributes(std::cout);
+
+          auto left2 = tmpPi2Second->getLeftHetStat();
+          auto right2 = tmpPi2Second->getRightHetStat();
 
           assert(left2 != nullptr && right2 != nullptr);
+
+          //left2->printAttributes(std::cout);
 
           bool leftEq = left1 == left2 || left1->hasAlias(left2);
           bool rightEq = right1 == right2 || right1->hasAlias(right2);
 
           if(leftEq && rightEq)
-            moments_[i]->insertAlias(std::dynamic_pointer_cast<Pi2Moment>(moments_[j]));
+          {
+            std::cout << "try\n\n\n";
+            tmpPi2First->insertAlias(tmpPi2Second);
+          }
         }
       }
     }

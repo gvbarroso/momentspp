@@ -166,7 +166,11 @@ public:
 
   bool hasCrossPopFactors()
   {
-    return std::adjacent_find(std::begin(factorIndices_), std::end(factorIndices_), std::not_equal_to<size_t>()) != std::end(factorIndices_);
+    if(factorIndices_.size() > 0)
+      return std::adjacent_find(std::begin(factorIndices_), std::end(factorIndices_), std::not_equal_to<size_t>()) != std::end(factorIndices_);
+
+    else
+      return false;
   }
 
   void setValueFromParent()
@@ -346,7 +350,6 @@ public:
     }
 
     name_ = nome;
-
     std::sort(std::begin(popIndices_), std::end(popIndices_)); // NOTE new, added on 20/09/2023
   }
 };
