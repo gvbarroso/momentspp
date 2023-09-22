@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 21/09/2023
+ * Last modified: 22/09/2023
  *
  */
 
@@ -283,8 +283,6 @@ void SumStatsLibrary::initMoments_(bool compress)
     aliasMoments_();
     compressBasis_();
   }
-
-  printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
@@ -407,15 +405,8 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
     {
       auto tmpPi2First = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
 
-      std::cout << "model:\n";
-      tmpPi2First->printAttributes(std::cout);
-      tmpPi2First->getLeftHetStat()->printAttributes(std::cout);
-      tmpPi2First->getRightHetStat()->printAttributes(std::cout);
-
       auto left1 = tmpPi2First->getLeftHetStat();
       auto right1 = tmpPi2First->getRightHetStat();
-
-      //left1->printAttributes(std::cout);
 
       assert(left1 != nullptr && right1 != nullptr);
 
@@ -425,26 +416,16 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
         {
           auto tmpPi2Second = std::dynamic_pointer_cast<Pi2Moment>(moments_[j]);
 
-          std::cout << "\ncomp:\n";
-          tmpPi2Second->printAttributes(std::cout);
-          tmpPi2Second->getLeftHetStat()->printAttributes(std::cout);
-          tmpPi2Second->getRightHetStat()->printAttributes(std::cout);
-
           auto left2 = tmpPi2Second->getLeftHetStat();
           auto right2 = tmpPi2Second->getRightHetStat();
 
           assert(left2 != nullptr && right2 != nullptr);
 
-          //left2->printAttributes(std::cout);
-
           bool leftEq = left1 == left2 || left1->hasAlias(left2);
           bool rightEq = right1 == right2 || right1->hasAlias(right2);
 
           if(leftEq && rightEq)
-          {
-            std::cout << "try\n\n\n";
             tmpPi2First->insertAlias(tmpPi2Second);
-          }
         }
       }
     }

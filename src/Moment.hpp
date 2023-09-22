@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 21/09/2023
+ * Last modified: 22/09/2023
  *
  */
 
@@ -161,6 +161,9 @@ public:
 
   bool isCrossPop() // tells if moment involves samples from more than 1 population
   {
+    auto tmp = popIndices_;
+    std::sort(std::begin(tmp), std::end(tmp));
+
     return std::adjacent_find(std::begin(popIndices_), std::end(popIndices_), std::not_equal_to<size_t>()) != std::end(popIndices_);
   }
 
@@ -330,7 +333,7 @@ public:
       }
     }
 
-    // sorts to compare *this and other moments more easily
+    // sorts to compare *this and other moments more easily NOTE popIndices_ should not be sorted!
     std::sort(std::begin(factorIndices_), std::end(factorIndices_));
 
     // aesthetics
@@ -350,7 +353,6 @@ public:
     }
 
     name_ = nome;
-    std::sort(std::begin(popIndices_), std::end(popIndices_)); // NOTE new, added on 20/09/2023
   }
 };
 
