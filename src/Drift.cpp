@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/09/2023
+ * Last modified: 22/09/2023
  *
  */
 
@@ -26,6 +26,9 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     int b = -1;
     int c = 2;
     int d = 1;
+
+    int e = -2;
+    int f = -1;
 
     int j = 0;
     int k = -3;
@@ -87,25 +90,32 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           factorIds.push_back(id);
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1.));
+        }
 
-          if(popIdPower > 1)
-          {
-            factorIds = (*it)->getFactorIndices(); // reset
-            sslib.dropFactorIds(factorIds, id, 2);
+        else if(popIdCount == 1)
+        {
+          e += f;
+          --f;
 
-            popIds = { id, id };
-            double y = (popIdPower * (popIdPower - 1)) / 2.;
-            col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
-          }
+          coeffs.emplace_back(Eigen::Triplet<double>(row, row, e));
+        }
+
+        if(popIdPower > 1)
+        {
+          factorIds = (*it)->getFactorIndices(); // reset
+          sslib.dropFactorIds(factorIds, id, 2);
+
+          double y = (popIdPower * (popIdPower - 1)) / 2.;
+          col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
         }
       }
 
-      else if((*it)->getPrefix() == "Dr")
+      else if((*it)->getPrefix() == "Dr") // TODO improve
       {
-        if((*it)->getPopIndices()[0] == id) // D_i_r*
+        if((*it)->getPopIndices()[0] == id) // D_id_r_-
         {
-          if(popIdCount == 2) // D_i_r_i
+          if(popIdCount == 2) // D_id_r_id
           {
             l += m;
             --m;
