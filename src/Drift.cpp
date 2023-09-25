@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 22/09/2023
+ * Last modified: 25/09/2023
  *
  */
 
@@ -21,12 +21,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
     std::vector<Eigen::Triplet<double>> coeffs(0);
     coeffs.reserve(sizeOfBasis);
 
-    // helpers for counting coefficients
-    int a = -2;
-    int b = -1;
-    int c = 2;
-    int d = 1;
+    // helpers for counting coefficients (assumes basis is ordered with SumStatsLibrary::compareMoments_())
+    // D
+    int a = -1;
+    int b = -2;
+    int c = 1;
+    int d = 2;
 
+    // DD
     int e = -2;
     int f = -1;
 
@@ -102,7 +104,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         if(popIdPower > 1)
         {
-          factorIds = (*it)->getFactorIndices(); // reset
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
           sslib.dropFactorIds(factorIds, id, 2);
 
           double y = (popIdPower * (popIdPower - 1)) / 2.;
