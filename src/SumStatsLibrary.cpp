@@ -120,7 +120,7 @@ void SumStatsLibrary::initMoments_(bool compress)
     std::string name = "D_" + asString(*itI); // naked singed D
     moments_.emplace_back(std::make_shared<Moment>(name, 0.));
 
-    for(size_t i = 1; i < (factorOrder_ + 2); ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
+    for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE D stats include one factor of (1-2p) more than other stats
     {
       std::vector<size_t> factorIds(i);
 
@@ -148,9 +148,9 @@ void SumStatsLibrary::initMoments_(bool compress)
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
       name = "DD_" + asString(*itI) + "_" + asString(*itJ);
-      moments_.emplace_back(std::make_shared<DdMoment>(name, 0.)); // from the canonical Ragsdale-Gravel basis
+      moments_.emplace_back(std::make_shared<DdMoment>(name, 0.));
 
-      for(size_t i = 1; i < (factorOrder_ + 1); ++i)  // NOTE Dr stats include one factor of (1-2p) more than other stats
+      for(size_t i = 1; i < (factorOrder_ + 1); ++i)
       {
         std::vector<size_t> factorIds(i);
 
@@ -178,7 +178,7 @@ void SumStatsLibrary::initMoments_(bool compress)
       name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
       moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
 
-      for(size_t i = 1; i < (factorOrder_ + 2); ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
+      for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
       {
         std::vector<size_t> factorIds(i);
 
@@ -284,7 +284,7 @@ void SumStatsLibrary::initMoments_(bool compress)
     compressBasis_();
   }
 
-  printBasis(std::cout);
+  //printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
@@ -358,14 +358,14 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 {
   assert(getNumStats() > 0);
 
-  for(size_t i = 0; i < getNumStats(); ++i)
+  for(size_t i = 0; i < getNumStats(); ++i) // NOTE sometimes, alias Hl's as well
   {
-    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Dr") || (moments_[i]->getPrefix() == "Hr")) // NOTE sometimes, alias Hl's as well
+    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Dr") || (moments_[i]->getPrefix() == "Hr"))
     {
       std::vector<size_t> pops(0);
       pops.reserve(2);
 
-      // finding candidate alias moments by inverting order of pop ids, NOTE: does this work for Dr moments as well?
+      // finding candidate alias moments by inverting order of pop ids
       pops.emplace_back(moments_[i]->getPopIndices()[1]);
       pops.emplace_back(moments_[i]->getPopIndices()[0]);
 

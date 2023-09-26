@@ -130,10 +130,15 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
           }
 
-          else if(popIdPower > 0) // NOTE used to be just 'else'
+          else if(popIdPower > 0)
           {
             std::vector<size_t> factorIds = (*it)->getFactorIndices();
-            sslib.dropFactorIds(factorIds, id, 1);
+
+            if((*it)->getFactorPower() > sslib.getFactorOrder() + 1)
+              sslib.dropFactorIds(factorIds, id, 2);
+
+            else
+              sslib.dropFactorIds(factorIds, id, 1);
 
             col = sslib.findCompressedIndex(sslib.getMoment("DD", popIds, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -2.));
@@ -422,7 +427,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 4.));
           }
 
-          else // WARNING heavy truncation makes us collect twice from D_id_{factorIds}
+          else // NOTE heavy truncation makes us collect twice from D_id_{factorIds}
           {
             col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 4.));

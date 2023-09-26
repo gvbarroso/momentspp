@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 22/09/2023
+ * Last modified: 26/09/2023
  *
  */
 
@@ -79,10 +79,16 @@ public:
     if(aliases_.size() > 0)
     {
       auto tmp = getAliases();
-      stream << "\taliases: ";
+      stream << "\talias(es): ";
 
       for(auto it = std::begin(tmp); it != std::end(tmp); ++it)
-        stream << (*it)->getName() << ",";
+      {
+        stream << (*it)->getName();
+        auto test = it;
+
+        if(++test != std::end(tmp))
+          stream << ",";
+      }
 
       stream << "\n";
     }
