@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 22/09/2023
+ * Last modified: 26/09/2023
  *
  */
 
@@ -120,7 +120,7 @@ void SumStatsLibrary::initMoments_(bool compress)
     std::string name = "D_" + asString(*itI); // naked singed D
     moments_.emplace_back(std::make_shared<Moment>(name, 0.));
 
-    for(size_t i = 1; i < (factorOrder_ + 1); ++i) // for each factor id count
+    for(size_t i = 1; i < (factorOrder_ + 2); ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
     {
       std::vector<size_t> factorIds(i);
 
@@ -150,7 +150,7 @@ void SumStatsLibrary::initMoments_(bool compress)
       name = "DD_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<DdMoment>(name, 0.)); // from the canonical Ragsdale-Gravel basis
 
-      for(size_t i = 1; i < (factorOrder_ + 1); ++i) // for each factor id count
+      for(size_t i = 1; i < (factorOrder_ + 1); ++i)  // NOTE Dr stats include one factor of (1-2p) more than other stats
       {
         std::vector<size_t> factorIds(i);
 
@@ -283,6 +283,8 @@ void SumStatsLibrary::initMoments_(bool compress)
     aliasMoments_();
     compressBasis_();
   }
+
+  printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
@@ -316,30 +318,6 @@ void SumStatsLibrary::cleanBasis_()
   moments_.erase(std::unique(std::begin(moments_), std::end(moments_),
                              [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
                              { return (a->getName() == b->getName() ? true : false); }), std::end(moments_));
-
-  // NOTE we only need cross-pop factors in pi2 stats for migration and admixture
-  // pi2 moments of kind pi2_id_id_*_* need only factors of (1-2p_id) for selection
-  for(auto it = std::begin(moments_); it != std::end(moments_);)
-  {
-    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*it);
-
-    if(tmpPi2 != nullptr)
-    {
-      auto tmpHl = tmpPi2->getLeftHetStat();
-
-      if(tmpPi2->hasCrossPopFactors())
-        it = moments_.erase(it);
-
-      else if(!tmpHl->isCrossPop() && !tmpHl->hasSamePopIds(tmpPi2->getRightHetStat()) && !tmpHl->hasAllOfPopIndices(tmpPi2->getFactorIndices()))
-        it = moments_.erase(it);
-
-      else
-        ++it;
-    }
-
-    else
-      ++it;
-  }
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 21/09/2023
+ * Last modified: 26/09/2023
  *
  */
 
@@ -304,7 +304,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         }
       }
 
-      else if((*it)->getPrefix() == "pi2") // NOTE do we ever need cross-pop factors in pi2 stats?!
+      else if((*it)->getPrefix() == "pi2")
       {
         auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(*it);
         assert(tmpPi2 != nullptr);
@@ -316,7 +316,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, row, std::pow(-1, popIds[0] != id) / 2.));
 
         // pi2 contributions
-        if(countLeft != 0)
+        if(countLeft > 0 || popIdPower > 0)
         {
           if((*it)->getFactorPower() < sslib.getFactorOrder())
           {
@@ -402,7 +402,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           // D contributions
           factorIds = (*it)->getFactorIndices(); // reset
 
-          col = sslib.findCompressedIndex(sslib.getMoment("D", { 0 }, factorIds));
+          col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 4.));
 
           if((*it)->getFactorPower() < sslib.getFactorOrder() - 1)
@@ -410,7 +410,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             factorIds.push_back(id);
             factorIds.push_back(id);
 
-            col = sslib.findCompressedIndex(sslib.getMoment("D", { popIds[2], popIds[3] }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 4.));
           }
 
@@ -418,13 +418,13 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           {
             factorIds.push_back(id);
 
-            col = sslib.findCompressedIndex(sslib.getMoment("D", { popIds[2], popIds[3] }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 4.));
           }
 
           else // WARNING heavy truncation makes us collect twice from D_id_{factorIds}
           {
-            col = sslib.findCompressedIndex(sslib.getMoment("D", { popIds[2], popIds[3] }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 4.));
           }
         }
