@@ -45,7 +45,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
     for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
     {
-      (*it)->printAttributes(std::cout);
+      //(*it)->printAttributes(std::cout);
 
       int row = it - std::begin(sslib.getBasis());
       int col = -1;
@@ -76,7 +76,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         }
       }
 
-      else if((*it)->getPrefix() == "DD") // WARNING check what happens when there are cross-pop factors
+      // WARNING check what happens when there are cross-pop factors
+      else if((*it)->getPrefix() == "DD")
       {
         if(popIdCount == 2)
         {
@@ -115,7 +116,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
       else if((*it)->getPrefix() == "Dr")
       {
-        if((*it)->getPopIndices()[0] == id) // D_id_r_-
+        if((*it)->getPopIndices()[0] == id) // D_id_r_*
         {
           if(popIdCount == 2) // D_id_r_id
           {
@@ -129,8 +130,11 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = (*it)->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
-              if(popIdPower > (sslib.getFactorOrder() + 1) || (((*it)->getFactorPower() > sslib.getFactorOrder()) && popIdPower > 1))
+              if((popIdPower > (sslib.getFactorOrder() + 1)) || (((*it)->getFactorPower() > sslib.getFactorOrder()) && popIdPower > 1))
                 sslib.dropFactorIds(factorIds, id, 1);
+
+              while(factorIds.size() > static_cast<size_t>(sslib.getFactorOrder())) // NOTE
+                factorIds.pop_back();
 
               col = sslib.findCompressedIndex(sslib.getMoment("DD",  { id, id }, factorIds));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, 4. * popIdPower));

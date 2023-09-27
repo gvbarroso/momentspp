@@ -283,8 +283,6 @@ void SumStatsLibrary::initMoments_(bool compress)
     aliasMoments_();
     compressBasis_();
   }
-
-  //printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
