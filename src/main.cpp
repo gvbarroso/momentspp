@@ -140,8 +140,8 @@ int main(int argc, char *argv[]) {
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        //for(size_t j = 0; j < operators.size(); ++j)
-          //operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
+        for(size_t j = 0; j < operators.size(); ++j)
+          operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
 
         // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
@@ -153,8 +153,8 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    //epochs.back()->printRecursions(std::cout);
-    //epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
+    epochs.back()->printRecursions(std::cout);
+    epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
   }
 
   epochs.front()->computeSteadyState(); // only need to have steady state in the deepest epoch

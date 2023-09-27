@@ -7,50 +7,28 @@ demes:
   - name: A
     ancestors: [X]
     epochs:
-      - end_time: 5000
-        start_size: 12000
-      - end_time: 1000
       - end_time: 0
+        start_size: 12000
   - name: B
     ancestors: [X]
     epochs:
-      - end_time: 5000
-        start_size: 4000
-      - end_time: 2000
       - end_time: 0
+        start_size: 4000
 metadata:
   - name: mutation
     epochs:
       - end_time: 10000
         rates: [1e-6]
-      - end_time: 5000
-        rates: [1e-7, 1e-7]
-      - end_time: 2000
-        rates: [1e-5, 1e-4]
-      - end_time: 1000
-        rates: [1e-6, 1e-5]
       - end_time: 0
-        rates: [1e-5, 1e-6]
+        rates: [1e-7, 1e-7]
   - name: recombination
     epochs:
       - end_time: 10000
         rates: [1e-5]
-      - end_time: 5000
-        rates: [1e-6, 1e-5]
-      - end_time: 2000
-        rates: [1e-5, 1e-6]
-      - end_time: 1000
-        rates: [1e-6, 1e-4]
       - end_time: 0
-        rates: [1e-5, 1e-3]
+        rates: [1e-6, 1e-5]
   - name: selection
     start_time: 10000
     epochs:
-      - end_time: 5000
-        rates: [-1e-4, -1e-5]
-      - end_time: 2000
-        rates: [-1e-5, -1e-4]
-      - end_time: 1000
-        rates: [-1e-6, -1e-5]
       - end_time: 0
-        rates: [-1e-4, -1e-6]
+        rates: [-1e-4, -1e-5]

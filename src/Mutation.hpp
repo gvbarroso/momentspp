@@ -11,8 +11,7 @@
 
 #include "AbstractOperator.hpp"
 
-class Mutation:
-  public AbstractOperator
+class Mutation: public AbstractOperator
 {
 
 public:
