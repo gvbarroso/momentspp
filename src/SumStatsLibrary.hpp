@@ -128,9 +128,9 @@ public:
     return moments_.size();
   }
 
-  int getFactorOrder() const
+  size_t getFactorOrder() const
   {
-    return static_cast<int>(factorOrder_);
+    return factorOrder_;
   }
 
   std::shared_ptr<Moment> getMoment(const std::string& name) const;

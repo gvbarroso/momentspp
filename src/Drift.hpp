@@ -54,8 +54,6 @@ private:
   void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
-
-
 };
 
 #endif
