@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 21/04/2023
+ * Last modified: 28/09/2023
  *
  */
 
@@ -40,9 +40,22 @@ public:
     return new Drift(*this);
   }
 
+private:
+  int computeDMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
+
+  int computeDOffDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
+
+  int computeDrMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
+
+  int computeDDMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
+
+  int computePi2MainDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
+
   void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
+
+
 };
 
 #endif
