@@ -46,6 +46,8 @@ int main(int argc, char *argv[]) {
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
    * 2. BGS SFS
    * 3. BGS in non-equilibrium populations
+   * 4. TODO Compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
+   * https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
    */
 
   if(argc == 1)

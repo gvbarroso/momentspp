@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 28/09/2023
+ * Last modified: 29/09/2023
  *
  */
 
@@ -50,6 +50,8 @@ private:
   int computeDDMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
 
   int computePi2MainDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
+
+  int computePi2OffDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
 
   void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
