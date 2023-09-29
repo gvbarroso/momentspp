@@ -329,7 +329,6 @@ void SumStatsLibrary::linkPi2HetStats_()
 
     if(tmp != nullptr)
     {
-      std::vector<size_t> dummy(0); // for searching Hr stat
       std::vector<size_t> popsLeft(0);
       std::vector<size_t> popsRight(0);
 
@@ -342,7 +341,7 @@ void SumStatsLibrary::linkPi2HetStats_()
       popsRight.emplace_back(tmp->getPopIndices()[3]);
 
       auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmp->getFactorIndices()));
-      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, dummy));
+      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, { }));
 
       assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
@@ -352,7 +351,7 @@ void SumStatsLibrary::linkPi2HetStats_()
   }
 }
 
-void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by design
+void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by design WARNING mind the symmetries of the right locus under Drift, with 1-2q0 cancelling out
 {
   assert(getNumStats() > 0);
 

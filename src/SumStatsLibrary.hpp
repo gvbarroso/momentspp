@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 07/09/2023
+ * Last modified: 29/09/2023
  */
 
 
@@ -152,6 +152,17 @@ public:
   void printBasis(std::ostream& stream);
 
 private:
+  size_t fetchOtherId_(size_t id)
+  {
+    assert(popIndices_.size() == 2);
+
+    if(popIndices_[0] == id)
+      return popIndices_[1];
+
+    else
+      return popIndices_[0];
+  }
+
   void initMoments_(bool compress);
 
   static bool compareMoments_(std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
