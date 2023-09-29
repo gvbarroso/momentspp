@@ -431,6 +431,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             col = sslib.findCompressedIndex(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -sign * popIdPower));
 
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 4. + popIdPower / 4.));
+
+            sslib.dropFactorIds(factorIds, fetchOtherId_(id), 1);
+
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, sign * (1. / 4. + popIdPower / 4.)));
+
             if(popIdPower > 1)
             {
               sslib.dropFactorIds(factorIds, id, 1);
