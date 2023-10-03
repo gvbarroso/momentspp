@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 02/10/2023
+ * Last modified: 03/10/2023
  *
  */
 
@@ -223,8 +223,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       int row = it - std::begin(sslib.getBasis());
       int col = -1;
 
-      size_t popIdCount = (*it)->countInstances(id);
-      size_t popIdPower = (*it)->getPopFactorPower(id);
+      int popIdCount = static_cast<int>((*it)->countInstances(id));
+      int popIdPower = static_cast<int>((*it)->getPopFactorPower(id));
+
+      (*it)->printAttributes(std::cout);
 
       if((*it)->getPrefix() == "D")
       {
@@ -259,7 +261,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = (*it)->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
-              if((popIdPower > (sslib.getFactorOrder() + 1)) || (((*it)->getFactorPower() > sslib.getFactorOrder()) && popIdPower > 1))
+              if((popIdPower > static_cast<int>((sslib.getFactorOrder() + 1))) || (((*it)->getFactorPower() > sslib.getFactorOrder()) && popIdPower > 1))
                 sslib.dropFactorIds(factorIds, id, 1);
 
               while(factorIds.size() > sslib.getFactorOrder()) // NOTE
@@ -380,6 +382,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         else if(countLeft == 2 && countRight == 1)
         {
           std::vector<size_t> factorIds = (*it)->getFactorIndices();
+          factorIds.push_back(id);
 
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 4. + popIdPower / 8.));
@@ -395,14 +398,15 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower / 8.));
 
-            col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower / 8.));
+            // NOTE left out because of right-locus symmetries
+            //col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
+            //coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower / 8.));
 
             if(popIdPower > 1)
             {
               sslib.dropFactorIds(factorIds, id, 1);
 
-              int y = computePi2MainDiagContribution_(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds), id);// NOTE
+              int y = computePi2MainDiagContribution_(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds), id); // NOTE
               col = sslib.findCompressedIndex(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, y));
             }
@@ -411,28 +415,13 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         else if(countLeft == 2 && countRight == 0)
         {
-          if(popIdPower > 0)
+          if(popIdPower > 1)
           {
             std::vector<size_t> factorIds = (*it)->getFactorIndices();
-            sslib.dropFactorIds(factorIds, id, 1);
+            sslib.dropFactorIds(factorIds, id, 2);
 
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -(1. / 4. + (popIdPower - 1) / 4.)));
-
-            factorIds.push_back(sslib.fetchOtherId(id));
-            factorIds.push_back(sslib.fetchOtherId(id));
-
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 4. + (popIdPower - 1) / 4.));
-
-            if(popIdPower > 1)
-            {
-              sslib.dropFactorIds(factorIds, sslib.fetchOtherId(id), 2);
-              sslib.dropFactorIds(factorIds, id, 1);
-
-              int x = computePi2OffDiagContribution_(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds), id);
-              coeffs.emplace_back(Eigen::Triplet<double>(row, col, x));
-            }
+            int x = computePi2OffDiagContribution_(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds), id);
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, x));
           }
         }
 
@@ -551,6 +540,59 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, popIdPower));
             }
           }
+        }
+
+        else if(countLeft == 1 && countRight == 0)
+        {
+          if(popIdPower > 0)
+          {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
+            sslib.dropFactorIds(factorIds, id, 1);
+
+            int sign = std::pow(-1, (*it)->getPopIndices()[0] == id); // sign of contributions that would cancel out if p1(1-p0) == p0(1-p1)
+            col = sslib.findCompressedIndex(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds), id);
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, sign * popIdPower));
+
+            if(popIdPower > 1)
+            {
+              std::vector<size_t> factorIds = (*it)->getFactorIndices();
+              sslib.dropFactorIds(factorIds, id, 1);
+
+              int x = computePi2OffDiagContribution_(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds), id);
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, x));
+            }
+          }
+        }
+
+        else if(countLeft == 0 && countRight == 2)
+        {
+          if(popIdPower > 0)
+          {
+            std::vector<size_t> factorIds = (*it)->getFactorIndices();
+            sslib.dropFactorIds(factorIds, id, 1);
+
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -(1. / 4. + (popIdPower - 1) / 4.)));
+
+            factorIds.push_back(sslib.fetchOtherId(id));
+            factorIds.push_back(sslib.fetchOtherId(id));
+
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 4. + (popIdPower - 1) / 4.));
+
+            if(popIdPower > 1)
+            {
+              sslib.dropFactorIds(factorIds, sslib.fetchOtherId(id), 2);
+              sslib.dropFactorIds(factorIds, id, 1);
+
+              int x = computePi2OffDiagContribution_(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds), id);
+              coeffs.emplace_back(Eigen::Triplet<double>(row, col, x));
+            }
+          }
+        }
+
+        else if(countLeft == 0 && countRight == 1)
+        {
         }
       }
 
