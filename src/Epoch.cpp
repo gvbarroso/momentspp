@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 07/09/2023
+ * Last modified: 04/10/2023
  *
  */
 
@@ -93,7 +93,7 @@ void Epoch::printRecursions(std::ostream& stream)
               if(mat.coeffRef(pos, l) > 0)
                 stream << "+";
 
-              stream << ssl_.asString(mat.coeffRef(pos, l)) + "*" + name + "*" + ssl_.getBasis()[l]->getName() + " ";
+              stream << std::setprecision(3) << mat.coeffRef(pos, l) << "*" + name + "*" + ssl_.getBasis()[l]->getName() + " ";
             }
           }
         }

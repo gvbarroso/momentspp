@@ -31,4 +31,4 @@ metadata:
     start_time: 10000
     epochs:
       - end_time: 0
-        rates: [-1e-4, -1e-5]
+        rates: [-1e-5, -1e-4]

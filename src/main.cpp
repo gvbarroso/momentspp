@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 02/Oct/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 04/Oct/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
         for(size_t j = 0; j < operators.size(); ++j)
           operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
 
-        // if previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
+        // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
           ++start;
       }
