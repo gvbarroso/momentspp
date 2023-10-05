@@ -24,8 +24,6 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 
     for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
     {
-      //(*it)->printAttributes(std::cout);
-
       int row = it - std::begin(sslib.getBasis());
       int col = -1;
 
@@ -44,18 +42,14 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 
         // introducing 2-locus Het via mutation in right locus (when left already polymorphic)
         auto tempLeft = tmpPi2->getLeftHetStat();
-        //tempLeft->printAttributes(std::cout);
         size_t factorLeft = tempLeft->countInstances(id);
         col = tempLeft->getPosition();
-        //std::cout << col << " vs " << sslib.findCompressedIndex(tempLeft) << "\n";
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, factorLeft / 2.));
 
         // introducing 2-locus Het via mutation in left locus (when right already polymorphic)
         auto tempRight = tmpPi2->getRightHetStat();
-        //tempRight->printAttributes(std::cout);
         size_t factorRight = tempRight->countInstances(id);
         col = tempRight->getPosition();
-        //std::cout << col << " vs " << sslib.findCompressedIndex(tempRight) << "\n\n";
         coeffs.emplace_back(Eigen::Triplet<double>(row, col, factorRight / 2.));
       }
 

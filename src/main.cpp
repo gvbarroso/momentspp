@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    //epochs.back()->printRecursions(std::cout);
+    epochs.back()->printRecursions(std::cout);
     epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
   }
 

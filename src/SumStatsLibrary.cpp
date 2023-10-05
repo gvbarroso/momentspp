@@ -280,8 +280,8 @@ void SumStatsLibrary::initMoments_(bool compress)
   // includes "Dummy" Moment to convert into a homogeneous system (see Mutation::setUpMatrices_())
   moments_.emplace_back(std::make_shared<Moment>("I", 1.));
 
-  linkPi2HetStats_();
   cleanBasis_();
+  linkPi2HetStats_();
   basis_ = moments_; // default
 
   if(compress)
@@ -290,7 +290,7 @@ void SumStatsLibrary::initMoments_(bool compress)
     compressBasis_();
   }
 
-  printBasis(std::cout);
+  //printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
