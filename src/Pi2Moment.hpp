@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 08/06/2023
+ * Last modified: 05/10/2023
  *
  */
 
@@ -52,6 +52,42 @@ public:
   void setRightHetStat(std::shared_ptr<HetMoment> mom)
   {
     right_ = mom;
+  }
+
+  void printAttributes(std::ostream& stream) override
+  {
+    stream << "(" << position_ << ") " << name_;
+    stream << " = " << std::scientific << value_;
+
+    if(parent_ != nullptr)
+      stream << "; parent = " << parent_->getName() << "\n";
+
+    else
+      stream << "\n";
+
+    if(aliases_.size() > 0)
+    {
+      auto tmp = getAliases();
+      stream << "\talias(es): ";
+
+      for(auto it = std::begin(tmp); it != std::end(tmp); ++it)
+      {
+        stream << (*it)->getName();
+        auto test = it;
+
+        if(++test != std::end(tmp))
+          stream << ",";
+      }
+
+      stream << "\n";
+    }
+
+    stream << "L = " << left_ << " ";
+    left_->printAttributes(stream);
+
+    stream << "R = " << right_ << " ";
+    right_->printAttributes(stream);
+    stream << "\n";
   }
 
   bool hasSamePopIds(std::shared_ptr<Moment> other) override

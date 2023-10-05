@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 28/09/2023
+ * Last modified: 05/10/2023
  *
  */
 
@@ -68,7 +68,8 @@ public:
 
   virtual void printAttributes(std::ostream& stream)
   {
-    stream << std::scientific << name_ << " = " << value_;
+    stream << "(" << position_ << ") " << name_;
+    stream << " = " << std::scientific << value_;
 
     if(parent_ != nullptr)
       stream << "; parent = " << parent_->getName() << "\n";
@@ -96,7 +97,7 @@ public:
 
   virtual bool hasSamePopIds(std::shared_ptr<Moment> mom)
   {
-    return mom->getPopIndices() == popIndices_; // default, needed for DummyMoment "I"
+    return mom->getPopIndices() == popIndices_;
   }
 
   const std::string& getName() const
@@ -167,10 +168,16 @@ public:
 
   bool isCrossPop() // tells if moment involves samples from more than 1 population
   {
-    auto tmp = popIndices_;
-    std::sort(std::begin(tmp), std::end(tmp));
+    if(popIndices_.size() == 1) // naked signed D
+      return false;
 
-    return std::adjacent_find(std::begin(popIndices_), std::end(popIndices_), std::not_equal_to<size_t>()) != std::end(popIndices_);
+    else
+    {
+      auto tmp = popIndices_;
+      std::sort(std::begin(tmp), std::end(tmp));
+
+      return std::adjacent_find(std::begin(popIndices_), std::end(popIndices_), std::not_equal_to<size_t>()) != std::end(popIndices_);
+    }
   }
 
   bool hasCrossPopFactors()

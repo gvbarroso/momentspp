@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 04/10/2023
+ * Last modified: 05/10/2023
  *
  */
 
@@ -340,18 +340,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           factorIds.push_back(id);
 
           col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, id }, factorIds));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. + popIdPower / 2.));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./ 2. + popIdPower / 4.));
 
           if(popIdPower > 0)
           {
-            sslib.dropFactorIds(factorIds, id, 1);
+            sslib.dropFactorIds(factorIds, id, 2);
+
             col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, id }, factorIds));
-            coeffs.emplace_back(Eigen::Triplet<double>(row, col, (-2. * popIdPower) / 4.));
+            coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower / 4.));
 
             if(popIdPower > 1)
             {
-              sslib.dropFactorIds(factorIds, id, 1);
-
               col = sslib.findCompressedIndex(sslib.getMoment("pi2", (*it)->getPopIndices(), factorIds));
               coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdPower * (popIdPower - 1)) / 2.));
             }

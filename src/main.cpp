@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. Barroso                    Last Modif. 04/Oct/2023 *" << std::endl;
+  std::cout << "* Authors: G. Barroso                    Last Modif. 05/Oct/2023 *" << std::endl;
   std::cout << "*          A. Ragsdale                                           *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    epochs.back()->printRecursions(std::cout);
+    //epochs.back()->printRecursions(std::cout);
     epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
   }
 

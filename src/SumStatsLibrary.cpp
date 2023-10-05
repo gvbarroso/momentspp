@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 26/09/2023
+ * Last modified: 05/10/2023
  *
  */
 
@@ -96,13 +96,19 @@ Eigen::VectorXd SumStatsLibrary::fetchYvec()
 void SumStatsLibrary::printMoments(std::ostream& stream)
 {
   for(size_t i = 0; i < moments_.size(); ++i)
+  {
+    stream << moments_[i] << "\t";
     moments_[i]->printAttributes(stream);
+  }
 }
 
 void SumStatsLibrary::printBasis(std::ostream& stream)
 {
   for(size_t i = 0; i < basis_.size(); ++i)
+  {
+    stream << basis_[i] << "\t";
     basis_[i]->printAttributes(stream);
+  }
 }
 
 void SumStatsLibrary::initMoments_(bool compress)
@@ -283,6 +289,8 @@ void SumStatsLibrary::initMoments_(bool compress)
     aliasMoments_();
     compressBasis_();
   }
+
+  printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
@@ -325,9 +333,9 @@ void SumStatsLibrary::linkPi2HetStats_()
 {
   for(size_t i = 0; i < getNumStats(); ++i)
   {
-    auto tmp = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
+    auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moments_[i]);
 
-    if(tmp != nullptr)
+    if(tmpPi2 != nullptr)
     {
       std::vector<size_t> popsLeft(0);
       std::vector<size_t> popsRight(0);
@@ -335,23 +343,23 @@ void SumStatsLibrary::linkPi2HetStats_()
       popsLeft.reserve(2);
       popsRight.reserve(2);
 
-      popsLeft.emplace_back(tmp->getPopIndices()[0]);
-      popsLeft.emplace_back(tmp->getPopIndices()[1]);
-      popsRight.emplace_back(tmp->getPopIndices()[2]);
-      popsRight.emplace_back(tmp->getPopIndices()[3]);
+      popsLeft.emplace_back(tmpPi2->getPopIndices()[0]);
+      popsLeft.emplace_back(tmpPi2->getPopIndices()[1]);
+      popsRight.emplace_back(tmpPi2->getPopIndices()[2]);
+      popsRight.emplace_back(tmpPi2->getPopIndices()[3]);
 
-      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmp->getFactorIndices()));
+      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmpPi2->getFactorIndices()));
       auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, { }));
 
       assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
-      tmp->setLeftHetStat(tmpHetLeft);
-      tmp->setRightHetStat(tmpHetRight);
+      tmpPi2->setLeftHetStat(tmpHetLeft);
+      tmpPi2->setRightHetStat(tmpHetRight);
     }
   }
 }
 
-void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by design WARNING mind the symmetries of the right locus under Drift, with 1-2q0 cancelling out
+void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by design
 {
   assert(getNumStats() > 0);
 
