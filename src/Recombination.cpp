@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 07/09/2023
+ * Last modified: 06/10/2023
  *
  */
 
@@ -26,13 +26,22 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
       int row = it - std::begin(sslib.getBasis());
 
       if((*it)->getPrefix() == "DD")
-        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -2.));
+      {
+        int f = static_cast<int>((*it)->countInstances(id));
+        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -f));
+      }
 
       else if((*it)->getPrefix() == "Dr")
-        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+      {
+        int f = (*it)->getPopIndices()[0] == id;
+        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -f));
+      }
 
       else if((*it)->getPrefix() == "D")
-        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1.));
+      {
+        int f = (*it)->getPopIndices()[0] == id;
+        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -f));
+      }
 
       else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "Hl" && (*it)->getPrefix() != "Hr" && (*it)->getPrefix() != "pi2")
         throw bpp::Exception("Recombination::mis-specified Moment prefix: " + (*it)->getPrefix());

@@ -188,7 +188,7 @@ int Drift::computePi2MainDiagContribution_(std::shared_ptr<Moment> mom, size_t i
     return 0;
 }
 
-void Drift::setUpMatrices_(const SumStatsLibrary& sslib) // NOTE multiply by aliases.size()?
+void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = getParameters().size();
   size_t sizeOfBasis = sslib.getSizeOfBasis();
@@ -208,6 +208,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib) // NOTE multiply by ali
       int popIdCount = static_cast<int>((*it)->countInstances(id));
       int popIdPower = static_cast<int>((*it)->getPopFactorPower(id));
 
+      /* NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
       if((*it)->getPrefix() == "D")
       {
         if(popIdCount == 1)
@@ -224,9 +225,9 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib) // NOTE multiply by ali
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, (popIdPower * (popIdPower - 1)) / 2.));
           }
         }
-      }
+      }*/
 
-      else if((*it)->getPrefix() == "Dr")
+      if((*it)->getPrefix() == "Dr")
       {
         if((*it)->getPopIndices()[0] == id) // D_id_r_*
         {

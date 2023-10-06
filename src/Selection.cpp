@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 26/09/2023
+ * Last modified: 06/10/2023
  *
  */
 
@@ -32,6 +32,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
       std::vector<size_t> popIds = (*it)->getPopIndices();
 
+      /* NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
       if((*it)->getPrefix() == "D")
       {
         if((*it)->getFactorPower() < sslib.getFactorOrder())
@@ -60,8 +61,9 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -popIdPower/2.));
         }
       }
+      */
 
-      else if((*it)->getPrefix() == "Dr")
+      if((*it)->getPrefix() == "Dr")
       {
         if(popIdCount == 2)
         {
@@ -310,8 +312,9 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", popIds, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
 
-          col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
-          coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
+          // NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
+          //col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
+          //coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1./2.));
         }
       }
 
@@ -410,7 +413,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 4.));
           }
 
-          // D contributions
+          /* NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
           factorIds = (*it)->getFactorIndices(); // reset
 
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
@@ -438,6 +441,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
             coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 4.));
           }
+          */
         }
 
         // case: pi2_id_*_id_id
@@ -470,7 +474,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         // case: pi2_id_*_id_*
         else if(popIds[0] == id && popIds[1] != id && popIds[2] == id && popIds[3] != id)
         {
-          // Naked D contributions
+          /* NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
           std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
@@ -487,9 +491,10 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           sslib.dropFactorIds(factorIds, id, 1);
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 8.));
+          */
 
           // Dr contributions
-          factorIds = (*it)->getFactorIndices();
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, popIds[1] }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 8.));
@@ -532,7 +537,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         // case: pi2_*_id_id_*
         else if(popIds[0] != id && popIds[1] == id && countRight == 1)
         {
-          // Naked D contributions
+          /* NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
           std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
@@ -549,9 +554,10 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           sslib.dropFactorIds(factorIds, id, 1);
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 8.));
+          */
 
           // Dr contributions
-          factorIds = (*it)->getFactorIndices();
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, popIds[0] }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 8.));
@@ -586,9 +592,9 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         // case: pi2_*_*_id_*
         else if(countLeft == 0 && countRight == 1)
         {
+          /*NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
           std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
-          // D contributions
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 8.));
 
@@ -596,9 +602,10 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           factorIds.push_back(popIds[1]);
           col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 8.));
+          */
 
           // Dr contributions
-          factorIds = (*it)->getFactorIndices(); // reset
+          std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, popIds[0] }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 8.));

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 05/10/2023
+ * Last modified: 06/10/2023
  *
  */
 
@@ -123,6 +123,7 @@ void SumStatsLibrary::initMoments_(bool compress)
 
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
+    /* NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
     std::string name = "D_" + asString(*itI); // naked singed D
     moments_.emplace_back(std::make_shared<Moment>(name, 0.));
 
@@ -150,10 +151,11 @@ void SumStatsLibrary::initMoments_(bool compress)
         }
       }
     }
+    */
 
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {
-      name = "DD_" + asString(*itI) + "_" + asString(*itJ);
+      std::string name = "DD_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<DdMoment>(name, 0.));
 
       for(size_t i = 1; i < (factorOrder_ + 1); ++i)
@@ -289,8 +291,6 @@ void SumStatsLibrary::initMoments_(bool compress)
     aliasMoments_();
     compressBasis_();
   }
-
-  //printBasis(std::cout);
 }
 
 std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const

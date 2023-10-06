@@ -13,14 +13,14 @@ demes:
     ancestors: [X]
     epochs:
       - end_time: 0
-        start_size: 4000
+        start_size: 40000
 metadata:
   - name: mutation
     epochs:
       - end_time: 10000
-        rates: [1e-6]
+        rates: [1e-9]
       - end_time: 0
-        rates: [1e-7, 1e-7]
+        rates: [1e-9, 1e-9]
   - name: recombination
     epochs:
       - end_time: 10000
