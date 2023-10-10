@@ -18,5 +18,5 @@ metadata:
   - name: selection
     start_time: 7000
     epochs:
-      - rates: [1e-4]
+      - rates: [0]
         end_time: 3000

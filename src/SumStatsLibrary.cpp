@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 06/10/2023
+ * Last modified: 10/10/2023
  *
  */
 
@@ -186,7 +186,7 @@ void SumStatsLibrary::initMoments_(bool compress)
       name = "Dr_" + asString(*itI) + "_" + asString(*itJ); // D_i_(1-2q)_j, where q is the freq of derived (neutral) allele in the right locus
       moments_.emplace_back(std::make_shared<DrMoment>(name, 0.));
 
-      for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE Dr stats include one factor of (1-2p) more than other stats
+      for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE Dr stats include two factors of (1-2p) more than other stats
       {
         std::vector<size_t> factorIds(i);
 
