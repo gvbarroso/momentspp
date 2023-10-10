@@ -50,7 +50,7 @@ int Drift::computeDrMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id
     int a = 0;
     int b = -1;
 
-    for(size_t i = 0; i < totalPopIdCount - 1; ++i)
+    for(size_t i = 0; i < totalPopIdCount; ++i)
     {
       a += b;
       --b;
@@ -241,10 +241,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = (*it)->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
-              //if((popIdPower > static_cast<int>((sslib.getFactorOrder() + 1))) || (((*it)->getFactorPower() > sslib.getFactorOrder()) && popIdPower > 1))
-                //sslib.dropFactorIds(factorIds, id, 1);
-
-              while(factorIds.size() > sslib.getFactorOrder()) // NOTE
+              while(factorIds.size() > sslib.getFactorOrder()) // NOTE truncation
                 factorIds.pop_back();
 
               col = sslib.findCompressedIndex(sslib.getMoment("DD",  { id, id }, factorIds));

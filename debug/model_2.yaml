@@ -18,9 +18,9 @@ metadata:
   - name: mutation
     epochs:
       - end_time: 10000
-        rates: [1e-9]
+        rates: [1e-6]
       - end_time: 0
-        rates: [1e-9, 1e-9]
+        rates: [1e-7, 1e-7]
   - name: recombination
     epochs:
       - end_time: 10000
