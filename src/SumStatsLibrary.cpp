@@ -365,7 +365,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 
   for(size_t i = 0; i < getNumStats(); ++i) // NOTE alias Hl_ij if s_i == s_j
   {
-    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Dr") || (moments_[i]->getPrefix() == "Hr"))
+    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Hr"))
     {
       std::vector<size_t> pops(0);
       pops.reserve(2);
