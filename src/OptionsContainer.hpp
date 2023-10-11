@@ -41,7 +41,7 @@ public:
   label_(bpp::ApplicationTools::getStringParameter("label", options, "moments++", "", 0, 4)),
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, 0, 0, "", 0, "none", 0)),
   dataFilePath_(bpp::ApplicationTools::getAFilePath("obs_stats_file", options, false, true, "", false, "none", 0)),
-  initStatsFilePath_(bpp::ApplicationTools::getAFilePath("init_stats_file", options, false, true, "", false, "none", 0)),
+  initStatsFilePath_(bpp::ApplicationTools::getAFilePath("init_stats_file", options, false, true, "", false, "none", 4)),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "NewtonRhapson", "", true, 4)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
   aliasOverEpochs_(bpp::ApplicationTools::getParameter<bool>("alias_epochs_params", options, true, "", true, 4)),

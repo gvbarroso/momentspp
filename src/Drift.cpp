@@ -169,8 +169,8 @@ int Drift::computePi2MainDiagContribution_(std::shared_ptr<Moment> mom, size_t i
   {
     if(popIdCount == 3)
     {
-      int a = -1;
-      int b = 0;
+      int a = 0;
+      int b = -1;
 
       for(size_t i = 0; i < totalPopIdCount - 2; ++i)
       {
