@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 05/09/2023
+ * Last modified: 11/10/2023
  *
  */
 
@@ -24,7 +24,8 @@ class OptionsContainer
 private:
   std::string label_;
   std::string demesFilePath_;
-  std::string dataFilePath_; // or observed sum stats
+  std::string dataFilePath_; // observed sum stats, for most recent Epoch
+  std::string initStatsFilePath_; // e.g. steady-state sum stats for deep-most Epoch
   std::string numericalOptimizer_;
 
   double tolerance_; // for numerical optimization
@@ -39,7 +40,8 @@ public:
   OptionsContainer(const std::map<std::string, std::string>& options):
   label_(bpp::ApplicationTools::getStringParameter("label", options, "moments++", "", 0, 4)),
   demesFilePath_(bpp::ApplicationTools::getAFilePath("demes_file", options, 0, 0, "", 0, "none", 0)),
-  dataFilePath_(bpp::ApplicationTools::getAFilePath("stats_file", options, false, true, "", false, "none", 0)),
+  dataFilePath_(bpp::ApplicationTools::getAFilePath("obs_stats_file", options, false, true, "", false, "none", 0)),
+  initStatsFilePath_(bpp::ApplicationTools::getAFilePath("init_stats_file", options, false, true, "", false, "none", 0)),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "NewtonRhapson", "", true, 4)),
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
   aliasOverEpochs_(bpp::ApplicationTools::getParameter<bool>("alias_epochs_params", options, true, "", true, 4)),
@@ -64,6 +66,11 @@ public:
   const std::string& getDataFilePath() const
   {
     return dataFilePath_;
+  }
+
+  const std::string& getInitStatsFilePath() const
+  {
+    return initStatsFilePath_;
   }
 
   const std::string& getOptimMethod() const

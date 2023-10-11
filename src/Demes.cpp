@@ -37,7 +37,7 @@ void Demes::parse_(const std::string& fileName)
 
     for(size_t i = 0; i < pops.size(); ++i) // deme by deme, pop index (i) is fixed by order of listing demes in Demes file
     {
-      // NOTE: stats file should match pop names and/or indices in Demes file
+      // NOTE: input stats file should match pop names and/or indices in Demes file
       std::string name = pops[i]["name"].as<std::string>();
       std::string des = "none";
 

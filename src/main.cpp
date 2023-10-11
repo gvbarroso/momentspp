@@ -46,8 +46,15 @@ int main(int argc, char *argv[]) {
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
    * 2. BGS SFS
    * 3. BGS in non-equilibrium populations
-   * 4. TODO Compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
-   * https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
+   * 4. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
+   *    https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
+   *
+   * 5. Add option to input initial (steady state) vector
+   *
+   * For seminar:
+   * Benchmark speed of matrix add vs matrix mult when combining operators, as a function of Order
+   * Benchmark accuracy and speed of pseudo steady-statem, as a function of no. of generations (and starting values?)
+   *
    */
 
   if(argc == 1)
@@ -142,9 +149,6 @@ int main(int argc, char *argv[]) {
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        //for(size_t j = 0; j < operators.size(); ++j)
-         //operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
-
         // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
           ++start;
@@ -155,11 +159,15 @@ int main(int argc, char *argv[]) {
     }
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
-    epochs.back()->printRecursions(std::cout);
-    //epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
+    //epochs.back()->printRecursions(std::cout);
   }
 
-  epochs.front()->computeSteadyState(); // only need to have steady state in the deepest epoch
+  // only need to have steady state in the deepest epoch
+  if(options.getInitStatsFilePath() == "none")
+    epochs.front()->computePseudoSteadyState();
+
+  else
+    epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath());
 
   std::cout << "done.\n\nBuilding Model now.";
 

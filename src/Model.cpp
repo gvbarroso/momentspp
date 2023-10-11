@@ -38,6 +38,7 @@ void Model::computeExpectedSumStats()
 
 void Model::printAliasedMoments(std::ostream& stream)
 {
+  // prints expectations for the last (most recent) epoch
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getBasis();
 
   for(auto& m : tmp)

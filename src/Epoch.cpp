@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 05/10/2023
+ * Last modified: 11/10/2023
  *
  */
 
@@ -125,7 +125,7 @@ void Epoch::printTransitionMat(const std::string& fileName) const
   matFile.close();
 }
 
-void Epoch::computeSteadyState()
+void Epoch::computeEigenSteadyState()
 {
   testSteadyState();
   init_();
@@ -146,7 +146,7 @@ void Epoch::computeSteadyState()
   updateMoments(steadYstate_);
 }
 
-void Epoch::pseudoSteadyState()
+void Epoch::computePseudoSteadyState()
 {
   testSteadyState();
   init_();

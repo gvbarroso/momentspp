@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 10/10/2023
+ * Last modified: 11/10/2023
  *
  */
 
@@ -108,6 +108,36 @@ void SumStatsLibrary::printBasis(std::ostream& stream)
   {
     stream << basis_[i] << "\t";
     basis_[i]->printAttributes(stream);
+  }
+}
+
+void SumStatsLibrary::readStatsFromFile(const std::string& fileName)
+{
+  std::cout << "\nReading statistics from file " << fileName << "\n";
+  assert(moments_.size() > 0 && basis_.size() > 0);
+
+  boost::iostreams::filtering_istream boostStream;
+  std::ifstream inFile(fileName, std::ios_base::in);
+
+  if(!inFile.is_open())
+    throw bpp::Exception("SumStatsLibrary::could not open stats. file: " + fileName);
+
+  else
+    boostStream.push(inFile);
+
+  std::string line = "";
+  std::vector<std::string> splitLine(0);
+
+  while(std::getline(boostStream, line))
+  {
+    // assumes "mom = val" are space-separated
+    boost::split(splitLine, line, [](char c) { return c == ' '; });
+
+    std::string name = splitLine[0];
+    double val = std::stod(splitLine[2]);
+
+    auto mom = getMoment(name);
+    mom->setValue(val);
   }
 }
 

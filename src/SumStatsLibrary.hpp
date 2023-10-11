@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 02/10/2023
+ * Last modified: 11/10/2023
  */
 
 
@@ -17,6 +17,14 @@
 #include <utility>
 #include <ostream>
 #include <cassert>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
 
 #include <eigen3/Eigen/Core>
 
@@ -150,6 +158,8 @@ public:
   void printMoments(std::ostream& stream);
 
   void printBasis(std::ostream& stream);
+
+  void readStatsFromFile(const std::string& fileName);
 
   size_t fetchOtherId(size_t id)
   {

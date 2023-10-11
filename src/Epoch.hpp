@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 29/06/2023
+ * Last modified: 11/10/2023
  *
  */
 
@@ -60,7 +60,7 @@ public:
   steadYstate_()
   { }
 
-  Epoch(const std::string& name, SumStatsLibrary& ssl, size_t start, size_t end,
+  Epoch(const std::string& name, const SumStatsLibrary& ssl, size_t start, size_t end,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
         const std::vector<std::shared_ptr<Population>>& pops):
   bpp::AbstractParameterAliasable(""),
@@ -222,9 +222,9 @@ public:
 
   void printTransitionMat(const std::string& fileName) const;
 
-  void pseudoSteadyState();
+  void computePseudoSteadyState();
 
-  void computeSteadyState();
+  void computeEigenSteadyState();
 
   void testSteadyState();
 
