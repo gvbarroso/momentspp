@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 11/10/2023
+ * Last modified: 12/10/2023
  *
  */
 
@@ -153,11 +153,11 @@ void SumStatsLibrary::initMoments_(bool compress)
 
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
-    /* NOTE omitting naked signed D terms because their expectation is zero with selection only on left locus
-    std::string name = "D_" + asString(*itI); // naked singed D
-    moments_.emplace_back(std::make_shared<Moment>(name, 0.));
+    #ifdef NAKED_D
+    std::string nameD = "D_" + asString(*itI); // naked singed D
+    moments_.emplace_back(std::make_shared<Moment>(nameD, 0.));
 
-    for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE D stats include one factor of (1-2p) more than other stats
+    for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE D stats include two factors of (1-2p) more than other stats
     {
       std::vector<size_t> factorIds(i);
 
@@ -172,7 +172,7 @@ void SumStatsLibrary::initMoments_(bool compress)
           {
             factorIds[k] = popIndices_[l]; // switches pop id at position
 
-            std::string nome = name + "_l";
+            std::string nome = nameD + "_l";
             for(size_t m = 0; m < i; ++m)
               nome = nome + "_" + asString(factorIds[m]);
 
@@ -181,7 +181,7 @@ void SumStatsLibrary::initMoments_(bool compress)
         }
       }
     }
-    */
+    #endif
 
     for(auto itJ = std::begin(popIndices_); itJ != std::end(popIndices_); ++itJ)
     {

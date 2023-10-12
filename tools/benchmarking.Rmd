@@ -33,7 +33,7 @@ source ~/.bashrc
 
 cd neutrality/no_migration
 
-for((i=1;i<=5;i++))
+for((i=1;i<=4;i++))
 do
   momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=1
 done
@@ -76,7 +76,7 @@ def write_column(y, out_file):
         if m.split("_")[0] == "pi2":
             out_file.write(str(v) + "\n")
     
-for i in range(1, 6):
+for i in range(1, 5):
   with open(f"neutrality/no_migration/moments_LD_model_{i}.csv", "w+") as fout:
       f = f"neutrality/no_migration/model_{i}_demes.yaml"
       pops = ["A", "B"]
@@ -92,7 +92,7 @@ for i in range(1, 6):
 
 ```{r neutral-bench, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
 
-num_models <- 5
+num_models <- 4
 
 # considering symmetries under neutrality
 core_stats <- c("DD_1_1", 
@@ -129,8 +129,7 @@ tbl$stats <- core_stats
 tbl$scenario <- c(rep(1, length(core_stats)),
                   rep(2, length(core_stats)),
                   rep(3, length(core_stats)),
-                  rep(4, length(core_stats)),
-                  rep(5, length(core_stats)))
+                  rep(4, length(core_stats)))
 
 mLD <- numeric()
 for(i in 1:num_models) {

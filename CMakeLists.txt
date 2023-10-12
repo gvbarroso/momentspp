@@ -54,6 +54,14 @@ IF(yaml-cpp_FOUND)
   MESSAGE("   dynamic libraries: ${YAML_CPP_LIBRARIES}")
 ENDIF()
 
+IF(NAKED_D)
+  ADD_DEFINITIONS(-DNAKED_D)
+ENDIF()
+
+IF(DEBUG_MODE)
+  ADD_DEFINITIONS(-DDEBUG_MODE)
+ENDIF()
+
 # Set the CMAKE_PREFIX_PATH for the find_library function when using non
 # standard install location
 IF(CMAKE_INSTALL_PREFIX)

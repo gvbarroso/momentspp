@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 05/10/2023
+ * Last modified: 12/10/2023
  *
  */
 
@@ -87,7 +87,6 @@ public:
 
     stream << "R = " << right_ << " ";
     right_->printAttributes(stream);
-    stream << "\n";
   }
 
   bool hasSamePopIds(std::shared_ptr<Moment> other) override
