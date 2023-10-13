@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 07/09/2023
+ * Last modified: 12/10/2023
  *
  */
 
@@ -68,10 +68,11 @@ void Model::computeCompositeLogLikelihood_()
 
 void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
 {
+  // NOTE
   // epoch[0] should never be 1-generation only (ie, an "Admixture epoch")
   // hence it should always have a full set of parameters, ie, including 'u_*', 'r_*', and 's_*'
 
-  // NOTE the order of the following two aliasing dimensions (over populations and over epochs) matters!
+  // the order of the following two aliasing dimensions (over populations and over epochs) matters!
   // as implemented, we should first go over populations
 
   // alias u, r and s among populations from the same epoch IFF they have identical (starting) values
@@ -179,27 +180,7 @@ void Model::linkMoments_()
         factorIds[j] = prevFactorPop; // replaces
       }
 
-      if((*it)->getPrefix() == "D")
-      {
-        // indices of populations in parental D_* moment, inits to out-of-bounds
-        size_t prevP = epochs_[i - 1]->getSslib().getNumPops();
-
-        size_t focalP = (*it)->getPopIndices()[0];
-        size_t pLeftParentId = epochs_[i]->fetchPop(focalP)->getLeftParent()->getId();
-        size_t pRightParentId = epochs_[i]->fetchPop(focalP)->getRightParent()->getId();
-
-        if(pLeftParentId == pRightParentId) // population [carry-forward / split] between epochs
-          prevP = pLeftParentId;
-
-        else
-          prevP = pRightParentId;
-
-        std::vector<size_t>  popIds = { prevP };
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("D", popIds, factorIds));
-        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
-      }
-
-      else if((*it)->getPrefix() == "DD")
+      if((*it)->getPrefix() == "DD")
       {
         // indices of populations in parental DD_** moment, inits to out-of-bounds
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops();
@@ -229,6 +210,28 @@ void Model::linkMoments_()
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("DD", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
+
+      #ifdef NAKED_D
+      else if((*it)->getPrefix() == "D")
+      {
+        // indices of populations in parental D_* moment, inits to out-of-bounds
+        size_t prevP = epochs_[i - 1]->getSslib().getNumPops();
+
+        size_t focalP = (*it)->getPopIndices()[0];
+        size_t pLeftParentId = epochs_[i]->fetchPop(focalP)->getLeftParent()->getId();
+        size_t pRightParentId = epochs_[i]->fetchPop(focalP)->getRightParent()->getId();
+
+        if(pLeftParentId == pRightParentId) // population [carry-forward / split] between epochs
+          prevP = pLeftParentId;
+
+        else
+          prevP = pRightParentId;
+
+        std::vector<size_t>  popIds = { prevP };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("D", popIds, factorIds));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
+      }
+      #endif
 
       else if((*it)->getPrefix() == "Dr")
       {

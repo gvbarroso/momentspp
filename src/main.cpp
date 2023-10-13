@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 12/10/2023
+ * Last modified: 13/10/2023
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 12/Oct/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 13/Oct/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -149,10 +149,11 @@ int main(int argc, char *argv[]) {
         operators.push_back(mutOp);
         operators.push_back(selOp);
 
-        #ifdef DEBUG_MODE
-        for(size_t j = 0; j < operators.size(); ++j)
-          operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
-        #endif
+        if(options.verbose())
+        {
+          for(size_t j = 0; j < operators.size(); ++j)
+            operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
+        }
 
         // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
@@ -165,10 +166,11 @@ int main(int argc, char *argv[]) {
 
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
 
-    #ifdef DEBUG_MODE
-    epochs.back()->printRecursions(std::cout);
-    epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
-    #endif
+    if(options.verbose())
+    {
+      epochs.back()->printRecursions(std::cout);
+      epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
+    }
   }
 
   // only need to have steady state in the deep-most epoch
@@ -184,7 +186,7 @@ int main(int argc, char *argv[]) {
   {
     if(options.getDataFilePath() == "none")
     {
-      std::cout << "\nNo stats_file provided, moments++ will output expectations for input parameters.\n\n";
+      std::cout << "\nNo obs_stats_file provided, moments++ will output expectations for input parameters.\n\n";
 
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
       model->getIndependentParameters().printParameters(std::cout);

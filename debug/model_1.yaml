@@ -14,5 +14,5 @@ metadata:
   - name: selection
     start_time: .inf
     epochs:
-      - rates: [0]
+      - rates: [-1e-3]
         end_time: 0

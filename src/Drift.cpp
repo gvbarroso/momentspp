@@ -498,7 +498,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           }
         }
 
-        else if(countLeft == 1 && countRight == 2)
+        else if(countLeft == 1 && countRight == 2) // NOTE
         {
           int sign = std::pow(-1, (*it)->getPopIndices()[0] != id); // sign of contributions that would cancel out if p1(1-p0) == p0(1-p1)
           std::vector<size_t> factorIds = (*it)->getFactorIndices();
