@@ -180,6 +180,15 @@ int main(int argc, char *argv[]) {
   else
     epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath());
 
+  if(options.verbose())
+  {
+    std::string file = options.getLabel() + "_steady-state.txt";
+    std::ofstream fout(file);
+
+    epochs.front()->printMoments(fout);
+    fout.close();
+  }
+
   std::cout << "done.\n\nBuilding Model now.";
 
   try

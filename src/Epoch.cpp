@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 11/10/2023
+ * Last modified: 13/10/2023
  *
  */
 
@@ -63,6 +63,15 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
 
   for(int i = 0; i < y.size(); ++i)
     ssl_.getBasis()[i]->setValue(y(i));
+}
+
+void Epoch::printMoments(std::ostream& stream)
+{
+  // prints expectations for the last (most recent) epoch
+  std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
+
+  for(auto& m : tmp)
+    stream << m->getName() << " = " << m->getValue() << "\n";
 }
 
 void Epoch::printRecursions(std::ostream& stream)
@@ -152,11 +161,27 @@ void Epoch::computePseudoSteadyState()
   init_();
 
   Eigen::VectorXd y(transitionMatrix_.rows());
+
+  // a very rough guess for starting values to help w/ convergence
+  size_t p = ssl_.getPopIndices()[0];
+  double h = getParameterValue("u_" + bpp::TextTools::toString(p)) / getParameterValue("1/2N_" + bpp::TextTools::toString(p));
+
   for(int i = 0; i < y.size(); ++i)
-    y(i) = 1.;
+  {
+    if(ssl_.getBasis()[i]->getPrefix() == "Hl" || ssl_.getBasis()[i]->getPrefix() == "Hr")
+      y(i) = h;
 
-  steadYstate_ = transitionMatrix_.pow(1e+7) * y;
+    else if(ssl_.getBasis()[i]->getPrefix() == "pi2")
+      y(i) = h * h * 1e-1;
 
+    else if(ssl_.getBasis()[i]->getPrefix() == "I")
+      y(i) = 1.;
+
+    else
+      y(i) = h * 1e-4;
+  }
+
+  steadYstate_ = transitionMatrix_.pow(1e+6) * y; // in practice 1e+6 gens. is good enough
   updateMoments(steadYstate_);
 }
 

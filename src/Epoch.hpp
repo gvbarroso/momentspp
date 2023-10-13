@@ -218,6 +218,8 @@ public:
 
   void updateMoments(const Eigen::VectorXd& y);
 
+  void printMoments(std::ostream& stream);
+
   void printRecursions(std::ostream& stream);
 
   void printTransitionMat(const std::string& fileName) const;
