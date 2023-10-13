@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 12/10/2023
+ * Last modified: 13/10/2023
  *
  */
 
@@ -422,7 +422,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         size_t countLeft = tmpPi2->getLeftHetStat()->countInstances(id);
         size_t countRight = tmpPi2->getRightHetStat()->countInstances(id);
 
-        size_t f = (*it)->getNumberOfAliases() + 1; // folding factor...WARNING only in D & Dr contributions to pi2 stats?! NOTE compare to moments.LD approach
+        // folding factor...WARNING only in D & Dr contributions to pi2 stats?! NOTE compare to moments.LD approach
+        int f = static_cast<int>((*it)->getNumberOfAliases() + 1);
 
         int md = computePi2MainDiagContribution_(*it, id);
         coeffs.emplace_back(Eigen::Triplet<double>(row, row, md));
@@ -498,7 +499,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           }
         }
 
-        else if(countLeft == 1 && countRight == 2) // NOTE
+        else if(countLeft == 1 && countRight == 2) // NOTE check right-locus permutations when we include migration
         {
           int sign = std::pow(-1, (*it)->getPopIndices()[0] != id); // sign of contributions that would cancel out if p1(1-p0) == p0(1-p1)
           std::vector<size_t> factorIds = (*it)->getFactorIndices();

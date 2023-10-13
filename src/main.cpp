@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
   {
     if(options.getDataFilePath() == "none")
     {
-      std::cout << "\nNo obs_stats_file provided, moments++ will output expectations for input parameters.\n\n";
+      std::cout << "\nNo obs_stats_file provided, moments++ will\noutput expectations for input parameters.\n\n";
 
       std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
       model->getIndependentParameters().printParameters(std::cout);
