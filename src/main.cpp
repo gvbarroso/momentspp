@@ -49,11 +49,9 @@ int main(int argc, char *argv[]) {
    * 4. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
    *    https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
    *
-   * 5. Add option to input initial (steady state) vector
-   *
    * For seminar:
    * Benchmark speed of matrix add vs matrix mult when combining operators, as a function of Order
-   * Benchmark accuracy and speed of pseudo steady-statem, as a function of no. of generations (and starting values?)
+   * Benchmark accuracy and speed of pseudo steady-state, as a function of no. of generations (and starting values?)
    *
    */
 
@@ -144,10 +142,10 @@ int main(int argc, char *argv[]) {
           //operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv");
         }*/
 
-        operators.push_back(driftOp);
+        operators.push_back(selOp);
         operators.push_back(recOp);
         operators.push_back(mutOp);
-        operators.push_back(selOp);
+        operators.push_back(driftOp);
 
         if(options.verbose())
         {
