@@ -15,33 +15,16 @@ int Drift::computeDMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id)
   size_t popIdPower = mom->getPopFactorPower(id);
   size_t totalPopIdCount = popIdCount + popIdPower;
 
-  if(popIdCount == 1) // DD_id
+  int a = 0;
+  int b = -1;
+
+  for(size_t i = 0; i < totalPopIdCount + popIdCount - 1; ++i)
   {
-    int a = 0;
-    int b = -1;
-
-    for(size_t i = 0; i < totalPopIdCount; ++i)
-    {
-      a += b;
-      --b;
-    }
-
-    return a;
+    a += b;
+    --b;
   }
 
-  else
-  {
-    int a = 0;
-    int b = -1;
-
-    for(size_t i = 0; i < totalPopIdCount - 1; ++i)
-    {
-      a += b;
-      --b;
-    }
-
-    return a;
-  }
+  return a;
 }
 
 int Drift::computeDrMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id)
@@ -422,7 +405,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         size_t countLeft = tmpPi2->getLeftHetStat()->countInstances(id);
         size_t countRight = tmpPi2->getRightHetStat()->countInstances(id);
 
-        // folding factor...WARNING only in D & Dr contributions to pi2 stats?! NOTE compare to moments.LD approach
+        // folding factor... WARNING only in D & Dr contributions to pi2 stats?! NOTE compare to moments.LD approach
         int f = static_cast<int>((*it)->getNumberOfAliases() + 1);
 
         int md = computePi2MainDiagContribution_(*it, id);
