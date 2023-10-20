@@ -30,7 +30,7 @@ select_det <- function(x, s) {
  
   y[1] <- y[1] - s * y[1] * (y[2] + y[4])
   y[2] <- y[2] + s * (1 - y[2] - y[4])
-  y[3] <- y[3] - s * y[1] * (y[2] + y[4])
+  y[3] <- y[3] - s * y[3] * (y[2] + y[4])
   y[4] <- y[4] + s * (1 - y[2] - y[4])
   
   return(x)
@@ -52,7 +52,7 @@ mutate_random <- function(x, u) {
   to_aB <- n_ab_mut - to_Ab
   
   x[1] <- x[1] - n_ab_mut
-  x[2] <- x[2] - n_Ab_mut  + to_Ab
+  x[2] <- x[2] - n_Ab_mut + to_Ab
   x[3] <- x[3] - n_aB_mut + to_aB
   x[4] <- x[4] + n_Ab_mut + n_aB_mut
   
@@ -155,7 +155,7 @@ evolve_random <- function(x, u, r, s) {
   return (select_random(recombine_random(mutate_random(drift_abs(x), u), r), s))
 }
 
-evolve_neutral <- function(x, u, r, s) {
+evolve_neutral <- function(x, u, r) {
   return (recombine_random(mutate_random(drift_abs(x), u), r))
 }
 
@@ -207,7 +207,8 @@ epochs_gen <- c(1e+3, 5e+3, 4e+3)
 epochs_pop <- c(1e+4, 2e+4, 1e+5)
 
 v <- burn_in(x1, u, r, s, tol=1e-7)
-v
+
+x1 <- c(5000, 3000, 1500, 2500) # init
 
 for(i in 1:1e+5) {
   x1 <- recombine_random(x1, 1e-4)
@@ -221,8 +222,20 @@ for(i in 1:1e+5) {
   cat("\n")
 }
 
-for(i in 1:1e+5) {
-  x1 <- mutate_random(drift_abs(x), u)
+for(i in 1:1e+4) {
+  x1 <- recombine_random(drift_abs(x1), r)
+  cat(x1)
+  cat("\n")
+}
+
+for(i in 1:1e+4) {
+  x1 <- mutate_random(drift_abs(x1), u)
+  cat(x1)
+  cat("\n")
+}
+
+for(i in 1:1e+4) {
+  x1 <- evolve_neutral(x1, u, r)
   cat(x1)
   cat("\n")
 }
