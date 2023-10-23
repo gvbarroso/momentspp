@@ -21,6 +21,8 @@ class TwoLocusPair
 {
 
 private:
+  size_t gen_origin_;
+
   // for random operators
   unsigned int count_ab_;
   unsigned int count_Ab_;
@@ -40,6 +42,7 @@ private:
 
 public:
   TwoLocusPair():
+  gen_origin_(0),
   count_ab_(0),
   count_Ab_(0),
   count_aB_(0),
@@ -53,7 +56,8 @@ public:
   mutatedRight_(0)
   { }
 
-  TwoLocusPair(unsigned int count_ab, unsigned int count_Ab, unsigned int count_aB, unsigned int count_AB):
+  TwoLocusPair(size_t gen_origin, unsigned int count_ab, unsigned int count_Ab, unsigned int count_aB, unsigned int count_AB):
+  gen_origin_(gen_origin),
   count_ab_(count_ab),
   count_Ab_(count_Ab),
   count_aB_(count_aB),
@@ -67,8 +71,6 @@ public:
   mutatedRight_(fetchQ() > 0.)
   {
     assert(!mutatedBoth());
-
-    printAttributes(std::cout);
   }
 
 public:
@@ -138,6 +140,11 @@ public:
   bool mutatedBoth()
   {
     return mutatedLeft_ && mutatedRight_;
+  }
+
+  bool bothPolymorphic()
+  {
+    return (fetchP() > 0. && fetchP() < 1.) && (fetchQ() > 0. && fetchQ() < 1.);
   }
 
   bool monomorphic()
@@ -265,7 +272,6 @@ private:
     count_aB_ = next[2];
     count_AB_ = next[3];
 
-    printAttributes(std::cout);
     updateProps_();
   }
 
@@ -273,45 +279,65 @@ private:
   {
     assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
 
+    std::cout << "rec before: \n";
+    printAttributes(std::cout);
+
     double p = fetchP();
     double q = fetchQ();
 
-    unsigned int count_ab_rec = gsl_ran_binomial(gen, count_ab_, r);
-    unsigned int count_Ab_rec = gsl_ran_binomial(gen, count_Ab_, r);
-    unsigned int count_aB_rec = gsl_ran_binomial(gen, count_aB_, r);
-    unsigned int count_AB_rec = gsl_ran_binomial(gen, count_AB_, r);
+    unsigned int count_ab_rec = gsl_ran_binomial(gen, r, count_ab_);
+    unsigned int count_Ab_rec = gsl_ran_binomial(gen, r, count_Ab_);
+    unsigned int count_aB_rec = gsl_ran_binomial(gen, r, count_aB_);
+    unsigned int count_AB_rec = gsl_ran_binomial(gen, r, count_AB_);
 
-    unsigned int ab_to_Ab = gsl_ran_binomial(gen, count_ab_rec, p);
-    ab_to_Ab = gsl_ran_binomial(gen, ab_to_Ab, 0.5);
+    unsigned int ab_to_Ab = gsl_ran_binomial(gen, p, count_ab_rec);
+    ab_to_Ab = gsl_ran_binomial(gen, 0.5, ab_to_Ab);
 
-    unsigned int ab_to_aB = gsl_ran_binomial(gen, count_ab_rec, q);
-    ab_to_aB = gsl_ran_binomial(gen, ab_to_aB, 0.5);
+    unsigned int ab_to_aB = gsl_ran_binomial(gen, q, count_ab_rec);
+    ab_to_aB = gsl_ran_binomial(gen, 0.5, ab_to_aB);
 
     unsigned int ab_stay_ab = count_ab_ - ab_to_Ab - ab_to_aB;
 
-    unsigned int Ab_to_ab = gsl_ran_binomial(gen, count_Ab_rec, 1. - p);
-    Ab_to_ab = gsl_ran_binomial(gen, Ab_to_ab, 0.5);
+    unsigned int Ab_to_ab = gsl_ran_binomial(gen, 1. - p, count_Ab_rec);
+    Ab_to_ab = gsl_ran_binomial(gen, 0.5, Ab_to_ab);
 
-    unsigned int Ab_to_AB = gsl_ran_binomial(gen, count_Ab_rec, q);
-    Ab_to_AB = gsl_ran_binomial(gen, Ab_to_AB, 0.5);
+    unsigned int Ab_to_AB = gsl_ran_binomial(gen, q, count_Ab_rec);
+    Ab_to_AB = gsl_ran_binomial(gen, 0.5, Ab_to_AB);
 
     unsigned int Ab_stay_Ab = count_Ab_ - Ab_to_ab - Ab_to_AB;
 
-    unsigned int aB_to_AB = gsl_ran_binomial(gen, count_aB_rec, q);
-    aB_to_AB = gsl_ran_binomial(gen, aB_to_AB, 0.5);
+    unsigned int aB_to_AB = gsl_ran_binomial(gen, q, count_aB_rec);
+    aB_to_AB = gsl_ran_binomial(gen, 0.5, aB_to_AB);
 
-    unsigned int aB_to_ab = gsl_ran_binomial(gen, count_aB_rec, 1. - q);
-    aB_to_ab = gsl_ran_binomial(gen, aB_to_ab, 0.5);
+    unsigned int aB_to_ab = gsl_ran_binomial(gen, 1. - q, count_aB_rec);
+    aB_to_ab = gsl_ran_binomial(gen, 0.5, aB_to_ab);
 
     unsigned int aB_stay_aB = count_aB_ - aB_to_AB - aB_to_ab;
 
-    unsigned int AB_to_aB = gsl_ran_binomial(gen, count_AB_rec, 1. - p);
-    AB_to_aB = gsl_ran_binomial(gen, AB_to_aB, 0.5);
+    unsigned int AB_to_aB = gsl_ran_binomial(gen, 1. - p, count_AB_rec);
+    AB_to_aB = gsl_ran_binomial(gen, 0.5, AB_to_aB);
 
-    unsigned int AB_to_Ab = gsl_ran_binomial(gen, count_AB_rec, 1. - 1);
-    AB_to_Ab = gsl_ran_binomial(gen, AB_to_Ab, 0.5);
+    unsigned int AB_to_Ab = gsl_ran_binomial(gen, 1. - q, count_AB_rec);
+    AB_to_Ab = gsl_ran_binomial(gen, 0.5, AB_to_Ab);
 
     unsigned int AB_stay_AB = count_AB_ - AB_to_aB - AB_to_Ab;
+
+    std::cout << "count_ab_rec: " << count_ab_rec << "\n";
+    std::cout << "count_Ab_rec: " << count_Ab_rec << "\n";
+    std::cout << "count_aB_rec: " << count_aB_rec << "\n";
+    std::cout << "count_AB_rec: " << count_AB_rec << "\n";
+    std::cout << "ab_to_Ab: " << ab_to_Ab << "\n";
+    std::cout << "ab_to_aB: " << ab_to_aB << "\n";
+    std::cout << "ab_stay_ab: " << ab_stay_ab << "\n";
+    std::cout << "Ab_to_ab: " << Ab_to_ab << "\n";
+    std::cout << "Ab_to_AB: " << Ab_to_AB << "\n";
+    std::cout << "Ab_stay_Ab: " << Ab_stay_Ab << "\n";
+    std::cout << "aB_to_AB: " << aB_to_AB << "\n";
+    std::cout << "aB_to_ab: " << aB_to_ab << "\n";
+    std::cout << "aB_stay_aB: " << aB_stay_aB << "\n";
+    std::cout << "AB_to_aB: " << AB_to_aB << "\n";
+    std::cout << "AB_to_Ab: " << AB_to_Ab << "\n";
+    std::cout << "AB_stay_AB: " << AB_stay_AB << "\n";
 
     count_ab_ = ab_stay_ab + Ab_to_ab + aB_to_ab;
     count_Ab_ = Ab_stay_Ab + ab_to_Ab + AB_to_Ab;
@@ -319,6 +345,9 @@ private:
     count_AB_ = AB_stay_AB + Ab_to_AB + aB_to_AB;
 
     updateProps_();
+
+    std::cout << "rec after: \n";
+    printAttributes(std::cout);
   }
 
   void selectRandom_(const gsl_rng* gen, double s)
@@ -329,8 +358,8 @@ private:
     unsigned int Ab_replacement[4] = { 0, 0, 0, 0 };
     unsigned int AB_replacement[4] = { 0, 0, 0, 0 };
 
-    unsigned int count_Ab_dead = gsl_ran_binomial(gen, count_Ab_, std::abs(s));
-    unsigned int count_AB_dead = gsl_ran_binomial(gen, count_AB_, std::abs(s));
+    unsigned int count_Ab_dead = gsl_ran_binomial(gen, std::abs(s), count_Ab_);
+    unsigned int count_AB_dead = gsl_ran_binomial(gen, std::abs(s), count_AB_);
 
     if(count_Ab_dead > 0)
       gsl_ran_multinomial(gen, n_, count_Ab_dead, p, Ab_replacement);

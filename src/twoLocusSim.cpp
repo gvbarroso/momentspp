@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
   std::vector<TwoLocusPair> pairs(0);
   pairs.reserve(L);
 
-  size_t numGen = 1e+6;
+  size_t numGen = 1e+7;
   size_t mutablePairs = 0;
 
   for(size_t i = 0; i < numGen; ++i) // for each epoch, from past to present
@@ -128,17 +128,44 @@ int main(int argc, char *argv[]) {
       else
         c_aB = 1;
 
-      TwoLocusPair newPair(c_ab, c_Ab, c_aB, c_AB);
+      TwoLocusPair newPair(i, c_ab, c_Ab, c_aB, c_AB);
       pairs.emplace_back(newPair);
     }
 
-    for(auto it = std::begin(pairs); it != std::end(pairs); ++it)
+    // summary statistics
+    double sum_hl = 0.;
+    double sum_hr = 0.;
+    double sum_pi2 = 0.;
+    double sum_dz = 0.;
+    double sum_dsqr = 0.;
+
+    for(auto it = std::begin(pairs); it != std::end(pairs);)
     {
       it->evolve_random(gen, r, s);
+      it->printAttributes(std::cout);
+
+      sum_hl += it->fetchHl();
+      sum_hr += it->fetchHr();
+
+      if(it->bothPolymorphic())
+      {
+        sum_pi2 += it->fetchPi2();
+        sum_dz += it->fetchDz();
+        sum_dsqr += it->fetchDsqr();
+      }
 
       if(it->monomorphic())
         it = pairs.erase(it);
+
+      else
+        ++it;
     }
+
+    /*std::cout << "avg Hl = " << sum_hl / pairs.size() << "\n";
+    std::cout << "avg Hr = " << sum_hr / pairs.size() << "\n";
+    std::cout << "avg pi2 = " << sum_pi2 / pairs.size() << "\n";
+    std::cout << "avg Dz = " << sum_dz / pairs.size() << "\n";
+    std::cout << "avg D^2 = " << sum_dsqr / pairs.size() << "\n";*/
   }
 
   gsl_rng_free(gen);
