@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 20/10/2023
+ * Last modified: 23/10/2023
  */
 
 
@@ -16,6 +16,7 @@
 #include <chrono>
 
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_rng.h>
 
 class TwoLocusPair
 {
@@ -38,8 +39,6 @@ private:
   bool mutatedLeft_;
   bool mutatedRight_;
 
-  std::binomial_distribution<size_t> gaussianJitter_ { 0.0, 1e-4};
-
 public:
   TwoLocusPair(size_t count_ab, size_t count_Ab, size_t count_aB, size_t count_AB):
   count_ab_(count_ab),
@@ -53,7 +52,9 @@ public:
   prop_AB_(static_cast<double>(count_AB) / n_),
   mutatedLeft_(fetchP() > 0.),
   mutatedRight_(fetchQ() > 0.)
-  { }
+  {
+    assert(!mutatedBoth());
+  }
 
 public:
   size_t getCount_ab()
@@ -108,12 +109,17 @@ public:
 
   bool mutatedRight()
   {
-    mutatedRight_;
+    return mutatedRight_;
   }
 
   bool mutatedBoth()
   {
-    mutatedLeft_ && mutatedRight_;
+    return mutatedLeft_ && mutatedRight_;
+  }
+
+  bool monomorphic()
+  {
+    return (count_ab_ == n_ || count_Ab_ == n_ || count_aB_ == n_ || count_AB_ == n_);
   }
 
   double fetchP()
@@ -151,18 +157,56 @@ public:
     return (prop_ab_ * prop_AB_ - prop_Ab_ * prop_aB_) * (prop_ab_ * prop_AB_ - prop_Ab_ * prop_aB_);
   }
 
-  void evolve_random(std::mt19937& gen, double r, double s, double u)
+  double fetchPi2()
   {
-    if(!mutatedBoth())
-    {
+    return fetchP() * (1. - fetchP()) * fetchQ() * (1. - fetchQ());
+  }
 
+  void evolve_random(const gsl_rng* gen, double r, double s)
+  {
+    drift_(gen);
+    recombineRandom_(gen, r);
+    selectRandom_(gen, s);
+  }
+
+  // used only once, to mutate monomorphic locus (either left or right)
+  void mutate(const gsl_rng* gen, const std::uniform_real_distribution<double>& unif)
+  {
+    assert(mutatedBoth() == false);
+
+    if(mutatedLeft_)
+    {
+      if(unif(gen) < static_cast<double>(count_Ab_) / n_)
+      {
+        --count_Ab_;
+        ++count_AB_;
+      }
+
+      else
+      {
+        --count_ab_;
+        ++count_aB_;
+      }
+
+      mutatedRight_ = true;
     }
 
-    else
+    else if(mutatedRight_)
     {
-    }
+      if(unif(gen) < static_cast<double>(count_aB_) / n_)
+      {
+        --count_aB_;
+        ++count_AB_;
+      }
 
-    updateProps_();
+      else
+      {
+        --count_ab_;
+        ++count_Ab_;
+      }
+
+      mutatedLeft_ = true;
+    }
   }
 
 private:
@@ -184,27 +228,14 @@ private:
     prop_AB_ /= sum;
   }
 
-  void driftProps_(std::mt19937& gen)
-  {
-    unsigned int next[4] = { prop_ab_, prop_Ab_, prop_aB_, prop_AB_ };
-    gsl_ran_multinomial(gen, n_, n_, next, next);
-
-    prop_ab_ = next[0];
-    prop_Ab_ = next[1];
-    prop_aB_ = next[2];
-    prop_AB_ = next[3];
-
-    delete [] next;
-
-    normalize_();
-  }
-
-  void driftCounts_(std::mt19937& gen)
+  void drift_(const gsl_rng* gen)
   {
     assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
 
     unsigned int next[4] = { count_ab_, count_Ab_, count_aB_, count_AB_ };
-    gsl_ran_multinomial(gen, n_, n_, next, next);
+    double probs[4] = { prop_ab_, prop_Ab_, prop_aB_, prop_AB_ };
+
+    gsl_ran_multinomial(gen, n_, n_, probs, next);
 
     count_ab_ = next[0];
     count_Ab_ = next[1];
@@ -212,49 +243,12 @@ private:
     count_AB_ = next[3];
 
     delete [] next;
+    delete [] probs;
+
+    updateProps_();
   }
 
-  // used only once, to mutate monomorphic locus (either left or right)
-  void mutate_(std::mt19937& gen, const std::uniform_real_distribution<double>& unif)
-  {
-    assert(mutatedBoth() == false);
-
-    if(mutatedLeft_)
-    {
-      if(unif(gen) < static_cast<double>(count_Ab_) / n_)
-      {
-        --count_Ab_;
-        ++count_AB_;
-      }
-
-      else
-      {
-        --count_ab_;
-        ++count_aB_;
-      }
-
-      mutatedRight_ == true;
-    }
-
-    else if(mutatedRight_)
-    {
-      if(unif(gen) < static_cast<double>(count_aB_) / n_)
-      {
-        --count_aB_;
-        ++count_AB_;
-      }
-
-      else
-      {
-        --count_ab_;
-        ++count_Ab_;
-      }
-
-      mutatedLeft_ == true;
-    }
-  }
-
-  void recombineRandom_(std::mt19937& gen, double r)
+  void recombineRandom_(const gsl_rng* gen, double r)
   {
     assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
 
@@ -272,39 +266,55 @@ private:
     size_t count_AB_rec = dAB(gen);
 
     std::binomial_distribution<size_t> dab_rec_p(count_ab_rec, p);
-    std::binomial_distribution<size_t> dAb_rec_p(count_Ab_rec, p);
     std::binomial_distribution<size_t> daB_rec_p(count_aB_rec, p);
-    std::binomial_distribution<size_t> dAB_rec_p(count_AB_rec, p);
 
-    std::binomial_distribution<size_t> dab_rec_ap(count_ab_rec, 1. - p);
     std::binomial_distribution<size_t> dAb_rec_ap(count_Ab_rec, 1. - p);
-    std::binomial_distribution<size_t> daB_rec_ap(count_aB_rec, 1. - p);
     std::binomial_distribution<size_t> dAB_rec_ap(count_AB_rec, 1. - p);
 
     std::binomial_distribution<size_t> dab_rec_q(count_ab_rec, q);
     std::binomial_distribution<size_t> dAb_rec_q(count_Ab_rec, q);
-    std::binomial_distribution<size_t> daB_rec_q(count_aB_rec, q);
-    std::binomial_distribution<size_t> dAB_rec_q(count_AB_rec, q);
 
-    std::binomial_distribution<size_t> dab_rec_aq(count_ab_rec, 1. - q);
-    std::binomial_distribution<size_t> dAb_rec_aq(count_Ab_rec, 1. - q);
     std::binomial_distribution<size_t> daB_rec_aq(count_aB_rec, 1. - q);
     std::binomial_distribution<size_t> dAB_rec_aq(count_AB_rec, 1. - q);
 
-    size_t ab_to_Ab = 0.5 * dab_rec_p(gen) + gaussianJitter_(gen);
-    size_t ab_to_aB = 0.5 * dab_rec_q(gen) + gaussianJitter_(gen);
+    size_t ab_to_Ab = dab_rec_p(gen);
+    std::binomial_distribution<size_t> tmp_1(ab_to_Ab, 0.5);
+    ab_to_Ab = tmp_1(gen);
+
+    size_t ab_to_aB = dab_rec_q(gen);
+    std::binomial_distribution<size_t> tmp_2(ab_to_aB, 0.5);
+    ab_to_aB = tmp_2(gen);
+
     size_t ab_stay_ab = count_ab_ - ab_to_Ab - ab_to_aB;
 
-    size_t Ab_to_ab = 0.5 * dAb_rec_ap(gen) + gaussianJitter_(gen);
-    size_t Ab_to_AB = 0.5 * dAb_rec_q(gen) + gaussianJitter_(gen);
+    size_t Ab_to_ab = dAb_rec_ap(gen) ;
+    std::binomial_distribution<size_t> tmp_3(Ab_to_ab, 0.5);
+    Ab_to_ab = tmp_3(gen);
+
+    size_t Ab_to_AB = dAb_rec_q(gen);
+    std::binomial_distribution<size_t> tmp_4(Ab_to_AB, 0.5);
+    Ab_to_AB = tmp_4(gen);
+
     size_t Ab_stay_Ab = count_Ab_ - Ab_to_ab - Ab_to_AB;
 
-    size_t aB_to_AB = 0.5 * daB_rec_p(gen) + gaussianJitter_(gen);
-    size_t aB_to_ab = 0.5 * daB_rec_aq(gen) + gaussianJitter_(gen);
+    size_t aB_to_AB = daB_rec_p(gen);
+    std::binomial_distribution<size_t> tmp_5(aB_to_AB, 0.5);
+    aB_to_AB = tmp_5(gen);
+
+    size_t aB_to_ab = daB_rec_aq(gen);
+    std::binomial_distribution<size_t> tmp_6(aB_to_ab, 0.5);
+    aB_to_ab = tmp_6(gen);
+
     size_t aB_stay_aB = count_aB_ - aB_to_AB - aB_to_ab;
 
-    size_t AB_to_aB = 0.5 * dAB_rec_ap(gen) + gaussianJitter_(gen);
-    size_t AB_to_Ab = 0.5 * dAB_rec_aq(gen) + gaussianJitter_(gen);
+    size_t AB_to_aB = dAB_rec_ap(gen);
+    std::binomial_distribution<size_t> tmp_7(AB_to_aB, 0.5);
+    AB_to_aB = tmp_7(gen);
+
+    size_t AB_to_Ab = dAB_rec_aq(gen);
+    std::binomial_distribution<size_t> tmp_8(AB_to_Ab, 0.5);
+    AB_to_Ab = tmp_8(gen);
+
     size_t AB_stay_AB = count_AB_ - AB_to_aB - AB_to_Ab;
 
     count_ab_ = ab_stay_ab + Ab_to_ab + aB_to_ab;
@@ -315,7 +325,7 @@ private:
     updateProps_();
   }
 
-  void selectRandom_(std::mt19937& gen, double s)
+  void selectRandom_(const gsl_rng* gen, double s)
   {
     assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
 
@@ -338,14 +348,16 @@ private:
 
     delete [] Ab_replacement;
     delete [] AB_replacement;
+
+    updateProps_();
   }
 
   void recombineDet_(double r)
   {
-    prop_ab_ = prop_ab_ - r * fetchLD();
-    prop_Ab_ = prop_Ab_ + r * fetchLD();
-    prop_aB_ = prop_aB_ + r * fetchLD();
-    prop_AB_ = prop_AB_ - r * fetchLD();
+    prop_ab_ = prop_ab_ - r * fetchD();
+    prop_Ab_ = prop_Ab_ + r * fetchD();
+    prop_aB_ = prop_aB_ + r * fetchD();
+    prop_AB_ = prop_AB_ - r * fetchD();
 
     normalize_();
   }

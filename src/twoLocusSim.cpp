@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 20/10/2023
+ * Last modified: 23/10/2023
  * Source code for twoLocusSim
  *
  */
@@ -14,6 +14,11 @@
 #include <limits>
 #include <thread>
 
+#include <sys/time.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_rng.h>
+
+#include <Bpp/App/BppApplication.h>
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Text/TextTools.h>
 
@@ -65,6 +70,21 @@ int main(int argc, char *argv[]) {
   double r = bpp::ApplicationTools::getParameter<double>("r", params, 1e-7, "", 0);
   double s = bpp::ApplicationTools::getParameter<double>("s", params, -1e-4, "", 0);
 
+  struct timeval tv;
+  gettimeofday(&tv, 0);
+  unsigned long seed = tv.tv_sec + tv.tv_usec;
+
+  const gsl_rng_type * T;
+  gsl_rng * gen;
+
+  gsl_rng_env_setup();
+
+  T = gsl_rng_default;
+  gen = gsl_rng_alloc(T);
+
+  gsl_rng_set(gen, seed);
+
+  /*
   std::array<int, 624> seedData;
   unsigned sem = std::chrono::system_clock::now().time_since_epoch().count();
   std::default_random_engine re(sem);
@@ -72,7 +92,7 @@ int main(int argc, char *argv[]) {
   std::seed_seq seq(std::begin(seedData), std::end(seedData));
 
   std::mt19937 gen;
-  gen.seed(seq);
+  gen.seed(seq);*/
 
   std::uniform_real_distribution<double> unif(0., 1.);
   std::poisson_distribution<size_t> pois(L * N * u);
@@ -98,7 +118,7 @@ int main(int argc, char *argv[]) {
       {
         if(!pairs[j].mutatedBoth())
         {
-          pairs[j].mutate();
+          pairs[j].mutate(gen, unif);
           ++track;
         }
       }
@@ -123,9 +143,17 @@ int main(int argc, char *argv[]) {
       TwoLocusPair newPair(c_ab, c_Ab, c_aB, c_AB);
       pairs.emplace_back(newPair);
     }
+
+    for(auto it = std::begin(pairs); it != std::end(pairs); ++it)
+    {
+      it->evolve_random(gen, r, s);
+
+      if(it->monomorphic())
+        it = pairs.erase(it);
+    }
   }
 
-
+  gsl_rng_free(gen);
 
   twoLocusSim.done();
   return 0;
