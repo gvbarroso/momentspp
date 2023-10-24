@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 23/10/2023
+ * Last modified: 24/10/2023
  * Source code for twoLocusSim
  *
  */
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 20/Oct/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 24/Oct/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -64,8 +64,10 @@ int main(int argc, char *argv[]) {
   twoLocusSim.startTimer();
   std::map<std::string, std::string> params = twoLocusSim.getParams();
 
-  size_t L = bpp::ApplicationTools::getParameter<size_t>("L", params, 1e+4, "", 0);
-  unsigned int N = bpp::ApplicationTools::getParameter<unsigned int>("N", params, 1e+4, "", 0);
+  // TODO make Population class, N's and G's as vector parameters
+  size_t G = bpp::ApplicationTools::getParameter<size_t>("G", params, 1000000, "", 0);
+  size_t L = bpp::ApplicationTools::getParameter<size_t>("L", params, 1000000, "", 0);
+  unsigned int N = bpp::ApplicationTools::getParameter<unsigned int>("N", params, 10000, "", 0);
   double u = bpp::ApplicationTools::getParameter<double>("u", params, 1e-6, "", 0);
   double r = bpp::ApplicationTools::getParameter<double>("r", params, 1e-7, "", 0);
   double s = bpp::ApplicationTools::getParameter<double>("s", params, -1e-4, "", 0);
@@ -85,35 +87,11 @@ int main(int argc, char *argv[]) {
   gsl_rng_set(gen, seed);
 
   std::vector<TwoLocusPair> pairs(0);
-  pairs.reserve(L);
+  pairs.reserve(1e+2 * N);
 
-  size_t numGen = 1e+7;
-  size_t mutablePairs = 0;
-
-  for(size_t i = 0; i < numGen; ++i) // for each epoch, from past to present
+  for(size_t i = 0; i < G; ++i) // for each epoch, from past to present
   {
-    size_t mutCount = gsl_ran_poisson(gen, L * N * u);
-    size_t mutsInPairs = mutCount * (mutablePairs / L);
-    size_t unlinkedMuts = mutCount - mutsInPairs;
-
-    std::cout << "Gen. " << i << ": " << mutCount << " muts., " << mutsInPairs << " in existing pairs, " << unlinkedMuts << " creating new pairs.\n";
-    //std::shuffle(std::begin(pairs), std::end(pairs), gen);
-
-    size_t track = 0;
-    for(size_t j = 0; j < pairs.size(); ++j)
-    {
-      if(track < mutsInPairs)
-      {
-        if(!pairs[j].mutatedBoth())
-        {
-          pairs[j].mutate(gen);
-          ++track;
-        }
-      }
-
-      else
-        break;
-    }
+    size_t unlinkedMuts = gsl_ran_poisson(gen, L * N * u);
 
     for(size_t j = 0; j < unlinkedMuts; ++j)
     {
@@ -132,6 +110,8 @@ int main(int argc, char *argv[]) {
       pairs.emplace_back(newPair);
     }
 
+    std::cout << "Gen. " << i << ": " << pairs.size() << " segregating pairs.\n" ;
+
     // summary statistics
     double sum_hl = 0.;
     double sum_hr = 0.;
@@ -141,8 +121,8 @@ int main(int argc, char *argv[]) {
 
     for(auto it = std::begin(pairs); it != std::end(pairs);)
     {
-      it->evolve_random(gen, r, s);
-      it->printAttributes(std::cout);
+      it->evolve_random(gen, u, r, s);
+      //it->printAttributes(std::cout);
 
       sum_hl += it->fetchHl();
       sum_hr += it->fetchHr();
@@ -154,7 +134,7 @@ int main(int argc, char *argv[]) {
         sum_dsqr += it->fetchDsqr();
       }
 
-      if(it->monomorphic())
+      if(it->monomorphic() && it->mutatedBoth())
         it = pairs.erase(it);
 
       else

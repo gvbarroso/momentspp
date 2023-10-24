@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 23/10/2023
+ * Last modified: 24/10/2023
  */
 
 
@@ -76,9 +76,9 @@ public:
 public:
   void printAttributes(std::ostream& stream)
   {
-    stream << "c_ab = " << count_ab_ << " (" << prop_ab_ << ")\n";
-    stream << "c_Ab = " << count_Ab_ << " (" << prop_Ab_ << ")\n";
-    stream << "c_aB = " << count_aB_ << " (" << prop_aB_ << ")\n";
+    stream << "c_ab = " << count_ab_ << " (" << prop_ab_ << "), ";
+    stream << "c_Ab = " << count_Ab_ << " (" << prop_Ab_ << "), ";
+    stream << "c_aB = " << count_aB_ << " (" << prop_aB_ << "), ";
     stream << "c_AB = " << count_AB_ << " (" << prop_AB_ << ")\n";
   }
 
@@ -192,51 +192,15 @@ public:
     return fetchP() * (1. - fetchP()) * fetchQ() * (1. - fetchQ());
   }
 
-  void evolve_random(const gsl_rng* gen, double r, double s)
+  void evolve_random(const gsl_rng* gen, double u, double r, double s)
   {
     drift_(gen);
+
+    if(!mutatedBoth())
+      mutate_(gen, u);
+
     recombineRandom_(gen, r);
     selectRandom_(gen, s);
-  }
-
-  // used only once, to mutate monomorphic locus (either left or right)
-  void mutate(const gsl_rng* gen)
-  {
-    assert(mutatedBoth() == false);
-
-    if(mutatedLeft_)
-    {
-      if(gsl_rng_uniform(gen) < static_cast<double>(count_Ab_) / n_)
-      {
-        --count_Ab_;
-        ++count_AB_;
-      }
-
-      else
-      {
-        --count_ab_;
-        ++count_aB_;
-      }
-
-      mutatedRight_ = true;
-    }
-
-    else if(mutatedRight_)
-    {
-      if(gsl_rng_uniform(gen) < static_cast<double>(count_aB_) / n_)
-      {
-        --count_aB_;
-        ++count_AB_;
-      }
-
-      else
-      {
-        --count_ab_;
-        ++count_Ab_;
-      }
-
-      mutatedLeft_ = true;
-    }
   }
 
 private:
@@ -256,6 +220,49 @@ private:
     prop_Ab_ /= sum;
     prop_aB_ /= sum;
     prop_AB_ /= sum;
+  }
+
+  // used only once, to mutate monomorphic locus (either left or right)
+  void mutate_(const gsl_rng* gen, double u)
+  {
+    assert(mutatedBoth() == false);
+
+    if(gsl_rng_uniform(gen) < u)
+    {
+      if(mutatedLeft_)
+      {
+        if(gsl_rng_uniform(gen) < static_cast<double>(count_Ab_) / n_)
+        {
+          --count_Ab_;
+          ++count_AB_;
+        }
+
+        else
+        {
+          --count_ab_;
+          ++count_aB_;
+        }
+
+        mutatedRight_ = true;
+      }
+
+      else if(mutatedRight_)
+      {
+        if(gsl_rng_uniform(gen) < static_cast<double>(count_aB_) / n_)
+        {
+          --count_aB_;
+          ++count_AB_;
+        }
+
+        else
+        {
+          --count_ab_;
+          ++count_Ab_;
+        }
+
+        mutatedLeft_ = true;
+      }
+    }
   }
 
   void drift_(const gsl_rng* gen)
@@ -278,9 +285,6 @@ private:
   void recombineRandom_(const gsl_rng* gen, double r)
   {
     assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
-
-    std::cout << "rec before: \n";
-    printAttributes(std::cout);
 
     double p = fetchP();
     double q = fetchQ();
@@ -322,32 +326,12 @@ private:
 
     unsigned int AB_stay_AB = count_AB_ - AB_to_aB - AB_to_Ab;
 
-    std::cout << "count_ab_rec: " << count_ab_rec << "\n";
-    std::cout << "count_Ab_rec: " << count_Ab_rec << "\n";
-    std::cout << "count_aB_rec: " << count_aB_rec << "\n";
-    std::cout << "count_AB_rec: " << count_AB_rec << "\n";
-    std::cout << "ab_to_Ab: " << ab_to_Ab << "\n";
-    std::cout << "ab_to_aB: " << ab_to_aB << "\n";
-    std::cout << "ab_stay_ab: " << ab_stay_ab << "\n";
-    std::cout << "Ab_to_ab: " << Ab_to_ab << "\n";
-    std::cout << "Ab_to_AB: " << Ab_to_AB << "\n";
-    std::cout << "Ab_stay_Ab: " << Ab_stay_Ab << "\n";
-    std::cout << "aB_to_AB: " << aB_to_AB << "\n";
-    std::cout << "aB_to_ab: " << aB_to_ab << "\n";
-    std::cout << "aB_stay_aB: " << aB_stay_aB << "\n";
-    std::cout << "AB_to_aB: " << AB_to_aB << "\n";
-    std::cout << "AB_to_Ab: " << AB_to_Ab << "\n";
-    std::cout << "AB_stay_AB: " << AB_stay_AB << "\n";
-
     count_ab_ = ab_stay_ab + Ab_to_ab + aB_to_ab;
     count_Ab_ = Ab_stay_Ab + ab_to_Ab + AB_to_Ab;
     count_aB_ = aB_stay_aB + ab_to_aB + AB_to_aB;
     count_AB_ = AB_stay_AB + Ab_to_AB + aB_to_AB;
 
     updateProps_();
-
-    std::cout << "rec after: \n";
-    printAttributes(std::cout);
   }
 
   void selectRandom_(const gsl_rng* gen, double s)
@@ -362,15 +346,17 @@ private:
     unsigned int count_AB_dead = gsl_ran_binomial(gen, std::abs(s), count_AB_);
 
     if(count_Ab_dead > 0)
-      gsl_ran_multinomial(gen, n_, count_Ab_dead, p, Ab_replacement);
+      gsl_ran_multinomial(gen, 4, count_Ab_dead, p, Ab_replacement);
 
     if(count_AB_dead > 0)
-      gsl_ran_multinomial(gen, n_, count_AB_dead, p, AB_replacement);
+      gsl_ran_multinomial(gen, 4, count_AB_dead, p, AB_replacement);
 
     count_ab_ = count_ab_ + Ab_replacement[0] + AB_replacement[0];
     count_Ab_ = count_Ab_ - count_Ab_dead + Ab_replacement[1] + AB_replacement[1];
     count_aB_ = count_aB_ + Ab_replacement[2] + AB_replacement[2];
-    count_AB_ = count_AB_ - count_AB_dead + AB_replacement[3] + AB_replacement[3];
+    count_AB_ = count_AB_ - count_AB_dead + Ab_replacement[3] + AB_replacement[3];
+
+    assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
 
     updateProps_();
   }
