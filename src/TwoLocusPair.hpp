@@ -29,7 +29,7 @@ private:
   unsigned int count_aB_;
   unsigned int count_AB_;
 
-  unsigned int n_;
+  unsigned int n_; // number of haplotypes
 
   // for deterministic operators
   double prop_ab_;
@@ -80,6 +80,11 @@ public:
     stream << "c_Ab = " << count_Ab_ << " (" << prop_Ab_ << "), ";
     stream << "c_aB = " << count_aB_ << " (" << prop_aB_ << "), ";
     stream << "c_AB = " << count_AB_ << " (" << prop_AB_ << ")\n";
+  }
+
+  size_t getGenOrigin()
+  {
+    return gen_origin_;
   }
 
   unsigned int getCount_ab()
@@ -203,6 +208,17 @@ public:
     selectRandom_(gen, s);
   }
 
+  void evolve_det(const gsl_rng* gen, double u, double r, double s)
+  {
+    drift_(gen);
+
+    if(!mutatedBoth())
+      mutate_(gen, u);
+
+    recombineDet_(r);
+    selectDet_(s);
+  }
+
 private:
   void updateProps_()
   {
@@ -210,6 +226,8 @@ private:
     prop_Ab_ = static_cast<double>(count_Ab_) / static_cast<double>(n_);
     prop_aB_ = static_cast<double>(count_aB_) / static_cast<double>(n_);
     prop_AB_ = static_cast<double>(count_AB_) / static_cast<double>(n_);
+
+    normalize_();
   }
 
   void normalize_()
@@ -227,11 +245,11 @@ private:
   {
     assert(mutatedBoth() == false);
 
-    if(gsl_rng_uniform(gen) < u)
+    if(gsl_rng_uniform(gen) < n_ * u)
     {
       if(mutatedLeft_)
       {
-        if(gsl_rng_uniform(gen) < static_cast<double>(count_Ab_) / n_)
+        if(gsl_rng_uniform(gen) < prop_Ab_)
         {
           --count_Ab_;
           ++count_AB_;
@@ -248,7 +266,7 @@ private:
 
       else if(mutatedRight_)
       {
-        if(gsl_rng_uniform(gen) < static_cast<double>(count_aB_) / n_)
+        if(gsl_rng_uniform(gen) < prop_aB_)
         {
           --count_aB_;
           ++count_AB_;
@@ -263,6 +281,8 @@ private:
         mutatedLeft_ = true;
       }
     }
+
+    updateProps_();
   }
 
   void drift_(const gsl_rng* gen)

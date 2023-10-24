@@ -23,6 +23,7 @@
 #include <Bpp/Text/TextTools.h>
 
 #include "TwoLocusPair.hpp"
+#include "TwoLocusPop.hpp"
 
 
 int main(int argc, char *argv[]) {
@@ -64,9 +65,9 @@ int main(int argc, char *argv[]) {
   twoLocusSim.startTimer();
   std::map<std::string, std::string> params = twoLocusSim.getParams();
 
-  // TODO make Population class, N's and G's as vector parameters
+  // TODO make N's and G's as vector parameters
   size_t G = bpp::ApplicationTools::getParameter<size_t>("G", params, 1000000, "", 0);
-  size_t L = bpp::ApplicationTools::getParameter<size_t>("L", params, 1000000, "", 0);
+  size_t L = bpp::ApplicationTools::getParameter<size_t>("L", params, 1, "", 0);
   unsigned int N = bpp::ApplicationTools::getParameter<unsigned int>("N", params, 10000, "", 0);
   double u = bpp::ApplicationTools::getParameter<double>("u", params, 1e-6, "", 0);
   double r = bpp::ApplicationTools::getParameter<double>("r", params, 1e-7, "", 0);
@@ -87,66 +88,41 @@ int main(int argc, char *argv[]) {
   gsl_rng_set(gen, seed);
 
   std::vector<TwoLocusPair> pairs(0);
-  pairs.reserve(1e+2 * N);
+  pairs.reserve(2 * N);
 
-  for(size_t i = 0; i < G; ++i) // for each epoch, from past to present
+  TwoLocusPop pop(0, L, N, pairs);
+
+  std::cout << "Burn-in...\n";
+
+  for(size_t i = 0; i < 1e+6; ++i)
+    pop.evolve_random(gen, i, u, r, s);
+
+  std::cout << "done. \nPerforming simulation...\n";
+
+  std::array<double, 5> gen_stats;
+  double avg_Hl = 0.;
+  double avg_Hr = 0.;
+  double avg_pi2 = 0.;
+  double avg_Dz = 0.;
+  double avg_Dsqr = 0.;
+
+  for(size_t i = 0; i < G; ++i)
   {
-    size_t unlinkedMuts = gsl_ran_poisson(gen, L * N * u);
+    pop.evolve_random(gen, i, u, r, s);
+    gen_stats = pop.fetchAvgStats();
 
-    for(size_t j = 0; j < unlinkedMuts; ++j)
-    {
-      unsigned int c_ab = N - 1;
-      unsigned int c_Ab = 0;
-      unsigned int c_aB = 0;
-      unsigned int c_AB = 0;
-
-      if(gsl_rng_uniform(gen) < 0.5)
-        c_Ab = 1;
-
-      else
-        c_aB = 1;
-
-      TwoLocusPair newPair(i, c_ab, c_Ab, c_aB, c_AB);
-      pairs.emplace_back(newPair);
-    }
-
-    std::cout << "Gen. " << i << ": " << pairs.size() << " segregating pairs.\n" ;
-
-    // summary statistics
-    double sum_hl = 0.;
-    double sum_hr = 0.;
-    double sum_pi2 = 0.;
-    double sum_dz = 0.;
-    double sum_dsqr = 0.;
-
-    for(auto it = std::begin(pairs); it != std::end(pairs);)
-    {
-      it->evolve_random(gen, u, r, s);
-      //it->printAttributes(std::cout);
-
-      sum_hl += it->fetchHl();
-      sum_hr += it->fetchHr();
-
-      if(it->bothPolymorphic())
-      {
-        sum_pi2 += it->fetchPi2();
-        sum_dz += it->fetchDz();
-        sum_dsqr += it->fetchDsqr();
-      }
-
-      if(it->monomorphic() && it->mutatedBoth())
-        it = pairs.erase(it);
-
-      else
-        ++it;
-    }
-
-    /*std::cout << "avg Hl = " << sum_hl / pairs.size() << "\n";
-    std::cout << "avg Hr = " << sum_hr / pairs.size() << "\n";
-    std::cout << "avg pi2 = " << sum_pi2 / pairs.size() << "\n";
-    std::cout << "avg Dz = " << sum_dz / pairs.size() << "\n";
-    std::cout << "avg D^2 = " << sum_dsqr / pairs.size() << "\n";*/
+    avg_Hl += gen_stats[0];
+    avg_Hr += gen_stats[1];
+    avg_pi2 += gen_stats[2];
+    avg_Dz += gen_stats[3];
+    avg_Dsqr += gen_stats[4];
   }
+
+  std::cout << "avg_Hl = " << avg_Hl / G << "\n" ;
+  std::cout << "avg_Hr = " << avg_Hr / G << "\n" ;
+  std::cout << "avg_pi2 = " << avg_pi2 / G << "\n" ;
+  std::cout << "avg_Dz = " << avg_Dz / G << "\n" ;
+  std::cout << "avg_Dsqr = " << avg_Dsqr / G << "\n" ;
 
   gsl_rng_free(gen);
 
