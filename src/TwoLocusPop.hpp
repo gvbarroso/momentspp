@@ -43,7 +43,7 @@ public:
 public:
   void printAttributes(std::ostream& stream)
   {
-    stream << "Pop. id: " << id_ << "\n";
+    stream << "Pop. id: " << id_ << " (" << pairs_.size() << " segregating pairs)\n";
 
     std::array<double, 4> props = fetchAvgProps();
     std::array<double, 5> stats = fetchAvgStats();
@@ -73,6 +73,19 @@ public:
   size_t getL()
   {
     return l_;
+  }
+
+  void setId(size_t id)
+  {
+    id_ = id;
+  }
+
+  void setPopSize(unsigned int n)
+  {
+    n_ = n;
+
+    for(auto it = std::begin(pairs_); it != std::end(pairs_); ++it)
+      it->setPopSize(n);
   }
 
   const std::vector<TwoLocusPair>& getPairs() const
@@ -138,7 +151,7 @@ public:
     return stats;
   }
 
-  void evolve_random(const gsl_rng* gen, size_t i, double u, double r, double s)
+  void evolve_random(const gsl_rng* gen, size_t g, double u, double r, double s)
   {
     size_t unlinkedMuts = gsl_ran_poisson(gen, l_ * n_ * u);
 
@@ -155,13 +168,13 @@ public:
       else
         c_aB = 1;
 
-      TwoLocusPair newPair(i, c_ab, c_Ab, c_aB, c_AB);
+      TwoLocusPair newPair(g, c_ab, c_Ab, c_aB, c_AB);
       pairs_.emplace_back(newPair);
     }
 
     for(auto it = std::begin(pairs_); it != std::end(pairs_);)
     {
-      it->evolve_random(gen, u, r, s);
+      it->evolve_random(gen, g, u, r, s);
 
       if(it->monomorphic() && it->mutatedBoth())
         it = pairs_.erase(it);
@@ -171,7 +184,7 @@ public:
     }
   }
 
-  void evolve_random(TwoLocusPop& other, const gsl_rng* gen, size_t i, double m, double u, double r, double s)
+  void evolve_random(TwoLocusPop& other, const gsl_rng* gen, size_t g, double m, double u, double r, double s)
   {
     size_t unlinkedMuts = gsl_ran_poisson(gen, l_ * n_ * u);
 
@@ -188,7 +201,7 @@ public:
       else
         c_aB = 1;
 
-      TwoLocusPair newPair(i, c_ab, c_Ab, c_aB, c_AB);
+      TwoLocusPair newPair(g, c_ab, c_Ab, c_aB, c_AB);
       pairs_.emplace_back(newPair);
     }
 
@@ -196,7 +209,7 @@ public:
 
     for(auto it = std::begin(pairs_); it != std::end(pairs_);)
     {
-      it->evolve_random(gen, u, r, s);
+      it->evolve_random(gen, g, u, r, s);
 
       if(it->monomorphic() && it->mutatedBoth())
         it = pairs_.erase(it);
@@ -206,7 +219,7 @@ public:
     }
   }
 
-  void evolve_det(const gsl_rng* gen, size_t i, double u, double r, double s)
+  void evolve_det(const gsl_rng* gen, size_t g, double u, double r, double s)
   {
     size_t unlinkedMuts = gsl_ran_poisson(gen, l_ * n_ * u);
 
@@ -223,13 +236,13 @@ public:
       else
         c_aB = 1;
 
-      TwoLocusPair newPair(i, c_ab, c_Ab, c_aB, c_AB);
+      TwoLocusPair newPair(g, c_ab, c_Ab, c_aB, c_AB);
       pairs_.emplace_back(newPair);
     }
 
     for(auto it = std::begin(pairs_); it != std::end(pairs_);)
     {
-      it->evolve_det(gen, u, r, s);
+      it->evolve_det(gen, g, u, r, s);
 
       if(it->monomorphic() && it->mutatedBoth())
         it = pairs_.erase(it);
@@ -239,7 +252,7 @@ public:
     }
   }
 
-  void evolve_det(TwoLocusPop& other, const gsl_rng* gen, size_t i, double m, double u, double r, double s)
+  void evolve_det(TwoLocusPop& other, const gsl_rng* gen, size_t g, double m, double u, double r, double s)
   {
     size_t unlinkedMuts = gsl_ran_poisson(gen, l_ * n_ * u);
 
@@ -256,7 +269,7 @@ public:
       else
         c_aB = 1;
 
-      TwoLocusPair newPair(i, c_ab, c_Ab, c_aB, c_AB);
+      TwoLocusPair newPair(g, c_ab, c_Ab, c_aB, c_AB);
       pairs_.emplace_back(newPair);
     }
 
@@ -264,7 +277,7 @@ public:
 
     for(auto it = std::begin(pairs_); it != std::end(pairs_);)
     {
-      it->evolve_det(gen, u, r, s);
+      it->evolve_det(gen, g, u, r, s);
 
       if(it->monomorphic() && it->mutatedBoth())
         it = pairs_.erase(it);

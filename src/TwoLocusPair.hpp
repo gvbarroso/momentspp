@@ -17,19 +17,20 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_rng.h>
 
+#include <Bpp/Exceptions.h>
+
 class TwoLocusPair
 {
 
 private:
-  size_t gen_origin_;
+  size_t gen_origin_left_;
+  size_t gen_origin_right_;
 
   // for random operators
   unsigned int count_ab_;
   unsigned int count_Ab_;
   unsigned int count_aB_;
   unsigned int count_AB_;
-
-  unsigned int n_; // number of haplotypes
 
   // for deterministic operators
   double prop_ab_;
@@ -42,12 +43,12 @@ private:
 
 public:
   TwoLocusPair():
-  gen_origin_(0),
+  gen_origin_left_(0),
+  gen_origin_right_(0),
   count_ab_(0),
   count_Ab_(0),
   count_aB_(0),
   count_AB_(0),
-  n_(0),
   prop_ab_(0),
   prop_Ab_(0),
   prop_aB_(0),
@@ -57,20 +58,31 @@ public:
   { }
 
   TwoLocusPair(size_t gen_origin, unsigned int count_ab, unsigned int count_Ab, unsigned int count_aB, unsigned int count_AB):
-  gen_origin_(gen_origin),
+  gen_origin_left_(0),
+  gen_origin_right_(0),
   count_ab_(count_ab),
   count_Ab_(count_Ab),
   count_aB_(count_aB),
   count_AB_(count_AB),
-  n_(count_ab + count_Ab + count_aB + count_AB),
-  prop_ab_(static_cast<double>(count_ab) / n_),
-  prop_Ab_(static_cast<double>(count_Ab) / n_),
-  prop_aB_(static_cast<double>(count_aB) / n_),
-  prop_AB_(static_cast<double>(count_AB) / n_),
+  prop_ab_(0.),
+  prop_Ab_(0.),
+  prop_aB_(0.),
+  prop_AB_(0.),
   mutatedLeft_(fetchP() > 0.),
   mutatedRight_(fetchQ() > 0.)
   {
     assert(!mutatedBoth());
+
+    if(count_Ab == 1)
+      gen_origin_left_ = gen_origin;
+
+    else if(count_aB == 1)
+      gen_origin_right_ = gen_origin;
+
+    else
+      throw bpp::Exception("Mis-specified initial state for two-locus pair!");
+
+    updateProps_();
   }
 
 public:
@@ -82,9 +94,14 @@ public:
     stream << "c_AB = " << count_AB_ << " (" << prop_AB_ << ")\n";
   }
 
-  size_t getGenOrigin()
+  size_t getGenOriginLeft()
   {
-    return gen_origin_;
+    return gen_origin_left_;
+  }
+
+  size_t getGenOriginRight()
+  {
+    return gen_origin_right_;
   }
 
   unsigned int getCount_ab()
@@ -107,29 +124,24 @@ public:
     return count_AB_;
   }
 
-  unsigned int getProp_ab()
+  double getProp_ab()
   {
     return prop_ab_;
   }
 
-  unsigned int getProp_Ab()
+  double getProp_Ab()
   {
     return prop_Ab_;
   }
 
-  unsigned int getProp_aB()
+  double getProp_aB()
   {
     return prop_aB_;
   }
 
-  unsigned int getProp_AB()
+  double getProp_AB()
   {
     return prop_AB_;
-  }
-
-  unsigned int getN()
-  {
-    return n_;
   }
 
   bool mutatedLeft()
@@ -154,7 +166,7 @@ public:
 
   bool monomorphic()
   {
-    return (count_ab_ == n_ || count_Ab_ == n_ || count_aB_ == n_ || count_AB_ == n_);
+    return (prop_ab_ == 1. || prop_Ab_ == 1. || prop_aB_ == 1. || prop_AB_ == 1.);
   }
 
   double fetchP()
@@ -197,23 +209,38 @@ public:
     return fetchP() * (1. - fetchP()) * fetchQ() * (1. - fetchQ());
   }
 
-  void evolve_random(const gsl_rng* gen, double u, double r, double s)
+  void setPopSize(double n) // WARNING
+  {
+    printAttributes(std::cout);
+
+    // scaling of population size (abs. counts), props will remain the same
+    count_ab_ = prop_ab_ * n;
+    count_Ab_ = prop_Ab_ * n;
+    count_aB_ = prop_aB_ * n;
+    count_AB_ = prop_AB_ * n;
+
+    printAttributes(std::cout);
+  }
+
+  void evolve_random(const gsl_rng* gen, size_t g, double u, double r, double s)
   {
     drift_(gen);
 
     if(!mutatedBoth())
-      mutate_(gen, u);
+      mutate_(gen, g, u);
 
     recombineRandom_(gen, r);
     selectRandom_(gen, s);
+
+    updateProps_();
   }
 
-  void evolve_det(const gsl_rng* gen, double u, double r, double s)
+  void evolve_det(const gsl_rng* gen, size_t g, double u, double r, double s)
   {
     drift_(gen);
 
     if(!mutatedBoth())
-      mutate_(gen, u);
+      mutate_(gen, g, u);
 
     recombineDet_(r);
     selectDet_(s);
@@ -222,10 +249,12 @@ public:
 private:
   void updateProps_()
   {
-    prop_ab_ = static_cast<double>(count_ab_) / static_cast<double>(n_);
-    prop_Ab_ = static_cast<double>(count_Ab_) / static_cast<double>(n_);
-    prop_aB_ = static_cast<double>(count_aB_) / static_cast<double>(n_);
-    prop_AB_ = static_cast<double>(count_AB_) / static_cast<double>(n_);
+    unsigned int n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
+
+    prop_ab_ = static_cast<double>(count_ab_) / static_cast<double>(n_haps);
+    prop_Ab_ = static_cast<double>(count_Ab_) / static_cast<double>(n_haps);
+    prop_aB_ = static_cast<double>(count_aB_) / static_cast<double>(n_haps);
+    prop_AB_ = static_cast<double>(count_AB_) / static_cast<double>(n_haps);
 
     normalize_();
   }
@@ -241,11 +270,13 @@ private:
   }
 
   // used only once, to mutate monomorphic locus (either left or right)
-  void mutate_(const gsl_rng* gen, double u)
+  void mutate_(const gsl_rng* gen, size_t g, double u)
   {
     assert(mutatedBoth() == false);
 
-    if(gsl_rng_uniform(gen) < n_ * u)
+    unsigned int n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
+
+    if(gsl_rng_uniform(gen) < n_haps * u)
     {
       if(mutatedLeft_)
       {
@@ -261,6 +292,7 @@ private:
           ++count_aB_;
         }
 
+        gen_origin_right_ = g;
         mutatedRight_ = true;
       }
 
@@ -278,6 +310,7 @@ private:
           ++count_Ab_;
         }
 
+        gen_origin_left_ = g;
         mutatedLeft_ = true;
       }
     }
@@ -287,12 +320,12 @@ private:
 
   void drift_(const gsl_rng* gen)
   {
-    assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
+    unsigned int n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
 
     unsigned int next[4] = { count_ab_, count_Ab_, count_aB_, count_AB_ };
     double probs[4] = { prop_ab_, prop_Ab_, prop_aB_, prop_AB_ };
 
-    gsl_ran_multinomial(gen, 4, n_, probs, next);
+    gsl_ran_multinomial(gen, 4, n_haps, probs, next);
 
     count_ab_ = next[0];
     count_Ab_ = next[1];
@@ -304,8 +337,6 @@ private:
 
   void recombineRandom_(const gsl_rng* gen, double r)
   {
-    assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
-
     double p = fetchP();
     double q = fetchQ();
 
@@ -350,14 +381,10 @@ private:
     count_Ab_ = Ab_stay_Ab + ab_to_Ab + AB_to_Ab;
     count_aB_ = aB_stay_aB + ab_to_aB + AB_to_aB;
     count_AB_ = AB_stay_AB + Ab_to_AB + aB_to_AB;
-
-    updateProps_();
   }
 
   void selectRandom_(const gsl_rng* gen, double s)
   {
-    assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
-
     double p[4] = { prop_ab_, prop_Ab_, prop_aB_, prop_AB_ };
     unsigned int Ab_replacement[4] = { 0, 0, 0, 0 };
     unsigned int AB_replacement[4] = { 0, 0, 0, 0 };
@@ -375,10 +402,6 @@ private:
     count_Ab_ = count_Ab_ - count_Ab_dead + Ab_replacement[1] + AB_replacement[1];
     count_aB_ = count_aB_ + Ab_replacement[2] + AB_replacement[2];
     count_AB_ = count_AB_ - count_AB_dead + Ab_replacement[3] + AB_replacement[3];
-
-    assert(count_ab_ + count_Ab_ + count_aB_ + count_AB_ == n_);
-
-    updateProps_();
   }
 
   void recombineDet_(double r)
