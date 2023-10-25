@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 24/10/2023
- * Last modified: 24/10/2023
+ * Last modified: 25/10/2023
  */
 
 
@@ -22,7 +22,7 @@ class TwoLocusPop
 private:
   size_t id_;
   size_t l_; // length of segment
-  unsigned int n_; // number of haplotypes
+  unsigned int n_; // haploid pop size
   std::vector<TwoLocusPair> pairs_;
 
 public:

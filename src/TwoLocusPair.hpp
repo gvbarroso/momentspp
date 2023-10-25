@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 24/10/2023
+ * Last modified: 25/10/2023
  */
 
 
@@ -68,8 +68,8 @@ public:
   prop_Ab_(0.),
   prop_aB_(0.),
   prop_AB_(0.),
-  mutatedLeft_(fetchP() > 0.),
-  mutatedRight_(fetchQ() > 0.)
+  mutatedLeft_(0.),
+  mutatedRight_(0.)
   {
     assert(!mutatedBoth());
 
@@ -83,6 +83,9 @@ public:
       throw bpp::Exception("Mis-specified initial state for two-locus pair!");
 
     updateProps_();
+
+    mutatedLeft_ = fetchP() > 0.;
+    mutatedRight_ = fetchQ() > 0.;
   }
 
 public:
@@ -166,7 +169,13 @@ public:
 
   bool monomorphic()
   {
-    return (prop_ab_ == 1. || prop_Ab_ == 1. || prop_aB_ == 1. || prop_AB_ == 1.);
+    unsigned int n = getNumHaps();
+    return (count_ab_ == n || count_Ab_ == n || count_aB_ == n || count_AB_ == n);
+  }
+
+  unsigned int getNumHaps()
+  {
+    return count_ab_ + count_Ab_ + count_aB_ + count_AB_;
   }
 
   double fetchP()
@@ -274,7 +283,7 @@ private:
   {
     assert(mutatedBoth() == false);
 
-    unsigned int n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
+    unsigned int n_haps = getNumHaps();
 
     if(gsl_rng_uniform(gen) < n_haps * u)
     {
@@ -361,7 +370,7 @@ private:
 
     unsigned int Ab_stay_Ab = count_Ab_ - Ab_to_ab - Ab_to_AB;
 
-    unsigned int aB_to_AB = gsl_ran_binomial(gen, q, count_aB_rec);
+    unsigned int aB_to_AB = gsl_ran_binomial(gen, p, count_aB_rec);
     aB_to_AB = gsl_ran_binomial(gen, 0.5, aB_to_AB);
 
     unsigned int aB_to_ab = gsl_ran_binomial(gen, 1. - q, count_aB_rec);

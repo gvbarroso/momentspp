@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            This is not a haiku                                 *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 24/Oct/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 25/Oct/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -93,14 +93,14 @@ int main(int argc, char *argv[]) {
 
   TwoLocusPop root(0, L, N, pairs);
 
-  std::cout << "\nBurn-in " << B << " generations...";
+  std::cout << "\nBurn-in (" << B << " generations)...";
   std::cout.flush();
 
   for(size_t i = 0; i < B; ++i)
     root.evolve_random(gen, i, u, r, s);
 
   std::cout << "done.\n";
-  root.printAttributes(std::cout);
+  //root.printAttributes(std::cout);
 
   TwoLocusPop p1 = root;
   //TwoLocusPop p2 = root;
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
   p1.setId(1);
   //p2.setId(2);
 
-  std::cout << "\nPerforming simulation...\n";
+  std::cout << "\nEvolving population(s) (" << G << " generations)...\n";
 
   std::array<double, 5> gen_stats_1;
   double avg_Hl_1 = 0.;
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     avg_Dsqr_2 += gen_stats_2[4];*/
   }
 
-  p1.printAttributes(std::cout);
+  //p1.printAttributes(std::cout);
   //p2.printAttributes(std::cout);
 
   std::cout << "avg_Hl_1 = " << avg_Hl_1 / G << "\n" ;
