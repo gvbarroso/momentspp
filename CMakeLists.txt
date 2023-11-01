@@ -11,7 +11,7 @@ project (momentspp CXX)
 # On MacOS, clang may not support this option (depending on the version); add instead e.g. "-mcpu=apple-M1" after -O3 flag.
 # clang --print-supported-cpus may give additional insight
 
-SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3 -openmp -mcpu=apple-M1")
+SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -lgsl -g -O3 -fopenmp -march=native")
 
 # Find dependencies (add install directory to search)
 IF(CMAKE_INSTALL_PREFIX)
@@ -27,6 +27,9 @@ ENDIF()
 
 INCLUDE(GNUInstallDirs)
 FIND_PACKAGE(bpp-core3 1.0.0 REQUIRED)
+
+FIND_PACKAGE(GSL REQUIRED)  
+
 
 SET(Boost_USE_MULTITHREADED OFF)
 FIND_PACKAGE(Boost 1.67.0 REQUIRED COMPONENTS "iostreams")

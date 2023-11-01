@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 
     /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
      * Must have epoch-specific recombination and mutation operators because they depend on pop indices,
-     * even though inside Model class we alias r and mu across epochs
+     * even though inside Model class we often choose to alias r and mu across epochs and pops.
      */
 
     if((start - end) == 1) // Admixture is modeled as the only operator in an epoch of 1 generation

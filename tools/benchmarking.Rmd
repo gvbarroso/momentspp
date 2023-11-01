@@ -24,11 +24,14 @@ use_python("/usr/bin/python3")
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
 
-# No-migration
+# Neutrality
 
-## Running moments++
+## No-migration
+
+### Running moments++
 
 ```{bash run-moments++, engine.opts='-i', include=FALSE, eval=TRUE, results=FALSE}
+
 source ~/.bashrc
 
 cd neutrality/no_migration
@@ -41,7 +44,7 @@ done
 cd ../..
 ```
 
-## Running moments.LD
+### Running moments.LD
 
 ```{python run-momentsLD, include=TRUE, eval=TRUE, results=FALSE}
 
@@ -88,7 +91,7 @@ for i in range(1, 5):
       fout.write(l)
 ```
 
-## Plots
+### Plots
 
 ```{r neutral-bench, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
 
@@ -157,6 +160,108 @@ p1 <- p1 + theme(axis.title=element_text(size=12),
 
 save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_width=12)
 ```
+
+# Selection
+
+## No-migration
+
+### Building Demes files
+
+```{r, selected-2-pop, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
+
+# symmetrical pop sizes
+N1 <- 10000
+N2 <- c(N1, N1 / 10)
+u <- 1e-7
+r  <- c(1e-3, 1e-4, 1e-5, 1e-6, 0)
+s1 <- c(0, -5e-06, -5e-05, -1e-04, -5e-04)
+s2 <- c(0, -5e-06, -5e-05, -1e-04, -5e-04)
+
+split_time <- 2000
+
+params <- crossing(N1, N2, u, r, s1, s2)
+n_models <- nrow(params)
+
+for(i in 1:n_models) {
+  
+  name <- paste("model_", i, sep="")
+  sink(paste("selection/no_migration/", name, ".yaml", sep=""))
+  
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  cat("      - end_time: ")
+  cat(split_time)
+  cat("\n")
+  cat("        start_size: ")
+  cat(params$N1[i])
+  cat("\n")
+  cat("  - name: A\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N1[i])
+  cat("\n")
+  cat("  - name: B\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N2[i])
+  cat("\n")
+  cat("metadata:\n")
+  cat("  - name: mutation\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$u[i])
+  cat("]\n")
+  cat("  - name: recombination\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$r[i])
+  cat("]\n")
+  cat("  - name: selection\n")
+  cat("    start_time: .inf\n")
+  cat("    epochs:\n")
+  cat("      - end_time: ")
+  cat(split_time)
+  cat("\n")
+  cat("        rates: [")
+  cat(-1/2/N1)
+  cat("]\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$s1[i])
+  cat(", ")
+  cat(params$s2[i])
+  cat("]\n")
+  
+  sink()
+  
+}
+
+```
+
+### Running moments++
+
+```{bash run-moments++-2-pops, engine.opts='-i', include=FALSE, eval=TRUE, results=FALSE}
+
+source ~/.bashrc
+
+cd selection/no_migration
+
+for((i=1;i<=250;i++))
+do
+  momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=25
+done
+
+cd ../..
+```
+
 
 # Check-my-matrix
 
@@ -258,19 +363,3 @@ for i in range(len(mat_LD)):
         print(matpp[i])
 ```
 
-```{bash clean-up, engine.opts='-i', include=FALSE, eval=FALSE}
-
-source ~/.bashrc
-
-cd multi_epoch
-
-rm *.txt
-rm *.csv
-
-cd ../one_epoch
-
-rm *.txt
-rm *.csv
-
-cd ..
-```
