@@ -1,5 +1,4 @@
 
-setwd("~/Devel/momentspp/poster/selected_1-pop")
 
 library(tidyverse)
 library(cowplot)
@@ -7,6 +6,10 @@ library(scales)
 library(magrittr)
 
 scale.4d <- function(x) sprintf("%.4f", x)
+
+# 1-pop selection
+
+setwd("~/Devel/momentspp/poster/selected_1-pop")
 
 r  <- c(1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8)
 s <- c(0, -1e-6, -1e-5, -5e-5, -1e-4, -2e-4, -1e-3)
@@ -18,7 +21,7 @@ commom_stats <- c("DD_0_0", "Dr_0_0_l_0", "Hl_0_0", "Hr_0_0", "pi2_0_0_0_0")
 order <- c(2, 5, 10, 20, 100)
 model <- 1:42
 
-# constant Ne
+## constant Ne
 vals <- numeric()
 for(i in 1:length(model)) {
   for(j in 1:length(order)) {
@@ -173,7 +176,7 @@ q5 <- q5 + theme(axis.title=element_text(size=12),
                  legend.position="bottom")
 ggsave("pi2_mut_rates.pdf", q5, device="pdf", width=16, height=12)
 
-# 10x growth
+## 10x growth
 vals <- numeric()
 for(i in 1:length(model)) {
   for(j in 1:length(order)) {
@@ -206,9 +209,9 @@ tbl_g$demo <- "10x_growth"
 tbl_g$mu <- 1e-8
 
 tbl <- rbind.data.frame(tbl_c[tbl_c$mu == 1e-8,], tbl_g)
-#write.table(tbl, "sel_models.csv", quote=F, sep=",")
+write.table(tbl, "sel_models.csv", quote=F, sep=",")
 
-# for normalizing
+### for normalizing
 pi2 <- tbl[tbl$stats==commom_stats[5],]$vals
 
 p1 <- ggplot(data=tbl[tbl$stats==commom_stats[1],], aes(x=r, y=vals / pi2, shape=as.factor(order), color=demo)) + facet_wrap(~s, nrow=1)
@@ -290,7 +293,7 @@ p5 <- p5 + theme(axis.title=element_text(size=12),
 moms <- plot_grid(p1, p2, p3, p4, p5, ncol=1, rel_heights = c(1, 1, 1, 1, 1.5))
 save_plot("moms_sel.pdf", moms, base_height=10, base_width=30)
 
-# comparing to moments.TwoLocus
+### comparing to moments.TwoLocus
 vals <- numeric()
 for(i in 1:length(model)) {
     
@@ -301,7 +304,7 @@ for(i in 1:length(model)) {
 tbl_py <- as.data.frame(vals)
 tbl_py$stats <- commom_stats
 
-# from 2p(1-p) to p(1-p)
+### from 2p(1-p) to p(1-p)
 tbl_py[tbl_py$stats=="Hl_0_0", 1] <- tbl_py[tbl_py$stats=="Hl_0_0", 1] / 2
 tbl_py[tbl_py$stats=="Hr_0_0", 1] <- tbl_py[tbl_py$stats=="Hr_0_0", 1] / 2
 
@@ -378,7 +381,7 @@ moms_comp <- plot_grid(p6, p7, p8, p9, p10, ncol=1, rel_heights = c(1, 1, 1, 1, 
 save_plot("moms_++_vs_py.pdf", moms_comp, base_height=10, base_width=20)
 
 
-#
+# 2-pops neutral
 
 setwd("~/Devel/momentspp/poster/neutral_2-pops")
 
@@ -478,4 +481,78 @@ r5 <- r5 + theme(axis.title=element_text(size=12),
 moms <- plot_grid(r1, r2, r3, r4, r5, ncol=1, rel_heights = c(1, 1, 1, 1, 1.3))
 save_plot("moms_neutral.pdf", moms, base_height=10, base_width=30)
 
+# 2-pops selection
 
+# symmetrical pop sizes
+N <- 10000
+u <- 1e-7
+r  <- c(1e-3, 1e-4, 1e-5, 1e-6, 0)
+s1 <- c(0, -5e-06, -5e-05, -1e-04, -5e-04)
+s2 <- c(0, -5e-06, -5e-05, -1e-04, -5e-04)
+
+split_time <- 2000
+
+params <- crossing(N, u, r, s1, s2)
+n_models <- nrow(params)
+
+for(i in 1:n_models) {
+  
+  name <- paste("model_", i, sep="")
+  sink(paste(name, ".yaml", sep=""))
+  
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  cat("      - end_time: ")
+  cat(split_time)
+  cat("\n")
+  cat("        start_size: ")
+  cat(params$N[i])
+  cat("\n")
+  cat("  - name: A\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N[i])
+  cat("\n")
+  cat("  - name: B\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N[i])
+  cat("\n")
+  cat("metadata:\n")
+  cat("  - name: mutation\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$u[i])
+  cat("]\n")
+  cat("  - name: recombination\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$r[i])
+  cat("]\n")
+  cat("  - name: selection\n")
+  cat("    start_time: .inf\n")
+  cat("    epochs:\n")
+  cat("      - end_time: ")
+  cat(split_time)
+  cat("\n")
+  cat("        rates: [")
+  cat(-1/2/N)
+  cat("]\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$s1[i])
+  cat(", ")
+  cat(params$s2[i])
+  cat("]\n")
+  
+  sink()
+  
+}

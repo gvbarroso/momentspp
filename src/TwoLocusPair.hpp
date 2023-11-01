@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 25/10/2023
+ * Last modified: 27/10/2023
  */
 
 
@@ -233,26 +233,24 @@ public:
 
   void evolve_random(const gsl_rng* gen, size_t g, double u, double r, double s)
   {
-    drift_(gen);
-
     if(!mutatedBoth())
       mutate_(gen, g, u);
 
     recombineRandom_(gen, r);
     selectRandom_(gen, s);
+    drift_(gen);
 
     updateProps_();
   }
 
   void evolve_det(const gsl_rng* gen, size_t g, double u, double r, double s)
   {
-    drift_(gen);
-
     if(!mutatedBoth())
       mutate_(gen, g, u);
 
     recombineDet_(r);
     selectDet_(s);
+    drift_(gen);
   }
 
 private:
@@ -423,13 +421,16 @@ private:
     normalize_();
   }
 
-  void selectDet_(double s)
+  void selectDet_(double s) // WARNING this is wrong, giving negative props.
   {
+    std::cout << "before sel:\n";
+    printAttributes(std::cout);
     prop_ab_ = prop_ab_ - s * prop_ab_ * fetchP();
     prop_Ab_ = prop_Ab_ + s * (1. - fetchP());
     prop_aB_ = prop_aB_ - s * prop_aB_ * fetchP();
     prop_AB_ = prop_AB_ + s * (1. - fetchP());
-
+    std::cout << "after sel:\n";
+    printAttributes(std::cout);
     normalize_();
   }
 };

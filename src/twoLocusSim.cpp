@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     root.evolve_random(gen, i, u, r, s);
 
   std::cout << "done.\n";
-  //root.printAttributes(std::cout);
+  root.printAttributes(std::cout);
 
   TwoLocusPop p1 = root;
   //TwoLocusPop p2 = root;
@@ -130,6 +130,7 @@ int main(int argc, char *argv[]) {
   for(size_t i = 0; i < G; ++i)
   {
     p1.evolve_random(gen, i, u, r, s);
+    //p1.printAttributes(std::cout);
     //p2.evolve_random(gen, i, u, r, s);
 
     gen_stats_1 = p1.fetchAvgStats();
@@ -148,7 +149,7 @@ int main(int argc, char *argv[]) {
     avg_Dsqr_2 += gen_stats_2[4];*/
   }
 
-  //p1.printAttributes(std::cout);
+  p1.printAttributes(std::cout);
   //p2.printAttributes(std::cout);
 
   std::cout << "avg_Hl_1 = " << avg_Hl_1 / G << "\n" ;
