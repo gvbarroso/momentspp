@@ -29,4 +29,4 @@ metadata:
       - end_time: 2000
         rates: [-5e-05]
       - end_time: 0
-        rates: [-5e-04, -1e-04]
+        rates: [-0.001, -5e-04]

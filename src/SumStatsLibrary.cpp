@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 12/10/2023
+ * Last modified: 02/11/2023
  *
  */
 
@@ -393,9 +393,9 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
 {
   assert(getNumStats() > 0);
 
-  for(size_t i = 0; i < getNumStats(); ++i) // NOTE alias Hl_ij if s_i == s_j
+  for(size_t i = 0; i < getNumStats(); ++i) // NOTE alias Hl_ij IFF s_i == s_j
   {
-    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Hr"))
+    if((moments_[i]->getPrefix() == "DD") || (moments_[i]->getPrefix() == "Hr")) // WARNING check if we should alias Hr stats
     {
       std::vector<size_t> pops(0);
       pops.reserve(2);

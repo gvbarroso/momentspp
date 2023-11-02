@@ -27,6 +27,6 @@ metadata:
     start_time: .inf
     epochs:
       - end_time: 10000
-        rates: [0]
+        rates: [-1e-4]
       - end_time: 0
-        rates: [0, 0]
+        rates: [-2e-3, -1e-3]
