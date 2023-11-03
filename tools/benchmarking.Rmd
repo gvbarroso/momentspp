@@ -17,13 +17,15 @@ library(tidyverse)
 library(cowplot)
 library(stringr)
 library(RColorBrewer)
+library(scales)
+library(plotly)
 
 # for running moments.LD:
 library(reticulate)
 use_python("/usr/bin/python3")
 
 # handy global variable
-n_models <- 0
+n_models <<- 0
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
@@ -286,7 +288,7 @@ core_stats <- c("DD_1_1",
                 "Hl_2_2",
                 "Hr_1_1", 
                 "Hr_1_2",
-                "Hr_2_1",
+                #"Hr_2_1",
                 "Hr_2_2",
                 "pi2_1_1_1_1", 
                 "pi2_1_1_1_2",
@@ -330,13 +332,13 @@ d1d2$ratio <- d1d2$expectation / subset(df_sym_N, stats %in% "pi2_1_2_1_2")$expe
 p1 <- ggplot(data=d1d2, aes(x=r, y=ratio)) + facet_grid(+alpha_1~alpha_2)
 p1 <- p1 + geom_point(size=3, shape=16) + geom_line() + theme_bw()
 p1 <- p1 + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
-p1 <- p1 + scale_y_log10(breaks=c(0.01, 0.05, 0.10, 0.15, 0.2, 0.25, 0.3))
+p1 <- p1 + scale_y_log10(breaks=c(0.01, 0.05, 0.10, 0.2, 0.3))
 p1 <- p1 + labs(title="Symmetric Population Sizes", x="r", y="E[D1D2] / E[pi2_1212]")
 p1 <- p1 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-
+p1
 save_plot("selection/no_migration/Covar_D_no-mig_1.pdf", p1, base_height=12, base_width=12)
 
 d1d2 <- d1d2[d1d2$alpha_1==d1d2$alpha_2,]
@@ -344,13 +346,13 @@ d1d2 <- d1d2[d1d2$alpha_1==d1d2$alpha_2,]
 p2 <- ggplot(data=d1d2, aes(x=alpha_1, y=ratio, color=as.factor(r)))
 p2 <- p2 + geom_point(size=3) + geom_line() + theme_bw()
 p2 <- p2 + scale_color_brewer(palette="PuOr")
-p2 <- p2 + scale_y_log10(breaks=c(0.01, 0.05, 0.10, 0.15, 0.2, 0.25, 0.3))
+p2 <- p2 + scale_y_log10(breaks=c(0.01, 0.05, 0.10, 0.2, 0.3))
 p2 <- p2 + labs(title="Symmetric Population Sizes and Selection coefficients", x="2Ns", y="E[D1D2] / E[pi2_1212]")
 p2 <- p2 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-
+p2
 save_plot("selection/no_migration/Covar_D_no-mig_2.pdf", p2, base_height=12, base_width=12)
 
 # Fst at the Left Locus
@@ -362,44 +364,53 @@ Hl_22 <- subset(df_sym_N, stats %in% "Hl_2_2")
 pi_between <- (Hl_12$expectation + Hl_21$expectation) / 2 
 pi_within <- (Hl_11$expectation + Hl_22$expectation) / 2 
 
-fst <- Hl_12
-fst$expectation <- 1 - pi_within / pi_between
-  
-p3 <- ggplot(data=fst, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
-p3 <- p3 + geom_point(size=3, shape=16) + geom_line() + theme_bw()
-p3 <- p3 + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
-p3 <- p3 + scale_y_log10(breaks=c(0.01, 0.05, 0.10, 0.15, 0.2, 0.25, 0.3))
-p3 <- p3 + labs(title="Symmetric Population Sizes", x="r", y="Fst selected locus")
-p3 <- p3 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
+fst <- Hl_12 # just to copy the data frame
+fst$expectation <- 1 - pi_within / pi_between # we'll be looking at this one
 
-save_plot("selection/no_migration/Fst_no-mig_left.pdf", p3, base_height=12, base_width=12)
+p3 <- plot_ly(x=fst$alpha_1, y=fst$alpha_2, z=fst$expectation, type="scatter3d", mode="markers", color=fst$expectation)
+p3
+export(p, file = "selection/no_migration/Fst_no-mig_left.pdf")
 
 # Fst at the Right Locus
 Hr_12 <- subset(df_sym_N, stats %in% "Hr_1_2")
-Hr_21 <- subset(df_sym_N, stats %in% "Hr_2_1")
+#Hr_21 <- subset(df_sym_N, stats %in% "Hr_2_1")
 Hr_11 <- subset(df_sym_N, stats %in% "Hr_1_1")
 Hr_22 <- subset(df_sym_N, stats %in% "Hr_2_2")
 
-pi_between <- (Hr_12$expectation + Hr_21$expectation) / 2 
+pi_between <- Hr_12$expectation #(Hr_12$expectation + Hr_21$expectation) / 2 
 pi_within <- (Hr_11$expectation + Hr_22$expectation) / 2 
 
 fst <- Hr_12
 fst$expectation <- 1 - pi_within / pi_between
-  
-p4 <- ggplot(data=fst, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
-p4 <- p4 + geom_point(size=3, shape=16) + geom_line() + theme_bw()
-p4 <- p4 + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
-p4 <- p4 + scale_y_log10(breaks=pretty_breaks())
-p4 <- p4 + labs(title="Symmetric Population Sizes", x="r", y="Fst neutral locus")
-p4 <- p4 + theme(axis.title=element_text(size=16),
+
+p5 <- ggplot(data=fst, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
+p5 <- p5 + geom_point(size=3, shape=16) + geom_line() + theme_bw()
+p5 <- p5 + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
+p5 <- p5 + scale_y_log10(breaks=pretty_breaks())
+p5 <- p5 + labs(title="Symmetric Population Sizes", x="r", y="Fst neutral locus")
+p5 <- p5 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("selection/no_migration/Fst_no-mig_right.pdf", p4, base_height=12, base_width=12)
+save_plot("selection/no_migration/Fst_no-mig_right_2.pdf", p5, base_height=12, base_width=12)
+
+fst <- fst[fst$alpha_1==fst$alpha_2,]
+
+p4 <- ggplot(data=fst, aes(x=alpha_1, y=expectation, color=as.factor(r)))
+p4 <- p4 + geom_point(size=3) + geom_line() + theme_bw()
+p4 <- p4 + scale_color_brewer(palette="PuOr")
+p4 <- p4 + scale_y_log10(breaks=pretty_breaks())
+p4 <- p4 + labs(title="Symmetric Population Sizes and Selection coefficients", x="2Ns", y="Fst neutral locus")
+p4 <- p4 + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+p4
+save_plot("selection/no_migration/Fst_no-mig_right_1.pdf", p4, base_height=12, base_width=12)
+
+#TODO plot plain Hr
+
 ```
 
 # Check-my-matrix

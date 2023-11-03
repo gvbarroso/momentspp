@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 13/10/2023
+ * Last modified: 03/11/2023
  *
  */
 
@@ -265,7 +265,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
         else if(popIdCount == 1)
         {
-          coeffs.emplace_back(Eigen::Triplet<double>(row, row, -1. / 2.));
+          coeffs.emplace_back(Eigen::Triplet<double>(row, row, std::pow(-1, popIds[0] != id) / 2.));
 
           if((*it)->getFactorPower() < sslib.getFactorOrder())
           {

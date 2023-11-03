@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 27/10/2023
+ * Last modified: 03/11/2023
  */
 
 
@@ -329,7 +329,7 @@ private:
   {
     unsigned int n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
 
-    unsigned int next[4] = { count_ab_, count_Ab_, count_aB_, count_AB_ };
+    unsigned int next[4]; // = { count_ab_, count_Ab_, count_aB_, count_AB_ };
     double probs[4] = { prop_ab_, prop_Ab_, prop_aB_, prop_AB_ };
 
     gsl_ran_multinomial(gen, 4, n_haps, probs, next);
