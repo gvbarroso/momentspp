@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 24/10/2023
+ * Last modified: 07/11/2023
  * Source code for twoLocusSim
  *
  */
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            This is not a haiku                                 *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 25/Oct/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 07/Nov/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
   std::cout.flush();
 
   for(size_t i = 0; i < B; ++i)
-    root.evolve_random(gen, i, u, r, s);
+    root.evolve_det(gen, i, u, r, s);
 
   std::cout << "done.\n";
   root.printAttributes(std::cout);
@@ -129,9 +129,9 @@ int main(int argc, char *argv[]) {
 
   for(size_t i = 0; i < G; ++i)
   {
-    p1.evolve_random(gen, i, u, r, s);
-    //p1.printAttributes(std::cout);
-    //p2.evolve_random(gen, i, u, r, s);
+    p1.evolve_det(gen, i, u, r, s);
+    p1.printAttributes(std::cout);
+    //p2.evolve_det(gen, i, u, r, s);
 
     gen_stats_1 = p1.fetchAvgStats();
     //gen_stats_2 = p2.fetchAvgStats();

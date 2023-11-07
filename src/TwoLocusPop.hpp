@@ -45,13 +45,7 @@ public:
   {
     stream << "Pop. id: " << id_ << " (" << pairs_.size() << " segregating pairs)\n";
 
-    std::array<double, 4> props = fetchAvgProps();
     std::array<double, 5> stats = fetchAvgStats();
-
-    stream << "avg f_ab = " << props[0] << ", ";
-    stream << "avg f_Ab = " << props[1] << ", ";
-    stream << "avg f_aB = " << props[2] << ", ";
-    stream << "avg f_AB = " << props[3] << "\n";
 
     stream << "avg Hl = " << stats[0] << ", ";
     stream << "avg Hr = " << stats[1] << ", ";
@@ -96,29 +90,6 @@ public:
   std::vector<TwoLocusPair>& getPairs()
   {
     return pairs_;
-  }
-
-  std::array<double, 4> fetchAvgProps()
-  {
-    std::array<double, 4> props = { 0, 0, 0, 0 };
-
-    if(pairs_.size() > 0)
-    {
-      for(auto it = std::begin(pairs_); it != std::end(pairs_); ++it)
-      {
-        props[0] += it->getProp_ab();
-        props[1] += it->getProp_Ab();
-        props[2] += it->getProp_aB();
-        props[3] += it->getProp_AB();
-      }
-
-      props[0] /= pairs_.size();
-      props[1] /= pairs_.size();
-      props[2] /= pairs_.size();
-      props[3] /= pairs_.size();
-    }
-
-    return props;
   }
 
   // within-population stats
@@ -190,10 +161,10 @@ public:
 
     for(size_t j = 0; j < unlinkedMuts; ++j)
     {
-      unsigned int c_ab = n_ - 1;
-      unsigned int c_Ab = 0;
-      unsigned int c_aB = 0;
-      unsigned int c_AB = 0;
+      double c_ab = n_ - 1;
+      double c_Ab = 0;
+      double c_aB = 0;
+      double c_AB = 0;
 
       if(gsl_rng_uniform(gen) < 0.5)
         c_Ab = 1;
@@ -225,10 +196,10 @@ public:
 
     for(size_t j = 0; j < unlinkedMuts; ++j)
     {
-      unsigned int c_ab = n_ - 1;
-      unsigned int c_Ab = 0;
-      unsigned int c_aB = 0;
-      unsigned int c_AB = 0;
+      double c_ab = n_ - 1;
+      double c_Ab = 0;
+      double c_aB = 0;
+      double c_AB = 0;
 
       if(gsl_rng_uniform(gen) < 0.5)
         c_Ab = 1;
@@ -258,10 +229,10 @@ public:
 
     for(size_t j = 0; j < unlinkedMuts; ++j)
     {
-      unsigned int c_ab = n_ - 1;
-      unsigned int c_Ab = 0;
-      unsigned int c_aB = 0;
-      unsigned int c_AB = 0;
+      double c_ab = n_ - 1;
+      double c_Ab = 0;
+      double c_aB = 0;
+      double c_AB = 0;
 
       if(gsl_rng_uniform(gen) < 0.5)
         c_Ab = 1;

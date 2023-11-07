@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 03/11/2023
+ * Last modified: 07/11/2023
  */
 
 
@@ -26,17 +26,11 @@ private:
   size_t gen_origin_left_;
   size_t gen_origin_right_;
 
-  // for random operators
-  unsigned int count_ab_;
-  unsigned int count_Ab_;
-  unsigned int count_aB_;
-  unsigned int count_AB_;
-
-  // for deterministic operators
-  double prop_ab_;
-  double prop_Ab_;
-  double prop_aB_;
-  double prop_AB_;
+  // counts don't have to be integers here (for deterministic sel and rec)
+  double count_ab_;
+  double count_Ab_;
+  double count_aB_;
+  double count_AB_;
 
   bool mutatedLeft_;
   bool mutatedRight_;
@@ -49,25 +43,17 @@ public:
   count_Ab_(0),
   count_aB_(0),
   count_AB_(0),
-  prop_ab_(0),
-  prop_Ab_(0),
-  prop_aB_(0),
-  prop_AB_(0),
   mutatedLeft_(0),
   mutatedRight_(0)
   { }
 
-  TwoLocusPair(size_t gen_origin, unsigned int count_ab, unsigned int count_Ab, unsigned int count_aB, unsigned int count_AB):
+  TwoLocusPair(size_t gen_origin, double count_ab, double count_Ab, double count_aB, double count_AB):
   gen_origin_left_(0),
   gen_origin_right_(0),
   count_ab_(count_ab),
   count_Ab_(count_Ab),
   count_aB_(count_aB),
   count_AB_(count_AB),
-  prop_ab_(0.),
-  prop_Ab_(0.),
-  prop_aB_(0.),
-  prop_AB_(0.),
   mutatedLeft_(0.),
   mutatedRight_(0.)
   {
@@ -82,8 +68,6 @@ public:
     else
       throw bpp::Exception("Mis-specified initial state for two-locus pair!");
 
-    updateProps_();
-
     mutatedLeft_ = fetchP() > 0.;
     mutatedRight_ = fetchQ() > 0.;
   }
@@ -91,10 +75,10 @@ public:
 public:
   void printAttributes(std::ostream& stream)
   {
-    stream << "c_ab = " << count_ab_ << " (" << prop_ab_ << "), ";
-    stream << "c_Ab = " << count_Ab_ << " (" << prop_Ab_ << "), ";
-    stream << "c_aB = " << count_aB_ << " (" << prop_aB_ << "), ";
-    stream << "c_AB = " << count_AB_ << " (" << prop_AB_ << ")\n";
+    stream << "c_ab = " << count_ab_ << ", ";
+    stream << "c_Ab = " << count_Ab_ << ", ";
+    stream << "c_aB = " << count_aB_ << ", ";
+    stream << "c_AB = " << count_AB_ << "\n";
   }
 
   size_t getGenOriginLeft()
@@ -107,44 +91,24 @@ public:
     return gen_origin_right_;
   }
 
-  unsigned int getCount_ab()
+  double getCount_ab()
   {
     return count_ab_;
   }
 
-  unsigned int getCount_Ab()
+  double getCount_Ab()
   {
     return count_Ab_;
   }
 
-  unsigned int getCount_aB()
+  double getCount_aB()
   {
     return count_aB_;
   }
 
-  unsigned int getCount_AB()
+  double getCount_AB()
   {
     return count_AB_;
-  }
-
-  double getProp_ab()
-  {
-    return prop_ab_;
-  }
-
-  double getProp_Ab()
-  {
-    return prop_Ab_;
-  }
-
-  double getProp_aB()
-  {
-    return prop_aB_;
-  }
-
-  double getProp_AB()
-  {
-    return prop_AB_;
   }
 
   bool mutatedLeft()
@@ -169,28 +133,31 @@ public:
 
   bool monomorphic()
   {
-    unsigned int n = getNumHaps();
+    double n = getNumHaps();
     return (count_ab_ == n || count_Ab_ == n || count_aB_ == n || count_AB_ == n);
   }
 
-  unsigned int getNumHaps()
+  double getNumHaps()
   {
     return count_ab_ + count_Ab_ + count_aB_ + count_AB_;
   }
 
   double fetchP()
   {
-    return prop_Ab_ + prop_AB_;
+    double n = getNumHaps();
+    return (count_Ab_ + count_AB_) / n;
   }
 
   double fetchQ()
   {
-    return prop_aB_ + prop_AB_;
+    double n = getNumHaps();
+    return (count_aB_ + count_AB_) / n;
   }
 
   double fetchD()
   {
-    return prop_ab_ * prop_AB_ - prop_Ab_ * prop_aB_;
+    double n = getNumHaps();
+    return (count_ab_ * count_AB_ - count_Ab_ * count_aB_) / (n * n);
   }
 
   double fetchHl()
@@ -210,7 +177,8 @@ public:
 
   double fetchDsqr()
   {
-    return (prop_ab_ * prop_AB_ - prop_Ab_ * prop_aB_) * (prop_ab_ * prop_AB_ - prop_Ab_ * prop_aB_);
+    double n = getNumHaps();
+    return ((count_ab_ * count_AB_ - count_Ab_ * count_aB_) * (count_ab_ * count_AB_ - count_Ab_ * count_aB_)) / (n * n * n * n);
   }
 
   double fetchPi2()
@@ -218,17 +186,12 @@ public:
     return fetchP() * (1. - fetchP()) * fetchQ() * (1. - fetchQ());
   }
 
-  void setPopSize(double n) // WARNING
+  void setPopSize(double n)
   {
-    printAttributes(std::cout);
-
-    // scaling of population size (abs. counts), props will remain the same
-    count_ab_ = prop_ab_ * n;
-    count_Ab_ = prop_Ab_ * n;
-    count_aB_ = prop_aB_ * n;
-    count_AB_ = prop_AB_ * n;
-
-    printAttributes(std::cout);
+    count_ab_ *= n;
+    count_Ab_ *= n;
+    count_aB_ *= n;
+    count_AB_ *= n;
   }
 
   void evolve_random(const gsl_rng* gen, size_t g, double u, double r, double s)
@@ -239,8 +202,6 @@ public:
     recombineRandom_(gen, r);
     selectRandom_(gen, s);
     drift_(gen);
-
-    updateProps_();
   }
 
   void evolve_det(const gsl_rng* gen, size_t g, double u, double r, double s)
@@ -254,40 +215,18 @@ public:
   }
 
 private:
-  void updateProps_()
-  {
-    unsigned int n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
-
-    prop_ab_ = static_cast<double>(count_ab_) / static_cast<double>(n_haps);
-    prop_Ab_ = static_cast<double>(count_Ab_) / static_cast<double>(n_haps);
-    prop_aB_ = static_cast<double>(count_aB_) / static_cast<double>(n_haps);
-    prop_AB_ = static_cast<double>(count_AB_) / static_cast<double>(n_haps);
-
-    normalize_();
-  }
-
-  void normalize_()
-  {
-    double sum = prop_ab_ + prop_Ab_ + prop_aB_ + prop_AB_;
-
-    prop_ab_ /= sum;
-    prop_Ab_ /= sum;
-    prop_aB_ /= sum;
-    prop_AB_ /= sum;
-  }
-
-  // used only once, to mutate monomorphic locus (either left or right)
+  // to mutate monomorphic (unmutated) locus (either left or right)
   void mutate_(const gsl_rng* gen, size_t g, double u)
   {
     assert(mutatedBoth() == false);
 
-    unsigned int n_haps = getNumHaps();
+    double n_haps = getNumHaps();
 
     if(gsl_rng_uniform(gen) < n_haps * u)
     {
       if(mutatedLeft_)
       {
-        if(gsl_rng_uniform(gen) < prop_Ab_)
+        if(gsl_rng_uniform(gen) < count_Ab_ / n_haps)
         {
           --count_Ab_;
           ++count_AB_;
@@ -305,7 +244,7 @@ private:
 
       else if(mutatedRight_)
       {
-        if(gsl_rng_uniform(gen) < prop_aB_)
+        if(gsl_rng_uniform(gen) < count_aB_ / n_haps)
         {
           --count_aB_;
           ++count_AB_;
@@ -321,16 +260,14 @@ private:
         mutatedLeft_ = true;
       }
     }
-
-    updateProps_();
   }
 
   void drift_(const gsl_rng* gen)
   {
-    unsigned int n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
+    double n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
 
-    unsigned int next[4]; // = { count_ab_, count_Ab_, count_aB_, count_AB_ };
-    double probs[4] = { prop_ab_, prop_Ab_, prop_aB_, prop_AB_ };
+    unsigned int next[4];
+    double probs[4] = { count_ab_, count_Ab_, count_aB_, count_AB_ };
 
     gsl_ran_multinomial(gen, 4, n_haps, probs, next);
 
@@ -338,8 +275,6 @@ private:
     count_Ab_ = next[1];
     count_aB_ = next[2];
     count_AB_ = next[3];
-
-    updateProps_();
   }
 
   void recombineRandom_(const gsl_rng* gen, double r)
@@ -392,7 +327,7 @@ private:
 
   void selectRandom_(const gsl_rng* gen, double s)
   {
-    double p[4] = { prop_ab_, prop_Ab_, prop_aB_, prop_AB_ };
+    double p[4] = { count_ab_, count_Ab_, count_aB_, count_AB_ };
     unsigned int Ab_replacement[4] = { 0, 0, 0, 0 };
     unsigned int AB_replacement[4] = { 0, 0, 0, 0 };
 
@@ -413,25 +348,18 @@ private:
 
   void recombineDet_(double r)
   {
-    prop_ab_ = prop_ab_ - r * fetchD();
-    prop_Ab_ = prop_Ab_ + r * fetchD();
-    prop_aB_ = prop_aB_ + r * fetchD();
-    prop_AB_ = prop_AB_ - r * fetchD();
-
-    normalize_();
+    count_ab_ = count_ab_ - r * fetchD();
+    count_Ab_ = count_Ab_ + r * fetchD();
+    count_aB_ = count_aB_ + r * fetchD();
+    count_AB_ = count_AB_ - r * fetchD();
   }
 
-  void selectDet_(double s) // WARNING this is wrong, giving negative props.
+  void selectDet_(double s)
   {
-    std::cout << "before sel:\n";
-    printAttributes(std::cout);
-    prop_ab_ = prop_ab_ - s * prop_ab_ * fetchP();
-    prop_Ab_ = prop_Ab_ + s * (1. - fetchP());
-    prop_aB_ = prop_aB_ - s * prop_aB_ * fetchP();
-    prop_AB_ = prop_AB_ + s * (1. - fetchP());
-    std::cout << "after sel:\n";
-    printAttributes(std::cout);
-    normalize_();
+    count_ab_ = count_ab_ * (1. - s * fetchP());
+    count_Ab_ = count_Ab_ * (1. + s * (1. - fetchP()));
+    count_aB_ = count_aB_ * (1. - s * fetchP());
+    count_AB_ = count_AB_ * (1. + s * (1. - fetchP()));
   }
 };
 
