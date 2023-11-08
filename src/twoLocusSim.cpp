@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
   std::cout.flush();
 
   for(size_t i = 0; i < B; ++i)
-    root.evolve_det(gen, i, u, r, s);
+    root.evolve_det(gen, u, r, s);
 
   std::cout << "done.\n";
   root.printAttributes(std::cout);
@@ -129,8 +129,8 @@ int main(int argc, char *argv[]) {
 
   for(size_t i = 0; i < G; ++i)
   {
-    p1.evolve_det(gen, i, u, r, s);
-    p1.printAttributes(std::cout);
+    p1.evolve_det(gen, u, r, s);
+    //p1.printAttributes(std::cout);
     //p2.evolve_det(gen, i, u, r, s);
 
     gen_stats_1 = p1.fetchAvgStats();

@@ -3,16 +3,16 @@ demes:
   - name: X
     epochs:
       - end_time: 0
-        start_size: 10000
+        start_size: 20000
 metadata:
   - name: mutation
     epochs:
-      - rates: [1e-8]
+      - rates: [2.5e-8]
   - name: recombination
     epochs:
-      - rates: [1e-7]
+      - rates: [0]
   - name: selection
     start_time: .inf
     epochs:
-      - rates: [-1e-3]
+      - rates: [0]
         end_time: 0

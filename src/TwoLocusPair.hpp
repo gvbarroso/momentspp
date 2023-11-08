@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 07/11/2023
+ * Last modified: 08/11/2023
  */
 
 
@@ -23,9 +23,6 @@ class TwoLocusPair
 {
 
 private:
-  size_t gen_origin_left_;
-  size_t gen_origin_right_;
-
   // counts don't have to be integers here (for deterministic sel and rec)
   double count_ab_;
   double count_Ab_;
@@ -37,8 +34,6 @@ private:
 
 public:
   TwoLocusPair():
-  gen_origin_left_(0),
-  gen_origin_right_(0),
   count_ab_(0),
   count_Ab_(0),
   count_aB_(0),
@@ -47,9 +42,7 @@ public:
   mutatedRight_(0)
   { }
 
-  TwoLocusPair(size_t gen_origin, double count_ab, double count_Ab, double count_aB, double count_AB):
-  gen_origin_left_(0),
-  gen_origin_right_(0),
+  TwoLocusPair(double count_ab, double count_Ab, double count_aB, double count_AB):
   count_ab_(count_ab),
   count_Ab_(count_Ab),
   count_aB_(count_aB),
@@ -59,15 +52,6 @@ public:
   {
     assert(!mutatedBoth());
 
-    if(count_Ab == 1)
-      gen_origin_left_ = gen_origin;
-
-    else if(count_aB == 1)
-      gen_origin_right_ = gen_origin;
-
-    else
-      throw bpp::Exception("Mis-specified initial state for two-locus pair!");
-
     mutatedLeft_ = fetchP() > 0.;
     mutatedRight_ = fetchQ() > 0.;
   }
@@ -75,20 +59,12 @@ public:
 public:
   void printAttributes(std::ostream& stream)
   {
+    stream << std::fixed << std::showpoint;
+    stream << std::setprecision(6);
     stream << "c_ab = " << count_ab_ << ", ";
     stream << "c_Ab = " << count_Ab_ << ", ";
     stream << "c_aB = " << count_aB_ << ", ";
     stream << "c_AB = " << count_AB_ << "\n";
-  }
-
-  size_t getGenOriginLeft()
-  {
-    return gen_origin_left_;
-  }
-
-  size_t getGenOriginRight()
-  {
-    return gen_origin_right_;
   }
 
   double getCount_ab()
@@ -128,7 +104,7 @@ public:
 
   bool bothPolymorphic()
   {
-    return (fetchP() > 0. && fetchP() < 1.) && (fetchQ() > 0. && fetchQ() < 1.);
+    return (fetchP() > 0. && fetchP() < 1. && fetchQ() > 0. && fetchQ() < 1.);
   }
 
   bool monomorphic()
@@ -183,7 +159,7 @@ public:
 
   double fetchPi2()
   {
-    return fetchP() * (1. - fetchP()) * fetchQ() * (1. - fetchQ());
+    return fetchHl() * fetchHr();
   }
 
   void setPopSize(double n)
@@ -194,20 +170,20 @@ public:
     count_AB_ *= n;
   }
 
-  void evolve_random(const gsl_rng* gen, size_t g, double u, double r, double s)
+  void evolve_random(const gsl_rng* gen, double u, double r, double s)
   {
     if(!mutatedBoth())
-      mutate_(gen, g, u);
+      mutate_(gen, u);
 
     recombineRandom_(gen, r);
     selectRandom_(gen, s);
     drift_(gen);
   }
 
-  void evolve_det(const gsl_rng* gen, size_t g, double u, double r, double s)
+  void evolve_det(const gsl_rng* gen, double u, double r, double s)
   {
     if(!mutatedBoth())
-      mutate_(gen, g, u);
+      mutate_(gen, u);
 
     recombineDet_(r);
     selectDet_(s);
@@ -216,65 +192,73 @@ public:
 
 private:
   // to mutate monomorphic (unmutated) locus (either left or right)
-  void mutate_(const gsl_rng* gen, size_t g, double u)
+  void mutate_(const gsl_rng* gen, double u)
   {
     assert(mutatedBoth() == false);
 
     double n_haps = getNumHaps();
 
     if(gsl_rng_uniform(gen) < n_haps * u)
+      mutateOtherLocus_(gen);
+  }
+
+void mutateOtherLocus_(const gsl_rng* gen)
+  {
+    assert(mutatedBoth() == false);
+
+    double n_haps = getNumHaps();
+
+    if(mutatedLeft_)
     {
-      if(mutatedLeft_)
+      if(gsl_rng_uniform(gen) < count_Ab_ / n_haps)
       {
-        if(gsl_rng_uniform(gen) < count_Ab_ / n_haps)
-        {
-          --count_Ab_;
-          ++count_AB_;
-        }
-
-        else
-        {
-          --count_ab_;
-          ++count_aB_;
-        }
-
-        gen_origin_right_ = g;
-        mutatedRight_ = true;
+        --count_Ab_;
+        ++count_AB_;
       }
 
-      else if(mutatedRight_)
+      else
       {
-        if(gsl_rng_uniform(gen) < count_aB_ / n_haps)
-        {
-          --count_aB_;
-          ++count_AB_;
-        }
-
-        else
-        {
-          --count_ab_;
-          ++count_Ab_;
-        }
-
-        gen_origin_left_ = g;
-        mutatedLeft_ = true;
+        --count_ab_;
+        ++count_aB_;
       }
+
+      mutatedRight_ = true;
+    }
+
+    else if(mutatedRight_)
+    {
+      if(gsl_rng_uniform(gen) < count_aB_ / n_haps)
+      {
+        --count_aB_;
+        ++count_AB_;
+      }
+
+      else
+      {
+        --count_ab_;
+        ++count_Ab_;
+      }
+
+      mutatedLeft_ = true;
     }
   }
 
   void drift_(const gsl_rng* gen)
   {
-    double n_haps = count_ab_ + count_Ab_ + count_aB_ + count_AB_;
-
+    unsigned int n = std::round(getNumHaps());
+    //std::cout << "N before drift: " << std::setprecision(12) << n << "\n";
+    //printAttributes(std::cout);
     unsigned int next[4];
     double probs[4] = { count_ab_, count_Ab_, count_aB_, count_AB_ };
 
-    gsl_ran_multinomial(gen, 4, n_haps, probs, next);
+    gsl_ran_multinomial(gen, 4, n, probs, next);
 
     count_ab_ = next[0];
     count_Ab_ = next[1];
     count_aB_ = next[2];
     count_AB_ = next[3];
+    //std::cout << "N after drift: " << std::setprecision(12) << getNumHaps() << "\n";
+    //printAttributes(std::cout);
   }
 
   void recombineRandom_(const gsl_rng* gen, double r)
@@ -348,18 +332,37 @@ private:
 
   void recombineDet_(double r)
   {
-    count_ab_ = count_ab_ - r * fetchD();
-    count_Ab_ = count_Ab_ + r * fetchD();
-    count_aB_ = count_aB_ + r * fetchD();
-    count_AB_ = count_AB_ - r * fetchD();
+    //std::cout << "N before rec: " << std::setprecision(12) << getNumHaps() << "\n";
+    //printAttributes(std::cout);
+    count_ab_ -= r * fetchD();
+    count_Ab_ += r * fetchD();
+    count_aB_ += r * fetchD();
+    count_AB_ -= r * fetchD();
+    //std::cout << "N after rec: " << std::setprecision(12) << getNumHaps() << "\n";
+    //printAttributes(std::cout);
   }
 
   void selectDet_(double s)
   {
-    count_ab_ = count_ab_ * (1. - s * fetchP());
-    count_Ab_ = count_Ab_ * (1. + s * (1. - fetchP()));
-    count_aB_ = count_aB_ * (1. - s * fetchP());
-    count_AB_ = count_AB_ * (1. + s * (1. - fetchP()));
+    double n = getNumHaps();
+    //std::cout << "N before sel: " << std::setprecision(12) << n << "\n";
+    //printAttributes(std::cout);
+    count_ab_ *= (1. - s * fetchP());
+    count_Ab_ *= (1. + s * (1. - fetchP()));
+    count_aB_ *= (1. - s * fetchP());
+    count_AB_ *= (1. + s * (1. - fetchP()));
+
+    double f = getNumHaps();
+
+    //std::cout << "N after  sel: " << std::setprecision(12) << f << "\n";
+
+    count_ab_ *= n / f;
+    count_Ab_ *= n / f;
+    count_aB_ *= n / f;
+    count_AB_ *= n / f;
+
+    //std::cout << "N after norm: " << std::setprecision(12) << getNumHaps() << "\n";
+    //printAttributes(std::cout);
   }
 };
 
