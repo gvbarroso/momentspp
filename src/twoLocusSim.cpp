@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 07/11/2023
+ * Last modified: 09/11/2023
  * Source code for twoLocusSim
  *
  */
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            This is not a haiku                                 *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 07/Nov/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 09/Nov/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -100,7 +100,6 @@ int main(int argc, char *argv[]) {
     root.evolve_det(gen, u, r, s);
 
   std::cout << "done.\n";
-  root.printAttributes(std::cout);
 
   TwoLocusPop p1 = root;
   //TwoLocusPop p2 = root;
@@ -130,7 +129,6 @@ int main(int argc, char *argv[]) {
   for(size_t i = 0; i < G; ++i)
   {
     p1.evolve_det(gen, u, r, s);
-    //p1.printAttributes(std::cout);
     //p2.evolve_det(gen, i, u, r, s);
 
     gen_stats_1 = p1.fetchAvgStats();
@@ -138,9 +136,15 @@ int main(int argc, char *argv[]) {
 
     avg_Hl_1 += gen_stats_1[0];
     avg_Hr_1 += gen_stats_1[1];
-    avg_pi2_1 += gen_stats_1[2];
-    avg_Dz_1 += gen_stats_1[3];
-    avg_Dsqr_1 += gen_stats_1[4];
+
+    // NOTE divide two-locus stats by Nu to bring them to the same scale as H's.
+    // This is required because of the nature of the infinite sites model.
+    // In this simulator, each new mutation creates a two-locus system,
+    // but at this time only one of the loci had the opportunity to mutate.
+    // Meanwhile, two-locus stats are still computed and averaged over generations,
+    avg_pi2_1 += gen_stats_1[2] / (N * u);
+    avg_Dz_1 += gen_stats_1[3] / (N * u);
+    avg_Dsqr_1 += gen_stats_1[4] / (N * u);
 
     /*avg_Hl_2 += gen_stats_2[0];
     avg_Hr_2 += gen_stats_2[1];
@@ -148,9 +152,6 @@ int main(int argc, char *argv[]) {
     avg_Dz_2 += gen_stats_2[3];
     avg_Dsqr_2 += gen_stats_2[4];*/
   }
-
-  p1.printAttributes(std::cout);
-  //p2.printAttributes(std::cout);
 
   std::cout << "avg_Hl_1 = " << avg_Hl_1 / G << "\n" ;
   std::cout << "avg_Hr_1 = " << avg_Hr_1 / G << "\n" ;

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/10/2023
- * Last modified: 08/11/2023
+ * Last modified: 09/11/2023
  */
 
 
@@ -23,7 +23,7 @@ class TwoLocusPair
 {
 
 private:
-  // counts don't have to be integers here (for deterministic sel and rec)
+  // counts as doubles for deterministic sel and rec operators
   double count_ab_;
   double count_Ab_;
   double count_aB_;
@@ -191,14 +191,14 @@ public:
   }
 
 private:
-  // to mutate monomorphic (unmutated) locus (either left or right)
+  // to mutate the so far unmutated locus
   void mutate_(const gsl_rng* gen, double u)
   {
     assert(mutatedBoth() == false);
 
-    double n_haps = getNumHaps();
+    double n = getNumHaps();
 
-    if(gsl_rng_uniform(gen) < n_haps * u)
+    if(gsl_rng_uniform(gen) < n * u)
       mutateOtherLocus_(gen);
   }
 
@@ -206,11 +206,11 @@ void mutateOtherLocus_(const gsl_rng* gen)
   {
     assert(mutatedBoth() == false);
 
-    double n_haps = getNumHaps();
+    double n = getNumHaps();
 
     if(mutatedLeft_)
     {
-      if(gsl_rng_uniform(gen) < count_Ab_ / n_haps)
+      if(gsl_rng_uniform(gen) < count_Ab_ / n)
       {
         --count_Ab_;
         ++count_AB_;
@@ -227,7 +227,7 @@ void mutateOtherLocus_(const gsl_rng* gen)
 
     else if(mutatedRight_)
     {
-      if(gsl_rng_uniform(gen) < count_aB_ / n_haps)
+      if(gsl_rng_uniform(gen) < count_aB_ / n)
       {
         --count_aB_;
         ++count_AB_;
@@ -246,8 +246,6 @@ void mutateOtherLocus_(const gsl_rng* gen)
   void drift_(const gsl_rng* gen)
   {
     unsigned int n = std::round(getNumHaps());
-    //std::cout << "N before drift: " << std::setprecision(12) << n << "\n";
-    //printAttributes(std::cout);
     unsigned int next[4];
     double probs[4] = { count_ab_, count_Ab_, count_aB_, count_AB_ };
 
@@ -257,8 +255,6 @@ void mutateOtherLocus_(const gsl_rng* gen)
     count_Ab_ = next[1];
     count_aB_ = next[2];
     count_AB_ = next[3];
-    //std::cout << "N after drift: " << std::setprecision(12) << getNumHaps() << "\n";
-    //printAttributes(std::cout);
   }
 
   void recombineRandom_(const gsl_rng* gen, double r)
@@ -332,37 +328,28 @@ void mutateOtherLocus_(const gsl_rng* gen)
 
   void recombineDet_(double r)
   {
-    //std::cout << "N before rec: " << std::setprecision(12) << getNumHaps() << "\n";
-    //printAttributes(std::cout);
     count_ab_ -= r * fetchD();
     count_Ab_ += r * fetchD();
     count_aB_ += r * fetchD();
     count_AB_ -= r * fetchD();
-    //std::cout << "N after rec: " << std::setprecision(12) << getNumHaps() << "\n";
-    //printAttributes(std::cout);
   }
 
   void selectDet_(double s)
   {
     double n = getNumHaps();
-    //std::cout << "N before sel: " << std::setprecision(12) << n << "\n";
-    //printAttributes(std::cout);
+
     count_ab_ *= (1. - s * fetchP());
     count_Ab_ *= (1. + s * (1. - fetchP()));
     count_aB_ *= (1. - s * fetchP());
     count_AB_ *= (1. + s * (1. - fetchP()));
 
-    double f = getNumHaps();
+    double f = getNumHaps(); // updates
 
-    //std::cout << "N after  sel: " << std::setprecision(12) << f << "\n";
-
+    // normalizes
     count_ab_ *= n / f;
     count_Ab_ *= n / f;
     count_aB_ *= n / f;
     count_AB_ *= n / f;
-
-    //std::cout << "N after norm: " << std::setprecision(12) << getNumHaps() << "\n";
-    //printAttributes(std::cout);
   }
 };
 
