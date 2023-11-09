@@ -24,6 +24,7 @@
 
 #include "TwoLocusPair.hpp"
 #include "TwoLocusPop.hpp"
+#include "SimTools.hpp"
 
 
 int main(int argc, char *argv[]) {
@@ -141,7 +142,7 @@ int main(int argc, char *argv[]) {
     // This is required because of the nature of the infinite sites model.
     // In this simulator, each new mutation creates a two-locus system,
     // but at this time only one of the loci had the opportunity to mutate.
-    // Meanwhile, two-locus stats are still computed and averaged over generations,
+    // Meanwhile, two-locus stats are still computed and averaged over generations
     avg_pi2_1 += gen_stats_1[2] / (N * u);
     avg_Dz_1 += gen_stats_1[3] / (N * u);
     avg_Dsqr_1 += gen_stats_1[4] / (N * u);

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 02/11/2023
+ * Last modified: 09/11/2023
  *
  */
 
@@ -144,12 +144,6 @@ void SumStatsLibrary::readStatsFromFile(const std::string& fileName)
 void SumStatsLibrary::initMoments_(bool compress)
 {
   moments_.reserve(getNumStats());
-
-  size_t comb = 0;
-  for(size_t i = 1; i < factorOrder_; ++i)
-    comb += i;
-
-  factorComb_ = comb;
 
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {

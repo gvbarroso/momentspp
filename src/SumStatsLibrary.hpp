@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 11/10/2023
+ * Last modified: 09/11/2023
  */
 
 
@@ -45,7 +45,6 @@ class SumStatsLibrary
 private:
   size_t numPops_;
   size_t factorOrder_; // maximum number of 1-2p_x factors attached to a Moment
-  size_t factorComb_; // number of ways we can attach 1-2p_x factors to a given moment, used to find moment indices quickly (NOTE working for P == 2)
 
   std::vector<size_t> popIndices_; // among all Moments in the Epoch to which *this belongs, stored for bookkeeping
   std::vector<std::shared_ptr<Moment>> moments_; // sorted alphabetically based on prefix_ and numerically based on popIndices_
@@ -55,7 +54,6 @@ public:
   SumStatsLibrary():
   numPops_(0),
   factorOrder_(0),
-  factorComb_(0),
   popIndices_(0),
   moments_(0),
   basis_(0)
@@ -64,7 +62,6 @@ public:
   SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, size_t factorOrder, bool compress):
   numPops_(pops.size()),
   factorOrder_(factorOrder),
-  factorComb_(0),
   popIndices_(0),
   moments_(0),
   basis_(0)

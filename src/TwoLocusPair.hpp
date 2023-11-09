@@ -162,12 +162,14 @@ public:
     return fetchHl() * fetchHr();
   }
 
-  void setPopSize(double n)
+  void setPopSize(double newSize)
   {
-    count_ab_ *= n;
-    count_Ab_ *= n;
-    count_aB_ *= n;
-    count_AB_ *= n;
+    double n = getNumHaps();
+
+    count_ab_ *= (newSize / n);
+    count_Ab_ *= (newSize / n);
+    count_aB_ *= (newSize / n);
+    count_AB_ *= (newSize / n);
   }
 
   void evolve_random(const gsl_rng* gen, double u, double r, double s)
