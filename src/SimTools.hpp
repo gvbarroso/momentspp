@@ -23,7 +23,7 @@
 class SimTools
 {
 
-public:
+/*public:
   SimTools():
   { }
 
@@ -58,7 +58,7 @@ public:
   double fetchPi2()
   {
     return fetchHl() * fetchHr();
-  }
+  }*/
 
 };
 

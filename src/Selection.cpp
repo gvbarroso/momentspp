@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 03/11/2023
+ * Last modified: 14/11/2023
  *
  */
 
@@ -386,6 +386,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
         }
 
         // contributions from other moments (D and Dr)
+
         // case: pi2_id_id_id_id
         if((countLeft + countRight) == 4)
         {
@@ -579,7 +580,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, popIds[0] }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, 1. / 8.));
 
-          factorIds.push_back(popIds[1]);
+          factorIds.push_back(popIds[0]);
 
           col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, popIds[0] }, factorIds));
           coeffs.emplace_back(Eigen::Triplet<double>(row, col, -1. / 8.));

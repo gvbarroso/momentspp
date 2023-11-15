@@ -296,7 +296,6 @@ save_plot("moms_sel.pdf", moms, base_height=10, base_width=30)
 ### comparing to moments.TwoLocus
 vals <- numeric()
 for(i in 1:length(model)) {
-    
   x <- read.table(paste("constant/mu_1e-8/m", model[i], "_py.txt", sep=""))$V3
   vals <- c(vals, x)
 }

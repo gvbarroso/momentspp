@@ -8,25 +8,23 @@ demes:
     ancestors: [X]
     epochs:
       - end_time: 0
-        start_size: 20000
+        start_size: 10000
   - name: B
     ancestors: [X]
     epochs:
       - end_time: 0
-        start_size: 5000
+        start_size: 1000
 metadata:
   - name: mutation
     epochs:
       - end_time: 0
-        rates: [1e-7]
+        rates: [1e-07]
   - name: recombination
     epochs:
       - end_time: 0
-        rates: [1e-6]
+        rates: [0]
   - name: selection
     start_time: .inf
     epochs:
-      - end_time: 2000
-        rates: [0]
       - end_time: 0
-        rates: [0, 0]
+        rates: [0]

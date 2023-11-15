@@ -196,7 +196,7 @@ public:
     {
       it->evolve_det(gen, u, r, s);
 
-      if(it->monomorphic() && it->mutatedBoth())
+      if(it->monomorphic()) // && it->mutatedBoth())
         it = pairs_.erase(it);
 
       else

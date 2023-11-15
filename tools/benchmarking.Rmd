@@ -9,7 +9,7 @@ number_sections: true
 toc_depth: 3
 ---
   
-```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+```{r setup, include=F, message=F, warning=F}
 
 knitr::opts_chunk$set(echo=TRUE)
 
@@ -27,6 +27,8 @@ use_python("/usr/bin/python3")
 # handy global variable
 n_models <<- 0
 
+scale.4d <- function(x) sprintf("%.4f", x)
+
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
 
@@ -34,15 +36,88 @@ knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 
 ## No-migration
 
+### Building Demes files
+
+```{r, demes-neutral-2-pop, include=T, eval=T, results=F, message=F, warning=F}
+
+N1 <- 10000
+N2 <- c(N1, N1 / 10)
+u <- 1e-7
+s <- 0
+r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 0)
+split_time <- c(500, 2000)
+
+params <- crossing(N1, N2, u, r, s, split_time)
+params$scenario <- 1:nrow(params)
+n_models <- nrow(params)
+
+py$params <- params
+
+write.csv(params, "neutrality/no_migration/params.csv", 
+          quote=F, sep=",", col.names=T, row.names=F)
+
+for(i in 1:n_models) {
+  
+  name <- paste("model_", i, sep="")
+  sink(paste("neutrality/no_migration/", name, ".yaml", sep=""))
+  
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  cat("      - end_time: ")
+  cat(params$split_time[i])
+  cat("\n")
+  cat("        start_size: ")
+  cat(params$N1[i])
+  cat("\n")
+  cat("  - name: A\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N1[i])
+  cat("\n")
+  cat("  - name: B\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N2[i])
+  cat("\n")
+  cat("metadata:\n")
+  cat("  - name: mutation\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$u[i])
+  cat("]\n")
+  cat("  - name: recombination\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$r[i])
+  cat("]\n")
+  cat("  - name: selection\n")
+  cat("    start_time: .inf\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [0]\n")
+  
+  sink()
+}
+
+```
+
 ### Running moments++
 
-```{bash run-moments++, engine.opts='-i', include=FALSE, eval=TRUE, results=FALSE}
+```{bash run-moments++, engine.opts='-i', include=F, eval=T, results=F}
 
 source ~/.bashrc
 
 cd neutrality/no_migration
 
-for((i=1;i<=4;i++)) # n_models = 4
+for((i=1;i<=$n_models;i++))
 do
   momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=1
 done
@@ -50,20 +125,17 @@ done
 cd ../..
 ```
 
-### Running moments.LD
+### Running moments.LD (TODO read from params df, make compatible with demes metadata)
 
-```{python run-momentsLD, include=TRUE, eval=TRUE, results=FALSE}
+```{python run-momentsLD, include=T, eval=T, results=F}
 
 import moments.LD
 import demes
 import sys, os
 import numpy as np
 
-def simulate_ld(f, sampled_demes):
+def simulate_ld(f, sampled_demes, u, r):
     g = demes.load(f)
-    u = 1e-7
-    r = 1e-6
-
     y = moments.LD.LDstats.from_demes(g, sampled_demes, r=r, u=u)
     return y
   
@@ -85,11 +157,13 @@ def write_column(y, out_file):
         if m.split("_")[0] == "pi2":
             out_file.write(str(v) + "\n")
     
-for i in range(1, 5):
+for i in range(1, n_models):
   with open(f"neutrality/no_migration/moments_LD_model_{i}.csv", "w+") as fout:
       f = f"neutrality/no_migration/model_{i}_demes.yaml"
       pops = ["A", "B"]
-      y = simulate_ld(f, pops)
+      u = 
+      r = 
+      y = simulate_ld(f, pops, u, r)
       stats = moments.LD.Util.moment_names(len(pops))
       l = ",".join(stats[0] + stats[1]) + "\n"
       fout.write(l)
@@ -99,7 +173,7 @@ for i in range(1, 5):
 
 ### Plots
 
-```{r neutral-bench, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
+```{r neutral-bench, include=T, eval=T, results=F, message=F, warning=F}
 
 n_models <- 4
 
@@ -168,9 +242,81 @@ p1 <- p1 + theme(axis.title=element_text(size=12),
 save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_width=12)
 ```
 
+## Migration (TODO)
+
 # Selection 1-population
 
-```{python run-momentsTwoLocus, include=TRUE, eval=TRUE, results=FALSE}
+### Building Demes files
+
+```{r, demes-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+
+N <- c(1000, 10000)
+u <- 1e-7
+r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 0)
+s <- c(0, -5e-05, -1e-04, -2.5e-04, -5e-04, -1e-3)
+
+params <- crossing(N, u, r, s)
+params$scenario <- 1:nrow(params)
+n_models <- nrow(params)
+
+for(i in 1:n_models) {
+  
+  name <- paste("model_", i, sep="")
+  sink(paste("selection/single-pop/", name, ".yaml", sep=""))
+  
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N[i])
+  cat("\n")
+  cat("metadata:\n")
+  cat("  - name: mutation\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$u[i])
+  cat("]\n")
+  cat("  - name: recombination\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$r[i])
+  cat("]\n")
+  cat("  - name: selection\n")
+  cat("    start_time: .inf\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$s[i])
+  cat("]\n")
+  
+  sink()
+}
+
+```
+
+### Running moments++
+
+```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=T, results=F, message=T, warning=T}
+
+source ~/.bashrc
+
+cd selection/single-pop
+
+for((i=1;i<=$n_models;i++))
+do
+  momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=25
+done
+
+cd ../..
+```
+
+### Running moments.TwoLocus (TODO)
+
+```{python run-momentsTwoLocus, include=T, eval=T, results=F}
 
 import moments.TwoLocus
 import numpy as np
@@ -180,18 +326,14 @@ s = -1e-4
 u = 1e-7
 r = 1e-5
 
-gammas = [2 * Ne * s, 2 * Ne * s, 0] # selection on [AB, Ab, aB] haplotypes, resp
+gammas = [2 * Ne * s, 2 * Ne * s, 0] # sel on [AB, Ab, aB] haplotypes, resp
 rho = 4 * Ne * r
 theta = 4 * Ne * u
 
 if np.abs(2 * Ne * s) > 20:
     print("Strong selection, approximations may break down")
 
-#print("2Ns   =", 2 * Ne * s)
-#print("rho   =", rho)
-#print("theta =", theta)
-
-n_samples = 40
+n_samples = 40 # 80
 
 F = moments.TwoLocus.Demographics.equilibrium(
     n_samples, rho=rho, theta=theta, sel_params=gammas
@@ -217,15 +359,124 @@ print(f"pi(B) = {fs_right.pi()}")
 print(f"pi2   = {F.pi2():}")
 ```
 
+### Plots
+
+```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+
+commom_stats <- c("DD_0_0", "Dr_0_0_(1-2p0)^1", "Hl_0_0", "Hr_0_0", "pi2_0_0_0_0")
+
+expectation <- numeric()
+for(i in 1:n_models) {
+  x <- read.table(paste("selection/single-pop/model_", i, "_expectations.txt", sep=""))
+  x <- subset(x, V1 %in% commom_stats)$V3
+  expectation <- c(expectation, x)
+}
+
+tbl <- as.data.frame(expectation)
+tbl$stats <- commom_stats
+scenario <- NULL
+for(i in 1:n_models) { 
+  scenario <- c(scenario, rep(i, length(commom_stats)))
+}
+tbl$scenario <- scenario
+
+df <- full_join(tbl, params, by="scenario")
+
+df$alpha <- 2 * df$s * df$N
+df[df$r==0,]$r <- 1e-12 # for log transformation
+
+vals <- numeric()
+for(i in 1:n_models) {
+  x <- read.table(paste("selection/single-pop/m_", i, "_py.txt", sep=""))$V3
+  vals <- c(vals, x)
+}
+
+tbl_py <- as.data.frame(vals)
+tbl_py$stats <- commom_stats
+
+# from 2p(1-p) to p(1-p)
+tbl_py[tbl_py$stats=="Hl_0_0", 1] <- tbl_py[tbl_py$stats=="Hl_0_0", 1] / 2
+tbl_py[tbl_py$stats=="Hr_0_0", 1] <- tbl_py[tbl_py$stats=="Hr_0_0", 1] / 2
+
+tbl_pp <- tbl %>% mutate(ratio = vals / tbl_py$vals)
+#tbl_pp <- tbl_pp[tbl_pp$r < 1e-3,]
+#tbl_pp <- tbl_pp[tbl_pp$s > -100,]
+
+p1 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio)) 
+p1 <- p1 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p1 <- p1 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p1 <- p1 + scale_shape_manual(values=(4:0))
+p1 <- p1 + labs(title=NULL, x=NULL, y=expression(D^2))
+p1 <- p1 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),
+                 legend.position="none")
+
+p2 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio)) 
+p2 <- p2 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p2 <- p2 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p2 <- p2 + scale_shape_manual(values=(4:0))
+p2 <- p2 + labs(title=NULL, x=NULL, y=expression(Dz))
+p2 <- p2 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+p3 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio)) 
+p3 <- p3 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p3 <- p3 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p3 <- p3 + scale_shape_manual(values=(4:0))
+p3 <- p3 + labs(title=NULL, x=NULL, y=expression(H[l]))
+p3 <- p3 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+p4 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio)) 
+p4 <- p4 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p4 <- p4 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p4 <- p4 + scale_shape_manual(values=(4:0))
+p4 <- p4 + labs(title=NULL, x=NULL, y=expression(H[r]))
+p4 <- p4 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 axis.title.x=element_blank(),
+                 axis.text.x=element_blank(),
+                 axis.ticks.x=element_blank(),
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+p5 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio)) 
+p5 <- p5 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p5 <- p5 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p5 <- p5 + scale_shape_manual(values=(4:0))
+p5 <- p5 + labs(title=NULL, x="r", y=expression(pi[2]))
+p5 <- p5 + theme(axis.title=element_text(size=12),
+                 axis.text=element_text(size=10),
+                 strip.text.x = element_blank(),
+                 legend.position="none")
+
+moms_comp <- plot_grid(p1, p2, p3, p4, p5, ncol=1)
+moms_comp
+save_plot("section/single-pop/moms_++_vs_py.pdf", moms_comp, base_height=10, base_width=20)
+
+```
+
 # Selection 2-populations
 
 ## No-migration
 
 ### Building Demes files
 
-```{r, demes-selected-2-pop, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
+```{r, demes-selected-2-pop, include=T, eval=T, results=F, message=F, warning=F}
 
-# symmetrical pop sizes
 N1 <- 10000
 N2 <- c(N1, N1 / 10)
 u <- 1e-7
@@ -304,7 +555,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++-2-pops, engine.opts='-i', include=FALSE, eval=TRUE, results=FALSE, message=TRUE, warning=TRUE}
+```{bash run-moments++-2-pops, engine.opts='-i', include=F, eval=T, results=F, message=T, warning=T}
 
 source ~/.bashrc
 
@@ -320,7 +571,7 @@ cd ../..
 
 ### Plots
 
-```{r, plots-selected-2-pop, include=TRUE, eval=TRUE, results=FALSE, message=FALSE, warning=FALSE}
+```{r, plots-selected-2-pop, include=T, eval=T, results=F, message=F, warning=F}
 
 core_stats <- c("DD_1_1", 
                 "DD_1_2", 
@@ -374,7 +625,51 @@ df <- df[df$r < 1e-3,] # for increased resolution in the plots
 df_sym_N <- df[df$N1==df$N2,]
 df_sym_N[df_sym_N$r==0,]$r <- 1e-12 # for log transformation
 
-# TODO plot pi2_1212
+# pi2
+## pop-1
+pi2_p1 <- subset(df_sym_N, stats %in% "pi2_1_1_1_1") 
+
+pa <- ggplot(data=pi2_p1, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
+pa <- pa + geom_point(size=3, shape=16) + geom_line() + theme_bw()
+pa <- pa + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
+pa <- pa + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6))
+pa <- pa + labs(title="Symmetric Population Sizes", x="r", y="E[pi2_1111]")
+pa <- pa + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+pa
+save_plot("selection/no_migration/pi2_p1_no-mig.pdf", pa, base_height=12, base_width=12)
+
+## pop-2
+pi2_p2 <- subset(df_sym_N, stats %in% "pi2_2_2_2_2") 
+
+pb <- ggplot(data=pi2_p2, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
+pb <- pb + geom_point(size=3, shape=16) + geom_line() + theme_bw()
+pb <- pb + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
+pb <- pb + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6))
+pb <- pb + labs(title="Symmetric Population Sizes", x="r", y="E[pi2_2_2_2_2]")
+pb <- pb + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+pb
+save_plot("selection/no_migration/pi2_p2_no-mig.pdf", pb, base_height=12, base_width=12)
+
+## cross-pop
+pi2_cross <- subset(df_sym_N, stats %in% "pi2_1_2_1_2") 
+
+pc <- ggplot(data=pi2_cross, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
+pc <- pc + geom_point(size=3, shape=16) + geom_line() + theme_bw()
+pc <- pc + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
+pc <- pc + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6))
+pc <- pc + labs(title="Symmetric Population Sizes", x="r", y="E[pi2_1212]")
+pc <- pc + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+pc
+save_plot("selection/no_migration/pi2_cross_no-mig.pdf", pc, base_height=12, base_width=12)
 
 # D1D2
 d1d2 <- subset(df_sym_N, stats %in% "DD_1_2") 
@@ -514,9 +809,11 @@ p8 <- plot_ly(data=fst, x=~s1, y=~s2, z=~expectation, type="scatter3d", mode="ma
 p8
 ```
 
+## Migration (TODO)
+
 # Check-my-matrix
 
-```{python check-my-matrix, include=TRUE, eval=FALSE, results=TRUE}
+```{python check-my-matrix, include=T, eval=F, results=T}
 
 import moments.LD
 import demes
