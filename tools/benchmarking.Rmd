@@ -619,8 +619,6 @@ df <- full_join(tbl, params, by="scenario")
 df$alpha_1 <- 2 * df$s1 * df$N1
 df$alpha_2 <- 2 * df$s2 * df$N2
 
-df <- df[df$r < 1e-3,] # for increased resolution in the plots
-
 # symmetric population sizes
 df_sym_N <- df[df$N1==df$N2,]
 df_sym_N[df_sym_N$r==0,]$r <- 1e-12 # for log transformation
