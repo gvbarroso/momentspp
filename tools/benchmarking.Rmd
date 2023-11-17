@@ -483,10 +483,10 @@ u <- 1e-7
 r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 0)
 s1 <- c(0, -5e-05, -1e-04, -2.5e-04, -5e-04, -1e-3)
 s2 <- c(0, -5e-05, -1e-04, -2.5e-04, -5e-04, -1e-3)
+sanc <- c(0, -1/2/N1)
+split_time <- 2000 #c(400, 2000)
 
-split_time <- 2000
-
-params <- crossing(N1, N2, u, r, s1, s2)
+params <- crossing(N1, N2, u, r, s1, s2, sanc, split_time)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
@@ -536,10 +536,10 @@ for(i in 1:n_models) {
   cat("    start_time: .inf\n")
   cat("    epochs:\n")
   cat("      - end_time: ")
-  cat(split_time)
+  cat(params$split_time[i])
   cat("\n")
   cat("        rates: [")
-  cat(-1/2/N1)
+  cat(params$sanc[i])
   cat("]\n")
   cat("      - end_time: 0\n")
   cat("        rates: [")
@@ -561,7 +561,7 @@ source ~/.bashrc
 
 cd selection/no_migration
 
-for((i=1;i<=360;i++))
+for((i=1;i<=$n_models;i++))
 do
   momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=25
 done

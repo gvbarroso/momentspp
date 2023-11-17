@@ -12,6 +12,7 @@
 #include <map>
 #include <limits>
 #include <thread>
+#include <array>
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -23,89 +24,200 @@
 #include <Bpp/Text/TextTools.h>
 
 // Functions
-double getD(const std::vector<double>& X)
+std::vector<double> getDs(const std::vector<std::array<double, 4>>& X)
 {
-  return X[0] * X[3] - X[1] * X[2];
+  std::vector<double> ret(0);
+  ret.reserve(X.size());
+
+  for(size_t i = 0; i < X.size(); ++i)
+    ret.emplace_back(X[i][0] * X[i][3] - X[i][1] * X[i][2]);
+
+  return ret;
 }
 
-double getP(const std::vector<double>& X)
+std::vector<double> getPs(const std::vector<std::array<double, 4>>& X)
 {
-  return X[0] + X[1];
+  std::vector<double> ret(0);
+  ret.reserve(X.size());
+
+  for(size_t i = 0; i < X.size(); ++i)
+    ret.emplace_back(X[i][0] + X[i][1]);
+
+  return ret;
 }
 
-double getQ(const std::vector<double>& X)
+std::vector<double> getQs(const std::vector<std::array<double, 4>>& X)
 {
-  return X[0] + X[2];
+  std::vector<double> ret(0);
+  ret.reserve(X.size());
+
+  for(size_t i = 0; i < X.size(); ++i)
+    ret.emplace_back(X[i][0] + X[i][2]);
+
+  return ret;
 }
 
-double getHl(double Xl)
+std::vector<double> getHls(const std::vector<double>& Xl)
 {
-  return Xl * (1. - Xl);
+  std::vector<double> ret(0);
+  ret.reserve(Xl.size());
+
+  for(size_t i = 0; i < Xl.size(); ++i)
+    ret.emplace_back(Xl[i] * (1. - Xl[i]));
+
+  return ret;
 }
 
-double getHr(double Xr)
+std::vector<double> getHrs(const std::vector<double>& Xr)
 {
-  return Xr * (1. - Xr);
+  std::vector<double> ret(0);
+  ret.reserve(Xr.size());
+
+  for(size_t i = 0; i < Xr.size(); ++i)
+    ret.emplace_back(Xr[i] * (1. - Xr[i]));
+
+  return ret;
 }
 
-double getDsqr(const std::vector<double>& X)
+std::vector<double> getDsqrs(const std::vector<std::array<double, 4>>& X)
 {
-  return (X[0] * X[3] - X[1] * X[2]) * (X[0] * X[3] - X[1] * X[2]);
+  std::vector<double> ret(0);
+  ret.reserve(X.size());
+
+  for(size_t i = 0; i < X.size(); ++i)
+    ret.emplace_back((X[i][0] * X[i][3] - X[i][1] * X[i][2]) * (X[i][0] * X[i][3] - X[i][1] * X[i][2]));
+
+  return ret;
 }
 
-double getDz(const std::vector<double>& X)
+std::vector<double> getDzs(const std::vector<std::array<double, 4>>& X)
 {
-  return getD(X) * (1. - 2. * getP(X)) * (1. - 2. * getQ(X));
+  std::vector<double> ret(0);
+  ret.reserve(X.size());
+
+  std::vector<double> ps = getPs(X);
+  std::vector<double> qs = getQs(X);
+  std::vector<double> ds = getDs(X);
+
+  for(size_t i = 0; i < X.size(); ++i)
+    ret.emplace_back(ds[i] * (1. - 2. * ps[i]) * (1. - 2. * qs[i]));
+
+  return ret;
 }
 
-double getPi2(const std::vector<double>& X)
+std::vector<double> getPi2s(const std::vector<std::array<double, 4>>& X)
 {
-  double p = getP(X);
-  double q = getQ(X);
-  return p * (1. - p) * q * (1. - q);
+  std::vector<double> ret(0);
+  ret.reserve(X.size());
+
+  std::vector<double> ps = getPs(X);
+  std::vector<double> qs = getQs(X);
+
+  for(size_t i = 0; i < X.size(); ++i)
+    ret.emplace_back(ps[i] * (1. - ps[i]) * qs[i] * (1. - qs[i]));
+
+  return ret;
 }
 
-void recombine(std::vector<double>& X, double r)
+void recombine(std::vector<std::array<double, 4>>& X, double r)
 {
-  double d = getD(X);
+  std::vector<double> ds = getDs(X);
 
-  X[0] -= r * d;
-  X[3] -= r * d;
-  X[1] += r * d;
-  X[2] += r * d;
+  for(size_t i = 0; i < X.size(); ++i)
+  {
+    X[i][0] -= r * ds[i];
+    X[i][3] -= r * ds[i];
+    X[i][1] += r * ds[i];
+    X[i][2] += r * ds[i];
+  }
 }
 
-void select(double& Xl, double s)
+void select(std::vector<double>& Xl, double s)
 {
-  Xl = ((1 + s) * Xl) / (Xl * (1 + s) + 1 - Xl);
+  for(size_t i = 0; i < Xl.size(); ++i)
+    Xl[i] = ((1 + s) * Xl[i]) / (Xl[i] * (1 + s) + 1 - Xl[i]);
 }
 
-void drift(std::vector<double>& X, double& Xl, double& Xr, double Ne, const gsl_rng* gen)
+void drift(std::vector<std::array<double, 4>>& X, std::vector<double>& Xl, std::vector<double>& Xr, double Ne, const gsl_rng* gen)
 {
-  Xl = gsl_ran_binomial(gen, Xl, 2. * Ne) / (2. * Ne);
-  Xr = gsl_ran_binomial(gen, Xr, 2. * Ne) / (2. * Ne);
+  for(size_t i = 0; i < Xl.size(); ++i)
+    Xl[i] = gsl_ran_binomial(gen, Xl[i], 2. * Ne) / (2. * Ne);
 
-  unsigned int n = std::round(std::accumulate(std::begin(X), std::end(X), 0.));
-  unsigned int next[4];
-  double probs[4] = X;
+  for(size_t i = 0; i < Xr.size(); ++i)
+    Xr[i] = gsl_ran_binomial(gen, Xr[i], 2. * Ne) / (2. * Ne);
 
-  gsl_ran_multinomial(gen, 4, n, probs, next);
+  unsigned int n = std::round(2. * Ne);
 
-  X[0] = next[0];
-  X[1] = next[1];
-  X[2] = next[2];
-  X[3] = next[3];
+  for(size_t i = 0; i < X.size(); ++i)
+  {
+    unsigned int next[4];
+    double probs[4] = X[i]; // NOTE can be converted?
+
+    gsl_ran_multinomial(gen, 4, n, probs, next);
+
+    X[i][0] = next[0];
+    X[i][1] = next[1];
+    X[i][2] = next[2];
+    X[i][3] = next[3];
+  }
 }
 
-void mutate()
+void mutate(std::vector<std::array<double, 4>& X, std::vector<double>& Xl, std::vector<double>& Xr, double Ne, double u, double L, const gsl_rng* gen)
 {
+  // new single mutations at left locus
+  unsigned int num_left_mut = gsl_ran_poisson(2 * Ne * u * L);
+  for(size_t i = 0; i < num_left_mut; ++i)
+    Xl.emplace_back(1. / (2. * Ne));
+
+  // new single mutations at right locus
+  unsigned int num_right_mut = gsl_ran_poisson(2 * Ne * u * L);
+  for(size_t i = 0; i < num_right_mut; ++i)
+    Xr.emplace_back(1. / (2. * Ne));
+
+
+  for(size_t i = 0; i < L; ++i)
+  {
+    // mutate against segregating left loci in Xl
+    for(size_t j = 0; j < Xl.size(); ++j)
+    {
+      if(gsl_rng_uniform(gen) < 2 * Ne * u)
+      {
+        if(gsl_rng_uniform(gen) < Xl[j]) // falls on bA background
+          X.push_back(1. / 2 / Ne, Xl[j] - 1 / 2 / Ne, 0, 1 - Xl[j]]])
+                    )
+        else // falls on ab background
+          X = np.concatenate(
+                        (X, [[0, Xl[j], 1 / 2 / Ne, 1 - Xl[j] - 1 / 2 / Ne]])
+                    )
+      }
+    }
+
+    // mutate against segregating right loci in Xr
+    for(size_t j = 0; j < Xr.size(); ++j)
+    {
+      if(gsl_rng_uniform(gen) < 2 * Ne * u)
+      {
+        if(gsl_rng_uniform(gen) < Xr[j]) // falls on bA background
+        // falls on aB background
+            X = , [[1 / 2 / Ne, 0, Xr[j] - 1 / 2 / Ne, 1 - Xr[j]]])
+                    )
+                else:
+                    // falls on ab background
+                    X = np.concatenate(
+                        (X, [[0, 1 / 2 / Ne, Xr[j], 1 - Xr[j] - 1 / 2 / Ne]])
+                    )
+
+      }
+    }
+  }
 }
 
-void evolve(double Xl, double Xr, std::vector<double>& X, double Ne, double u, double r, double L, double s, const gsl_rng* gen)
+void evolve(std::vector<double>& Xl, std::vector<double>& Xr, std::vector<double>& X, double Ne, double u, double r, double L, double s, const gsl_rng* gen)
 {
   recombine(X, r);
   select(Xl, s);
   drift(X, Xl, Xr, Ne, gen);
+  mutate(X, Xl, Xr, Ne, u, L, gen);
 }
 
 int main(int argc, char *argv[]) {
