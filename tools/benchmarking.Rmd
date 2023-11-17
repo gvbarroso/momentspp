@@ -588,18 +588,18 @@ core_stats <- c("DD_1_1",
                 "Hl_2_2",
                 "Hr_1_1", 
                 "Hr_1_2",
-                #"Hr_2_1",
                 "Hr_2_2",
                 "pi2_1_1_1_1", 
                 "pi2_1_1_1_2",
                 "pi2_1_1_2_2", 
                 "pi2_1_2_1_2", 
+                "pi2_2_1_1_2", 
                 "pi2_1_2_2_2", 
+                "pi2_2_2_1_1",
                 "pi2_2_2_2_2")
 
 expectation <- numeric()
 for(i in 1:n_models) {
-    
   x <- read.table(paste("selection/no_migration/model_", i, "_expectations.txt", sep=""))
   x <- subset(x, V1 %in% core_stats)
   expectation <- c(expectation, x$V3)
@@ -624,50 +624,32 @@ df_sym_N <- df[df$N1==df$N2,]
 df_sym_N[df_sym_N$r==0,]$r <- 1e-12 # for log transformation
 
 # pi2
-## pop-1
-pi2_p1 <- subset(df_sym_N, stats %in% "pi2_1_1_1_1") 
-
-pa <- ggplot(data=pi2_p1, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
-pa <- pa + geom_point(size=3, shape=16) + geom_line() + theme_bw()
+pa <- ggplot(data=filter(df_sym_N, str_detect(stats, "^pi2")), aes(x=r, y=expectation, color=stats)) 
+pa <- pa + geom_point(size=3, shape=16) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
 pa <- pa + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
 pa <- pa + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6))
-pa <- pa + labs(title="Symmetric Population Sizes", x="r", y="E[pi2_1111]")
+pa <- pa + scale_color_brewer(palette = "Dark2")
+pa <- pa + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
 pa <- pa + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pa
-save_plot("selection/no_migration/pi2_p1_no-mig.pdf", pa, base_height=12, base_width=12)
+save_plot("selection/no_migration/pi2_no-mig.paf", pa, base_height=12, base_width=12)
 
-## pop-2
-pi2_p2 <- subset(df_sym_N, stats %in% "pi2_2_2_2_2") 
-
-pb <- ggplot(data=pi2_p2, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
-pb <- pb + geom_point(size=3, shape=16) + geom_line() + theme_bw()
+# Dr
+pb <- ggplot(data=filter(df_sym_N, str_detect(stats, "^Dr")), aes(x=r, y=expectation, color=stats)) 
+pb <- pb + geom_point(size=3, shape=16) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
 pb <- pb + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
-pb <- pb + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6))
-pb <- pb + labs(title="Symmetric Population Sizes", x="r", y="E[pi2_2_2_2_2]")
+pb <- pb + scale_y_log10(breaks=c(1e-8, 1e-7, 1e-6, 1e-5))
+pb <- pb + scale_color_brewer(palette = "Dark2")
+pb <- pb + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
 pb <- pb + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pb
-save_plot("selection/no_migration/pi2_p2_no-mig.pdf", pb, base_height=12, base_width=12)
-
-## cross-pop
-pi2_cross <- subset(df_sym_N, stats %in% "pi2_1_2_1_2") 
-
-pc <- ggplot(data=pi2_cross, aes(x=r, y=expectation)) + facet_grid(+alpha_1~alpha_2)
-pc <- pc + geom_point(size=3, shape=16) + geom_line() + theme_bw()
-pc <- pc + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
-pc <- pc + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6))
-pc <- pc + labs(title="Symmetric Population Sizes", x="r", y="E[pi2_1212]")
-pc <- pc + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-pc
-save_plot("selection/no_migration/pi2_cross_no-mig.pdf", pc, base_height=12, base_width=12)
+save_plot("selection/no_migration/Dr_no-mig.pdf", pd, base_height=12, base_width=12)
 
 # D1D2
 d1d2 <- subset(df_sym_N, stats %in% "DD_1_2") 
