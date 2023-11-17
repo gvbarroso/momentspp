@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 09/11/2023
+ * Last modified: 17/11/2023
  * Source code for twoLocusSim
  *
  */
@@ -22,10 +22,91 @@
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Text/TextTools.h>
 
-#include "TwoLocusPair.hpp"
-#include "TwoLocusPop.hpp"
-#include "SimTools.hpp"
+// Functions
+double getD(const std::vector<double>& X)
+{
+  return X[0] * X[3] - X[1] * X[2];
+}
 
+double getP(const std::vector<double>& X)
+{
+  return X[0] + X[1];
+}
+
+double getQ(const std::vector<double>& X)
+{
+  return X[0] + X[2];
+}
+
+double getHl(double Xl)
+{
+  return Xl * (1. - Xl);
+}
+
+double getHr(double Xr)
+{
+  return Xr * (1. - Xr);
+}
+
+double getDsqr(const std::vector<double>& X)
+{
+  return (X[0] * X[3] - X[1] * X[2]) * (X[0] * X[3] - X[1] * X[2]);
+}
+
+double getDz(const std::vector<double>& X)
+{
+  return getD(X) * (1. - 2. * getP(X)) * (1. - 2. * getQ(X));
+}
+
+double getPi2(const std::vector<double>& X)
+{
+  double p = getP(X);
+  double q = getQ(X);
+  return p * (1. - p) * q * (1. - q);
+}
+
+void recombine(std::vector<double>& X, double r)
+{
+  double d = getD(X);
+
+  X[0] -= r * d;
+  X[3] -= r * d;
+  X[1] += r * d;
+  X[2] += r * d;
+}
+
+void select(double& Xl, double s)
+{
+  Xl = ((1 + s) * Xl) / (Xl * (1 + s) + 1 - Xl);
+}
+
+void drift(std::vector<double>& X, double& Xl, double& Xr, double Ne, const gsl_rng* gen)
+{
+  Xl = gsl_ran_binomial(gen, Xl, 2. * Ne) / (2. * Ne);
+  Xr = gsl_ran_binomial(gen, Xr, 2. * Ne) / (2. * Ne);
+
+  unsigned int n = std::round(std::accumulate(std::begin(X), std::end(X), 0.));
+  unsigned int next[4];
+  double probs[4] = X;
+
+  gsl_ran_multinomial(gen, 4, n, probs, next);
+
+  X[0] = next[0];
+  X[1] = next[1];
+  X[2] = next[2];
+  X[3] = next[3];
+}
+
+void mutate()
+{
+}
+
+void evolve(double Xl, double Xr, std::vector<double>& X, double Ne, double u, double r, double L, double s, const gsl_rng* gen)
+{
+  recombine(X, r);
+  select(Xl, s);
+  drift(X, Xl, Xr, Ne, gen);
+}
 
 int main(int argc, char *argv[]) {
 
@@ -88,6 +169,7 @@ int main(int argc, char *argv[]) {
   gen = gsl_rng_alloc(T);
 
   gsl_rng_set(gen, seed);
+
 
   std::vector<TwoLocusPair> pairs(0);
   pairs.reserve(2 * L * N * u);

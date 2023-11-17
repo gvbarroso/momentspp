@@ -651,6 +651,34 @@ pb <- pb + theme(axis.title=element_text(size=16),
 pb
 save_plot("selection/no_migration/Dr_no-mig.pdf", pd, base_height=12, base_width=12)
 
+# Hets
+pc <- ggplot(data=filter(df_sym_N, str_detect(stats, "^H")), aes(x=r, y=expectation, color=stats)) 
+pc <- pc + geom_point(size=3, shape=16) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
+pc <- pc + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
+pc <- pc + scale_y_log10(breaks=pretty_breaks())
+pc <- pc + scale_color_brewer(palette = "Dark2")
+pc <- pc + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
+pc <- pc + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+pc
+save_plot("selection/no_migration/Hets_no-mig.pdf", pd, base_height=12, base_width=12)
+
+# Hr
+pd <- ggplot(data=filter(df_sym_N, stats %in% c("Hr_1_1", "Hr_2_2")), aes(x=r, y=expectation, color=stats)) 
+pd <- pd + geom_point(size=3, shape=16) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
+pd <- pd + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
+pd <- pd + scale_y_log10(breaks=pretty_breaks())
+pd <- pd + scale_color_brewer(palette = "Dark2")
+pd <- pd + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
+pd <- pd + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
+pd
+save_plot("selection/no_migration/Hr_no-mig.pdf", pd, base_height=12, base_width=12)
+
 # D1D2
 d1d2 <- subset(df_sym_N, stats %in% "DD_1_2") 
 d1d2$ratio <- d1d2$expectation / subset(df_sym_N, stats %in% "pi2_1_2_1_2")$expectation
