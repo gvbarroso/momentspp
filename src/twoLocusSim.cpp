@@ -22,7 +22,7 @@
 #include <Bpp/App/BppApplication.h>
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Text/TextTools.h>
-
+/*
 // Functions
 std::vector<double> getDs(const std::vector<std::array<double, 4>>& X)
 {
@@ -219,9 +219,9 @@ void evolve(std::vector<double>& Xl, std::vector<double>& Xr, std::vector<double
   drift(X, Xl, Xr, Ne, gen);
   mutate(X, Xl, Xr, Ne, u, L, gen);
 }
-
+*/
 int main(int argc, char *argv[]) {
-
+/*
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << "*                                                                *" << std::endl;
@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
   double avg_Hr_2 = 0.;
   double avg_pi2_2 = 0.;
   double avg_Dz_2 = 0.;
-  double avg_Dsqr_2 = 0.;*/
+  double avg_Dsqr_2 = 0.;
 
   for(size_t i = 0; i < G; ++i)
   {
@@ -345,7 +345,7 @@ int main(int argc, char *argv[]) {
     avg_Hr_2 += gen_stats_2[1];
     avg_pi2_2 += gen_stats_2[2];
     avg_Dz_2 += gen_stats_2[3];
-    avg_Dsqr_2 += gen_stats_2[4];*/
+    avg_Dsqr_2 += gen_stats_2[4];
   }
 
   std::cout << "avg_Hl_1 = " << avg_Hl_1 / G << "\n" ;
@@ -358,10 +358,10 @@ int main(int argc, char *argv[]) {
   std::cout << "avg_Hr_2 = " << avg_Hr_2 / G << "\n" ;
   std::cout << "avg_pi2_2 = " << avg_pi2_2 / G << "\n" ;
   std::cout << "avg_Dz_2 = " << avg_Dz_2 / G << "\n" ;
-  std::cout << "avg_Dsqr_2 = " << avg_Dsqr_2 / G << "\n" ;*/
+  std::cout << "avg_Dsqr_2 = " << avg_Dsqr_2 / G << "\n" ;
 
   gsl_rng_free(gen);
 
-  twoLocusSim.done();
+  twoLocusSim.done();*/
   return 0;
 }
