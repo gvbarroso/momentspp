@@ -593,10 +593,13 @@ core_stats <- c("DD_1_1",
                 "pi2_1_1_1_2",
                 "pi2_1_1_2_2", 
                 "pi2_1_2_1_2", 
-                "pi2_2_1_1_2", 
                 "pi2_1_2_2_2", 
+                "pi2_2_1_1_2", 
                 "pi2_2_2_1_1",
                 "pi2_2_2_2_2")
+
+# Note to be on the very safe side...
+core_stats <- sort(core_stats)
 
 expectation <- numeric()
 for(i in 1:n_models) {
@@ -707,7 +710,7 @@ pe <- pe + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pe
-save_plot("selection/no_migration/Hl_no-mig.pef", pe, base_height=12, base_width=12)
+save_plot("selection/no_migration/Hl_no-mig.pdf", pe, base_height=12, base_width=12)
 
 pf <- plot_ly(data=subset(filter(df_sym_N, stats %in% c("Hl_1_2", "Hl_2_1")), sanc == 0), x=~alpha_1, y=~alpha_2, z=~expectation, type="scatter3d", 
               mode="markers", color=~stats)

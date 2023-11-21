@@ -22,7 +22,7 @@
 #include <Bpp/App/BppApplication.h>
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Text/TextTools.h>
-/*
+
 // Functions
 std::vector<double> getDs(const std::vector<std::array<double, 4>>& X)
 {
@@ -219,9 +219,9 @@ void evolve(std::vector<double>& Xl, std::vector<double>& Xr, std::vector<double
   drift(X, Xl, Xr, Ne, gen);
   mutate(X, Xl, Xr, Ne, u, L, gen);
 }
-*/
+
 int main(int argc, char *argv[]) {
-/*
+
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << "*                                                                *" << std::endl;
@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
   double avg_Dz_1 = 0.;
   double avg_Dsqr_1 = 0.;
 
-  /*std::array<double, 5> gen_stats_2;
+  std::array<double, 5> gen_stats_2;
   double avg_Hl_2 = 0.;
   double avg_Hr_2 = 0.;
   double avg_pi2_2 = 0.;
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
     avg_Dz_1 += gen_stats_1[3] / (N * u);
     avg_Dsqr_1 += gen_stats_1[4] / (N * u);
 
-    /*avg_Hl_2 += gen_stats_2[0];
+    avg_Hl_2 += gen_stats_2[0];
     avg_Hr_2 += gen_stats_2[1];
     avg_pi2_2 += gen_stats_2[2];
     avg_Dz_2 += gen_stats_2[3];
@@ -354,7 +354,7 @@ int main(int argc, char *argv[]) {
   std::cout << "avg_Dz_1 = " << avg_Dz_1 / G << "\n" ;
   std::cout << "avg_Dsqr_1 = " << avg_Dsqr_1 / G << "\n\n" ;
 
-  /*std::cout << "avg_Hl_2 = " << avg_Hl_2 / G << "\n" ;
+  std::cout << "avg_Hl_2 = " << avg_Hl_2 / G << "\n" ;
   std::cout << "avg_Hr_2 = " << avg_Hr_2 / G << "\n" ;
   std::cout << "avg_pi2_2 = " << avg_pi2_2 / G << "\n" ;
   std::cout << "avg_Dz_2 = " << avg_Dz_2 / G << "\n" ;
@@ -362,6 +362,6 @@ int main(int argc, char *argv[]) {
 
   gsl_rng_free(gen);
 
-  twoLocusSim.done();*/
+  twoLocusSim.done();
   return 0;
 }
