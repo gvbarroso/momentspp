@@ -432,10 +432,6 @@ int main(int argc, char *argv[]) {
     evolve(X, Xl, Xr, Ne, L, u, r, s, gen);
     cleanup(X, Xl, Xr);
 
-    //printX(X);
-    //printXl(Xl);
-    //printXr(Xr);
-
     sum_Hl += getSumHl(Xl);
     sum_Hr += getSumHr(Xr);
     sum_Dz += getSumDz(X);
@@ -447,17 +443,17 @@ int main(int argc, char *argv[]) {
       std::cout << "Generation " << i << "\n";
       std::cout << "\tavg_Hl = " << sum_Hl / L / i << "\n";
       std::cout << "\tavg_Hr = " << sum_Hr / L / i << "\n";
-      std::cout << "\tavg_Dz = " << sum_Dz / L / i << "\n";
-      std::cout << "\tavg_Dsqr = " << sum_Dsqr / L / i << "\n";
-      std::cout << "\tavg_pi2 = " << sum_pi2 / L / i << "\n\n";
+      std::cout << "\tavg_Dz = " << sum_Dz / L / L / i << "\n";
+      std::cout << "\tavg_Dsqr = " << sum_Dsqr / L / L / i << "\n";
+      std::cout << "\tavg_pi2 = " << sum_pi2 / L / L / i << "\n\n";
     }
   }
 
   std::cout << "avg_Hl = " << sum_Hl / L / G << "\n";
   std::cout << "avg_Hr = " << sum_Hr / L / G << "\n";
-  std::cout << "avg_Dz = " << sum_Dz / L / G << "\n";
-  std::cout << "avg_Dsqr = " << sum_Dsqr / L / G << "\n";
-  std::cout << "avg_pi2 = " << sum_pi2 / L / G << "\n\n";
+  std::cout << "avg_Dz = " << sum_Dz / L / L / G << "\n";
+  std::cout << "avg_Dsqr = " << sum_Dsqr / L / L / G << "\n";
+  std::cout << "avg_pi2 = " << sum_pi2 / L / L / G << "\n\n";
 
   gsl_rng_free(gen);
 
