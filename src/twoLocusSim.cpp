@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 17/11/2023
+ * Last modified: 21/11/2023
  * Source code for twoLocusSim
  *
  */
@@ -9,10 +9,10 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <vector>
-#include <map>
 #include <limits>
 #include <thread>
 #include <array>
+#include <numeric>
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -24,6 +24,16 @@
 #include <Bpp/Text/TextTools.h>
 
 // Functions
+double getP(const std::array<double, 4>& haps)
+{
+  return haps[0] + haps[1];
+}
+
+double getQ(const std::array<double, 4>& haps)
+{
+  return haps[0] + haps[2];
+}
+
 std::vector<double> getDs(const std::vector<std::array<double, 4>>& X)
 {
   std::vector<double> ret(0);
@@ -119,6 +129,41 @@ std::vector<double> getPi2s(const std::vector<std::array<double, 4>>& X)
   return ret;
 }
 
+double getSumHl(const std::vector<double>& Xl)
+{
+  std::vector<double> vals = getHls(Xl);
+  std::sort(std::begin(vals), std::end(vals));
+  return std::accumulate(std::begin(vals), std::end(vals), 0.);
+}
+
+double getSumHr(const std::vector<double>& Xr)
+{
+  std::vector<double> vals = getHrs(Xr);
+  std::sort(std::begin(vals), std::end(vals));
+  return std::accumulate(std::begin(vals), std::end(vals), 0.);
+}
+
+double getSumDsqr(const std::vector<std::array<double, 4>>& X)
+{
+  std::vector<double> vals = getDsqrs(X);
+  std::sort(std::begin(vals), std::end(vals));
+  return std::accumulate(std::begin(vals), std::end(vals), 0.);
+}
+
+double getSumDz(const std::vector<std::array<double, 4>>& X)
+{
+  std::vector<double> vals = getDzs(X);
+  std::sort(std::begin(vals), std::end(vals));
+  return std::accumulate(std::begin(vals), std::end(vals), 0.);
+}
+
+double getSumPi2(const std::vector<std::array<double, 4>>& X)
+{
+  std::vector<double> vals = getPi2s(X);
+  std::sort(std::begin(vals), std::end(vals));
+  return std::accumulate(std::begin(vals), std::end(vals), 0.);
+}
+
 void recombine(std::vector<std::array<double, 4>>& X, double r)
 {
   std::vector<double> ds = getDs(X);
@@ -126,9 +171,9 @@ void recombine(std::vector<std::array<double, 4>>& X, double r)
   for(size_t i = 0; i < X.size(); ++i)
   {
     X[i][0] -= r * ds[i];
-    X[i][3] -= r * ds[i];
     X[i][1] += r * ds[i];
     X[i][2] += r * ds[i];
+    X[i][3] -= r * ds[i];
   }
 }
 
@@ -138,7 +183,7 @@ void select(std::vector<double>& Xl, double s)
     Xl[i] = ((1 + s) * Xl[i]) / (Xl[i] * (1 + s) + 1 - Xl[i]);
 }
 
-void drift(std::vector<std::array<double, 4>>& X, std::vector<double>& Xl, std::vector<double>& Xr, double Ne, const gsl_rng* gen)
+void drift(std::vector<std::array<double, 4>>& X, std::vector<double>& Xl, std::vector<double>& Xr, unsigned int Ne, const gsl_rng* gen)
 {
   for(size_t i = 0; i < Xl.size(); ++i)
     Xl[i] = gsl_ran_binomial(gen, Xl[i], 2. * Ne) / (2. * Ne);
@@ -151,26 +196,26 @@ void drift(std::vector<std::array<double, 4>>& X, std::vector<double>& Xl, std::
   for(size_t i = 0; i < X.size(); ++i)
   {
     unsigned int next[4];
-    double probs[4] = X[i]; // NOTE can be converted?
+    double probs[4] = { X[i][0], X[i][1], X[i][2], X[i][3] };
 
     gsl_ran_multinomial(gen, 4, n, probs, next);
 
-    X[i][0] = next[0];
-    X[i][1] = next[1];
-    X[i][2] = next[2];
-    X[i][3] = next[3];
+    X[i][0] = static_cast<double>(next[0]) / (2. * Ne);
+    X[i][1] = static_cast<double>(next[1]) / (2. * Ne);
+    X[i][2] = static_cast<double>(next[2]) / (2. * Ne);
+    X[i][3] = static_cast<double>(next[3]) / (2. * Ne);
   }
 }
 
-void mutate(std::vector<std::array<double, 4>& X, std::vector<double>& Xl, std::vector<double>& Xr, double Ne, double u, double L, const gsl_rng* gen)
+void mutate(std::vector<std::array<double, 4>>& X, std::vector<double>& Xl, std::vector<double>& Xr, unsigned int Ne, size_t L, double u, const gsl_rng* gen)
 {
   // new single mutations at left locus
-  unsigned int num_left_mut = gsl_ran_poisson(2 * Ne * u * L);
+  unsigned int num_left_mut = gsl_ran_poisson(gen, 2. * Ne * u * L);
   for(size_t i = 0; i < num_left_mut; ++i)
     Xl.emplace_back(1. / (2. * Ne));
 
   // new single mutations at right locus
-  unsigned int num_right_mut = gsl_ran_poisson(2 * Ne * u * L);
+  unsigned int num_right_mut = gsl_ran_poisson(gen, 2. * Ne * u * L);
   for(size_t i = 0; i < num_right_mut; ++i)
     Xr.emplace_back(1. / (2. * Ne));
 
@@ -183,12 +228,16 @@ void mutate(std::vector<std::array<double, 4>& X, std::vector<double>& Xl, std::
       if(gsl_rng_uniform(gen) < 2 * Ne * u)
       {
         if(gsl_rng_uniform(gen) < Xl[j]) // falls on bA background
-          X.push_back(1. / 2 / Ne, Xl[j] - 1 / 2 / Ne, 0, 1 - Xl[j]]])
-                    )
+        {
+          std::array<double, 4> vals = {1. / (2. * Ne), Xl[j] - 1. / (2. * Ne), 0., 1. - Xl[j]};
+          X.emplace_back(vals);
+        }
+
         else // falls on ab background
-          X = np.concatenate(
-                        (X, [[0, Xl[j], 1 / 2 / Ne, 1 - Xl[j] - 1 / 2 / Ne]])
-                    )
+        {
+          std::array<double, 4> vals = {0., Xl[j], 1. / (2. * Ne), 1. - Xl[j] - 1. / (2. * Ne)};
+          X.emplace_back(vals);
+        }
       }
     }
 
@@ -198,26 +247,95 @@ void mutate(std::vector<std::array<double, 4>& X, std::vector<double>& Xl, std::
       if(gsl_rng_uniform(gen) < 2 * Ne * u)
       {
         if(gsl_rng_uniform(gen) < Xr[j]) // falls on bA background
-        // falls on aB background
-            X = , [[1 / 2 / Ne, 0, Xr[j] - 1 / 2 / Ne, 1 - Xr[j]]])
-                    )
-                else:
-                    // falls on ab background
-                    X = np.concatenate(
-                        (X, [[0, 1 / 2 / Ne, Xr[j], 1 - Xr[j] - 1 / 2 / Ne]])
-                    )
+        {
+          std::array<double, 4> vals = {1. / (2. * Ne), Xr[j] - 1. / (2. * Ne), 0., 1. - Xr[j]};
+          X.emplace_back(vals);
+        }
 
+        else // falls on ab background
+        {
+          std::array<double, 4> vals = {0., 1. / (2. * Ne), Xr[j], 1. - Xr[j] - 1. / (2. * Ne)};
+          X.emplace_back(vals);
+        }
       }
     }
   }
 }
 
-void evolve(std::vector<double>& Xl, std::vector<double>& Xr, std::vector<double>& X, double Ne, double u, double r, double L, double s, const gsl_rng* gen)
+void evolve(std::vector<std::array<double, 4>>& X, std::vector<double>& Xl, std::vector<double>& Xr, unsigned int Ne, size_t L, double u, double r, double s, const gsl_rng* gen)
 {
   recombine(X, r);
   select(Xl, s);
   drift(X, Xl, Xr, Ne, gen);
-  mutate(X, Xl, Xr, Ne, u, L, gen);
+  mutate(X, Xl, Xr, Ne, L, u, gen);
+}
+
+void cleanup(std::vector<std::array<double, 4>>& X, std::vector<double>& Xl, std::vector<double>& Xr)
+{
+  // remove fixed or lost in Xl and Xr
+  for(auto it = std::begin(Xl); it != std::end(Xl);)
+  {
+    if((*it) == 0. || (*it) == 1.)
+      it = Xl.erase(it);
+
+    else
+      ++it;
+  }
+
+  for(auto it = std::begin(Xr); it != std::end(Xr);)
+  {
+    if((*it) == 0. || (*it) == 1.)
+      it = Xr.erase(it);
+
+    else
+      ++it;
+  }
+
+  // remove any with p or q at 0 or 1
+  for(auto it = std::begin(X); it != std::end(X);)
+  {
+    double p = getP(*it);
+    double q = getQ(*it);
+
+    if(p == 0. || p == 1. || q == 0. || q == 1.)
+      it = X.erase(it);
+
+    else
+      ++it;
+  }
+}
+
+void printXl(const std::vector<double>& Xl)
+{
+  std::cout << "Xl:\n\t";
+
+  for(auto& v : Xl)
+    std::cout << v << ",";
+
+  std::cout << "\n";
+}
+
+void printXr(const std::vector<double>& Xr)
+{
+  std::cout << "Xr:\n\t";
+
+  for(auto& v : Xr)
+    std::cout << v << ",";
+
+  std::cout << "\n";
+}
+
+void printX(const std::vector<std::array<double, 4>>& X)
+{
+  for(size_t i = 0; i < X.size(); ++i)
+  {
+    std::cout << "\tfAB = " << X[i][0] << ", ";
+    std::cout << "fAb = " << X[i][1] << ", ";
+    std::cout << "faB = " << X[i][2] << ", ";
+    std::cout << "fab = " << X[i][3] << "\n";
+  }
+
+  std::cout << "\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -246,7 +364,7 @@ int main(int argc, char *argv[]) {
     std::cout << "To use TwoLocusSim, fill in a text file with the following options and execute from the command line:\ttwolocussim params=file_name\n\n";
 
     std::cout << "L = \n";
-    std::cout << "N = \n";
+    std::cout << "Ne = \n";
     std::cout << "u = \n";
     std::cout << "r = \n";
     std::cout << "s = \n";
@@ -262,11 +380,12 @@ int main(int argc, char *argv[]) {
   // TODO make N's and G's as vector parameters
   size_t G = bpp::ApplicationTools::getParameter<size_t>("G", params, 1000000, "", 0);
   size_t L = bpp::ApplicationTools::getParameter<size_t>("L", params, 1, "", 0);
-  size_t B = bpp::ApplicationTools::getParameter<size_t>("B", params, 1, "", 0);
-  unsigned int N = bpp::ApplicationTools::getParameter<unsigned int>("N", params, 10000, "", 0);
+  unsigned int Ne = bpp::ApplicationTools::getParameter<unsigned int>("Ne", params, 10000, "", 0);
   double u = bpp::ApplicationTools::getParameter<double>("u", params, 1e-6, "", 0);
   double r = bpp::ApplicationTools::getParameter<double>("r", params, 1e-7, "", 0);
-  double s = bpp::ApplicationTools::getParameter<double>("s", params, -1e-4, "", 0);
+  double s = bpp::ApplicationTools::getParameter<double>("s", params, 0., "", 0);
+
+  unsigned int B = 40 * Ne;
 
   struct timeval tv;
   gettimeofday(&tv, 0);
@@ -282,83 +401,63 @@ int main(int argc, char *argv[]) {
 
   gsl_rng_set(gen, seed);
 
+  std::vector<double> Xl(0);
+  std::vector<double> Xr(0);
+  std::vector<std::array<double, 4>> X(0);
 
-  std::vector<TwoLocusPair> pairs(0);
-  pairs.reserve(2 * L * N * u);
-
-  TwoLocusPop root(0, L, N, pairs);
+  X.reserve(10 * L);
+  Xl.reserve(10 * L);
+  Xr.reserve(10 * L);
 
   std::cout << "\nBurn-in (" << B << " generations)...";
   std::cout.flush();
 
-  for(size_t i = 0; i < B; ++i)
-    root.evolve_det(gen, u, r, s);
+  for(size_t i = 0; i < B; i++)
+  {
+    evolve(X, Xl, Xr, Ne, u, r, L, s, gen);
+    cleanup(X, Xl, Xr);
+  }
 
   std::cout << "done.\n";
-
-  TwoLocusPop p1 = root;
-  //TwoLocusPop p2 = root;
-
-  //p1.setPopSize(N * 2);
-  //p2.setPopSize(N * 10);
-
-  p1.setId(1);
-  //p2.setId(2);
-
   std::cout << "\nEvolving population(s) (" << G << " generations)...\n";
 
-  std::array<double, 5> gen_stats_1;
-  double avg_Hl_1 = 0.;
-  double avg_Hr_1 = 0.;
-  double avg_pi2_1 = 0.;
-  double avg_Dz_1 = 0.;
-  double avg_Dsqr_1 = 0.;
-
-  std::array<double, 5> gen_stats_2;
-  double avg_Hl_2 = 0.;
-  double avg_Hr_2 = 0.;
-  double avg_pi2_2 = 0.;
-  double avg_Dz_2 = 0.;
-  double avg_Dsqr_2 = 0.;
+  double sum_Hl = 0.;
+  double sum_Hr = 0.;
+  double sum_pi2 = 0.;
+  double sum_Dz = 0.;
+  double sum_Dsqr = 0.;
 
   for(size_t i = 0; i < G; ++i)
   {
-    p1.evolve_det(gen, u, r, s);
-    //p2.evolve_det(gen, i, u, r, s);
+    evolve(X, Xl, Xr, Ne, L, u, r, s, gen);
+    cleanup(X, Xl, Xr);
 
-    gen_stats_1 = p1.fetchAvgStats();
-    //gen_stats_2 = p2.fetchAvgStats();
+    //printX(X);
+    //printXl(Xl);
+    //printXr(Xr);
 
-    avg_Hl_1 += gen_stats_1[0];
-    avg_Hr_1 += gen_stats_1[1];
+    sum_Hl += getSumHl(Xl);
+    sum_Hr += getSumHr(Xr);
+    sum_Dz += getSumDz(X);
+    sum_Dsqr += getSumDsqr(X);
+    sum_pi2 += getSumPi2(X);
 
-    // NOTE divide two-locus stats by Nu to bring them to the same scale as H's.
-    // This is required because of the nature of the infinite sites model.
-    // In this simulator, each new mutation creates a two-locus system,
-    // but at this time only one of the loci had the opportunity to mutate.
-    // Meanwhile, two-locus stats are still computed and averaged over generations
-    avg_pi2_1 += gen_stats_1[2] / (N * u);
-    avg_Dz_1 += gen_stats_1[3] / (N * u);
-    avg_Dsqr_1 += gen_stats_1[4] / (N * u);
-
-    avg_Hl_2 += gen_stats_2[0];
-    avg_Hr_2 += gen_stats_2[1];
-    avg_pi2_2 += gen_stats_2[2];
-    avg_Dz_2 += gen_stats_2[3];
-    avg_Dsqr_2 += gen_stats_2[4];
+    if(i % Ne == 1)
+    {
+      std::cout << "Generation " << i << "\n";
+      std::cout << "\tavg_Hl = " << sum_Hl / L / i << "\n";
+      std::cout << "\tavg_Hr = " << sum_Hr / L / i << "\n";
+      std::cout << "\tavg_Dz = " << sum_Dz / L / i << "\n";
+      std::cout << "\tavg_Dsqr = " << sum_Dsqr / L / i << "\n";
+      std::cout << "\tavg_pi2 = " << sum_pi2 / L / i << "\n\n";
+    }
   }
 
-  std::cout << "avg_Hl_1 = " << avg_Hl_1 / G << "\n" ;
-  std::cout << "avg_Hr_1 = " << avg_Hr_1 / G << "\n" ;
-  std::cout << "avg_pi2_1 = " << avg_pi2_1 / G << "\n" ;
-  std::cout << "avg_Dz_1 = " << avg_Dz_1 / G << "\n" ;
-  std::cout << "avg_Dsqr_1 = " << avg_Dsqr_1 / G << "\n\n" ;
-
-  std::cout << "avg_Hl_2 = " << avg_Hl_2 / G << "\n" ;
-  std::cout << "avg_Hr_2 = " << avg_Hr_2 / G << "\n" ;
-  std::cout << "avg_pi2_2 = " << avg_pi2_2 / G << "\n" ;
-  std::cout << "avg_Dz_2 = " << avg_Dz_2 / G << "\n" ;
-  std::cout << "avg_Dsqr_2 = " << avg_Dsqr_2 / G << "\n" ;
+  std::cout << "avg_Hl = " << sum_Hl / L / G << "\n";
+  std::cout << "avg_Hr = " << sum_Hr / L / G << "\n";
+  std::cout << "avg_Dz = " << sum_Dz / L / G << "\n";
+  std::cout << "avg_Dsqr = " << sum_Dsqr / L / G << "\n";
+  std::cout << "avg_pi2 = " << sum_pi2 / L / G << "\n\n";
 
   gsl_rng_free(gen);
 
