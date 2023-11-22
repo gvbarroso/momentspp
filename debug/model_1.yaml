@@ -10,9 +10,9 @@ metadata:
       - rates: [2.5e-6]
   - name: recombination
     epochs:
-      - rates: [0]
+      - rates: [1.25e-4]
   - name: selection
     start_time: .inf
     epochs:
-      - rates: [0]
+      - rates: [-1e-3]
         end_time: 0
