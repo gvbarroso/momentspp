@@ -28,6 +28,10 @@ scale.4d <- function(x) sprintf("%.4f", x)
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 ```
 
+This is an empty python chunk.
+Apparently this must exist in order for reticulate to be able to read
+R dataframes in future python chunks.
+
 ```{python}
 ```
 
@@ -37,7 +41,7 @@ knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 
 ### Building Demes files
 
-```{r, demes-neutral-2-pop, include=T, eval=T, results=F, message=F, warning=F}
+```{r, demes-neutral-2-pop, include=F, eval=T, results=F, message=F, warning=F}
 
 N1 <- 10000
 N2 <- c(N1, N1 / 10)
@@ -50,9 +54,46 @@ params <- crossing(N1, N2, u, r, s, split_time)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
-py$params <- params # stores df to be used in python sections
-py$n_models <- n_models
+Sys.setenv(num_models=n_models)
 
+py$params <- params # stores df to be used in python sections
+py$n_models <- as.integer(n_models + 1) # because python is indexed from zero
+
+# writes files in strict Demes format (no metadata)
+for(i in 1:n_models) {
+  
+  name <- paste("model_", i, sep="")
+  sink(paste("neutrality/no_migration/", name, "_demes.yaml", sep=""))
+  
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  cat("      - end_time: ")
+  cat(params$split_time[i])
+  cat("\n")
+  cat("        start_size: ")
+  cat(params$N1[i])
+  cat("\n")
+  cat("  - name: A\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N1[i])
+  cat("\n")
+  cat("  - name: B\n")
+  cat("    ancestors: [X]\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N2[i])
+  cat("\n")
+  
+  sink()
+}
+
+# writes files with enriched metadata, moments++ can parse it
 for(i in 1:n_models) {
   
   name <- paste("model_", i, sep="")
@@ -108,13 +149,13 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++, engine.opts='-i', include=F, eval=T, results=F}
+```{bash run-moments++, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
 cd neutrality/no_migration
 
-for((i=1;i<=$n_models;i++))
+for((i=1;i<=$num_models;i++))
 do
   momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=1
 done
@@ -124,14 +165,12 @@ cd ../..
 
 ### Running moments.LD
 
-```{python run-momentsLD, include=T, eval=T, results=F}
+```{python run-momentsLD, include=F, eval=T, results=F}
 
 import moments.LD
 import demes
 import sys, os
 import numpy as np
-
-print(params)
 
 def simulate_ld(f, sampled_demes, u, r):
     g = demes.load(f)
@@ -158,10 +197,10 @@ def write_column(y, out_file):
 
 for i in range(1, n_models):
   with open(f"neutrality/no_migration/moments_LD_model_{i}.csv", "w+") as fout:
-      f = f"neutrality/no_migration/model_{i}.yaml"
+      f = f"neutrality/no_migration/model_{i}_demes.yaml"
       pops = ["A", "B"]
-      u = params["u"][i]
-      r = params["r"][i]
+      u = params["u"][i - 1] # python is indexed from zero
+      r = params["r"][i - 1] # python is indexed from zero
       y = simulate_ld(f, pops, u, r)
       stats = moments.LD.Util.moment_names(len(pops))
       l = ",".join(stats[0] + stats[1]) + "\n"
@@ -174,9 +213,6 @@ for i in range(1, n_models):
 
 ```{r neutral-bench, include=T, eval=T, results=F, message=F, warning=F}
 
-n_models <- 4
-
-# considering symmetries under neutrality
 core_stats <- c("DD_1_1", 
                 "DD_1_2", 
                 "DD_2_2",
@@ -199,11 +235,10 @@ core_stats <- c("DD_1_1",
 # constant Ne
 mpp <- numeric()
 for(i in 1:n_models) {
-    
-  x <- read.table(paste("neutrality/no_migration/model_", i, "_expectations.txt", sep=""))
-  x <- subset(x, V1 %in% core_stats)
-  x <- slice(x, 1:9, 13:18, 10:12) # to match moments.LD output
-  mpp <- c(mpp, x$V3)
+  vals <- read.table(paste("neutrality/no_migration/model_", i, "_expectations.txt", sep=""))
+  vals <- subset(vals, V1 %in% core_stats)
+  vals <- slice(vals, 1:9, 13:18, 10:12) # to match moments.LD output and plot
+  mpp <- c(mpp, vals$V3)
 }
 
 tbl <- as.data.frame(mpp)
@@ -216,9 +251,8 @@ tbl$scenario <- scenario
 
 mLD <- numeric()
 for(i in 1:n_models) {
-  
-  y <- as.numeric(read.csv(paste("neutrality/no_migration/moments_LD_model_", i, ".csv", sep=""), header=T))
-  mLD <- c(mLD, y)
+  vals <- as.numeric(read.csv(paste("neutrality/no_migration/moments_LD_model_", i, ".csv", sep=""), header=T))
+  mLD <- c(mLD, vals)
 }
 
 tbl$mLD <- mLD
@@ -247,7 +281,7 @@ save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_
 
 ### Building Demes files
 
-```{r, demes-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+```{r, demes-selected-1-pop, include=F, eval=T, results=F, message=F, warning=F}
 
 N <- c(1000, 10000)
 u <- 1e-7
@@ -257,6 +291,11 @@ s <- c(0, -5e-05, -1e-04, -2.5e-04, -5e-04, -1e-3)
 params <- crossing(N, u, r, s)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
+
+Sys.setenv(num_models=n_models)
+
+py$params <- params # stores df to be used in python sections
+py$n_models <- as.integer(n_models + 1) # because python is indexed from zero
 
 for(i in 1:n_models) {
   
@@ -299,13 +338,13 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=T, results=F, message=T, warning=T}
+```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
 cd selection/single-pop
 
-for((i=1;i<=$n_models;i++))
+for((i=1;i<=$num_models;i++))
 do
   momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=25
 done
@@ -313,96 +352,64 @@ done
 cd ../..
 ```
 
-### Running moments.TwoLocus (TODO)
+### Running moments.TwoLocus
 
-```{python run-momentsTwoLocus, include=T, eval=T, results=T}
+For benchmarking the single population case, we use equilibrium demography:
+
+```{python run-momentsTwoLocus, include=F, eval=T, results=F}
 
 import moments.TwoLocus
 import sys, os
 import numpy as np
-
-def simulate_ld(f, sampled_demes, u, r):
-    g = demes.load(f)
-    y = moments.LD.LDstats.from_demes(g, sampled_demes, r=r, u=u)
-    return y
-  
-def write_column(y, out_file):
-    mld, mh = moments.LD.Util.moment_names(y.num_pops)
-    # write D2
-    for m, v in zip(mld, y[0]):
-        if m.split("_")[0] == "DD":
-            out_file.write(str(v) + "\n")
-    # write Dz
-    for m, v in zip(mld, y[0]):
-        if m.split("_")[0] == "Dz":
-            out_file.write(str(v) + "\n")
-    # write H
-    for m, v in zip(mh, y[-1]):
-        out_file.write(str(v) + "\n")
-    # write pi2
-    for m, v in zip(mld, y[0]):
-        if m.split("_")[0] == "pi2":
-            out_file.write(str(v) + "\n")
     
 for i in range(1, n_models):
-  with open(f"neutrality/no_migration/moments_LD_model_{i}.csv", "w+") as fout:
-      f = f"neutrality/no_migration/model_{i}_demes.yaml"
-      pops = ["A", "B"]
-      u = 
-      r = 
-      y = simulate_ld(f, pops, u, r)
-      stats = moments.LD.Util.moment_names(len(pops))
-      l = ",".join(stats[0] + stats[1]) + "\n"
-      fout.write(l)
-      l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
-      fout.write(l)
-
-Ne = 1e4
-s = -1e-4
-u = 1e-7
-r = 1e-5
-
-gammas = [2 * Ne * s, 2 * Ne * s, 0] # sel on [AB, Ab, aB] haplotypes, resp
-rho = 4 * Ne * r
-theta = 4 * Ne * u
-
-if np.abs(2 * Ne * s) > 20:
-    print("Strong selection, approximations may break down")
-
-n_samples = 40 # 80
-
-F = moments.TwoLocus.Demographics.equilibrium(n_samples, rho=rho, theta=theta, sel_params=gammas)
-
-# compute LD stats from F
-print(f"D^2   = {F.D2():}")
-print(f"Dz    = {F.Dz():}")
-print(f"pi2   = {F.pi2():}")
-print(f"D     = {F.D():}")
-
-# single locus
-fs = moments.Spectrum(moments.LinearSystem_1D.steady_state_1D(n_samples, gamma=2 * Ne * s) * theta)
-
-fs_left = moments.Spectrum(F[0, :, 0])
-fs_right = moments.Spectrum(F[0, 0, :])
-
-assert np.allclose(fs_left, fs)
-
-print(f"pi(A) = {fs_left.pi()}")
-print(f"pi(B) = {fs_right.pi()}")
-#print(f"pi2   = {F.pi2():}")
+  with open(f"selection/single-pop/moments_twoLocus_model_{i}.csv", "w+") as fout:
+      n_samples = 40 # 80
+      
+      # i - 1 because python is indexed from zero
+      Ne = params["N"][i - 1] 
+      u = params["u"][i - 1] 
+      r = params["r"][i - 1] 
+      s = params["s"][i - 1]
+      
+      gammas = [2 * Ne * s, 2 * Ne * s, 0] # sel on [AB, Ab, aB] haplotypes, resp
+      rho = 4 * Ne * r
+      theta = 4 * Ne * u
+      
+      F = moments.TwoLocus.Demographics.equilibrium(n_samples, 
+                                                    rho=rho, 
+                                                    theta=theta, 
+                                                    sel_params=gammas)
+        
+      fs = moments.Spectrum(moments.LinearSystem_1D.steady_state_1D(n_samples, gamma=2 * Ne * s) * theta)    
+      fs_left = moments.Spectrum(F[0, :, 0])
+      fs_right = moments.Spectrum(F[0, 0, :])
+      
+      fout.write(f"D^2 = {F.D2():}\n")
+      fout.write(f"Dz = {F.Dz():}\n")
+      fout.write(f"Hl = {fs_left.pi()}\n")
+      fout.write(f"Hr = {fs_right.pi()}\n")
+      fout.write(f"pi2 = {F.pi2():}\n")
+      
+      assert np.allclose(fs_left, fs)
+      
 ```
 
 ### Plots
 
 ```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
 
-commom_stats <- c("DD_0_0", "Dr_0_0_(1-2p0)^1", "Hl_0_0", "Hr_0_0", "pi2_0_0_0_0")
+commom_stats <- c("DD_0_0",
+                  "Dr_0_0_(1-2p0)^1",
+                  "Hl_0_0", 
+                  "Hr_0_0",
+                  "pi2_0_0_0_0")
 
 expectation <- numeric()
 for(i in 1:n_models) {
-  x <- read.table(paste("selection/single-pop/model_", i, "_expectations.txt", sep=""))
-  x <- subset(x, V1 %in% commom_stats)$V3
-  expectation <- c(expectation, x)
+  vals <- read.table(paste("selection/single-pop/model_", i, "_expectations.txt", sep=""))
+  vals <- subset(vals, V1 %in% commom_stats)$V3
+  expectation <- c(expectation, vals)
 }
 
 tbl <- as.data.frame(expectation)
@@ -418,39 +425,38 @@ df <- full_join(tbl, params, by="scenario")
 df$alpha <- 2 * df$s * df$N
 df[df$r==0,]$r <- 1e-12 # for log transformation
 
-vals <- numeric()
+expectation <- numeric()
 for(i in 1:n_models) {
-  x <- read.table(paste("selection/single-pop/m_", i, "_py.txt", sep=""))$V3
-  vals <- c(vals, x)
+  vals <- read.table(paste("selection/single-pop/moments_twoLocus_model_", i, ".csv", sep=""))$V3
+  expectation <- c(expectation, vals)
 }
 
-tbl_py <- as.data.frame(vals)
+tbl_py <- as.data.frame(expectation)
 tbl_py$stats <- commom_stats
 
 # from 2p(1-p) to p(1-p)
 tbl_py[tbl_py$stats=="Hl_0_0", 1] <- tbl_py[tbl_py$stats=="Hl_0_0", 1] / 2
 tbl_py[tbl_py$stats=="Hr_0_0", 1] <- tbl_py[tbl_py$stats=="Hr_0_0", 1] / 2
 
-tbl_pp <- tbl %>% mutate(ratio = vals / tbl_py$vals)
-#tbl_pp <- tbl_pp[tbl_pp$r < 1e-3,]
-#tbl_pp <- tbl_pp[tbl_pp$s > -100,]
+tbl_pp <- df %>% mutate(ratio = expectation / tbl_py$expectation)
 
-p1 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio)) 
-p1 <- p1 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p1 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio, shape=N)) 
+p1 <- p1 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
+p1 <- p1 + scale_shape_manual(values=c(0, 1))
 p1 <- p1 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p1 <- p1 + scale_shape_manual(values=(4:0))
 p1 <- p1 + labs(title=NULL, x=NULL, y=expression(D^2))
 p1 <- p1 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.title.x=element_blank(),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
 
-p2 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio)) 
-p2 <- p2 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p2 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio, shape=N)) 
+p2 <- p2 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
+p2 <- p2 + scale_shape_manual(values=c(0, 1))
 p2 <- p2 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p2 <- p2 + scale_shape_manual(values=(4:0))
 p2 <- p2 + labs(title=NULL, x=NULL, y=expression(Dz))
 p2 <- p2 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -458,12 +464,13 @@ p2 <- p2 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
                  strip.text.x = element_blank(),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
 
-p3 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio)) 
-p3 <- p3 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p3 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio, shape=N)) 
+p3 <- p3 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
+p3 <- p3 + scale_shape_manual(values=c(0, 1))
 p3 <- p3 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p3 <- p3 + scale_shape_manual(values=(4:0))
 p3 <- p3 + labs(title=NULL, x=NULL, y=expression(H[l]))
 p3 <- p3 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -471,12 +478,13 @@ p3 <- p3 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
                  strip.text.x = element_blank(),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
 
-p4 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio)) 
-p4 <- p4 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p4 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio, shape=N)) 
+p4 <- p4 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
+p4 <- p4 + scale_shape_manual(values=c(0, 1))
 p4 <- p4 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p4 <- p4 + scale_shape_manual(values=(4:0))
 p4 <- p4 + labs(title=NULL, x=NULL, y=expression(H[r]))
 p4 <- p4 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
@@ -484,21 +492,23 @@ p4 <- p4 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
                  strip.text.x = element_blank(),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
 
-p5 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio)) 
-p5 <- p5 + geom_point(size=3) + theme_bw() + facet_wrap(~s, nrow=1)
+p5 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio, shape=N)) 
+p5 <- p5 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
+p5 <- p5 + scale_shape_manual(values=c(0, 1))
 p5 <- p5 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p5 <- p5 + scale_shape_manual(values=(4:0))
 p5 <- p5 + labs(title=NULL, x="r", y=expression(pi[2]))
 p5 <- p5 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  strip.text.x = element_blank(),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
 
 moms_comp <- plot_grid(p1, p2, p3, p4, p5, ncol=1)
 moms_comp
-save_plot("section/single-pop/moms_++_vs_py.pdf", moms_comp, base_height=10, base_width=20)
+save_plot("selection/single-pop/moms_++_vs_py.pdf", moms_comp, base_height=10, base_width=20)
 
 ```
 
@@ -508,7 +518,7 @@ save_plot("section/single-pop/moms_++_vs_py.pdf", moms_comp, base_height=10, bas
 
 ### Building Demes files
 
-```{r, demes-selected-2-pop, include=T, eval=T, results=F, message=F, warning=F}
+```{r, demes-selected-2-pop, include=F, eval=T, results=F, message=F, warning=F}
 
 N1 <- 10000
 N2 <- c(N1, N1 / 10)
@@ -522,6 +532,11 @@ split_time <- 2000 #c(400, 2000)
 params <- crossing(N1, N2, u, r, s1, s2, sanc, split_time)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
+
+Sys.setenv(num_models=n_models)
+
+py$params <- params # stores df to be used in python sections
+py$n_models <- as.integer(n_models + 1) # because python is indexed from zero
 
 for(i in 1:n_models) {
   
@@ -588,13 +603,13 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++-2-pops, engine.opts='-i', include=F, eval=T, results=F, message=T, warning=T}
+```{bash run-moments++-2-pops, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
 cd selection/no_migration
 
-for((i=1;i<=$n_models;i++))
+for((i=1;i<=$num_models;i++))
 do
   momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=25
 done
@@ -636,9 +651,9 @@ core_stats <- sort(core_stats)
 
 expectation <- numeric()
 for(i in 1:n_models) {
-  x <- read.table(paste("selection/no_migration/model_", i, "_expectations.txt", sep=""))
-  x <- subset(x, V1 %in% core_stats)
-  expectation <- c(expectation, x$V3)
+  vals <- read.table(paste("selection/no_migration/model_", i, "_expectations.txt", sep=""))
+  vals <- subset(vals, V1 %in% core_stats)
+  expectation <- c(expectation, vals$V3)
 }
 
 tbl <- as.data.frame(expectation)
@@ -897,7 +912,7 @@ p8
 
 # Check-my-matrix
 
-```{python check-my-matrix, include=T, eval=F, results=T}
+```{python check-my-matrix, include=F, eval=F, results=F}
 
 import moments.LD
 import demes
