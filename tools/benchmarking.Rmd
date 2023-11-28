@@ -20,16 +20,15 @@ library(RColorBrewer)
 library(scales)
 library(plotly)
 
-# for running moments.LD:
 library(reticulate)
 use_python("/usr/bin/python3")
-
-# handy global variable
-n_models <<- 0
 
 scale.4d <- function(x) sprintf("%.4f", x)
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
+```
+
+```{python}
 ```
 
 # Neutrality
@@ -51,10 +50,8 @@ params <- crossing(N1, N2, u, r, s, split_time)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
-py$params <- params
-
-write.csv(params, "neutrality/no_migration/params.csv", 
-          quote=F, sep=",", col.names=T, row.names=F)
+py$params <- params # stores df to be used in python sections
+py$n_models <- n_models
 
 for(i in 1:n_models) {
   
@@ -125,7 +122,7 @@ done
 cd ../..
 ```
 
-### Running moments.LD (TODO read from params df, make compatible with demes metadata)
+### Running moments.LD
 
 ```{python run-momentsLD, include=T, eval=T, results=F}
 
@@ -133,6 +130,8 @@ import moments.LD
 import demes
 import sys, os
 import numpy as np
+
+print(params)
 
 def simulate_ld(f, sampled_demes, u, r):
     g = demes.load(f)
@@ -156,13 +155,13 @@ def write_column(y, out_file):
     for m, v in zip(mld, y[0]):
         if m.split("_")[0] == "pi2":
             out_file.write(str(v) + "\n")
-    
+
 for i in range(1, n_models):
   with open(f"neutrality/no_migration/moments_LD_model_{i}.csv", "w+") as fout:
-      f = f"neutrality/no_migration/model_{i}_demes.yaml"
+      f = f"neutrality/no_migration/model_{i}.yaml"
       pops = ["A", "B"]
-      u = 
-      r = 
+      u = params["u"][i]
+      r = params["r"][i]
       y = simulate_ld(f, pops, u, r)
       stats = moments.LD.Util.moment_names(len(pops))
       l = ",".join(stats[0] + stats[1]) + "\n"
@@ -316,10 +315,47 @@ cd ../..
 
 ### Running moments.TwoLocus (TODO)
 
-```{python run-momentsTwoLocus, include=T, eval=T, results=F}
+```{python run-momentsTwoLocus, include=T, eval=T, results=T}
 
 import moments.TwoLocus
+import sys, os
 import numpy as np
+
+def simulate_ld(f, sampled_demes, u, r):
+    g = demes.load(f)
+    y = moments.LD.LDstats.from_demes(g, sampled_demes, r=r, u=u)
+    return y
+  
+def write_column(y, out_file):
+    mld, mh = moments.LD.Util.moment_names(y.num_pops)
+    # write D2
+    for m, v in zip(mld, y[0]):
+        if m.split("_")[0] == "DD":
+            out_file.write(str(v) + "\n")
+    # write Dz
+    for m, v in zip(mld, y[0]):
+        if m.split("_")[0] == "Dz":
+            out_file.write(str(v) + "\n")
+    # write H
+    for m, v in zip(mh, y[-1]):
+        out_file.write(str(v) + "\n")
+    # write pi2
+    for m, v in zip(mld, y[0]):
+        if m.split("_")[0] == "pi2":
+            out_file.write(str(v) + "\n")
+    
+for i in range(1, n_models):
+  with open(f"neutrality/no_migration/moments_LD_model_{i}.csv", "w+") as fout:
+      f = f"neutrality/no_migration/model_{i}_demes.yaml"
+      pops = ["A", "B"]
+      u = 
+      r = 
+      y = simulate_ld(f, pops, u, r)
+      stats = moments.LD.Util.moment_names(len(pops))
+      l = ",".join(stats[0] + stats[1]) + "\n"
+      fout.write(l)
+      l = ",".join([str(_) for _ in y[0]] + [str(_) for _ in y[1]]) + "\n"
+      fout.write(l)
 
 Ne = 1e4
 s = -1e-4
@@ -335,28 +371,25 @@ if np.abs(2 * Ne * s) > 20:
 
 n_samples = 40 # 80
 
-F = moments.TwoLocus.Demographics.equilibrium(
-    n_samples, rho=rho, theta=theta, sel_params=gammas
-)
+F = moments.TwoLocus.Demographics.equilibrium(n_samples, rho=rho, theta=theta, sel_params=gammas)
 
 # compute LD stats from F
 print(f"D^2   = {F.D2():}")
 print(f"Dz    = {F.Dz():}")
-#print(f"pi2   = {F.pi2():}")
-#print(f"D     = {F.D():}")
+print(f"pi2   = {F.pi2():}")
+print(f"D     = {F.D():}")
 
 # single locus
-fs = moments.Spectrum(
-    moments.LinearSystem_1D.steady_state_1D(n_samples, gamma=2 * Ne * s) * theta
-)
+fs = moments.Spectrum(moments.LinearSystem_1D.steady_state_1D(n_samples, gamma=2 * Ne * s) * theta)
 
 fs_left = moments.Spectrum(F[0, :, 0])
 fs_right = moments.Spectrum(F[0, 0, :])
 
 assert np.allclose(fs_left, fs)
+
 print(f"pi(A) = {fs_left.pi()}")
 print(f"pi(B) = {fs_right.pi()}")
-print(f"pi2   = {F.pi2():}")
+#print(f"pi2   = {F.pi2():}")
 ```
 
 ### Plots
@@ -598,7 +631,7 @@ core_stats <- c("DD_1_1",
                 "pi2_2_2_1_1",
                 "pi2_2_2_2_2")
 
-# Note to be on the very safe side...
+# to be on the very safe side...
 core_stats <- sort(core_stats)
 
 expectation <- numeric()
