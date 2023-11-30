@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            This is not a haiku                                 *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 22/Nov/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 30/Nov/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -70,6 +70,14 @@ int main(int argc, char *argv[]) {
   double u = bpp::ApplicationTools::getParameter<double>("u", params, 1e-6, "", 0);
   double r = bpp::ApplicationTools::getParameter<double>("r", params, 1e-7, "", 0);
   double s = bpp::ApplicationTools::getParameter<double>("s", params, 0., "", 0);
+  std::string label = bpp::ApplicationTools::getStringParameter("label", params, "", "", true, 4);
+  std::string tag = bpp::ApplicationTools::getStringParameter("tag", params, "", "", true, 4);
+
+  std::cout << "\nSimulation setup:\n\t" << L << " loci\n";
+  std::cout << "\tNe = " << Ne << "\n";
+  std::cout << "\tu = " << u << "\n";
+  std::cout << "\tr = " << r << "\n";
+  std::cout << "\ts = " << s << "\n";
 
   unsigned int B = 40 * Ne;
 
@@ -102,7 +110,7 @@ int main(int argc, char *argv[]) {
   //TwoLocusPop p2 = root;
 
   std::cout << "done.\n";
-  std::cout << "\nEvolving population(s) (" << G << " generations)...\n";
+  std::cout << "\nEvolving population(s) (" << G << " generations)..."; std::cout.flush();
 
   // TODO multi-thread from root in 2-pops case
 
@@ -123,7 +131,7 @@ int main(int argc, char *argv[]) {
     sum_Dsqr += p1.getSumDsqr();
     sum_pi2 += p1.getSumPi2();
 
-    if(i % (10 * Ne) == 1)
+    /*if(i % (10 * Ne) == 1)
     {
       std::cout << "Generation " << i << "\n";
       std::cout << "\tavg_Hl = " << sum_Hl / L / i << "\n";
@@ -131,14 +139,21 @@ int main(int argc, char *argv[]) {
       std::cout << "\tavg_Dz = " << sum_Dz / L / L / i << "\n";
       std::cout << "\tavg_Dsqr = " << sum_Dsqr / L / L / i << "\n";
       std::cout << "\tavg_pi2 = " << sum_pi2 / L / L / i << "\n\n";
-    }
+    }*/
   }
 
-  std::cout << "avg_Hl = " << sum_Hl / L / G << "\n";
-  std::cout << "avg_Hr = " << sum_Hr / L / G << "\n";
-  std::cout << "avg_Dz = " << sum_Dz / L / L / G << "\n";
-  std::cout << "avg_Dsqr = " << sum_Dsqr / L / L / G << "\n";
-  std::cout << "avg_pi2 = " << sum_pi2 / L / L / G << "\n\n";
+  std::string file = "tls_" + label + "_" + tag + ".txt";
+  std::ofstream fout(file);
+
+  fout << "D^2 = " << sum_Dsqr / L / L / G << "\n";
+  fout << "Dz = " << sum_Dz / L / L / G << "\n";
+  fout << "Hl = " << sum_Hl / L / G << "\n";
+  fout << "Hr = " << sum_Hr / L / G << "\n";
+  fout << "pi2 = " << sum_pi2 / L / L / G << "\n";
+
+  fout.close();
+
+  std::cout << "done.\nCheck output file " << file << ".\n\n";
 
   gsl_rng_free(gen);
 

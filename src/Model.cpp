@@ -68,7 +68,6 @@ void Model::computeCompositeLogLikelihood_()
 
 void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
 {
-  // NOTE
   // epoch[0] should never be 1-generation only (ie, an "Admixture epoch")
   // hence it should always have a full set of parameters, ie, including 'u_*', 'r_*', and 's_*'
 

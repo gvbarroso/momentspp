@@ -30,7 +30,7 @@ knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/")
 
 This is an empty python chunk.
 Apparently this must exist in order for reticulate to be able to read
-R dataframes in future python chunks.
+R data frames in future python chunks.
 
 ```{python}
 ```
@@ -53,6 +53,8 @@ split_time <- c(500, 2000)
 params <- crossing(N1, N2, u, r, s, split_time)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
+
+write.csv(params, "neutrality/no_migration/params.csv", quote=F, row.names=F)
 
 Sys.setenv(num_models=n_models)
 
@@ -277,20 +279,23 @@ save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_
 
 ## Migration (TODO)
 
+
 # Selection 1-population
 
 ### Building Demes files
 
 ```{r, demes-selected-1-pop, include=F, eval=T, results=F, message=F, warning=F}
 
-N <- c(1000, 10000)
+N <- c(1000, 10000, 20000)
 u <- 1e-7
-r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 0)
-s <- c(0, -5e-05, -1e-04, -2.5e-04, -5e-04, -1e-3)
+r  <- c(1e-3, 1e-4, 1e-5, 1e-6, 1e-7)
+s <- c(0, -1e-5, -1e-04, -1e-3)
 
 params <- crossing(N, u, r, s)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
+
+write.csv(params, "selection/single-pop/params.csv", quote=F, row.names=F)
 
 Sys.setenv(num_models=n_models)
 
@@ -336,6 +341,32 @@ for(i in 1:n_models) {
 
 ```
 
+### Running TwoLocusSim
+
+```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+
+source ~/.bashrc
+
+cd selection/single-pop
+
+sed 1d params.csv | while IFS=, read -r N u r s m
+do
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_1 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_2 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_3 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_4 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_5 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_6 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_7 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_8 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_9 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_10
+done
+
+cd ../..
+
+```
+
 ### Running moments++
 
 ```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
@@ -363,8 +394,39 @@ import sys, os
 import numpy as np
     
 for i in range(1, n_models):
-  with open(f"selection/single-pop/moments_twoLocus_model_{i}.csv", "w+") as fout:
-      n_samples = 40 # 80
+  with open(f"selection/single-pop/moments_twoLocus_n40_model_{i}.csv", "w+") as fout:
+      n_samples = 40
+      
+     # i - 1 because python is indexed from zero
+      Ne = params["N"][i - 1] 
+      u = params["u"][i - 1] 
+      r = params["r"][i - 1] 
+      s = params["s"][i - 1]
+      
+      gammas = [2 * Ne * s, 2 * Ne * s, 0] # sel on [AB, Ab, aB] haplotypes, resp
+      rho = 4 * Ne * r
+      theta = 4 * Ne * u
+      
+      F = moments.TwoLocus.Demographics.equilibrium(n_samples, 
+                                                    rho=rho, 
+                                                    theta=theta, 
+                                                    sel_params=gammas)
+        
+      fs = moments.Spectrum(moments.LinearSystem_1D.steady_state_1D(n_samples, gamma=2 * Ne * s) * theta)    
+      fs_left = moments.Spectrum(F[0, :, 0])
+      fs_right = moments.Spectrum(F[0, 0, :])
+      
+      fout.write(f"D^2 = {F.D2():}\n")
+      fout.write(f"Dz = {F.Dz():}\n")
+      fout.write(f"Hl = {fs_left.pi()}\n")
+      fout.write(f"Hr = {fs_right.pi()}\n")
+      fout.write(f"pi2 = {F.pi2():}\n")
+      
+      assert np.allclose(fs_left, fs)
+
+for i in range(1, n_models):
+  with open(f"selection/single-pop/moments_twoLocus_n60_model_{i}.csv", "w+") as fout:
+      n_samples = 60
       
       # i - 1 because python is indexed from zero
       Ne = params["N"][i - 1] 
@@ -392,7 +454,6 @@ for i in range(1, n_models):
       fout.write(f"pi2 = {F.pi2():}\n")
       
       assert np.allclose(fs_left, fs)
-      
 ```
 
 ### Plots
@@ -421,96 +482,128 @@ for(i in 1:n_models) {
 tbl$scenario <- scenario
 
 df <- full_join(tbl, params, by="scenario")
-
 df$alpha <- 2 * df$s * df$N
-df[df$r==0,]$r <- 1e-12 # for log transformation
 
+# moments.TwoLocus was fitted with 2 sample sizes, n=40 and n=60
+
+# n = 40
 expectation <- numeric()
 for(i in 1:n_models) {
-  vals <- read.table(paste("selection/single-pop/moments_twoLocus_model_", i, ".csv", sep=""))$V3
+  vals <- read.table(paste("selection/single-pop/moments_twoLocus_n40_model_", i, ".csv", sep=""))$V3
   expectation <- c(expectation, vals)
 }
 
-tbl_py <- as.data.frame(expectation)
-tbl_py$stats <- commom_stats
+tbl_py_n40 <- as.data.frame(expectation)
+tbl_py_n40$stats <- commom_stats
+tbl_py_n40$scenario <- scenario
+tbl_py_n40$sample_size <- 40
+tbl_py_n40 <- full_join(tbl_py_n40, params, by="scenario")
 
 # from 2p(1-p) to p(1-p)
-tbl_py[tbl_py$stats=="Hl_0_0", 1] <- tbl_py[tbl_py$stats=="Hl_0_0", 1] / 2
-tbl_py[tbl_py$stats=="Hr_0_0", 1] <- tbl_py[tbl_py$stats=="Hr_0_0", 1] / 2
+tbl_py_n40[tbl_py_n40$stats=="Hl_0_0", 1] <- tbl_py_n40[tbl_py_n40$stats=="Hl_0_0", 1] / 2
+tbl_py_n40[tbl_py_n40$stats=="Hr_0_0", 1] <- tbl_py_n40[tbl_py_n40$stats=="Hr_0_0", 1] / 2
 
-tbl_pp <- df %>% mutate(ratio = expectation / tbl_py$expectation)
+# n = 60
+expectation <- numeric()
+for(i in 1:n_models) {
+  vals <- read.table(paste("selection/single-pop/moments_twoLocus_n60_model_", i, ".csv", sep=""))$V3
+  expectation <- c(expectation, vals)
+}
 
-p1 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio, shape=N)) 
+tbl_py_n60 <- as.data.frame(expectation)
+tbl_py_n60$stats <- commom_stats
+tbl_py_n60$scenario <- scenario
+tbl_py_n60$sample_size <- 60
+tbl_py_n60 <- full_join(tbl_py_n60, params, by="scenario")
+
+# from 2p(1-p) to p(1-p)
+tbl_py_n60[tbl_py_n60$stats=="Hl_0_0", 1] <- tbl_py_n60[tbl_py_n60$stats=="Hl_0_0", 1] / 2
+tbl_py_n60[tbl_py_n60$stats=="Hr_0_0", 1] <- tbl_py_n60[tbl_py_n60$stats=="Hr_0_0", 1] / 2
+
+tbl_py_ns <- bind_rows(tbl_py_n40, tbl_py_n60)
+tbl_pp <- bind_rows(df, df)
+
+tbl_pp <- tbl_pp %>% mutate(ratio = expectation / tbl_py_ns$expectation)
+tbl_pp$sample_size <- tbl_py_ns$sample_size
+  
+p1 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
 p1 <- p1 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p1 <- p1 + scale_shape_manual(values=c(0, 1))
+p1 <- p1 + scale_shape_manual(values=0:length((unique(tbl_pp))))
 p1 <- p1 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
 p1 <- p1 + labs(title=NULL, x=NULL, y=expression(D^2))
+p1 <- p1 + geom_hline(yintercept=1, linetype="dashed", color="red")
 p1 <- p1 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.title.x=element_blank(),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
+p1
 
-p2 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio, shape=N)) 
+p2 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
 p2 <- p2 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p2 <- p2 + scale_shape_manual(values=c(0, 1))
+p2 <- p2 + scale_shape_manual(values=0:length((unique(tbl_pp))))
 p2 <- p2 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
 p2 <- p2 + labs(title=NULL, x=NULL, y=expression(Dz))
+p2 <- p2 + geom_hline(yintercept=1, linetype="dashed", color="red")
 p2 <- p2 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.title.x=element_blank(),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
                  strip.text.x = element_blank(),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
+p2
 
-p3 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio, shape=N)) 
+p3 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
 p3 <- p3 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p3 <- p3 + scale_shape_manual(values=c(0, 1))
+p3 <- p3 + scale_shape_manual(values=0:length((unique(tbl_pp))))
 p3 <- p3 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
 p3 <- p3 + labs(title=NULL, x=NULL, y=expression(H[l]))
+p3 <- p3 + geom_hline(yintercept=1, linetype="dashed", color="red")
 p3 <- p3 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.title.x=element_blank(),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
                  strip.text.x = element_blank(),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
+p3
 
-p4 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio, shape=N)) 
+p4 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
 p4 <- p4 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p4 <- p4 + scale_shape_manual(values=c(0, 1))
+p4 <- p4 + scale_shape_manual(values=0:length((unique(tbl_pp))))
 p4 <- p4 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
 p4 <- p4 + labs(title=NULL, x=NULL, y=expression(H[r]))
+p4 <- p4 + geom_hline(yintercept=1, linetype="dashed", color="red")
 p4 <- p4 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  axis.title.x=element_blank(),
                  axis.text.x=element_blank(),
                  axis.ticks.x=element_blank(),
                  strip.text.x = element_blank(),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="none")
+p4
 
-p5 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio, shape=N)) 
+p5 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size))) 
 p5 <- p5 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p5 <- p5 + scale_shape_manual(values=c(0, 1))
-p5 <- p5 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p5 <- p5 + scale_shape_manual(values=0:length((unique(tbl_pp))))
+p5 <- p5 + scale_x_log10(breaks = r) + scale_y_continuous(breaks=pretty_breaks(), labels = scale.4d)
 p5 <- p5 + labs(title=NULL, x="r", y=expression(pi[2]))
+p5 <- p5 + geom_hline(yintercept=1, linetype="dashed", color="red")
 p5 <- p5 + theme(axis.title=element_text(size=12),
                  axis.text=element_text(size=10),
                  strip.text.x = element_blank(),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="none")
+                 legend.position="bottom")
+p5
 
-moms_comp <- plot_grid(p1, p2, p3, p4, p5, ncol=1)
-moms_comp
-save_plot("selection/single-pop/moms_++_vs_py.pdf", moms_comp, base_height=10, base_width=20)
+moms_comp <- plot_grid(p1, p2, p3, p4, p5, ncol=1, rel_heights=c(1, 1, 1, 1, 1.85))
+save_plot("selection/single-pop/moms_++_vs_py_B.pdf", moms_comp, base_height=10, base_width=20)
 
 ```
+
+
 
 # Selection 2-populations
 
@@ -532,6 +625,8 @@ split_time <- 2000 #c(400, 2000)
 params <- crossing(N1, N2, u, r, s1, s2, sanc, split_time)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
+
+write.csv(params, "selection/no_migration//params.csv", quote=F, row.names=F)
 
 Sys.setenv(num_models=n_models)
 

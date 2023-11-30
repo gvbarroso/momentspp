@@ -67,7 +67,6 @@ void Epoch::updateMoments(const Eigen::VectorXd& y)
 
 void Epoch::printMoments(std::ostream& stream)
 {
-  // prints expectations for the last (most recent) epoch
   std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
 
   for(auto& m : tmp)
@@ -76,6 +75,8 @@ void Epoch::printMoments(std::ostream& stream)
 
 void Epoch::printRecursions(std::ostream& stream)
 {
+  stream << "\n";
+
   for(size_t i = 0; i < ssl_.getBasis().size(); ++i)
   {
     if(ssl_.getBasis()[i]->getName() != "I")
