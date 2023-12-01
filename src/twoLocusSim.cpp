@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 22/11/2023
+ * Last modified: 30/11/2023
  * Source code for twoLocusSim
  *
  */
@@ -13,6 +13,7 @@
 #include <thread>
 #include <array>
 #include <numeric>
+#include <random>
 
 #include <stdio.h>
 #include <sys/time.h>
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "To use TwoLocusSim, fill in a text file with the following options and execute from the command line:\ttwolocussim params=file_name\n\n";
+    std::cout << "To use TwoLocusSim, fill in a text file with the following options and execute from the command line:\ntwolocussim params=file_name\n\n";
 
     std::cout << "L = \n";
     std::cout << "Ne = \n";
@@ -67,10 +68,10 @@ int main(int argc, char *argv[]) {
   size_t G = bpp::ApplicationTools::getParameter<size_t>("G", params, 1000000, "", 0);
   size_t L = bpp::ApplicationTools::getParameter<size_t>("L", params, 1, "", 0);
   unsigned int Ne = bpp::ApplicationTools::getParameter<unsigned int>("Ne", params, 10000, "", 0);
-  double u = bpp::ApplicationTools::getParameter<double>("u", params, 1e-6, "", 0);
+  double u = bpp::ApplicationTools::getParameter<double>("u", params, 1e-8, "", 0);
   double r = bpp::ApplicationTools::getParameter<double>("r", params, 1e-7, "", 0);
   double s = bpp::ApplicationTools::getParameter<double>("s", params, 0., "", 0);
-  std::string label = bpp::ApplicationTools::getStringParameter("label", params, "", "", true, 4);
+  std::string label = bpp::ApplicationTools::getStringParameter("label", params, "test", "", true, 4);
   std::string tag = bpp::ApplicationTools::getStringParameter("tag", params, "", "", true, 4);
 
   std::cout << "\nSimulation setup:\n\t" << L << " loci\n";
@@ -81,12 +82,25 @@ int main(int argc, char *argv[]) {
 
   unsigned int B = 40 * Ne;
 
+  // helper generator to avoid setting same seed when replicates start at the "same time"
+  std::mt19937 rng;
+  std::array<int, std::mt19937::state_size> seedData;
+  unsigned sem = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine re(sem);
+  std::generate_n(seedData.data(), seedData.size(), std::ref(re));
+  std::seed_seq seq(std::begin(seedData), std::end(seedData));
+  rng.seed(seq);
+
+  std::poisson_distribution<> pois(10000000);
+
   struct timeval tv;
   gettimeofday(&tv, 0);
-  unsigned long seed = tv.tv_sec + tv.tv_usec;
+  unsigned long seed = tv.tv_sec + tv.tv_usec + pois(rng);
+
+  std::cout << "\nrandom seed = " << seed << "\n";
 
   const gsl_rng_type * T;
-  gsl_rng * gen;
+  gsl_rng* gen;
 
   gsl_rng_env_setup();
 
@@ -150,6 +164,7 @@ int main(int argc, char *argv[]) {
   fout << "Hl = " << sum_Hl / L / G << "\n";
   fout << "Hr = " << sum_Hr / L / G << "\n";
   fout << "pi2 = " << sum_pi2 / L / L / G << "\n";
+  fout << "random seed = " << seed << "\n";
 
   fout.close();
 

@@ -1,4 +1,0 @@
-demes_file = $(FILE)
-stats_file = none
-label = $(LABEL)
-
