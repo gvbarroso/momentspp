@@ -286,10 +286,10 @@ save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_
 
 ```{r, demes-selected-1-pop, include=F, eval=T, results=F, message=F, warning=F}
 
-N <- c(1000, 10000, 20000)
+N <- c(1000, 10000)
 u <- 1e-7
-r  <- c(1e-3, 1e-4, 1e-5, 1e-6, 1e-7)
-s <- c(0, -1e-5, -1e-04, -1e-3)
+r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 1e-8)
+s <- c(0, -1e-04, -5e-4, -1e-3)
 
 params <- crossing(N, u, r, s)
 params$scenario <- 1:nrow(params)
@@ -360,7 +360,33 @@ do
   twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_7 &
   twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_8 &
   twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_9 &
-  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_10
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_10;
+  
+  wait
+  
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_11 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_12 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_13 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_14 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_15 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_16 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_17 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_18 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_19 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_20
+  
+  wait 
+  
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_21 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_22 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_23 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_24 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_25 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_26 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_27 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_28 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_29 &
+  twoLocusSim params=sim_sel.bpp N=$N u=$u r=$r s=$s label=$m tag=rep_30
 done
 
 cd ../..
@@ -600,87 +626,9 @@ p5
 
 moms_comp_ratios <- plot_grid(p1, p2, p3, p4, p5, ncol=1, rel_heights=c(1, 1, 1, 1, 1.85))
 save_plot("selection/single-pop/moms_++_vs_py_ratios.pdf", moms_comp_ratios, base_height=10, base_width=20)
-
-# focusing on lower recombination rates to zoom in (exclude moments.TwoLocus outliers)
-tbl_pp <- tbl_pp[tbl_pp$r < 1e-3,]
   
-p1 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[1],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
-p1 <- p1 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p1 <- p1 + scale_shape_manual(values=0:length((unique(tbl_pp))))
-p1 <- p1 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p1 <- p1 + labs(title=NULL, x=NULL, y=expression(D^2))
-p1 <- p1 + geom_hline(yintercept=1, linetype="dashed", color="red")
-p1 <- p1 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 legend.position="none")
-p1
-
-p2 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[2],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
-p2 <- p2 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p2 <- p2 + scale_shape_manual(values=0:length((unique(tbl_pp))))
-p2 <- p2 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p2 <- p2 + labs(title=NULL, x=NULL, y=expression(Dz))
-p2 <- p2 + geom_hline(yintercept=1, linetype="dashed", color="red")
-p2 <- p2 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 strip.text.x = element_blank(),
-                 legend.position="none")
-p2
-
-p3 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[3],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
-p3 <- p3 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p3 <- p3 + scale_shape_manual(values=0:length((unique(tbl_pp))))
-p3 <- p3 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p3 <- p3 + labs(title=NULL, x=NULL, y=expression(H[l]))
-p3 <- p3 + geom_hline(yintercept=1, linetype="dashed", color="red")
-p3 <- p3 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 strip.text.x = element_blank(),
-                 legend.position="none")
-p3
-
-p4 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[4],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
-p4 <- p4 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p4 <- p4 + scale_shape_manual(values=0:length((unique(tbl_pp))))
-p4 <- p4 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
-p4 <- p4 + labs(title=NULL, x=NULL, y=expression(H[r]))
-p4 <- p4 + geom_hline(yintercept=1, linetype="dashed", color="red")
-p4 <- p4 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 strip.text.x = element_blank(),
-                 legend.position="none")
-p4
-
-p5 <- ggplot(data=tbl_pp[tbl_pp$stats==commom_stats[5],], aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size))) 
-p5 <- p5 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
-p5 <- p5 + scale_shape_manual(values=0:length((unique(tbl_pp))))
-p5 <- p5 + scale_x_log10(breaks = r) + scale_y_continuous(breaks=pretty_breaks(), labels = scale.4d)
-p5 <- p5 + labs(title=NULL, x="r", y=expression(pi[2]))
-p5 <- p5 + geom_hline(yintercept=1, linetype="dashed", color="red")
-p5 <- p5 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 strip.text.x = element_blank(),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-p5
-
-moms_comp_ratios <- plot_grid(p1, p2, p3, p4, p5, ncol=1, rel_heights=c(1, 1, 1, 1, 1.85))
-save_plot("selection/single-pop/moms_++_vs_py_ratios_low_rec.pdf", moms_comp_ratios, base_height=10, base_width=20)
-
 # appending two-locus simulations (performed w/ twoLocusSim binary from momentspp)
-n_reps <- 10
+n_reps <- 30
 twoLocusSim <- numeric()
 for(i in 1:n_models) {
   rp <- numeric()
@@ -715,89 +663,81 @@ df_all <- full_join(df, tls, by=c("stats", "scenario"))
 sd <- df_all %>% group_by(scenario, stats) %>% summarize(sd = sd(twoLocusSim))
 rep_means <- df_all %>% group_by(scenario, stats) %>% summarize(avg = mean(twoLocusSim))
 
-df_all <- full_join(df_all, sd, by=c("stats", "scenario")) 
 df_all <- full_join(df_all, rep_means, by=c("stats", "scenario")) 
+df_all <- full_join(df_all, sd, by=c("stats", "scenario")) 
 df_m <- pivot_longer(df_all, cols=c("moments++", "momentsTwoLocus", "twoLocusSim"), names_to="Method")
 
 dd <- df_m[df_m$stats==commom_stats[1],]
-p6 <- ggplot() + geom_errorbar(data=dd[dd$Method=="twoLocusSim",], aes(x=r, ymax=avg + sd, ymin=avg - sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
+p6 <- ggplot() + geom_errorbar(data=dd[dd$Method=="twoLocusSim",], aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
 p6 <- p6 + geom_point(data=dd[dd$Method!="twoLocusSim",], aes(x=r, y=value, color=as.factor(N), shape=Method, size=1)) + theme_bw()
 p6 <- p6 + scale_shape_manual(values=c(0, 1))
 p6 <- p6 + scale_x_log10(breaks = r) + scale_y_log10()
 p6 <- p6 + labs(x="r", y=expression(D^2))
-p6 <- p6 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 legend.position="none")
+p6 <- p6 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p6 <- p6 + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
 p6
-
-summary(dd[dd$Method=="momentsTwoLocus",]$value)
-dd[which(dd$value < 0),]
+save_plot("selection/single-pop/moms_++_vs_py_dd.pdf", p6, base_height=10, base_width=20)
 
 dz <- df_m[df_m$stats==commom_stats[2],]
-p7 <- ggplot() + geom_errorbar(data=dz[dz$Method=="twoLocusSim",], aes(x=r, ymax=avg + sd, ymin=avg - sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
+p7 <- ggplot() + geom_errorbar(data=dz[dz$Method=="twoLocusSim",], aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
 p7 <- p7 + geom_point(data=dz[dz$Method!="twoLocusSim",], aes(x=r, y=value, color=as.factor(N), shape=Method, size=1)) + theme_bw()
 p7 <- p7 + scale_shape_manual(values=c(0, 1))
 p7 <- p7 + scale_x_log10(breaks = r) + scale_y_log10()
 p7 <- p7 + labs(x="r", y=expression(Dz))
-p7 <- p7 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 strip.text.x=element_blank(),
-                 legend.position="none")
+p7 <- p7 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p7 <- p7 + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
 p7
+save_plot("selection/single-pop/moms_++_vs_py_dz.pdf", p7, base_height=10, base_width=20)
 
 hl <- df_m[df_m$stats==commom_stats[3],]
-p8 <- ggplot() + geom_errorbar(data=hl[hl$Method=="twoLocusSim",], aes(x=r, ymax=avg + sd, ymin=avg - sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
+p8 <- ggplot() + geom_errorbar(data=hl[hl$Method=="twoLocusSim",], aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
 p8 <- p8 + geom_point(data=hl[hl$Method!="twoLocusSim",], aes(x=r, y=value, color=as.factor(N), shape=Method, size=1)) + theme_bw()
 p8 <- p8 + scale_shape_manual(values=c(0, 1))
 p8 <- p8 + scale_x_log10(breaks=r) + scale_y_log10()
 p8 <- p8 + labs(x="r", y=expression(H[l]))
-p8 <- p8 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 strip.text.x=element_blank(),
-                 legend.position="none")
+p8 <- p8 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p8 <- p8 + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
 p8
+save_plot("selection/single-pop/moms_++_vs_py_hl.pdf", p8, base_height=10, base_width=20)
 
 hr <- df_m[df_m$stats==commom_stats[4],]
-p9 <- ggplot() + geom_errorbar(data=hr[hr$Method=="twoLocusSim",], aes(x=r, ymax=avg + sd, ymin=avg - sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
+p9 <- ggplot() + geom_errorbar(data=hr[hr$Method=="twoLocusSim",], aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
 p9 <- p9 + geom_point(data=hr[hr$Method!="twoLocusSim",], aes(x=r, y=value, color=as.factor(N), shape=Method, size=1)) + theme_bw()
 p9 <- p9 + scale_shape_manual(values=c(0, 1))
 p9 <- p9 + scale_x_log10(breaks=r) + scale_y_log10()
 p9 <- p9 + labs(x="r", y=expression(H[l]))
-p9 <- p9 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 strip.text.x=element_blank(),
-                 legend.position="none")
+p9 <- p9 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p9 <- p9 + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
+                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                 legend.position="bottom")
 p9
+save_plot("selection/single-pop/moms_++_vs_py_hr.pdf", p9, base_height=10, base_width=20)
 
 pi2 <- df_m[df_m$stats==commom_stats[5],]
-p10 <- ggplot() + geom_errorbar(data=pi2[pi2$Method=="twoLocusSim",], aes(x=r, ymax=avg + sd, ymin=avg - sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
+p10 <- ggplot() + geom_errorbar(data=pi2[pi2$Method=="twoLocusSim",], aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
 p10 <- p10 + geom_point(data=pi2[pi2$Method!="twoLocusSim",], aes(x=r, y=value, color=as.factor(N), shape=Method, size=1)) + theme_bw()
 p10 <- p10 + scale_shape_manual(values=c(0, 1))
 p10 <- p10 + scale_x_log10(breaks=r) + scale_y_log10()
 p10 <- p10 + labs(x="r", y=expression(pi[2]))
-p10 <- p10 + theme(axis.title=element_text(size=12),
-                 axis.text=element_text(size=10),
+p10 <- p10 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p10 <- p10 + theme(axis.title=element_text(size=16),
+                 axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 strip.text.x=element_blank(),
                  legend.position="bottom")
 p10
+save_plot("selection/single-pop/moms_++_vs_py_pi2.pdf", p10, base_height=10, base_width=20)
 
-moms_comp_vals <- plot_grid(p6, p7, p8, p9, p10, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.85))
-save_plot("selection/single-pop/moms_++_vs_py_expect.pdf", moms_comp_vals, base_height=10, base_width=20)
 ```
-
-
 
 # Selection 2-populations
 
@@ -811,10 +751,10 @@ N1 <- 10000
 N2 <- c(N1, N1 / 10)
 u <- 1e-7
 r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 0)
-s1 <- c(0, -5e-05, -1e-04, -2.5e-04, -5e-04, -1e-3)
-s2 <- c(0, -5e-05, -1e-04, -2.5e-04, -5e-04, -1e-3)
-sanc <- c(0, -1/2/N1)
-split_time <- 2000 #c(400, 2000)
+s1 <- c(0, -5e-05, -2.5e-04, -5e-04, -1e-3)
+s2 <- c(0, -5e-05, -2.5e-04, -5e-04, -1e-3)
+sanc <- c(0, -5e-05, -1e-3)
+split_time <- c(400, 2000) # in generations
 
 params <- crossing(N1, N2, u, r, s1, s2, sanc, split_time)
 params$scenario <- 1:nrow(params)
@@ -906,7 +846,9 @@ done
 cd ../..
 ```
 
-### Plots
+### Plots 
+
+TODO assimilate split time into plots
 
 ```{r, plots-selected-2-pop, include=T, eval=T, results=F, message=F, warning=F}
 
