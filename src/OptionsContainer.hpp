@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 13/10/2023
+ * Last modified: 05/12/2023
  *
  */
 
@@ -49,7 +49,7 @@ public:
   tolerance_(bpp::ApplicationTools::getDoubleParameter("tolerance", options, 1e-6, "", 0, 4)),
   aliasOverEpochs_(bpp::ApplicationTools::getParameter<bool>("alias_epochs_params", options, true, "", true, 4)),
   aliasOverPops_(bpp::ApplicationTools::getParameter<bool>("alias_pops_params", options, true, "", true, 4)),
-  compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 0)),
+  compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 4)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
   verbose_(bpp::ApplicationTools::getParameter<bool>("verbose", options, false, "", true, 4)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),

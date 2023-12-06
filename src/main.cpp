@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 13/10/2023
+ * Last modified: 05/12/2023
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 17/Nov/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 05/Dec/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
 
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
         std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRecs(i), ic, sslib);
-        std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getMus(i), ic, sslib);
+        std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getLeftFactor(), demes.getMus(i), ic, sslib);
         std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeffs(i), icSel, sslib);
 
         /*// only *allow* model to include mig params in epochs where the demes model has non-zero mig

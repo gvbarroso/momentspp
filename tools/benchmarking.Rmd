@@ -714,7 +714,7 @@ p9 <- ggplot() + geom_errorbar(data=hr[hr$Method=="twoLocusSim",], aes(x=r, ymax
 p9 <- p9 + geom_point(data=hr[hr$Method!="twoLocusSim",], aes(x=r, y=value, color=as.factor(N), shape=Method, size=1)) + theme_bw()
 p9 <- p9 + scale_shape_manual(values=c(0, 1))
 p9 <- p9 + scale_x_log10(breaks=r) + scale_y_log10()
-p9 <- p9 + labs(x="r", y=expression(H[l]))
+p9 <- p9 + labs(x="r", y=expression(H[r]))
 p9 <- p9 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
 p9 <- p9 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
@@ -736,6 +736,92 @@ p10 <- p10 + theme(axis.title=element_text(size=16),
                  legend.position="bottom")
 p10
 save_plot("selection/single-pop/moms_++_vs_py_pi2.pdf", p10, base_height=10, base_width=20)
+
+```
+
+### BGS with Mutation rate variation
+```{r, demes-selected-1-pop, include=F, eval=T, results=F, message=F, warning=F}
+
+N <- c(1000, 10000, 100000)
+# number of independent genomic windows, each corresponding to a two-locus system
+w <- 100
+# length of each genomic block
+l <- 100
+# Gamma dist params
+# DFE
+shape_sel <- 0.35
+scale_sel <- 0.000375
+# mut rates
+shapes_mu <- c(1, 10) #c(1, 3, 10, 1000000)
+scales_mu <- 1e-8 #c(1e-8, 1e-9)
+# rec rates
+shapes_rec <- c(1, 10) #c(1, 3, 10, 1000000)
+scales_rec <- 1e-8 #c(1e-8, 1e-9)
+
+params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
+params$scenario <- 1:nrow(params)
+n_models <- nrow(params)
+
+write.csv(params, "selection/single-pop/mut_rate_var/params.csv", quote=F, row.names=F)
+
+Sys.setenv(num_models=n_models)
+
+for(i in 1:n_models) {
+  
+  mus <- rgamma(n=w, shape=params$shapes_mu[i], scale=params$scales_mu[i]/params$shapes_mu[i])
+  rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
+  ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i])
+      
+  windows <- bind_cols(mus, rs, ss)
+  names(windows) <- c("mus", "recs", "dfe")
+  write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), quote=F, row.names=F)
+  
+  for(j in 1:n) { # left locus
+    
+    for(k in 1:n) { # right locus
+      
+      total_r <- l * colSums(windows[j:k,])["recs"]
+      mu_ratio <- l * windows$mus[j] / windows$mus[k] # left / right
+      
+      name <- paste("model_", i, "_l_", j, "_r_", k, sep="")
+      sink(paste("selection/single-pop/mut_rate_var/", name, ".yaml", sep=""))
+      
+      cat("time_units: generations\n")
+      cat("demes:\n")
+      cat("  - name: X\n")
+      cat("    epochs:\n")
+      cat("      - end_time: 0\n")
+      cat("        start_size: ")
+      cat(params$N[i])
+      cat("\n")
+      cat("metadata:\n")
+      cat("  - name: mutation\n")
+      cat("    left_factor: ")
+      cat(mu_ratio)
+      cat("\n")
+      cat("    epochs:\n")
+      cat("      - end_time: 0\n")
+      cat("        rates: [")
+      cat(windows$mus[k])
+      cat("]\n")
+      cat("  - name: recombination\n")
+      cat("    epochs:\n")
+      cat("      - end_time: 0\n")
+      cat("        rates: [")
+      cat(total_r)
+      cat("]\n")
+      cat("  - name: selection\n")
+      cat("    start_time: .inf\n")
+      cat("    epochs:\n")
+      cat("      - end_time: 0\n")
+      cat("        rates: [")
+      cat(windows$dfe[j])
+      cat("]\n")
+      
+      sink()
+    }
+  }
+}
 
 ```
 

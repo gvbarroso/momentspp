@@ -1,7 +1,6 @@
-label = $(L)
+label = $(M)
 stats_file = none
 demes_file = $(F)
-compress_moments = 1
 factor_order = $(O)
-num_threads =
 verbose = $(V)
+length_left = $(L)

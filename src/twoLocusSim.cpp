@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
   fout << "Hl = " << sum_Hl / L / G << "\n";
   fout << "Hr = " << sum_Hr / L / G << "\n";
   fout << "pi2 = " << sum_pi2 / L / L / G << "\n";
-  fout << "random seed = " << seed << "\n";
+  //fout << "random_seed = " << seed << "\n";
 
   fout.close();
 

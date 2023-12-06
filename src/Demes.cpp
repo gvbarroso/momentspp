@@ -449,6 +449,9 @@ void Demes::parse_(const std::string& fileName)
       if(meta[i]["start_time"] && meta[i]["start_time"].as<std::string>() != ".inf")
         startTime = meta[i]["start_time"].as<int>();
 
+      if(name == "mutation" && meta[i]["left_factor"]) // gets the scaling of mutation rate in the left (constrained) locus
+        leftFactor_ = meta[i]["left_factor"].as<double>();
+
       YAML::Node rateEpochs = meta[i]["epochs"];
 
       for(size_t j = 0; j < rateEpochs.size(); ++j)

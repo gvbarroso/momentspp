@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 01/09/2023
+ * Last modified: 05/12/2023
  *
  */
 
@@ -78,6 +78,8 @@ private:
   std::vector<std::vector<double>> recRates_;
   std::vector<std::vector<double>> selCoeffs_;
 
+  double leftFactor_; // see Mutation.hpp
+
 public:
   Demes(const std::string& file):
   model_(),
@@ -86,7 +88,8 @@ public:
   pulses_(0),
   mutRates_(0),
   recRates_(0),
-  selCoeffs_(0)
+  selCoeffs_(0),
+  leftFactor_(1)
   {
     parse_(file);
   }
@@ -98,7 +101,8 @@ public:
   pulses_(0),
   mutRates_(0),
   recRates_(0),
-  selCoeffs_(0)
+  selCoeffs_(0),
+  leftFactor_(1)
   { }
 
 public:
@@ -183,6 +187,11 @@ public:
   const Eigen::MatrixXd& getPulse(size_t epoch) const
   {
     return pulses_[epoch];
+  }
+
+  double getLeftFactor()
+  {
+    return leftFactor_;
   }
 
   void setMus(size_t epoch, double mu)

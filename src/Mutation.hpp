@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 01/09/2023
+ * Last modified: 05/12/2023
  *
  */
 
@@ -14,17 +14,22 @@
 class Mutation: public AbstractOperator
 {
 
+private:
+  double leftFactor_; // multiplicative factor in mutation rate of left locus (eg by increased length)
+
 public:
-  Mutation(const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices())
+  Mutation(double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getPopIndices()),
+  leftFactor_(leftFactor)
   {
     includeParameters_(mutParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);
   }
 
-  Mutation(const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices())
+  Mutation(double leftFactor, const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getPopIndices()),
+  leftFactor_(leftFactor)
   {
     // for each population modeled in the epoch *this operator belongs to, add mu parameter
     for(size_t i = 0; i < popIndices_.size(); ++i)
@@ -37,6 +42,11 @@ public:
   virtual Mutation* clone() const override
   {
     return new Mutation(*this);
+  }
+
+  double getLeftFactor()
+  {
+    return leftFactor_;
   }
 
   void setUpMatrices_(const SumStatsLibrary& sslib) override;
