@@ -19,6 +19,10 @@ library(stringr)
 library(RColorBrewer)
 library(scales)
 library(plotly)
+library(MASS)
+library(lmtest)
+library(nlme)
+library(car)
 
 library(reticulate)
 use_python("/usr/bin/python3")
@@ -739,10 +743,13 @@ save_plot("selection/single-pop/moms_++_vs_py_pi2.pdf", p10, base_height=10, bas
 
 ```
 
-### BGS with Mutation rate variation
-```{r, demes-selected-1-pop, include=F, eval=T, results=F, message=F, warning=F}
+# BGS with Mutation rate variation
 
-N <- c(1000, 10000, 100000)
+### Building Demes files
+
+```{r, demes-BGS, include=F, eval=T, results=F, message=F, warning=F}
+
+N <- c(1000, 10000)
 # number of independent genomic windows, each corresponding to a two-locus system
 w <- 100
 # length of each genomic block
@@ -756,7 +763,7 @@ shapes_mu <- c(1, 10) #c(1, 3, 10, 1000000)
 scales_mu <- 1e-8 #c(1e-8, 1e-9)
 # rec rates
 shapes_rec <- c(1, 10) #c(1, 3, 10, 1000000)
-scales_rec <- 1e-8 #c(1e-8, 1e-9)
+scales_rec <- 1e-6 #c(1e-6, 1e-7)
 
 params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
 params$scenario <- 1:nrow(params)
@@ -768,20 +775,27 @@ Sys.setenv(num_models=n_models)
 
 for(i in 1:n_models) {
   
+  cat(paste("Writing yaml files for model ", i, "...\n", sep=""))
+  
   mus <- rgamma(n=w, shape=params$shapes_mu[i], scale=params$scales_mu[i]/params$shapes_mu[i])
   rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
   ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i])
       
-  windows <- bind_cols(mus, rs, ss)
+  if(colSums(windows[1:100,])["recs"] > 1e-2) { stop("Rec rate is too high!") }
+  
+  windows <- bind_cols(mus, rs, ss, .name_repair="unique")
   names(windows) <- c("mus", "recs", "dfe")
+  windows$pi0 <- 2 * params$N[i] * windows$mus
+  windows$alpha <- 2 * params$N[i] * windows$dfe
+    
   write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), quote=F, row.names=F)
   
-  for(j in 1:n) { # left locus
+  for(j in 1:w) { # left locus
     
-    for(k in 1:n) { # right locus
+    for(k in 1:w) { # right locus
       
-      total_r <- l * colSums(windows[j:k,])["recs"]
       mu_ratio <- l * windows$mus[j] / windows$mus[k] # left / right
+      total_r <- colSums(windows[j:k,])["recs"]
       
       name <- paste("model_", i, "_l_", j, "_r_", k, sep="")
       sink(paste("selection/single-pop/mut_rate_var/", name, ".yaml", sep=""))
@@ -792,7 +806,7 @@ for(i in 1:n_models) {
       cat("    epochs:\n")
       cat("      - end_time: 0\n")
       cat("        start_size: ")
-      cat(params$N[i])
+      cat(as.integer(params$N[i]))
       cat("\n")
       cat("metadata:\n")
       cat("  - name: mutation\n")
@@ -822,6 +836,93 @@ for(i in 1:n_models) {
     }
   }
 }
+
+```
+
+### Running moments++
+
+```{bash run-moments++BGS, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+
+source ~/.bashrc
+
+cd selection/single-pop/mut_rate_var/
+
+for m in *.yaml
+do
+  momentspp params=opt.bpp F=$m O=20
+done
+
+cd ../../..
+```
+
+### Plots
+
+```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+
+r2 <- as.data.frame(matrix(nrow = n_models, ncol = 4))
+colnames(r2) <- c("Total", "Mutation", "Recombination", "Selection")
+
+for(i in 1:n_models) {
+  
+  windows <- read.csv(paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), header=T)
+  w <- nrow(windows)
+  hr_BGS<- numeric(length=w)
+  
+  for(j in 1:w) { # right locus
+  
+    pi0 <- windows$pi0[j]  
+    one_minus_f <- numeric(length=w)
+      
+    for(k in 1:w) { # left locus
+      
+      name <- paste("model_", i, "_l_", k, "_r_", j, "_expectations.txt", sep="")
+      expectations <- read.table(paste("selection/single-pop/mut_rate_var/", name, sep=""))
+      
+      hr <- expectations[expectations$V1 == "Hr_0_0",]$V3
+      one_minus_f[k] <- hr / pi0
+    }
+    
+    hr_BGS[j] <- pi0 * prod(one_minus_f)
+  }
+  
+  windows$hr_BGS <- hr_BGS
+
+  # standardizing
+  windows$ss_pi_BGS <- (windows$hr_BGS - mean(windows$hr_BGS)) / sd(windows$hr_BGS)
+  windows$ss_pi0 <- (windows$pi0 - mean(windows$pi0)) / sd(windows$pi0)
+  windows$ss_mus <- (windows$mus - mean(windows$mus)) / sd(windows$mus)
+  windows$ss_recs <- (windows$recs - mean(windows$recs)) / sd(windows$recs)
+  windows$ss_dfe <- (windows$dfe - mean(windows$dfe)) / sd(windows$dfe)
+  
+  m.pi.1 <- lm(ss_pi_BGS ~ ss_mus + ss_recs + ss_dfe, data = windows)
+  
+  summary(m.pi.1)
+  vif(m.pi.1)
+
+  anova.pi <- Anova(m.pi.1)
+  apiss <- anova.pi$"Sum Sq"
+  anova.pi$VarExp <- apiss / sum(apiss)
+
+  r2[i, 1] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2] + anova.pi$VarExp[3] + anova.pi$VarExp[4]) * 100
+  r2[i, 2] <- anova.pi$VarExp[1] * 100
+  r2[i, 3] <- anova.pi$VarExp[2] * 100
+  r2[i, 4] <- anova.pi$VarExp[3] * 100
+}
+
+tbl <- bind_cols(params, r2)
+molten_tbl <- pivot_longer(tbl, cols=c("Total", "Mutation", "Recombination", "Selection"), names_to="variable")
+
+r2_plot <- ggplot(data = molten_tbl, aes(x = bin.size, y = value, shape = variable))
+r2_plot <- r2_plot + geom_line(data = molten_tbl) + facet_grid(rho ~ mu_block) 
+r2_plot <- r2_plot + geom_point(aes(shape = variable), size = 4)
+r2_plot <- r2_plot + scale_shape_manual(values = c(0, 1, 2, 8), name = "",
+                                        labels = c("Total", expression(mu), expression(r), expression(alpha)))
+r2_plot <- r2_plot + scale_x_continuous(breaks = c(50, 200, 1000), limits = c(40, 1200), trans="log10") 
+r2_plot <- r2_plot + scale_y_continuous(breaks = pretty_breaks())
+r2_plot <- r2_plot + labs(title = NULL, x = "Bin Size (kb)", y = "Variance Explained (%)") + theme_bw()
+r2_plot <- r2_plot + theme(axis.title = element_text(size = 16), axis.text = element_text(size = 12), 
+                           strip.text.x = element_text(size = 16), strip.text.y = element_text(size = 16),
+                          legend.text=element_text(size=16), legend.position = "bottom")
 
 ```
 
