@@ -756,14 +756,14 @@ w <- 100
 l <- 100
 # Gamma dist params
 # DFE
-shape_sel <- 0.35
+shape_sel <- c(0.35, 1)
 scale_sel <- 0.000375
 # mut rates
-shapes_mu <- c(1, 10) #c(1, 3, 10, 1000000)
-scales_mu <- 1e-8 #c(1e-8, 1e-9)
+shapes_mu <- c(1, 3, 10, 1000000)
+scales_mu <- c(1e-8, 1e-9)
 # rec rates
-shapes_rec <- c(1, 10) #c(1, 3, 10, 1000000)
-scales_rec <- 1e-6 #c(1e-6, 1e-7)
+shapes_rec <- c(1, 3, 10, 1000000)
+scales_rec <- c(1e-6, 1e-7, 1e-8, 1e-9)
 
 params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
 params$scenario <- 1:nrow(params)
@@ -787,7 +787,9 @@ for(i in 1:n_models) {
   names(windows) <- c("mus", "recs", "dfe")
   windows$pi0 <- 2 * params$N[i] * windows$mus
   windows$alpha <- 2 * params$N[i] * windows$dfe
-    
+  
+  if(any(windows$alpha < -20)) { stop("Selection is too strong!") }
+  
   write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), quote=F, row.names=F)
   
   for(j in 1:w) { # left locus
@@ -857,7 +859,7 @@ cd ../../..
 
 ### Plots
 
-```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+```{r, plots-BGS, include=T, eval=T, results=F, message=F, warning=F}
 
 r2 <- as.data.frame(matrix(nrow = n_models, ncol = 4))
 colnames(r2) <- c("Total", "Mutation", "Recombination", "Selection")
