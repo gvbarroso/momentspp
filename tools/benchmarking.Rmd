@@ -45,7 +45,7 @@ R data frames in future python chunks.
 
 ### Building Demes files
 
-```{r, demes-neutral-2-pop, include=F, eval=T, results=F, message=F, warning=F}
+```{r, demes-neutral-2-pop, include=F, eval=F, results=F, message=F, warning=F}
 
 N1 <- 10000
 N2 <- c(N1, N1 / 10)
@@ -155,7 +155,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-moments++, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -171,7 +171,7 @@ cd ../..
 
 ### Running moments.LD
 
-```{python run-momentsLD, include=F, eval=T, results=F}
+```{python run-momentsLD, include=F, eval=F, results=F}
 
 import moments.LD
 import demes
@@ -217,7 +217,7 @@ for i in range(1, n_models):
 
 ### Plots
 
-```{r neutral-bench, include=T, eval=T, results=F, message=F, warning=F}
+```{r neutral-bench, include=T, eval=F, results=F, message=F, warning=F}
 
 core_stats <- c("DD_1_1", 
                 "DD_1_2", 
@@ -288,7 +288,7 @@ save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_
 
 ### Building Demes files
 
-```{r, demes-selected-1-pop, include=F, eval=T, results=F, message=F, warning=F}
+```{r, demes-selected-1-pop, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- c(1000, 10000)
 u <- 1e-7
@@ -347,7 +347,7 @@ for(i in 1:n_models) {
 
 ### Running TwoLocusSim
 
-```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -399,7 +399,7 @@ cd ../..
 
 ### Running moments++
 
-```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -417,7 +417,7 @@ cd ../..
 
 For benchmarking the single population case, we use equilibrium demography:
 
-```{python run-momentsTwoLocus, include=F, eval=T, results=F}
+```{python run-momentsTwoLocus, include=F, eval=F, results=F}
 
 import moments.TwoLocus
 import sys, os
@@ -488,7 +488,7 @@ for i in range(1, n_models):
 
 ### Plots
 
-```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+```{r, plots-selected-1-pop, include=T, eval=F, results=F, message=F, warning=F}
 
 commom_stats <- c("DD_0_0",
                   "Dr_0_0_(1-2p0)^1",
@@ -749,21 +749,22 @@ save_plot("selection/single-pop/moms_++_vs_py_pi2.pdf", p10, base_height=10, bas
 
 ```{r, demes-BGS, include=F, eval=T, results=F, message=F, warning=F}
 
+# TODO add change in N over history
 N <- c(1000, 10000)
 # number of independent genomic windows, each corresponding to a two-locus system
 w <- 100
 # length of each genomic block
-l <- 100
+l <- c(100, 1000)
 # Gamma dist params
 # DFE
-shape_sel <- c(0.35, 1)
-scale_sel <- 0.000375
+scale_sel <- c(0.0001, 0.0005)
+shape_sel <- 20
 # mut rates
-shapes_mu <- c(1, 3, 10, 1000000)
 scales_mu <- c(1e-8, 1e-9)
+shapes_mu <- c(1, 3, 10, 1000000)
 # rec rates
-shapes_rec <- c(1, 3, 10, 1000000)
 scales_rec <- c(1e-6, 1e-7, 1e-8, 1e-9)
+shapes_rec <- c(1, 3, 10, 1000000)
 
 params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
 params$scenario <- 1:nrow(params)
@@ -779,16 +780,26 @@ for(i in 1:n_models) {
   
   mus <- rgamma(n=w, shape=params$shapes_mu[i], scale=params$scales_mu[i]/params$shapes_mu[i])
   rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
-  ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i])
-      
-  if(colSums(windows[1:100,])["recs"] > 1e-2) { stop("Rec rate is too high!") }
+  ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
+  alpha <- 2 * params$N[i] * ss
+  
+  while(any(alpha < -20)) { 
+    
+    cat("Selection is too strong in at least one gene! Redrawing...\n")
+    ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
+    alpha <- 2 * params$N[i] * ss
+  }
+  
+  while(sum(rs) > 1e-2) { 
+    
+    cat("Total recombination rate of chr is too high! Redrawing...\n")
+    rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
+  }
   
   windows <- bind_cols(mus, rs, ss, .name_repair="unique")
   names(windows) <- c("mus", "recs", "dfe")
   windows$pi0 <- 2 * params$N[i] * windows$mus
-  windows$alpha <- 2 * params$N[i] * windows$dfe
-  
-  if(any(windows$alpha < -20)) { stop("Selection is too strong!") }
+  windows$alpha <- alpha
   
   write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), quote=F, row.names=F)
   
@@ -868,7 +879,7 @@ for(i in 1:n_models) {
   
   windows <- read.csv(paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), header=T)
   w <- nrow(windows)
-  hr_BGS<- numeric(length=w)
+  hr_BGS <- numeric(length=w)
   
   for(j in 1:w) { # right locus
   
@@ -926,6 +937,10 @@ r2_plot <- r2_plot + theme(axis.title = element_text(size = 16), axis.text = ele
                            strip.text.x = element_text(size = 16), strip.text.y = element_text(size = 16),
                           legend.text=element_text(size=16), legend.position = "bottom")
 
+# TODO
+# plot R^2 mut as a function of the variance of the Gamma distribution of mu,
+# with facet_grid(Var(rec)~M), shape = N, color = mean(s)
+
 ```
 
 # Selection 2-populations
@@ -934,7 +949,7 @@ r2_plot <- r2_plot + theme(axis.title = element_text(size = 16), axis.text = ele
 
 ### Building Demes files
 
-```{r, demes-selected-2-pop, include=F, eval=T, results=F, message=F, warning=F}
+```{r, demes-selected-2-pop, include=F, eval=F, results=F, message=F, warning=F}
 
 N1 <- 10000
 N2 <- c(N1, N1 / 10)
@@ -1021,7 +1036,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++-2-pops, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-moments++-2-pops, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -1039,7 +1054,7 @@ cd ../..
 
 TODO assimilate split time into plots
 
-```{r, plots-selected-2-pop, include=T, eval=T, results=F, message=F, warning=F}
+```{r, plots-selected-2-pop, include=T, eval=F, results=F, message=F, warning=F}
 
 core_stats <- c("DD_1_1", 
                 "DD_1_2", 
