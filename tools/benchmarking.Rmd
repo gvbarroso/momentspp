@@ -39,9 +39,9 @@ R data frames in future python chunks.
 ```{python}
 ```
 
-Here we benchmark moments++ against moments.LD when s=0
-
 # Neutrality
+
+Here we benchmark moments++ against moments.LD when s=0
 
 ## No-migration
 
@@ -49,6 +49,7 @@ Here we benchmark moments++ against moments.LD when s=0
 
 ```{r, demes-neutral-2-pop, include=F, eval=T, results=F, message=F, warning=F}
 
+# parameters
 N1 <- 10000
 N2 <- c(N1, N1 / 10)
 u <- 1e-7
@@ -165,7 +166,7 @@ cd neutrality/no_migration
 
 for((i=1;i<=$num_models;i++))
 do
-  momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=1
+  momentspp params=opt.bpp FILE=model_$i.yaml ORDER=1
 done
 
 cd ../..
@@ -287,10 +288,9 @@ save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_
 
 
 # Selection 1-population
+## Benchmark 
 
 Here we benchmark against moments.TwoLocus and TwoLocusSim
-
-## Benchmark 
 
 ### Building Demes files
 
@@ -529,7 +529,7 @@ for(i in 1:n_models) {
   expectation <- c(expectation, vals)
 }
 
-tbl_py_n40 <- as.data.frame(expectation)
+tbl_py_n40 <- as.data.frame(expectation)cd
 tbl_py_n40$stats <- commom_stats
 tbl_py_n40$scenario <- scenario
 tbl_py_n40$sample_size <- 40
@@ -749,9 +749,7 @@ save_plot("selection/single-pop/bench/moms_++_vs_py_pi2.pdf", p10, base_height=1
 
 ```
 
-# Simple BGS model
-
-## Single Neutral Locus
+## Simple BGS model
 
 Here we model BGS experienced by a single neutral locus
 at the edge of the chromosome
@@ -875,149 +873,112 @@ for(i in 1:n_models) {
 params$factors <- factors
 params$hr_BGS <- hr_BGS
 
-for(i in unique(params$u)) { # TODO
-  p <- ggplot()  
+c <- 1
+plot_list <- list(length=length(unique(params$u)))
+for(i in unique(params$u)) {
+  p <- ggplot(data=filter(params, u==i), aes(x=s, y=hr_BGS, color=as.factor(N)))
+  p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
+  p <- p + geom_hline(data=filter(params, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
+  p <- p + scale_x_continuous(breaks=pretty_breaks())
+  p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
+  p <- p + labs(title=NULL, x="s", y=expression(mu[i]))
+  
+  if(c==1) {
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_text(size=16), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  } else if(c==length(unique(params$u))) {
+    p <- p + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.text=element_text(size=16), 
+                   legend.position="bottom")
+  } else {
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  }
+  
+  plot_list[[c]] <- p
+  c <- c + 1
 }
 
-p1 <- ggplot(data=filter(params, u==1e-9), aes(x=s, y=hr_BGS, color=as.factor(N)))
-p1 <- p1 + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-p1 <- p1 + geom_hline(data=filter(params, u==1e-9), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
-p1 <- p1 + scale_x_continuous(breaks=pretty_breaks())
-p1 <- p1 + scale_y_log10(breaks=c(5e-6, 1e-5, 2e-5), labels=function(x) format(x, scientific=T))
-p1 <- p1 + labs(title="Two-locus Hr BGS", x="s", y=expression(mu[1e-9]))
-p1 <- p1 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 strip.text.x=element_text(size=16), 
-                 strip.text.y=element_text(size=16),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 legend.text=element_text(size=16), 
-                 legend.position="none")
-
-p2 <- ggplot(data=filter(params, u==1e-8), aes(x=s, y=hr_BGS, color=as.factor(N)))
-p2 <- p2 + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-p2 <- p2 + geom_hline(data=filter(params, u==1e-8), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
-p2 <- p2 + scale_x_continuous(breaks=pretty_breaks())
-p2 <- p2 + scale_y_log10(breaks=c(5e-5, 1e-4, 2e-4), labels=function(x) format(x, scientific=T))
-p2 <- p2 + labs(title=NULL, x="s", y=expression(mu=mu[1e-8]))
-p2 <- p2 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12), 
-                 strip.text.x=element_blank(), 
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 legend.text=element_text(size=16),
-                 legend.position="none")
-
-p3 <- ggplot(data=params[params$u==1e-7,], aes(x=s, y=hr_BGS, color=as.factor(N)))
-p3 <- p3 + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-p3 <- p3 + geom_hline(data=params[params$u==1e-7,], aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
-p3 <- p3 + scale_x_continuous(breaks=pretty_breaks())
-p3 <- p3 + scale_y_log10(breaks=c(5e-4, 1e-3, 2e-3), labels=function(x) format(x, scientific=T))
-p3 <- p3 + labs(title=NULL, x="s", y=expression(mu[1e-7]))
-p3 <- p3 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12), 
-                 strip.text.x=element_blank(), 
-                 strip.text.y=element_text(size=16),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), 
-                 legend.position="bottom")
-
-bgs_plot <- plot_grid(p1, p2, p3, ncol=1, rel_heights=c(1.15, 1, 1.25))
+bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
 save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_1.pdf", bgs_plot, base_height=12, base_width=16)
 
-p4 <- ggplot(data=params[params$u==1e-9,], aes(x=s, y=factors, color=as.factor(N)))
-p4 <- p4 + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-p4 <- p4 + geom_hline(yintercept=1, linetype="dashed")
-p4 <- p4 + scale_x_continuous(breaks=pretty_breaks())
-p4 <- p4 + scale_y_log10(breaks=pretty_breaks(), labels=function(x) sprintf("%.3f", x))
-p4 <- p4 + labs(title="Two-locus Reduction Factors BGS", x="s", y=expression(mu[1e-9]))
-p4 <- p4 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 strip.text.x=element_text(size=16), 
-                 strip.text.y=element_text(size=16),
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 legend.text=element_text(size=16), 
-                 legend.position="none")
+c <- 1
+plot_list <- list(length=length(unique(params$u)))
+for(i in unique(params$u)) {
+  p <- ggplot(data=filter(params,u==i), aes(x=s, y=factors, color=as.factor(N)))
+  p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
+  p <- p + geom_hline(yintercept=1, linetype="dashed")
+  p <- p + scale_x_continuous(breaks=pretty_breaks())
+  p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) sprintf("%.3f", x))
+  p <- p + labs(title="Two-locus Reduction Factors BGS, cols = r", x="s", y=expression(mu[i]))
+  
+  if(c==1) {
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_text(size=16), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  } else if(c==length(unique(params$u))) {
+    p <- p + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.text=element_text(size=16), 
+                   legend.position="bottom")
+  } else {
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  }
+  
+  plot_list[[c]] <- p
+  c <- c + 1
+}
 
-p5 <- ggplot(data=params[params$u==1e-8,], aes(x=s, y=factors, color=as.factor(N)))
-p5 <- p5 + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-p5 <- p5 + geom_hline(yintercept=1, linetype="dashed")
-p5 <- p5 + scale_x_continuous(breaks=pretty_breaks())
-p5 <- p5 + scale_y_log10(breaks=pretty_breaks(), labels=function(x) sprintf("%.3f", x))
-p5 <- p5 + labs(title=NULL, x="s", y=expression(mu[1e-8]))
-p5 <- p5 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12), 
-                 strip.text.x=element_blank(), 
-                 axis.title.x=element_blank(),
-                 axis.text.x=element_blank(),
-                 axis.ticks.x=element_blank(),
-                 legend.text=element_text(size=16),
-                 legend.position="none")
-
-p6 <- ggplot(data=params[params$u==1e-7,], aes(x=s, y=factors, color=as.factor(N)))
-p6 <- p6 + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-p6 <- p6 + geom_hline(yintercept=1, linetype="dashed")
-p6 <- p6 + scale_x_continuous(breaks=pretty_breaks())
-p6 <- p6 + scale_y_log10(breaks=c(0.2, 0.4, 0.6, 0.8, 1), labels=function(x) sprintf("%.3f", x))
-p6 <- p6 + labs(title=NULL, x="s", y=expression(mu[1e-7]))
-p6 <- p6 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12), 
-                 strip.text.x=element_blank(), 
-                 strip.text.y=element_text(size=16),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), 
-                 legend.position="bottom")
-
-bgs_plot_2 <- plot_grid(p4, p5, p6, ncol=1, rel_heights=c(1.15, 1, 1.25))
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_2.pdf", bgs_plot_2, base_height=12, base_width=15)
+bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_2.pdf", bgs_plot_2, base_height=12, base_width=16)
 
 names(factors_tbl) <- 1:ncol(factors_tbl)
 windows <- bind_cols(params, factors_tbl)
 molten_windows <- pivot_longer(windows, cols=(ncol(params) + 1):ncol(windows), names_to="window")
 molten_windows$window <- as.numeric(molten_windows$window)
 
-p7 <- ggplot(data=molten_windows[molten_windows$u==1e-9,], aes(x=window, y=value, color=as.factor(s)))
-p7 <- p7 + geom_point(size=1) + facet_grid(N~r) + theme_bw()
-p7 <- p7 + scale_x_discrete(breaks=pretty_breaks())
-p7 <- p7 + scale_y_continuous(breaks=pretty_breaks())
-p7 <- p7 + labs(title="Two-locus Hr BGS windows, mu=1e-9", x="Window", y=expression(1-f[i]))
-p7 <- p7 + theme(axis.title=element_text(size=16),
+c <- 3
+for(i in unique(params$u)) {
+  p <- ggplot(data=filter(molten_windows, u==i), aes(x=window, y=value, color=as.factor(s)))
+  p <- p + geom_point(size=1) + facet_grid(N~r) + theme_bw()
+  p <- p + scale_x_discrete(breaks=pretty_breaks())
+  p <- p + scale_y_continuous(breaks=pretty_breaks())
+  p <- p + labs(title=paste("Two-locus Hr BGS windows, mu", i, ", cols = r", sep=""), x="Window", y=expression(1-f[j]))
+  p <- p + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_3.pdf", p7, base_height=12, base_width=20)
-
-p8 <- ggplot(data=molten_windows[molten_windows$u==1e-8,], aes(x=window, y=value, color=as.factor(s)))
-p8 <- p8 + geom_point(size=1) + facet_grid(N~r) + theme_bw()
-p8 <- p8 + scale_x_discrete(breaks=pretty_breaks())
-p8 <- p8 + scale_y_continuous(breaks=pretty_breaks())
-p8 <- p8 + labs(title="Two-locus Hr BGS windows, mu=1e-8", x="Window", y=expression(1-f[i]))
-p8 <- p8 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_4.pdf", p8, base_height=12, base_width=20)
-
-p9 <- ggplot(data=molten_windows[molten_windows$u==1e-7,], aes(x=window, y=value, color=as.factor(s)))
-p9 <- p9 + geom_point(size=1) + facet_grid(N~r) + theme_bw()
-p9 <- p9 + scale_x_discrete(breaks=pretty_breaks())
-p9 <- p9 + scale_y_continuous(breaks=pretty_breaks())
-p9 <- p9 + labs(title="Two-locus Hr BGS windows, mu=1e-7", x="Window", y=expression(1-f[i]))
-p9 <- p9 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_5.pdf", p9, base_height=12, base_width=20)
+  
+  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_", c, ".pdf", sep=""), p, base_height=8, base_width=15)
+  
+  c <- c + 1
+}
 ```
-
-## Multiple Neutral Loci
 
 We now model multiple neutral loci, interdigitated with 
 constrained, non-recombining loci of length l
@@ -1045,6 +1006,7 @@ n_models <- nrow(params)
 write.csv(params, "selection/single-pop/simple_bgs/mult_neutral/params.csv", quote=F, row.names=F)
 
 Sys.setenv(num_models=n_models)
+Sys.setenv(w=w)
 
 for(i in 1:n_models) {
   
@@ -1053,7 +1015,7 @@ for(i in 1:n_models) {
     for(k in 1:w) { # right locus
       
       name <- paste("model_", i, "_l_", j, "_r_", k, sep="")
-      sink(paste("selection/single-pop/simple_bgs/mult_neutral/", name, ".yaml", sep=""))
+      sink(paste("selection/single-pop/simple_bgs/mult_neutral/model_", i, "/", name, ".yaml", sep=""))
       
       total_r <- (abs(j-k) + 1) * params$r[i]
       
@@ -1104,9 +1066,14 @@ source ~/.bashrc
 
 cd selection/single-pop/simple_bgs/mult_neutral/
 
-for m in *.yaml
+for((i=1;i<=$n_models;i++));
 do
-  momentspp params=opt.bpp F=$m O=20
+  cd model_$i
+  for m in *.yaml
+  do
+    momentspp params=opt.bpp F=$m O=20
+  done
+  cd ..
 done
 
 cd ../../../..
@@ -1118,7 +1085,6 @@ cd ../../../..
 
 params <- read.table("selection/single-pop/simple_bgs/mult_neutral/params.csv", sep=",", header=T)
 n_models <- nrow(params)
-w <- 100
 
 # for landscape plots
 hr_tbl <- as.data.frame(matrix(nrow=n_models, ncol=w))
@@ -1134,7 +1100,7 @@ for(i in 1:n_models) {
     for(k in 1:w) { # left locus
       
       name <- paste("model_", i, "_l_", k, "_r_", j, "_expectations.txt", sep="")
-      expectations <- read.table(paste("selection/single-pop/simple_bgs/mult_neutral/", name, sep=""))
+      expectations <- read.table(paste("selection/single-pop/simple_bgs/mult_neutral/model_", i, "/", name, sep=""))
       
       hr <- expectations[expectations$V1 == "Hr_0_0",]$V3
       one_minus_f[k] <- hr / params$pi0[i]
@@ -1191,9 +1157,7 @@ p3 <- p3 + theme(axis.title=element_text(size=16),
 save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_3.pdf", p3, base_height=12, base_width=20)
 ```
 
-# BGS with Mutation rate variation
-
-## Variation in both loci
+## BGS with Mutation rate variation
 
 This first set of models explore the situation where the local
 mutation rate changes both mu_l and mu_r 
@@ -1364,12 +1328,12 @@ for(i in 1:n_models) {
   windows <- read.csv(paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), header=T)
   hr_BGS <- numeric(length=w)
   
-  for(j in 1:w) { # right locus
+  for(j in 1:w) { # right locus (neutral)
   
     pi0 <- windows$pi0[j]  
     one_minus_f <- numeric(length=w)
       
-    for(k in 1:w) { # left locus
+    for(k in 1:w) { # left locus (selected)
       
       name <- paste("model_", i, "_l_", k, "_r_", j, "_expectations.txt", sep="")
       expectations <- read.table(paste("selection/single-pop/mut_rate_var/", name, sep=""))
@@ -1594,7 +1558,6 @@ p8 <- p8 + theme(axis.title=element_text(size=16),
 save_plot("selection/single-pop/R2_plot_4.pdf", p8, base_height=10, base_width=15)
 ```
 
-## Variation in left locus only
 
 This second set of models explore the situation where the local
 mutation rate changes ONLY mu_l
@@ -1619,7 +1582,7 @@ shapes_mu <- c(10, 100, 1000000)
 scales_rec <- c(1e-5, 1e-6, 1e-7, 1e-8)
 shapes_rec <- 1
 
-params <- crossing(N, w, l, shape_sel, scale_sel, mu_r, shapes_mu, scales_mu, shapes_rec, scales_rec)
+params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
@@ -1699,7 +1662,7 @@ for(i in 1:n_models) {
       cat("    epochs:\n")
       cat("      - end_time: 0\n")
       cat("        rates: [")
-      cat(params$scales_mu[k])
+      cat(params$scales_mu[i])
       cat("]\n")
       cat("  - name: recombination\n")
       cat("    epochs:\n")
@@ -1766,7 +1729,7 @@ for(i in 1:n_models) {
   
   for(j in 1:w) { # right locus
   
-    pi0 <- 2 * params$N[i] * params$mu_r[i]
+    pi0 <- 2 * params$N[i] * params$scales_mu[i]
     one_minus_f <- numeric(length=w)
       
     for(k in 1:w) { # left locus
@@ -1785,7 +1748,7 @@ for(i in 1:n_models) {
   windows$hr_BGS <- hr_BGS
 
   windows$bin <- 1:nrow(windows)
-  molten_bins <- pivot_longer(windows, cols=c("mus", "recs", "alpha", "pi0", "hr_BGS"), names_to="variable")
+  molten_bins <- pivot_longer(windows, cols=c("mus", "recs", "alpha", "hr_BGS"), names_to="variable")
   
   p1 <- ggplot(data=windows, aes(x=bin, y=hr_BGS))
   p1 <- p1 + geom_line() + theme_bw()
@@ -1836,7 +1799,6 @@ for(i in 1:n_models) {
       
   # standardizing
   windows$ss_pi_BGS <- (windows$hr_BGS - mean(windows$hr_BGS)) / sd(windows$hr_BGS)
-  windows$ss_pi0 <- (windows$pi0 - mean(windows$pi0)) / sd(windows$pi0)
   windows$ss_mus <- (windows$mus - mean(windows$mus)) / sd(windows$mus)
   windows$ss_recs <- (windows$recs - mean(windows$recs)) / sd(windows$recs)
   windows$ss_dfe <- (windows$dfe - mean(windows$dfe)) / sd(windows$dfe)
