@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 05/12/2023
+ * Last modified: 14/12/2023
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 05/Dec/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 14/Dec/2023 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -121,6 +121,7 @@ int main(int argc, char *argv[]) {
       if(demes.getPulse(i).isZero(0))
       {
         std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
+        std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 1e-1, true, true);
         std::shared_ptr<bpp::IntervalConstraint> icSel = std::make_shared<bpp::IntervalConstraint>(-1e-2, 0., true, true);
 
         std::vector<double> drift(0);
@@ -131,7 +132,7 @@ int main(int argc, char *argv[]) {
           drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
 
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
-        std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRecs(i), ic, sslib);
+        std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRecs(i), icRec, sslib);
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getLeftFactor(), demes.getMus(i), ic, sslib);
         std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeffs(i), icSel, sslib);
 

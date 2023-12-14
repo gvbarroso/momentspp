@@ -845,45 +845,52 @@ cd ../../../..
 params <- read.table("selection/single-pop/simple_bgs/single_neutral/params.csv", sep=",", header=T)
 n_models <- nrow(params)
 hr_BGS <- numeric(length=n_models)
+hk95 <- numeric(length=n_models)
 factors <- numeric(length=n_models)
 
 # for landscape plots
-factors_tbl <- as.data.frame(matrix(nrow=n_models, ncol=100))
+factors_tbl <- as.data.frame(matrix(nrow=n_models, ncol=w))
 
 for(i in 1:n_models) {
   
+  w <- params$w[i] # number of selected non-recombining genes
   pi0 <- params$pi0[i]  
   one_minus_f <- numeric(length=w)
+  hudson_kaplan_95 <- numeric(length=w)
   
-  for(j in 1:w) { # left locus
+  for(j in 1:w) { # left locus (selected)
   
     name <- paste("model_", i, "_l_", j, "_expectations.txt", sep="")
     expectations <- read.table(paste("selection/single-pop/simple_bgs/single_neutral/", name, sep=""))
       
     hr <- expectations[expectations$V1 == "Hr_0_0",]$V3
     one_minus_f[j] <- hr / pi0
+    hudson_kaplan_95[j] <- 1 - (params$u[i] * params$l[i] * -1 * params$s[i]) / (2 * (-params$s[i] + j * params$r[i])^2)
   }
   
   factors[i] <- prod(one_minus_f)
   hr_BGS[i] <- pi0 * factors[i]
-  
+  hk95[i] <- pi0 * prod(hudson_kaplan_95)
+    
   factors_tbl[i,] <- one_minus_f
 }
 
 params$factors <- factors
-params$hr_BGS <- hr_BGS
+params$momentspp <- hr_BGS
+params$hk95 <- hk95
 
+# plots of moments++
 c <- 1
 plot_list <- list(length=length(unique(params$u)))
 for(i in unique(params$u)) {
-  p <- ggplot(data=filter(params, u==i), aes(x=s, y=hr_BGS, color=as.factor(N)))
+  p <- ggplot(data=filter(params, u==i), aes(x=s, y=momentspp, color=as.factor(N)))
   p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-  p <- p + geom_hline(data=filter(params, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
+  p <- p + geom_hline(data=filter(molten_res, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
   p <- p + scale_x_continuous(breaks=pretty_breaks())
   p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
-  p <- p + labs(title=NULL, x="s", y=expression(mu[i]))
   
   if(c==1) {
+    p <- p + labs(title="Hr moments++, rows = u, cols = r", x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_text(size=16), 
@@ -892,6 +899,7 @@ for(i in unique(params$u)) {
                    axis.ticks.x=element_blank(),
                    legend.position="none")
   } else if(c==length(unique(params$u))) {
+    p <- p + labs(title=NULL, x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16),
                    axis.text=element_text(size=12), 
                    strip.text.x=element_blank(), 
@@ -899,6 +907,7 @@ for(i in unique(params$u)) {
                    legend.text=element_text(size=16), 
                    legend.position="bottom")
   } else {
+    p <- p + labs(title=NULL, x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_blank(), 
@@ -913,7 +922,7 @@ for(i in unique(params$u)) {
 }
 
 bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_1.pdf", bgs_plot, base_height=12, base_width=16)
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_1.pdf", bgs_plot, base_height=12, base_width=16)
 
 c <- 1
 plot_list <- list(length=length(unique(params$u)))
@@ -923,9 +932,9 @@ for(i in unique(params$u)) {
   p <- p + geom_hline(yintercept=1, linetype="dashed")
   p <- p + scale_x_continuous(breaks=pretty_breaks())
   p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) sprintf("%.3f", x))
-  p <- p + labs(title="Two-locus Reduction Factors BGS, cols = r", x="s", y=expression(mu[i]))
   
   if(c==1) {
+    p <- p + labs(title="Two-locus Reduction Factors BGS, rows = u, cols = r", x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_text(size=16), 
@@ -934,6 +943,7 @@ for(i in unique(params$u)) {
                    axis.ticks.x=element_blank(),
                    legend.position="none")
   } else if(c==length(unique(params$u))) {
+    p <- p + labs(title=NULL, x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16),
                    axis.text=element_text(size=12), 
                    strip.text.x=element_blank(), 
@@ -941,6 +951,7 @@ for(i in unique(params$u)) {
                    legend.text=element_text(size=16), 
                    legend.position="bottom")
   } else {
+    p <- p + labs(title=NULL, x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_blank(), 
@@ -955,7 +966,7 @@ for(i in unique(params$u)) {
 }
 
 bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_2.pdf", bgs_plot_2, base_height=12, base_width=16)
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_2.pdf", bgs_plot_2, base_height=12, base_width=16)
 
 names(factors_tbl) <- 1:ncol(factors_tbl)
 windows <- bind_cols(params, factors_tbl)
@@ -974,10 +985,55 @@ for(i in unique(params$u)) {
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   
-  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_", c, ".pdf", sep=""), p, base_height=8, base_width=15)
+  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_", c, ".pdf", sep=""), p, base_height=8, base_width=15)
   
   c <- c + 1
 }
+
+# plots of hudson & kaplan 1995
+c <- 1
+plot_list <- list(length=length(unique(params$u)))
+for(i in unique(params$u)) {
+  p <- ggplot(data=filter(params, u==i), aes(x=s, y=hk95, color=as.factor(N)))
+  p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
+  p <- p + geom_hline(data=filter(molten_res, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
+  p <- p + scale_x_continuous(breaks=pretty_breaks())
+  p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
+  
+  if(c==1) {
+    p <- p + labs(title="Hr HK95, rows = u, cols = r", x="s", y=expression(H[r]))
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_text(size=16), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  } else if(c==length(unique(params$u))) {
+    p <- p + labs(title=NULL, x="s", y=expression(H[r]))
+    p <- p + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.text=element_text(size=16), 
+                   legend.position="bottom")
+  } else {
+    p <- p + labs(title=NULL, x="s", y=expression(H[r]))
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  }
+  
+  plot_list[[c]] <- p
+  c <- c + 1
+}
+
+bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_hk95_1.pdf", bgs_plot, base_height=12, base_width=16)
 ```
 
 We now model multiple neutral loci, interdigitated with 
@@ -1177,10 +1233,12 @@ scale_sel <- c(5e-6, 5e-5, 5e-4)
 shape_sel <- 20
 # mut rates
 scales_mu <- c(1e-7, 1e-8, 1e-9)
-shapes_mu <- c(1, 10, 30, 100, 300, 1000000)
+shapes_mu <- c(1, 10, 30, 100, 300, 1000000, 1e+9)
 # rec rates
-scales_rec <- c(1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 0)
+scales_rec <- c(1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 0)
 shapes_rec <- c(0.1, 1, 10, 1000000)
+
+# TODO correlation between rec and mut
 
 params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
 params$scenario <- 1:nrow(params)
@@ -1212,20 +1270,19 @@ for(i in 1:n_models) {
   
   cat(paste("Writing yaml files for model ", i, "...\n", sep=""))
   
+  l <- params$l[i]
   mus <- rgamma(n=w, shape=params$shapes_mu[i], scale=params$scales_mu[i]/params$shapes_mu[i])
   rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
   ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
   alpha <- 2 * params$N[i] * ss
   
   while(any(alpha < -20)) { 
-    
     cat("Selection is too strong in at least one gene! Redrawing...\n")
     ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
     alpha <- 2 * params$N[i] * ss
   }
   
-  while(sum(rs) > 1e-2) { 
-    
+  while(sum(rs) > 1e-1) { 
     cat("Total recombination rate of chr is too high! Redrawing...\n")
     rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
   }
@@ -1258,12 +1315,24 @@ for(i in 1:n_models) {
       cat("metadata:\n")
       cat("  - name: mutation\n")
       cat("    left_factor: ")
-      cat(mu_ratio)
+      
+      if(params$shapes_mu[i]==1e+9) { # enforces completely flat mu
+        cat(l)
+      } else {
+        cat(mu_ratio)
+      }
+      
       cat("\n")
       cat("    epochs:\n")
       cat("      - end_time: 0\n")
       cat("        rates: [")
-      cat(windows$mus[k])
+      
+      if(params$shapes_mu[i]==1e+9) { # enforces completely flat mu
+        cat(params$scales_mu[i])
+      } else {
+        cat(windows$mus[k])
+      }
+      
       cat("]\n")
       cat("  - name: recombination\n")
       cat("    epochs:\n")
@@ -1327,11 +1396,13 @@ for(i in 1:n_models) {
   
   windows <- read.csv(paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), header=T)
   hr_BGS <- numeric(length=w)
+  hk95 <- numeric(length=w)
   
   for(j in 1:w) { # right locus (neutral)
   
     pi0 <- windows$pi0[j]  
     one_minus_f <- numeric(length=w)
+    hudson_kaplan_95 <- numeric(length=w)
       
     for(k in 1:w) { # left locus (selected)
       
@@ -1340,14 +1411,17 @@ for(i in 1:n_models) {
       
       hr <- expectations[expectations$V1 == "Hr_0_0",]$V3
       one_minus_f[k] <- hr / pi0
+      hudson_kaplan_95[k] <- 1 - (windows$mus[k] * l * windows$dfe[k]) / (2 * (windows$dfe[k] + colSums(windows[j:k,])["recs"])^2)
     }
     
     hr_BGS[j] <- pi0 * prod(one_minus_f)
+    hk95[j] <- pi0 * prod(hudson_kaplan_95)
   }
   
   landscapes[i,] <- hr_BGS
   windows$hr_BGS <- hr_BGS
-
+  windows$hk95 <- hk95 # TODO incorporate in plots?
+  
   windows$bin <- 1:nrow(windows)
   molten_bins <- pivot_longer(windows, cols=c("mus", "recs", "alpha", "pi0", "hr_BGS"), names_to="variable")
   
