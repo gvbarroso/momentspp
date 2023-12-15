@@ -565,7 +565,7 @@ tbl_pp$sample_size <- tbl_py_ns$sample_size
 p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1]), aes(x=r, y=ratio, shape=as.factor(N), color=as.factor(sample_size)))
 p1 <- p1 + geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~s, nrow=1)
 p1 <- p1 + scale_shape_manual(values=0:length((unique(tbl_pp))))
-p1 <- p1 + scale_x_log10(breaks = r) + scale_y_continuous(labels = scale.4d)
+p1 <- p1 + scale_x_log10(breaks=r) + scale_y_continuous(labels=scale.4d)
 p1 <- p1 + labs(title=NULL, x=NULL, y=expression(D^2))
 p1 <- p1 + geom_hline(yintercept=1, linetype="dashed", color="red")
 p1 <- p1 + theme(axis.title=element_text(size=12),
@@ -758,15 +758,15 @@ at the edge of the chromosome
 
 ```{r, demes-BGS-single, include=F, eval=T, results=F, message=F, warning=F}
 
-N <- c(2500, 10000)
-u <- c(1e-7, 1e-8, 1e-9)
-r <- c(1e-5, 1e-6, 1e-7, 1e-8, 1e-9)
-s <- c(-1e-5, -2.5e-5, -1e-4, -2.5e-4, -1e-3)
+N <- c(10000)
+u <- c(1e-8)
+r <- c(0, 1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3)
+s <- c(-1e-3, -5e-4, -1e-4)
 
 # number of independent genomic windows, each corresponding to a two-locus system
-w <- 100
-# length of each genomic block
-l <- 100
+w <- c(1, 100)
+# length of each constrained locus
+l <- c(1, 10, 100, 1000, 10000)
 
 params <- crossing(N, u, r, s, w, l)
 params$pi0 <- 2 * params$N * params$u
@@ -879,13 +879,67 @@ params$factors <- factors
 params$momentspp <- hr_BGS
 params$hk95 <- hk95
 
+# visualizing the accuracy of the approximation ul = L * u
+tbl <- filter(params, w=1, r>0, l<1000)
+
+tbl$ul <- tbl$u * tbl$l
+tbl$scaled_factors <- tbl$factors ^ params$l
+tbl$scaled_hr <- tbl$scaled_factors * tbl$pi0
+
+molten_tbl <- pivot_longer(tbl, cols=c("Hr", "scaled_hr"), names_to="method")
+
+c <- 1
+plot_list <- list(length=length(unique(molten_tbl$ul)))
+for(i in unique(molten_tbl$ul)) {
+  p <- ggplot(data=filter(molten_tbl, ul==i), aes(x=r, y=1e+4*value, shape=method))
+  p <- p + geom_line() + geom_point(size=3) + facet_wrap(~s, nrow=1) + theme_bw()
+  p <- p + geom_hline(data=filter(molten_tbl, ul==i), aes(yintercept=1e+4*pi0), linetype="dashed")
+  p <- p + scale_shape_manual(values=c(0, 1))
+  p <- p + scale_x_log10(breaks=unique(molten_tbl$r))
+  p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) sprintf("%.4f", x))
+  
+  if(c==1) {
+    p <- p + labs(title="Hr x 10,000, rows = ul, cols = s", x="r", y=expression(H[r]))
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_text(size=16), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  } else if(c==length(unique(molten_tbl$ul))) {
+    p <- p + labs(title=NULL, x="r", y=expression(H[r]))
+    p <- p + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.text=element_text(size=16), 
+                   legend.position="bottom")
+  } else {
+    p <- p + labs(title=NULL, x="r", y=expression(H[r]))
+    p <- p + theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   strip.text.x=element_blank(), 
+                   axis.title.x=element_blank(),
+                   axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   legend.position="none")
+  }
+  
+  plot_list[[c]] <- p
+  c <- c + 1
+}
+
+bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_scaling.pdf", bgs_plot, base_height=12, base_width=16)
+
 # plots of moments++
 c <- 1
 plot_list <- list(length=length(unique(params$u)))
 for(i in unique(params$u)) {
   p <- ggplot(data=filter(params, u==i), aes(x=s, y=momentspp, color=as.factor(N)))
   p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-  p <- p + geom_hline(data=filter(molten_res, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
+  p <- p + geom_hline(data=filter(params, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
   p <- p + scale_x_continuous(breaks=pretty_breaks())
   p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
   
