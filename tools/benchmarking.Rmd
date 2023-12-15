@@ -880,10 +880,17 @@ params$momentspp <- hr_BGS
 params$hk95 <- hk95
 
 # visualizing the accuracy of the approximation ul = L * u
-tbl <- filter(params, w=1, r>0, l<1000)
+tbl <- filter(params, w=1, r>0)
 
 tbl$ul <- tbl$u * tbl$l
-tbl$scaled_factors <- tbl$factors ^ params$l
+x <- filter(tbl, l==1)["factors"]
+y <- numeric()
+for(i in 1:(n_models / length(unique(tbl$l)))) {
+  for(j in unique(params$l)) {
+    y <- c(y, x[i,] ^ j)
+  }
+}
+tbl$scaled_factors <- y
 tbl$scaled_hr <- tbl$scaled_factors * tbl$pi0
 
 molten_tbl <- pivot_longer(tbl, cols=c("Hr", "scaled_hr"), names_to="method")

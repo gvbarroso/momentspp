@@ -42,7 +42,7 @@ void Model::printAliasedMoments(std::ostream& stream)
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getBasis();
 
   for(auto& m : tmp)
-    stream << m->getName() << " = " << m->getValue() << "\n";
+    stream << std::setprecision(20) << m->getName() << " = " << m->getValue() << "\n";
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
