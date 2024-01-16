@@ -265,7 +265,6 @@ for(i in 1:n_models) {
 }
 
 tbl$mLD <- mLD
-tbl <- select(tbl, scenario, stats, mpp, mLD)
 tbl$ratio <- tbl$mpp / tbl$mLD
 
 molten_tbl <- pivot_longer(tbl, cols=starts_with("m"))
@@ -529,7 +528,7 @@ for(i in 1:n_models) {
   expectation <- c(expectation, vals)
 }
 
-tbl_py_n40 <- as.data.frame(expectation)cd
+tbl_py_n40 <- as.data.frame(expectation)
 tbl_py_n40$stats <- commom_stats
 tbl_py_n40$scenario <- scenario
 tbl_py_n40$sample_size <- 40
@@ -879,7 +878,7 @@ params$factors <- factors
 params$momentspp <- hr_BGS
 params$hk95 <- hk95
 
-# visualizing the accuracy of the approximation ul = L * u
+# visualizing the accuracy of the approximation ul = L * u for the left locus
 tbl <- filter(params, w=1, r>0)
 
 tbl$ul <- tbl$u * tbl$l
@@ -1699,7 +1698,7 @@ mutation rate changes ONLY mu_l
 
 ### Building demes files
 
-```{r, params-BGS-mutvar-2, include=F, eval=T, results=F, message=F, warning=F}
+```{r, params-BGS-mutvar-2, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- 10000
 # number of independent genomic windows, each corresponding to a two-locus system
