@@ -352,7 +352,7 @@ for(i in 1:n_models) {
 
 ### Running TwoLocusSim
 
-```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -404,7 +404,7 @@ cd ../../..
 
 ### Running moments++
 
-```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -422,7 +422,7 @@ cd ../../..
 
 For benchmarking the single population case, we use equilibrium demography:
 
-```{python run-momentsTwoLocus, include=F, eval=T, results=F}
+```{python run-momentsTwoLocus, include=F, eval=F, results=F}
 
 import moments.TwoLocus
 import sys, os
@@ -751,7 +751,7 @@ save_plot("selection/single-pop/bench/moms_++_vs_py_pi2.pdf", p10, base_height=1
 ## Simple BGS model
 
 Here we model BGS experienced by a single neutral locus
-at the edge of the chromosome
+at the edge of a chromosome with w selected sites of length l
 
 ### Building Demes files
 
@@ -779,7 +779,9 @@ Sys.setenv(num_models=n_models)
 
 for(i in 1:n_models) {
   
-  for(j in 1:w) { # left locus
+  w <- params$w[i] # number of selected non-recombining genes
+
+  for(j in 1:w) { # for all "left" loci
   
       name <- paste("model_", i, "_l_", j, sep="")
       sink(paste("selection/single-pop/simple_bgs/single_neutral/", name, ".yaml", sep=""))
@@ -831,7 +833,7 @@ cd selection/single-pop/simple_bgs/single_neutral/
 
 for m in *.yaml
 do
-  momentspp params=opt.bpp F=$m O=20
+  momentspp params=opt.bpp F=$m O=25
 done
 
 cd ../../../..
@@ -879,12 +881,12 @@ params$momentspp <- hr_BGS
 params$hk95 <- hk95
 
 # visualizing the accuracy of the approximation ul = L * u for the left locus
-tbl <- filter(params, w=1, r>0)
+tbl <- filter(params, w==1, r>0)
 
 tbl$ul <- tbl$u * tbl$l
 x <- filter(tbl, l==1)["factors"]
 y <- numeric()
-for(i in 1:(n_models / length(unique(tbl$l)))) {
+for(i in 1:(nrow(tbl) / length(unique(tbl$l)))) {
   for(j in unique(params$l)) {
     y <- c(y, x[i,] ^ j)
   }
@@ -892,7 +894,7 @@ for(i in 1:(n_models / length(unique(tbl$l)))) {
 tbl$scaled_factors <- y
 tbl$scaled_hr <- tbl$scaled_factors * tbl$pi0
 
-molten_tbl <- pivot_longer(tbl, cols=c("Hr", "scaled_hr"), names_to="method")
+molten_tbl <- pivot_longer(tbl, cols=c("momentspp", "scaled_hr"), names_to="method")
 
 c <- 1
 plot_list <- list(length=length(unique(molten_tbl$ul)))
@@ -905,7 +907,7 @@ for(i in unique(molten_tbl$ul)) {
   p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) sprintf("%.4f", x))
   
   if(c==1) {
-    p <- p + labs(title="Hr x 10,000, rows = ul, cols = s", x="r", y=expression(H[r]))
+    p <- p + labs(title="moments++ Hr x 10,000, rows = L, cols = s", x="r", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_text(size=16), 
@@ -936,21 +938,22 @@ for(i in unique(molten_tbl$ul)) {
   c <- c + 1
 }
 
-bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
+bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
 save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_scaling.pdf", bgs_plot, base_height=12, base_width=16)
 
 # plots of moments++
+df <- filter(params, w==100)
 c <- 1
-plot_list <- list(length=length(unique(params$u)))
-for(i in unique(params$u)) {
-  p <- ggplot(data=filter(params, u==i), aes(x=s, y=momentspp, color=as.factor(N)))
+plot_list <- list(length=length(unique(df$l)))
+for(i in unique(df$l)) {
+  p <- ggplot(data=filter(df, l==i), aes(x=s, y=momentspp, color=as.factor(N)))
   p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-  p <- p + geom_hline(data=filter(params, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
+  p <- p + geom_hline(data=filter(df, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
   p <- p + scale_x_continuous(breaks=pretty_breaks())
   p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
   
   if(c==1) {
-    p <- p + labs(title="Hr moments++, rows = u, cols = r", x="s", y=expression(H[r]))
+    p <- p + labs(title="Hr moments++, rows = L, cols = r", x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_text(size=16), 
@@ -958,7 +961,7 @@ for(i in unique(params$u)) {
                    axis.text.x=element_blank(),
                    axis.ticks.x=element_blank(),
                    legend.position="none")
-  } else if(c==length(unique(params$u))) {
+  } else if(c==length(unique(df$l))) {
     p <- p + labs(title=NULL, x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16),
                    axis.text=element_text(size=12), 
@@ -981,13 +984,13 @@ for(i in unique(params$u)) {
   c <- c + 1
 }
 
-bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
+bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
 save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_1.pdf", bgs_plot, base_height=12, base_width=16)
 
 c <- 1
-plot_list <- list(length=length(unique(params$u)))
-for(i in unique(params$u)) {
-  p <- ggplot(data=filter(params,u==i), aes(x=s, y=factors, color=as.factor(N)))
+plot_list <- list(length=length(unique(df$l)))
+for(i in unique(df$l)) {
+  p <- ggplot(data=filter(df, l==i), aes(x=s, y=factors, color=as.factor(N)))
   p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
   p <- p + geom_hline(yintercept=1, linetype="dashed")
   p <- p + scale_x_continuous(breaks=pretty_breaks())
@@ -1025,7 +1028,7 @@ for(i in unique(params$u)) {
   c <- c + 1
 }
 
-bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
+bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
 save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_2.pdf", bgs_plot_2, base_height=12, base_width=16)
 
 names(factors_tbl) <- 1:ncol(factors_tbl)
@@ -1052,16 +1055,16 @@ for(i in unique(params$u)) {
 
 # plots of hudson & kaplan 1995
 c <- 1
-plot_list <- list(length=length(unique(params$u)))
-for(i in unique(params$u)) {
-  p <- ggplot(data=filter(params, u==i), aes(x=s, y=hk95, color=as.factor(N)))
+plot_list <- list(length=length(unique(df$l)))
+for(i in unique(df$l)) {
+  p <- ggplot(data=filter(df, l==i), aes(x=s, y=hk95, color=as.factor(N)))
   p <- p + geom_line() + geom_point(size=3) + facet_wrap(~r, nrow=1) + theme_bw()
-  p <- p + geom_hline(data=filter(molten_res, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
+  p <- p + geom_hline(data=filter(molten_windows, u==i), aes(yintercept=pi0, color=as.factor(N)), linetype="dashed")
   p <- p + scale_x_continuous(breaks=pretty_breaks())
   p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
   
   if(c==1) {
-    p <- p + labs(title="Hr HK95, rows = u, cols = r", x="s", y=expression(H[r]))
+    p <- p + labs(title="Hr HK95, rows = ul, cols = r", x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_text(size=16), 
@@ -1069,7 +1072,7 @@ for(i in unique(params$u)) {
                    axis.text.x=element_blank(),
                    axis.ticks.x=element_blank(),
                    legend.position="none")
-  } else if(c==length(unique(params$u))) {
+  } else if(c==length(unique(params$l))) {
     p <- p + labs(title=NULL, x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16),
                    axis.text=element_text(size=12), 
@@ -1092,7 +1095,7 @@ for(i in unique(params$u)) {
   c <- c + 1
 }
 
-bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1.5))
+bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
 save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_hk95_1.pdf", bgs_plot, base_height=12, base_width=16)
 ```
 
@@ -1101,7 +1104,7 @@ constrained, non-recombining loci of length l
 
 ### Building Demes files
 
-```{r, demes-BGS-mult, include=F, eval=T, results=F, message=F, warning=F}
+```{r, demes-BGS-mult-1, include=F, eval=T, results=F, message=F, warning=F}
 
 N <- 10000
 u <- c(1e-7, 1e-8, 1e-9)
@@ -1123,6 +1126,23 @@ write.csv(params, "selection/single-pop/simple_bgs/mult_neutral/params.csv", quo
 
 Sys.setenv(num_models=n_models)
 Sys.setenv(w=w)
+```
+
+```{bash mk-mult-dirs, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+
+source ~/.bashrc
+
+cd selection/single-pop/simple_bgs/mult_neutral/
+
+for(( i=1; i<=n_models; i++))
+do
+  mkdir model_$m
+done
+
+cd ../../../..
+```
+
+```{r, demes-BGS-mult-2, include=F, eval=T, results=F, message=F, warning=F}
 
 for(i in 1:n_models) {
   
