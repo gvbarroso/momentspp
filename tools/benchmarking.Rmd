@@ -1099,10 +1099,10 @@ bgs_plot <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1
 save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_hk95_1.pdf", bgs_plot, base_height=12, base_width=16)
 ```
 
+### Building Demes files
+
 We now model multiple neutral loci, interdigitated with 
 constrained, non-recombining loci of length l
-
-### Building Demes files
 
 ```{r, demes-BGS-mult-1, include=F, eval=T, results=F, message=F, warning=F}
 
@@ -1114,7 +1114,7 @@ s <- c(-1e-5, -1e-4, -1e-3)
 # number of independent genomic windows, each corresponding to a two-locus system
 w <- 100
 # length of each genomic block
-l <- 100
+l <- 10
 
 params <- crossing(N, u, r, s, w, l)
 params$pi0 <- 2 * params$N * params$u
@@ -1124,8 +1124,7 @@ n_models <- nrow(params)
 
 write.csv(params, "selection/single-pop/simple_bgs/mult_neutral/params.csv", quote=F, row.names=F)
 
-Sys.setenv(num_models=n_models)
-Sys.setenv(w=w)
+Sys.setenv(n_models=n_models)
 ```
 
 ```{bash mk-mult-dirs, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
@@ -1134,9 +1133,10 @@ source ~/.bashrc
 
 cd selection/single-pop/simple_bgs/mult_neutral/
 
-for(( i=1; i<=n_models; i++))
+for((i=1;i<=$n_models;i++));
 do
-  mkdir model_$m
+  mkdir model_$i
+  cp opt.bpp model_$i
 done
 
 cd ../../../..
@@ -1207,7 +1207,7 @@ do
   cd model_$i
   for m in *.yaml
   do
-    momentspp params=opt.bpp F=$m O=20
+    momentspp params=opt.bpp F=$m O=25
   done
   cd ..
 done
@@ -1257,8 +1257,8 @@ p1 <- ggplot(data=filter(molten_windows, u==1e-9), aes(x=window, y=value, color=
 p1 <- p1 + geom_point(size=1) + facet_wrap(~r, nrow=1) + theme_bw()
 p1 <- p1 + scale_x_discrete(breaks=pretty_breaks())
 p1 <- p1 + scale_y_continuous(breaks=pretty_breaks())
-p1 <- p1 + geom_hline(yintercept=filter(molten_windows, u==1e-9)["pi0"], linetype="dashed")
-p1 <- p1 + labs(title="Two-locus Hr BGS windows, mu=1e-9", x="Window", y=expression(H[r]))
+p1 <- p1 + geom_hline(yintercept=unique(filter(molten_windows, u==1e-9)$pi0), linetype="dashed")
+p1 <- p1 + labs(title="Two-locus Hr BGS windows, mu=1e-9, cols = r", x="Window", y=expression(H[r]))
 p1 <- p1 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -1270,8 +1270,8 @@ p2 <- ggplot(data=filter(molten_windows, u==1e-8), aes(x=window, y=value, color=
 p2 <- p2 + geom_point(size=1) + facet_wrap(~r, nrow=1) + theme_bw()
 p2 <- p2 + scale_x_discrete(breaks=pretty_breaks())
 p2 <- p2 + scale_y_continuous(breaks=pretty_breaks())
-p2 <- p2 + geom_hline(yintercept=filter(molten_windows, u==1e-8)["pi0"], linetype="dashed")
-p2 <- p2 + labs(title="Two-locus Hr BGS windows, mu=1e-8", x="Window", y=expression(H[r]))
+p2 <- p2 + geom_hline(yintercept=unique(filter(molten_windows, u==1e-8)$pi0), linetype="dashed")
+p2 <- p2 + labs(title="Two-locus Hr BGS windows, mu=1e-8, cols = r", x="Window", y=expression(H[r]))
 p2 <- p2 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -1283,8 +1283,8 @@ p3 <- ggplot(data=filter(molten_windows, u==1e-7), aes(x=window, y=value, color=
 p3 <- p3 + geom_point(size=1) + facet_wrap(~r, nrow=1) + theme_bw()
 p3 <- p3 + scale_x_discrete(breaks=pretty_breaks())
 p3 <- p3 + scale_y_continuous(breaks=pretty_breaks())
-p3 <- p3 + geom_hline(yintercept=filter(molten_windows, u==1e-7)["pi0"], linetype="dashed")
-p3 <- p3 + labs(title="Two-locus Hr BGS windows, mu=1e-7", x="Window", y=expression(H[r]))
+p3 <- p3 + geom_hline(yintercept=unique(filter(molten_windows, u==1e-7)$pi0), linetype="dashed")
+p3 <- p3 + labs(title="Two-locus Hr BGS windows, mu=1e-7, cols = r", x="Window", y=expression(H[r]))
 p3 <- p3 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -1295,12 +1295,12 @@ save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_3.pdf", p3, base_hei
 
 ## BGS with Mutation rate variation
 
-This first set of models explore the situation where the local
-mutation rate changes both mu_l and mu_r 
-
 ### Building Demes files
 
-```{r, BGS-mutvar-params, include=F, eval=T, results=F, message=F, warning=F}
+This first set of models explore the situation where the local
+mutation rate changes both mu_left and mu_right
+
+```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- c(1000, 10000)
 # number of independent genomic windows, each corresponding to a two-locus system
@@ -1330,7 +1330,7 @@ Sys.setenv(num_models=n_models)
 Sys.setenv(w=w)
 ```
 
-```{bash make_dirs_mutvar, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash make_dirs_mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -1344,7 +1344,7 @@ done
 cd ../../..
 ```
 
-```{r, BGS-mutvar-demes, include=F, eval=T, results=F, message=F, warning=F}
+```{r, BGS-mutvar-demes, include=F, eval=F, results=F, message=F, warning=F}
 
 for(i in 1:n_models) {
   
@@ -1436,7 +1436,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++BGS-mutvar, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-moments++BGS-mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -1460,7 +1460,7 @@ cd ../../..
 
 ### Plots
 
-```{r, plots-BGS-mutvar, include=T, eval=T, results=F, message=F, warning=F}
+```{r, plots-BGS-mutvar, include=T, eval=F, results=F, message=F, warning=F}
 
 params <- read.table("selection/single-pop/mut_rate_var/params.csv", sep=",", header=T)
 n_models <- nrow(params)
@@ -1712,11 +1712,10 @@ p8 <- p8 + theme(axis.title=element_text(size=16),
 save_plot("selection/single-pop/R2_plot_4.pdf", p8, base_height=10, base_width=15)
 ```
 
+### Building demes files
 
 This second set of models explore the situation where the local
-mutation rate changes ONLY mu_l
-
-### Building demes files
+mutation rate changes ONLY mu_left
 
 ```{r, params-BGS-mutvar-2, include=F, eval=F, results=F, message=F, warning=F}
 
@@ -1746,7 +1745,7 @@ Sys.setenv(num_models=n_models)
 Sys.setenv(w=w)
 ```
 
-```{bash make_dirs_mutvar_2, eval=T, message=FALSE, warning=FALSE, engine.opts='-i', include=F, results=F}
+```{bash make_dirs_mutvar_2, eval=F, message=F, warning=F, engine.opts='-i', include=F, results=F}
 
 source ~/.bashrc
 
@@ -1760,7 +1759,7 @@ done
 cd ../../..
 ```
 
-```{r, BGS-mutvar-demes-2, include=F, eval=T, results=F, message=F, warning=F}
+```{r, BGS-mutvar-demes-2, include=F, eval=F, results=F, message=F, warning=F}
 
 for(i in 1:n_models) {
   
@@ -1840,7 +1839,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++BGS-mutvar-2, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-moments++BGS-mutvar-2, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -1864,7 +1863,7 @@ cd ../../..
 
 ### Plots
 
-```{r, plots-BGS-mutvar-2, include=T, eval=T, results=F, message=F, warning=F}
+```{r, plots-BGS-mutvar-2, include=T, eval=F, results=F, message=F, warning=F}
 
 params <- read.table("selection/single-pop/mut_rate_var_left/params.csv", sep=",", header=T)
 n_models <- nrow(params)
@@ -2089,6 +2088,9 @@ save_plot("selection/single-pop/mut_rate_var_left/R2_plot_3.pdf", p7, base_heigh
 
 ### Building Demes files
 
+This first set of model is meant to visualize statistics for two populations,
+potentially with different selective coefficients between them
+
 ```{r, demes-selected-2-pop, include=F, eval=F, results=F, message=F, warning=F}
 
 N1 <- 10000
@@ -2104,7 +2106,7 @@ params <- crossing(N1, N2, u, r, s1, s2, sanc, split_time)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
-write.csv(params, "selection/no_migration//params.csv", quote=F, row.names=F)
+write.csv(params, "selection/no_migration/params.csv", quote=F, row.names=F)
 
 Sys.setenv(num_models=n_models)
 
