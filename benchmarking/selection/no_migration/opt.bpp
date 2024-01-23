@@ -1,6 +1,3 @@
-label = $(LABEL)
-stats_file = none
-demes_file = $(FILE)
-compress_moments = 1
-factor_order = $(ORDER)
-num_threads = $(T)
+demes_file = $(F)
+factor_order = $(O)
+label = $(L)

@@ -39,6 +39,39 @@ R data frames in future python chunks.
 ```{python}
 ```
 
+This creates the directories
+
+```{bash run-moments++, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+
+source ~/.bashrc
+
+mkdir neutrality
+mkdir selection
+
+cd neutrality
+mkdir migration
+mkdir no_migration
+
+cd ../selection
+mkdir migration
+mkdir no_migration
+mkdir single-pop
+
+cd single-pop
+mkdir bench
+mkdir simple_bgs
+mkdir mut_rate_var_left
+
+cd simple_bgs
+mkdir mult_neutral
+mkdir single_neutral
+mkdir single_neutral_single_selected
+
+cd ../../../
+find -type d -exec cp opt.bpp {} \;
+cp sim_sel.bpp selection/single-pop/bench
+```
+
 # Neutrality
 
 Here we benchmark moments++ against moments.LD when s=0
@@ -158,7 +191,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash run-moments++, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash create-dirs, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -166,7 +199,7 @@ cd neutrality/no_migration
 
 for((i=1;i<=$num_models;i++))
 do
-  momentspp params=opt.bpp FILE=model_$i.yaml ORDER=1
+  momentspp params=opt.bpp F=model_$i.yaml O=1
 done
 
 cd ../..
@@ -280,7 +313,7 @@ p1 <- p1 + theme(axis.title=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("neutrality/no_migration/ratios_no-mig.pdf", p1, base_height=12, base_width=12)
+save_plot("neutrality/no_migration/ratios_no-mig.png", p1, base_height=12, base_width=12)
 ```
 
 ## Migration (TODO)
@@ -352,7 +385,7 @@ for(i in 1:n_models) {
 
 ### Running TwoLocusSim
 
-```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
+```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -404,7 +437,7 @@ cd ../../..
 
 ### Running moments++
 
-```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
+```{bash run-moments++-1-pop, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -412,7 +445,7 @@ cd selection/single-pop/bench
 
 for((i=1;i<=$num_models;i++))
 do
-  momentspp params=opt.bpp FILE=model_$i.yaml LABEL=model_$i ORDER=25
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=25
 done
 
 cd ../../..
@@ -422,7 +455,7 @@ cd ../../..
 
 For benchmarking the single population case, we use equilibrium demography:
 
-```{python run-momentsTwoLocus, include=F, eval=F, results=F}
+```{python run-momentsTwoLocus, include=F, eval=T, results=F}
 
 import moments.TwoLocus
 import sys, os
@@ -634,7 +667,7 @@ p5 <- p5 + theme(axis.title=element_text(size=12),
 p5
 
 moms_comp_ratios <- plot_grid(p1, p2, p3, p4, p5, ncol=1, rel_heights=c(1, 1, 1, 1, 1.85))
-save_plot("selection/single-pop/bench/moms_++_vs_py_ratios.pdf", moms_comp_ratios, base_height=10, base_width=20)
+save_plot("selection/single-pop/bench/moms_++_vs_py_ratios.png", moms_comp_ratios, base_height=10, base_width=20)
   
 # appending two-locus simulations (performed w/ twoLocusSim binary from momentspp)
 n_reps <- 30
@@ -688,7 +721,7 @@ p6 <- p6 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p6
-save_plot("selection/single-pop/bench/moms_++_vs_py_dd.pdf", p6, base_height=10, base_width=20)
+save_plot("selection/single-pop/bench/moms_++_vs_py_dd.png", p6, base_height=10, base_width=20)
 
 dz <- filter(df_m, stats==commom_stats[2])
 p7 <- ggplot() + geom_errorbar(data=filter(dz, Method=="twoLocusSim"), aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
@@ -702,7 +735,7 @@ p7 <- p7 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p7
-save_plot("selection/single-pop/bench/moms_++_vs_py_dz.pdf", p7, base_height=10, base_width=20)
+save_plot("selection/single-pop/bench/moms_++_vs_py_dz.png", p7, base_height=10, base_width=20)
 
 hl <- filter(df_m, stats==commom_stats[3])
 p8 <- ggplot() + geom_errorbar(data=filter(hl, Method=="twoLocusSim"), aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
@@ -716,7 +749,7 @@ p8 <- p8 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p8
-save_plot("selection/single-pop/bench/moms_++_vs_py_hl.pdf", p8, base_height=10, base_width=20)
+save_plot("selection/single-pop/bench/moms_++_vs_py_hl.png", p8, base_height=10, base_width=20)
 
 hr <- filter(df_m, stats==commom_stats[4])
 p9 <- ggplot() + geom_errorbar(data=filter(hr, Method=="twoLocusSim"), aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
@@ -730,7 +763,7 @@ p9 <- p9 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p9
-save_plot("selection/single-pop/bench/moms_++_vs_py_hr.pdf", p9, base_height=10, base_width=20)
+save_plot("selection/single-pop/bench/moms_++_vs_py_hr.png", p9, base_height=10, base_width=20)
 
 pi2 <- filter(df_m, stats==commom_stats[5])
 p10 <- ggplot() + geom_errorbar(data=filter(pi2, Method=="twoLocusSim"), aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
@@ -744,7 +777,7 @@ p10 <- p10 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p10
-save_plot("selection/single-pop/bench/moms_++_vs_py_pi2.pdf", p10, base_height=10, base_width=20)
+save_plot("selection/single-pop/bench/moms_++_vs_py_pi2.png", p10, base_height=10, base_width=20)
 
 ```
 
@@ -758,9 +791,9 @@ at the edge of a chromosome with w selected sites of length l
 ```{r, demes-BGS-single, include=F, eval=T, results=F, message=F, warning=F}
 
 N <- c(2500, 10000)
-u <- c(1e-8, 1e-7, 1e-6)
-r <- c(0, 1e-6, 2e-6, 5e-6, 1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3)
-s <- c(-1e-3, -5e-4, -2e-4, -1e-4, -5e-5, -2e-5, -1e-5)
+u <- c(1e-8, 1e-7)
+r <- c(0, 1e-7, 1e-6, 1e-5, 1e-4)
+s <- c(-1e-3, -5e-4, -2e-4, -1e-4, -5e-5)
 
 # number of independent genomic windows, each corresponding to a two-locus system
 w <- c(1, 100)
@@ -821,6 +854,7 @@ for(i in 1:n_models) {
       sink()
   }
 }
+
 ```
 
 ### Running moments++
@@ -939,7 +973,7 @@ for(i in unique(molten_tbl$l)) {
 }
 
 bgs_plot_1 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1, 1.1))
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_scaling_1.pdf", bgs_plot_1, base_height=12, base_width=16)
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_scaling_1.png", bgs_plot_1, base_height=12, base_width=16)
 
 c <- 1
 plot_list <- list(length=length(unique(tbl$l)))
@@ -952,7 +986,7 @@ for(i in unique(tbl2$l)) {
   p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) sprintf("%.4f", x))
   
   if(c==1) {
-    p <- p + labs(title="Hr / scaled_hr, L = 10", x="r", y="Ratio")
+    p <- p + labs(title="Hr / scaled_hr", x="r", y="Ratio")
     p <- p + theme(axis.title=element_text(size=16), 
                    axis.text=element_text(size=12), 
                    strip.text.x=element_text(size=16), 
@@ -983,8 +1017,8 @@ for(i in unique(tbl2$l)) {
   c <- c + 1
 }
 
-bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1, 1.1))
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_scaling_2.pdf", bgs_plot_2, base_height=12, base_width=16)
+bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1, 1, 1.1))
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_scaling_2.png", bgs_plot_2, base_height=12, base_width=16)
 
 # plots of moments++
 df <- filter(params, w==100, u==1e-8)
@@ -1034,7 +1068,7 @@ for(i in unique(df$N)) {
   }
   
   bgs_plot_3 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
-  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_A_N_", i, ".pdf", sep=""), bgs_plot_3, base_height=12, base_width=16)
+  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_A_N_", i, ".png", sep=""), bgs_plot_3, base_height=12, base_width=16)
 }
 
 c <- 1
@@ -1055,7 +1089,7 @@ for(i in unique(df$l)) {
                    axis.text.x=element_blank(),
                    axis.ticks.x=element_blank(),
                    legend.position="none")
-  } else if(c==length(unique(params$u))) {
+  } else if(c==length(unique(params$l))) {
     p <- p + labs(title=NULL, x="s", y=expression(H[r]))
     p <- p + theme(axis.title=element_text(size=16),
                    axis.text=element_text(size=12), 
@@ -1078,8 +1112,8 @@ for(i in unique(df$l)) {
   c <- c + 1
 }
 
-bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
-save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_B.pdf", bgs_plot_2, base_height=12, base_width=16)
+bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1.75))
+save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_B.png", bgs_plot_2, base_height=12, base_width=16)
 
 names(factors_tbl) <- 1:ncol(factors_tbl)
 windows <- bind_cols(params, factors_tbl)
@@ -1098,7 +1132,7 @@ for(i in unique(params$u)) {
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
   
-  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_", c, ".pdf", sep=""), p, base_height=8, base_width=15)
+  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_mpp_", c, ".png", sep=""), p, base_height=8, base_width=15)
   
   c <- c + 1
 }
@@ -1150,9 +1184,8 @@ for(i in unique(df$N)) {
   }
   
   bgs_plot_4 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
-  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_hk95_N_", i, ".pdf", sep=""), bgs_plot_4, base_height=12, base_width=24)
+  save_plot(paste("selection/single-pop/simple_bgs/bgs_single_neutral_hk95_N_", i, ".png", sep=""), bgs_plot_4, base_height=12, base_width=24)
 }
-
 
 # compare moments++ and HK95
 for(i in unique(df$N)) {
@@ -1170,7 +1203,7 @@ for(i in unique(df$N)) {
     p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
   
     if(c==1) {
-      p <- p + labs(title="Hr methods, rows = ul, cols = r", x="s", y="HK95")
+      p <- p + labs(title="Hr methods, rows = ul, cols = r", x="s", y="Hr")
       p <- p + theme(axis.title=element_text(size=16), 
                      axis.text=element_text(size=12), 
                      strip.text.x=element_text(size=16), 
@@ -1201,8 +1234,8 @@ for(i in unique(df$N)) {
     c <- c + 1
   }
   
-  bgs_plot_5 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1, 1.75))
-  save_plot(paste("selection/single-pop/simple_bgs/bgs_mpp_hk95_N_", i, ".pdf", sep=""), bgs_plot_5, base_height=12, base_width=24)
+  bgs_plot_5 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1.15, 1, 1, 1.75))
+  save_plot(paste("selection/single-pop/simple_bgs/bgs_mpp_hk95_N_", i, ".png", sep=""), bgs_plot_5, base_height=12, base_width=24)
 }
 
 # checking the relationship between the s and the relevant width of BGS (~r)
@@ -1220,7 +1253,7 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text=element_text(size=10),
                axis.text.x=element_text(angle=90, size=8, vjust=0.5, hjust=1.0),
                legend.position="bottom")
-save_plot("selection/single-pop/simple_bgs/s_vs_r_A.pdf", p, base_height=9, base_width=12)
+save_plot("selection/single-pop/simple_bgs/s_vs_r_A.png", p, base_height=9, base_width=12)
 
 df4 <- filter(molten_windows, w==100, r==1e-5)
 df4$rec <- df4$r * df4$window
@@ -1241,7 +1274,7 @@ p <- p + theme(axis.title=element_text(size=12),
                axis.text.x=element_blank(),
                axis.ticks.x=element_blank(),
                legend.position="bottom")
-save_plot("selection/single-pop/simple_bgs/s_vs_r_B.pdf", p, base_height=9, base_width=12)
+save_plot("selection/single-pop/simple_bgs/s_vs_r_B.png", p, base_height=9, base_width=12)
 ```
 
 ### Building Demes files
@@ -1409,7 +1442,7 @@ p1 <- p1 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_1.pdf", p1, base_height=12, base_width=20)
+save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_1.png", p1, base_height=12, base_width=20)
 
 p2 <- ggplot(data=filter(molten_windows, u==1e-8), aes(x=window, y=value, color=as.factor(alpha)))
 p2 <- p2 + geom_point(size=1) + facet_wrap(~r, nrow=1) + theme_bw()
@@ -1422,7 +1455,7 @@ p2 <- p2 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_2.pdf", p2, base_height=12, base_width=20)
+save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_2.png", p2, base_height=12, base_width=20)
 
 p3 <- ggplot(data=filter(molten_windows, u==1e-7), aes(x=window, y=value, color=as.factor(alpha)))
 p3 <- p3 + geom_point(size=1) + facet_wrap(~r, nrow=1) + theme_bw()
@@ -1435,7 +1468,7 @@ p3 <- p3 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_3.pdf", p3, base_height=12, base_width=20)
+save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_3.png", p3, base_height=12, base_width=20)
 ```
 
 ## BGS with Mutation rate variation
@@ -1695,7 +1728,7 @@ for(i in 1:n_models) {
                    axis.title.x=element_blank())
   
   comb <- plot_grid(p1, p2, p3, p4, ncol=1)
-  save_plot(paste("selection/single-pop/mut_rate_var/model_", i, "_landscapes.pdf", sep=""), comb, base_height=10, base_width=12)
+  save_plot(paste("selection/single-pop/mut_rate_var/model_", i, "_landscapes.png", sep=""), comb, base_height=10, base_width=12)
       
   # standardizing
   windows$ss_pi_BGS <- (windows$hr_BGS - mean(windows$hr_BGS)) / sd(windows$hr_BGS)
@@ -1743,7 +1776,7 @@ for(i in unique(molten_windows$N)) {
                      axis.text=element_text(size=12),
                      axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                      legend.position="bottom")
-      save_plot(paste("selection/single-pop/Hr_landscapes_", c, ".pdf", sep=""), p, base_height=10, base_width=15)
+      save_plot(paste("selection/single-pop/Hr_landscapes_", c, ".png", sep=""), p, base_height=10, base_width=15)
       
       c <- c + 1
     }
@@ -1760,7 +1793,7 @@ p1 <- p1 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 1, ".pdf", sep=""), p1, base_height=10, base_width=15)
+save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 1, ".png", sep=""), p1, base_height=10, base_width=15)
 
 p2 <- ggplot(data=filter(molten_windows, N==1000, shapes_mu==1e+6, scales_mu==1e-8), aes(x=window, y=value, color=as.factor(scale_sel)))
 p2 <- p2 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
@@ -1771,7 +1804,7 @@ p2 <- p2 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 2, ".pdf", sep=""), p2, base_height=10, base_width=15)
+save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 2, ".png", sep=""), p2, base_height=10, base_width=15)
 
 p3 <- ggplot(data=filter(molten_windows, N==10000, shapes_mu==1e+6, scales_mu==1e-9), aes(x=window, y=value, color=as.factor(scale_sel)))
 p3 <- p3 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
@@ -1782,7 +1815,7 @@ p3 <- p3 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 3, ".pdf", sep=""), p3, base_height=10, base_width=15)
+save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 3, ".png", sep=""), p3, base_height=10, base_width=15)
 
 p4 <- ggplot(data=filter(molten_windows, N==10000, shapes_mu==1e+6, scales_mu==1e-8), aes(x=window, y=value, color=as.factor(scale_sel)))
 p4 <- p4 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
@@ -1793,7 +1826,7 @@ p4 <- p4 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 4, ".pdf", sep=""), p4, base_height=10, base_width=15)
+save_plot(paste("selection/single-pop/mut_rate_var/Hr_landscapes_", c + 4, ".png", sep=""), p4, base_height=10, base_width=15)
 
 # visualizing R^2
 molten_tbl <- pivot_longer(tbl, cols=c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2"), names_to="variable")
@@ -1812,7 +1845,7 @@ p5 <- p5 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12), 
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_1.pdf", p5, base_height=10, base_width=15)
+save_plot("selection/single-pop/R2_plot_1.png", p5, base_height=10, base_width=15)
 
 p6 <- ggplot(data=filter(molten_tbl, N==1000, scales_mu==1e-8), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
 p6 <- p6 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
@@ -1826,7 +1859,7 @@ p6 <- p6 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12), 
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_2.pdf", p6, base_height=10, base_width=15)
+save_plot("selection/single-pop/R2_plot_2.png", p6, base_height=10, base_width=15)
 
 p7 <- ggplot(data=filter(molten_tbl, N==10000, scales_mu==1e-9), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
 p7 <- p7 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
@@ -1840,7 +1873,7 @@ p7 <- p7 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12), 
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_3.pdf", p7, base_height=10, base_width=15)
+save_plot("selection/single-pop/R2_plot_3.png", p7, base_height=10, base_width=15)
 
 p8 <- ggplot(data=filter(molten_tbl, N==10000, scales_mu==1e-8), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
 p8 <- p8 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
@@ -1854,7 +1887,7 @@ p8 <- p8 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12), 
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_4.pdf", p8, base_height=10, base_width=15)
+save_plot("selection/single-pop/R2_plot_4.png", p8, base_height=10, base_width=15)
 ```
 
 ### Building demes files
@@ -2093,7 +2126,7 @@ for(i in 1:n_models) {
                    axis.title.x=element_blank())
   
   comb <- plot_grid(p1, p2, p3, p4, ncol=1)
-  save_plot(paste("selection/single-pop/mut_rate_var_left/model_", i, "/landscapes.pdf", sep=""), comb, base_height=10, base_width=12)
+  save_plot(paste("selection/single-pop/mut_rate_var_left/model_", i, "/landscapes.png", sep=""), comb, base_height=10, base_width=12)
       
   # standardizing
   windows$ss_pi_BGS <- (windows$hr_BGS - mean(windows$hr_BGS)) / sd(windows$hr_BGS)
@@ -2140,7 +2173,7 @@ for(i in unique(molten_windows$N)) {
                      axis.text=element_text(size=12),
                      axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                      legend.position="bottom")
-      save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c, ".pdf", sep=""), p, base_height=10, base_width=15)
+      save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c, ".png", sep=""), p, base_height=10, base_width=15)
       
       c <- c + 1
     }
@@ -2157,7 +2190,7 @@ p1 <- p1 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 1, ".pdf", sep=""), p1, base_height=10, base_width=15)
+save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 1, ".png", sep=""), p1, base_height=10, base_width=15)
 
 p2 <- ggplot(data=filter(molten_windows, shapes_mu==1e+6, scales_mu==1e-8), aes(x=window, y=value, color=as.factor(scale_sel)))
 p2 <- p2 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
@@ -2168,7 +2201,7 @@ p2 <- p2 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 2, ".pdf", sep=""), p2, base_height=10, base_width=15)
+save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 2, ".png", sep=""), p2, base_height=10, base_width=15)
 
 p3 <- ggplot(data=filter(molten_windows, shapes_mu==1e+6, scales_mu==1e-7), aes(x=window, y=value, color=as.factor(scale_sel)))
 p3 <- p3 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
@@ -2179,7 +2212,7 @@ p3 <- p3 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 3, ".pdf", sep=""), p3, base_height=10, base_width=15)
+save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 3, ".png", sep=""), p3, base_height=10, base_width=15)
 
 # visualizing R^2
 molten_tbl <- pivot_longer(tbl, cols=c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2"), names_to="variable")
@@ -2196,7 +2229,7 @@ p5 <- p5 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12), 
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/mut_rate_var_left/R2_plot_1.pdf", p5, base_height=10, base_width=15)
+save_plot("selection/single-pop/mut_rate_var_left/R2_plot_1.png", p5, base_height=10, base_width=15)
 
 p6 <- ggplot(data=filter(molten_tbl, scales_mu==1e-8), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
 p6 <- p6 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
@@ -2210,7 +2243,7 @@ p6 <- p6 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12), 
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/mut_rate_var_left/R2_plot_2.pdf", p6, base_height=10, base_width=15)
+save_plot("selection/single-pop/mut_rate_var_left/R2_plot_2.png", p6, base_height=10, base_width=15)
 
 p7 <- ggplot(data=filter(molten_tbl, scales_mu==1e-7), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
 p7 <- p7 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
@@ -2224,7 +2257,7 @@ p7 <- p7 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12), 
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/mut_rate_var_left/R2_plot_3.pdf", p7, base_height=10, base_width=15)
+save_plot("selection/single-pop/mut_rate_var_left/R2_plot_3.png", p7, base_height=10, base_width=15)
 ```
 
 # Selection 2-populations
@@ -2409,7 +2442,7 @@ pa1 <- pa1 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pa1
-save_plot("selection/no_migration/pi2_within_no-mig.pdf", pa1, base_height=12, base_width=12)
+save_plot("selection/no_migration/pi2_within_no-mig.png", pa1, base_height=12, base_width=12)
 
 # pi2 cross-pop
 pa2 <- ggplot(data=subset(filter(df_sym_N, stats %in% c("pi2_1_1_1_2", "pi2_1_1_2_2", "pi2_1_2_1_2", "pi2_2_1_1_2", "pi2_1_2_2_2", "pi2_2_2_1_1")), sanc == 0),
@@ -2424,7 +2457,7 @@ pa2 <- pa2 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pa2
-save_plot("selection/no_migration/pi2_cross_no-mig.pdf", pa2, base_height=12, base_width=12)
+save_plot("selection/no_migration/pi2_cross_no-mig.png", pa2, base_height=12, base_width=12)
 
 # Dr
 pb <- ggplot(data=subset(filter(df_sym_N, str_detect(stats, "^Dr")), sanc == 0), aes(x=r, y=expectation, color=stats)) 
@@ -2437,7 +2470,7 @@ pb <- pb + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pb
-save_plot("selection/no_migration/Dr_no-mig.pdf", pd, base_height=12, base_width=12)
+save_plot("selection/no_migration/Dr_no-mig.png", pd, base_height=12, base_width=12)
 
 # Hets
 pc <- ggplot(data=subset(filter(df_sym_N, str_detect(stats, "^H")), sanc == 0), aes(x=r, y=expectation, color=stats)) 
@@ -2451,7 +2484,7 @@ pc <- pc + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pc
-save_plot("selection/no_migration/Hets_no-mig.pdf", pd, base_height=12, base_width=12)
+save_plot("selection/no_migration/Hets_no-mig.png", pd, base_height=12, base_width=12)
 
 # Hr
 pd <- ggplot(data=filter(df_sym_N, stats %in% c("Hr_1_1", "Hr_2_2")), aes(x=r, y=expectation, color=stats, shape=as.factor(sanc))) 
@@ -2466,7 +2499,7 @@ pd <- pd + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pd
-save_plot("selection/no_migration/Hr_no-mig.pdf", pd, base_height=12, base_width=12)
+save_plot("selection/no_migration/Hr_no-mig.png", pd, base_height=12, base_width=12)
 
 # Hl
 pe <- ggplot(data=subset(filter(df_sym_N, str_detect(stats, "^Hl")), sanc == 0), aes(x=alpha_1, y=expectation, color=stats, shape=as.factor(alpha_2))) 
@@ -2480,7 +2513,7 @@ pe <- pe + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 pe
-save_plot("selection/no_migration/Hl_no-mig.pdf", pe, base_height=12, base_width=12)
+save_plot("selection/no_migration/Hl_no-mig.png", pe, base_height=12, base_width=12)
 
 pf <- plot_ly(data=subset(filter(df_sym_N, stats %in% c("Hl_1_2", "Hl_2_1")), sanc == 0), x=~alpha_1, y=~alpha_2, z=~expectation, type="scatter3d", 
               mode="markers", color=~stats)
@@ -2502,7 +2535,7 @@ p1 <- p1 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p1
-save_plot("selection/no_migration/Covar_D_no-mig_1.pdf", p1, base_height=12, base_width=12)
+save_plot("selection/no_migration/Covar_D_no-mig_1.png", p1, base_height=12, base_width=12)
 
 d1d2 <- d1d2[d1d2$alpha_1==d1d2$alpha_2,] # symmetric alpha
 
@@ -2517,7 +2550,7 @@ p2 <- p2 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p2
-save_plot("selection/no_migration/Covar_D_no-mig_2.pdf", p2, base_height=12, base_width=12)
+save_plot("selection/no_migration/Covar_D_no-mig_2.png", p2, base_height=12, base_width=12)
 
 # Hr
 hr11 <- subset(df_sym_N, stats %in% "Hr_1_1") 
@@ -2534,7 +2567,7 @@ p3 <- p3 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p3
-save_plot("selection/no_migration/Hr_11.pdf", p3, base_height=12, base_width=12)
+save_plot("selection/no_migration/Hr_11.png", p3, base_height=12, base_width=12)
 
 # Fst at the Left Locus
 Hl_12 <- subset(df_sym_N, stats %in% "Hl_1_2")
@@ -2575,7 +2608,7 @@ p5 <- p5 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 
-save_plot("selection/no_migration/Fst_no-mig_right_2.pdf", p5, base_height=12, base_width=12)
+save_plot("selection/no_migration/Fst_no-mig_right_2.png", p5, base_height=12, base_width=12)
 
 fst <- fst[fst$alpha_1==fst$alpha_2,]
 
@@ -2590,7 +2623,7 @@ p6 <- p6 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p6
-save_plot("selection/no_migration/Fst_no-mig_right_1.pdf", p6, base_height=12, base_width=12)
+save_plot("selection/no_migration/Fst_no-mig_right_1.png", p6, base_height=12, base_width=12)
 
 # all population sizes
 df_cpy <- df
@@ -2612,7 +2645,7 @@ p7 <- p7 + theme(axis.title=element_text(size=16),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
                  legend.position="bottom")
 p7
-save_plot("selection/no_migration/Covar_D_no-mig_3.pdf", p7, base_height=12, base_width=12)
+save_plot("selection/no_migration/Covar_D_no-mig_3.png", p7, base_height=12, base_width=12)
 
 # Fst at the Left Locus
 Hl_12 <- subset(df_cpy, stats %in% "Hl_1_2")
