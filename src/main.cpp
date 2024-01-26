@@ -49,9 +49,17 @@ int main(int argc, char *argv[]) {
    * 4. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
    *    https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
    *
-   * For seminar:
-   * Benchmark speed of matrix add vs matrix mult when combining operators, as a function of Order
-   * Benchmark accuracy and speed of pseudo steady-state, as a function of no. of generations (and starting values?)
+   * Papers.
+   * Single-population:
+   *   What shapes genome-wide diversity?
+   *   - Model
+   *   - Simulation results under genomic landscapes and demographic histories
+   *
+   * Two-population:
+   *   Fst
+   *   -Genomic islands of differentiation under BGS and rate variation along the genome
+   *
+   *   PRS
    *
    */
 

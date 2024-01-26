@@ -23,6 +23,7 @@ library(MASS)
 library(lmtest)
 library(nlme)
 library(car)
+library(bigsnpr)
 
 library(reticulate)
 use_python("/usr/bin/python3")
@@ -41,7 +42,7 @@ R data frames in future python chunks.
 
 This creates the directories
 
-```{bash run-moments++, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-moments++, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -60,7 +61,7 @@ mkdir single-pop
 cd single-pop
 mkdir bench
 mkdir simple_bgs
-mkdir mut_rate_var_left
+mkdir landscapes
 
 cd simple_bgs
 mkdir mult_neutral
@@ -80,7 +81,7 @@ Here we benchmark moments++ against moments.LD when s=0
 
 ### Building Demes files
 
-```{r, demes-neutral-2-pop, include=F, eval=T, results=F, message=F, warning=F}
+```{r, demes-neutral-2-pop, include=F, eval=F, results=F, message=F, warning=F}
 
 # parameters
 N1 <- 10000
@@ -191,7 +192,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-```{bash create-dirs, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash create-dirs, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -207,7 +208,7 @@ cd ../..
 
 ### Running moments.LD
 
-```{python run-momentsLD, include=F, eval=T, results=F}
+```{python run-momentsLD, include=F, eval=F, results=F}
 
 import moments.LD
 import demes
@@ -326,10 +327,10 @@ Here we benchmark against moments.TwoLocus and TwoLocusSim
 
 ### Building Demes files
 
-```{r, demes-selected-1-pop, include=F, eval=T, results=F, message=F, warning=F}
+```{r, demes-selected-1-pop, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- c(1000, 10000)
-u <- 1e-7
+u <- 1e-8
 r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 1e-8)
 s <- c(0, -1e-04, -5e-4, -1e-3)
 
@@ -385,7 +386,7 @@ for(i in 1:n_models) {
 
 ### Running TwoLocusSim
 
-```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=T, results=F, message=F, warning=F}
+```{bash run-twoLocusSim, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
@@ -455,7 +456,7 @@ cd ../../..
 
 For benchmarking the single population case, we use equilibrium demography:
 
-```{python run-momentsTwoLocus, include=F, eval=T, results=F}
+```{python run-momentsTwoLocus, include=F, eval=F, results=F}
 
 import moments.TwoLocus
 import sys, os
@@ -526,7 +527,7 @@ for i in range(1, n_models):
 
 ### Plots
 
-```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+```{r, plots-selected-1-pop, include=T, eval=F, results=F, message=F, warning=F}
 
 commom_stats <- c("DD_0_0",
                   "Dr_0_0_(1-2p0)^1",
@@ -790,15 +791,15 @@ at the edge of a chromosome with w selected sites of length l
 
 ```{r, demes-BGS-single, include=F, eval=T, results=F, message=F, warning=F}
 
-N <- c(2500, 10000)
-u <- c(1e-8, 1e-7)
-r <- c(0, 1e-7, 1e-6, 1e-5, 1e-4)
-s <- c(-1e-3, -5e-4, -2e-4, -1e-4, -5e-5)
+N <- c(10000)
+u <- c(1e-8)
+r <- unique(sort(1:10 %o% 10^(-4:-8)))
+s <- -seq_log(from=1e-5, to=1e-3, length.out=200)
 
 # number of independent genomic windows, each corresponding to a two-locus system
-w <- c(1, 100)
+w <- c(1)
 # length of each constrained locus
-l <- c(1, 10, 100, 1000)
+l <- c(1)
 
 params <- crossing(N, u, r, s, w, l)
 params$pi0 <- 2 * params$N * params$u
@@ -1021,7 +1022,7 @@ bgs_plot_2 <- plot_grid(plotlist=plot_list, ncol=1, rel_heights=c(1, 1, 1.1))
 save_plot("selection/single-pop/simple_bgs/bgs_single_neutral_scaling_2.png", bgs_plot_2, base_height=12, base_width=16)
 
 # plots of moments++
-df <- filter(params, w==100, u==1e-8)
+df <- filter(params, w==1, u==1e-8)
 for(i in unique(df$N)) {
   
   df2 <- filter(df, N==i)
@@ -1471,52 +1472,64 @@ p3 <- p3 + theme(axis.title=element_text(size=16),
 save_plot("selection/single-pop/simple_bgs/bgs_mult_neutral_3.png", p3, base_height=12, base_width=20)
 ```
 
-## BGS with Mutation rate variation
+## BGS with Genomic Landscapes
 
 ### Building Demes files
 
-This first set of models explore the situation where the local
-mutation rate changes both mu_left and mu_right
+This builds a look-up table on a dense parameter grid that will allow for fast 
+assembly of whole chromosomes
 
 ```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
 
-N <- c(1000, 10000)
-# number of independent genomic windows, each corresponding to a two-locus system
-w <- 100
-# length of each genomic block
-l <- c(100, 1000)
-# Gamma dist params
-# DFE
-scale_sel <- c(5e-6, 5e-5, 5e-4)
-shape_sel <- 20
-# mut rates
-scales_mu <- c(1e-7, 1e-8, 1e-9)
-shapes_mu <- c(1, 10, 30, 100, 300, 1000000, 1e+9)
-# rec rates
-scales_rec <- c(1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 0)
-shapes_rec <- c(0.1, 1, 10, 1000000)
+N <- 10000
+r <- seq_log(from=1e-9, to=1e-2, length.out=100)
+ul <- seq_log(from=1e-10, to=1e-8, length.out=30)
+ur <- seq_log(from=1e-10, to=1e-8, length.out=30)
+s <- -seq_log(from=1e-5, to=1e-3, length.out=200)
 
-# TODO correlation between rec and mut
-
-params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
+params <- crossing(N, r, ul, ur, s)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
-write.csv(params, "selection/single-pop/mut_rate_var/params.csv", quote=F, row.names=F)
+write.table(as.data.frame(r), "selection/single-pop/landscapes/r.csv", quote=F, row.names=F, col.names=F)
+write.table(as.data.frame(ul), "selection/single-pop/landscapes/ul.csv", quote=F, row.names=F, col.names=F)
+write.table(as.data.frame(ur), "selection/single-pop/landscapes/ur.csv", quote=F, row.names=F, col.names=F)
+write.table(as.data.frame(s), "selection/single-pop/landscapes/s.csv", quote=F, row.names=F, col.names=F)
+
+write.csv(params, "selection/single-pop/landscapes/params.csv", quote=F, row.names=F)
 
 Sys.setenv(num_models=n_models)
-Sys.setenv(w=w)
+
 ```
 
 ```{bash make_dirs_mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
 source ~/.bashrc
 
-cd selection/single-pop/mut_rate_var/
+cd selection/single-pop/landscapes/
 
-for((i=1;i<=n_models;i++));
+cat r.csv | while IFS=, read -r r
 do
-  mkdir model_$i
+  mkdir r_$r
+done
+
+for d in r_*
+do
+  cat ul.csv | while IFS=, read -r ul
+  do
+    mkdir $d/ul_$ul
+  done
+done
+
+for d in r_*
+do
+  for e in $d/ul_*
+  do
+    cat ur.csv | while IFS=, read -r ur
+    do
+      mkdir $e/ur_$ur
+    done
+  done
 done
 
 cd ../../..
@@ -1526,9 +1539,115 @@ cd ../../..
 
 for(i in 1:n_models) {
   
+  cat(paste(i, "\n"))
+  
+  N <- as.integer(params[i, 1])
+  r <- as.numeric(params[i, 2])
+  ul <- as.numeric(params[i, 3])
+  ur <- as.numeric(params[i, 4])
+  s <- as.numeric(params[i, 5])
+  f <- ul / ur
+  
+  name <- paste("model_", i, sep="")
+  sink(paste("selection/single-pop/landscapes/r_", r, "/ul_", ul, "/ur_", ur, "/", name, ".yaml", sep=""))
+    
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(N)
+  cat("\n")
+  cat("metadata:\n")
+  cat("  - name: mutation\n")
+  cat("    left_factor: ")
+  cat(f)
+  cat("\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(ur)
+  cat("]\n")
+  cat("  - name: recombination\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(r)
+  cat("]\n")
+  cat("  - name: selection\n")
+  cat("    start_time: .inf\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(s)
+  cat("]\n")
+      
+  sink()
+}
+
+```
+
+### Running moments++
+
+To get the lookup table
+
+```{bash run-moments++BGS-mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
+
+source ~/.bashrc
+
+cd selection/single-pop/mut_rate_var/
+
+for((i=1;i<=n_models;i++));
+do
+  cp opt.bpp model_$i
+  cd model_$i
+  
+  for m in *.yaml
+  do
+    momentspp params=opt.bpp F=$m O=25
+  done
+  
+  cd ..
+done
+
+cd ../../..
+```
+
+### Analyses
+
+```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
+
+N <- c(1000, 10000)
+# Gamma dist params
+# DFE
+scale_sel <- c(5e-6, 5e-5, 5e-4)
+shape_sel <- 20
+# mut rates
+scales_mu <- c(1e-8, 3e-9, 1e-9)
+shapes_mu <- c(1, 10, 30, 100, 300, 1e+3, 1e+9)
+# rec rates
+scales_rec <- c(1e-8)
+shapes_rec <- c(0.1, 1, 10, 1e+3, 1e+9)
+
+# TODO correlation between rec and mut
+
+params <- crossing(N, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
+params$scenario <- 1:nrow(params)
+n_models <- nrow(params)
+
+params <- read.table("selection/single-pop/mut_rate_var/params.csv", sep=",", header=T)
+n_models <- nrow(params)
+hr_BGS <- numeric(length=n_models)
+landscapes <- as.data.frame(matrix(nrow=n_models, ncol=w))
+
+r2 <- as.data.frame(matrix(nrow=n_models, ncol=6))
+colnames(r2) <- c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2")
+
+for(i in 1:n_models) {
+  
   cat(paste("Writing yaml files for model ", i, "...\n", sep=""))
   
-  l <- params$l[i]
   mus <- rgamma(n=w, shape=params$shapes_mu[i], scale=params$scales_mu[i]/params$shapes_mu[i])
   rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
   ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
@@ -1610,43 +1729,6 @@ for(i in 1:n_models) {
     }
   }
 }
-```
-
-### Running moments++
-
-```{bash run-moments++BGS-mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
-
-source ~/.bashrc
-
-cd selection/single-pop/mut_rate_var/
-
-for((i=1;i<=n_models;i++));
-do
-  cp opt.bpp model_$i
-  cd model_$i
-  
-  for m in *.yaml
-  do
-    momentspp params=opt.bpp F=$m O=20
-  done
-  
-  cd ..
-done
-
-cd ../../..
-```
-
-### Plots
-
-```{r, plots-BGS-mutvar, include=T, eval=F, results=F, message=F, warning=F}
-
-params <- read.table("selection/single-pop/mut_rate_var/params.csv", sep=",", header=T)
-n_models <- nrow(params)
-hr_BGS <- numeric(length=n_models)
-landscapes <- as.data.frame(matrix(nrow=n_models, ncol=w))
-
-r2 <- as.data.frame(matrix(nrow=n_models, ncol=6))
-colnames(r2) <- c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2")
 
 for(i in 1:n_models) {
   
@@ -1890,376 +1972,6 @@ p8 <- p8 + theme(axis.title=element_text(size=16),
 save_plot("selection/single-pop/R2_plot_4.png", p8, base_height=10, base_width=15)
 ```
 
-### Building demes files
-
-This second set of models explore the situation where the local
-mutation rate changes ONLY mu_left
-
-```{r, params-BGS-mutvar-2, include=F, eval=F, results=F, message=F, warning=F}
-
-N <- 10000
-# number of independent genomic windows, each corresponding to a two-locus system
-w <- 100
-# length of each genomic block
-l <- 100
-# Gamma dist params
-# DFE
-scale_sel <- c(5e-6, 5e-5, 5e-4)
-shape_sel <- 20
-# mut rates left locus
-scales_mu <- c(1e-7, 1e-8, 1e-9)
-shapes_mu <- c(10, 100, 1000000)
-# rec rates
-scales_rec <- c(1e-5, 1e-6, 1e-7, 1e-8)
-shapes_rec <- 1
-
-params <- crossing(N, w, l, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
-params$scenario <- 1:nrow(params)
-n_models <- nrow(params)
-
-write.csv(params, "selection/single-pop/mut_rate_var_left/params.csv", quote=F, row.names=F)
-
-Sys.setenv(num_models=n_models)
-Sys.setenv(w=w)
-```
-
-```{bash make_dirs_mutvar_2, eval=F, message=F, warning=F, engine.opts='-i', include=F, results=F}
-
-source ~/.bashrc
-
-cd selection/single-pop/mut_rate_var_left/
-
-for((i=1;i<=n_models;i++));
-do
-  mkdir model_$i
-done
-
-cd ../../..
-```
-
-```{r, BGS-mutvar-demes-2, include=F, eval=F, results=F, message=F, warning=F}
-
-for(i in 1:n_models) {
-  
-  cat(paste("Writing yaml files for model ", i, "...\n", sep=""))
-  
-  mus <- rgamma(n=w, shape=params$shapes_mu[i], scale=params$scales_mu[i]/params$shapes_mu[i])
-  rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
-  ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
-  alpha <- 2 * params$N[i] * ss
-  
-  while(any(alpha < -20)) { 
-    
-    cat("Selection is too strong in at least one gene! Redrawing...\n")
-    ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
-    alpha <- 2 * params$N[i] * ss
-  }
-  
-  while(sum(rs) > 1e-2) { 
-    
-    cat("Total recombination rate of chr is too high! Redrawing...\n")
-    rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
-  }
-  
-  windows <- bind_cols(mus, rs, ss, .name_repair="unique")
-  names(windows) <- c("mus", "recs", "dfe")
-  windows$alpha <- alpha
-  
-  write.csv(windows, paste("selection/single-pop/mut_rate_var_left/model_", i, "/windows.csv", sep=""), quote=F, row.names=F)
-  
-  for(j in 1:w) { # left locus
-    
-    for(k in 1:w) { # right locus
-      
-      mu_ratio <- l * windows$mus[j] / params$scales_mu[k] # left / right
-      total_r <- colSums(windows[j:k,])["recs"]
-      
-      name <- paste("model_", i, "_l_", j, "_r_", k, sep="")
-      sink(paste("selection/single-pop/mut_rate_var_left/model_", i, "/", name, ".yaml", sep=""))
-      
-      cat("time_units: generations\n")
-      cat("demes:\n")
-      cat("  - name: X\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        start_size: ")
-      cat(as.integer(params$N[i]))
-      cat("\n")
-      cat("metadata:\n")
-      cat("  - name: mutation\n")
-      cat("    left_factor: ")
-      cat(mu_ratio)
-      cat("\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        rates: [")
-      cat(params$scales_mu[i])
-      cat("]\n")
-      cat("  - name: recombination\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        rates: [")
-      cat(total_r)
-      cat("]\n")
-      cat("  - name: selection\n")
-      cat("    start_time: .inf\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        rates: [")
-      cat(windows$dfe[j])
-      cat("]\n")
-      
-      sink()
-    }
-  }
-}
-```
-
-### Running moments++
-
-```{bash run-moments++BGS-mutvar-2, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
-
-source ~/.bashrc
-
-cd selection/single-pop/mut_rate_var_left/
-
-for((i=1;i<=n_models;i++));
-do
-  cp opt.bpp model_$i
-  cd model_$i
-  
-  for m in *.yaml
-  do
-    momentspp params=opt.bpp F=$m O=20
-  done
-  
-  cd ..
-done
-
-cd ../../..
-```
-
-### Plots
-
-```{r, plots-BGS-mutvar-2, include=T, eval=F, results=F, message=F, warning=F}
-
-params <- read.table("selection/single-pop/mut_rate_var_left/params.csv", sep=",", header=T)
-n_models <- nrow(params)
-hr_BGS <- numeric(length=n_models)
-landscapes <- as.data.frame(matrix(nrow=n_models, ncol=w))
-
-r2 <- as.data.frame(matrix(nrow=n_models, ncol=6))
-colnames(r2) <- c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2")
-
-for(i in 1:n_models) {
-  
-  cat(paste("Retrieving data from model ", i, "...\n"))
-  
-  windows <- read.csv(paste("selection/single-pop/mut_rate_var_left/model_", i, "/windows.csv", sep=""), header=T)
-  hr_BGS <- numeric(length=w)
-  
-  for(j in 1:w) { # right locus
-  
-    pi0 <- 2 * params$N[i] * params$scales_mu[i]
-    one_minus_f <- numeric(length=w)
-      
-    for(k in 1:w) { # left locus
-      
-      name <- paste("model_", i, "_l_", k, "_r_", j, "_expectations.txt", sep="")
-      expectations <- read.table(paste("selection/single-pop/mut_rate_var_left/model_", i, "/", name, sep=""))
-      
-      hr <- expectations[expectations$V1 == "Hr_0_0",]$V3
-      one_minus_f[k] <- hr / pi0
-    }
-    
-    hr_BGS[j] <- pi0 * prod(one_minus_f)
-  }
-  
-  landscapes[i,] <- hr_BGS
-  windows$hr_BGS <- hr_BGS
-
-  windows$bin <- 1:nrow(windows)
-  molten_bins <- pivot_longer(windows, cols=c("mus", "recs", "alpha", "hr_BGS"), names_to="variable")
-  
-  p1 <- ggplot(data=windows, aes(x=bin, y=hr_BGS))
-  p1 <- p1 + geom_line() + theme_bw()
-  p1 <- p1 + scale_x_discrete(breaks=pretty_breaks())
-  p1 <- p1 + scale_y_continuous(breaks=pretty_breaks())
-  p1 <- p1 + labs(title=NULL, x=NULL, y=expression(H[r]))
-  p1 <- p1 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p2 <- ggplot(data=windows, aes(x=bin, y=mus))
-  p2 <- p2 + geom_line() + theme_bw()
-  p2 <- p2 + scale_x_discrete(breaks=pretty_breaks())
-  p2 <- p2 + scale_y_continuous(breaks=pretty_breaks())
-  p2 <- p2 + labs(title=NULL, x=NULL, y=expression(mu))
-  p2 <- p2 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p3 <- ggplot(data=windows, aes(x=bin, y=recs))
-  p3 <- p3 + geom_line() + theme_bw()
-  p3 <- p3 + scale_x_discrete(breaks=pretty_breaks())
-  p3 <- p3 + scale_y_continuous(breaks=pretty_breaks())
-  p3 <- p3 + labs(title=NULL, x=NULL, y=expression(r))
-  p3 <- p3 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p4 <- ggplot(data=windows, aes(x=bin, y=alpha))
-  p4 <- p4 + geom_line() + theme_bw()
-  p4 <- p4 + scale_x_discrete(breaks=pretty_breaks())
-  p4 <- p4 + scale_y_continuous(breaks=pretty_breaks())
-  p4 <- p4 + labs(title=NULL, x=NULL, y=expression(alpha))
-  p4 <- p4 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  comb <- plot_grid(p1, p2, p3, p4, ncol=1)
-  save_plot(paste("selection/single-pop/mut_rate_var_left/model_", i, "/landscapes.png", sep=""), comb, base_height=10, base_width=12)
-      
-  # standardizing
-  windows$ss_pi_BGS <- (windows$hr_BGS - mean(windows$hr_BGS)) / sd(windows$hr_BGS)
-  windows$ss_mus <- (windows$mus - mean(windows$mus)) / sd(windows$mus)
-  windows$ss_recs <- (windows$recs - mean(windows$recs)) / sd(windows$recs)
-  windows$ss_dfe <- (windows$dfe - mean(windows$dfe)) / sd(windows$dfe)
-  
-  m.pi.1 <- lm(ss_pi_BGS ~ ss_mus + ss_recs + ss_dfe + ss_mus:ss_dfe + ss_recs:ss_dfe, data=windows)
-  
-  summary(m.pi.1)
-
-  anova.pi <- Anova(m.pi.1)
-  apiss <- anova.pi$"Sum Sq"
-  anova.pi$VarExp <- apiss / sum(apiss)
-
-  r2[i, 1] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2] + anova.pi$VarExp[3] + anova.pi$VarExp[4] + anova.pi$VarExp[5]) * 100
-  r2[i, 2] <- anova.pi$VarExp[1] * 100
-  r2[i, 3] <- anova.pi$VarExp[2] * 100
-  r2[i, 4] <- anova.pi$VarExp[3] * 100
-  r2[i, 5] <- anova.pi$VarExp[4] * 100
-  r2[i, 6] <- anova.pi$VarExp[5] * 100
-}
-
-names(landscapes) <- 1:ncol(landscapes)
-tbl <- bind_cols(params, r2, landscapes)
-tbl$scale_sel <- -tbl$scale_sel
-write.csv(tbl, "selection/single-pop/mut_rate_var_left/tbl.csv", quote=F, row.names=F)
-
-molten_windows <- pivot_longer(tbl, cols=(ncol(params) + ncol(r2) + 1):ncol(tbl), names_to="window")
-molten_windows$window <- as.numeric(molten_windows$window)
-
-# visualizing raw landscapes
-c=1
-for(i in unique(molten_windows$N)) {
-  for(j in unique(molten_windows$scales_mu)) {
-    for(k in unique(molten_windows$scales_rec)) {
-      
-      p <- ggplot(data=filter(molten_windows, N==i, scales_mu==j, scales_rec==k), aes(x=window, y=value, color=as.factor(scale_sel)))
-      p <- p + geom_line() + facet_grid(shapes_rec~shapes_mu) + theme_bw()
-      p <- p + scale_x_discrete(breaks=pretty_breaks())
-      p <- p + scale_y_continuous(breaks=pretty_breaks())
-      p <- p + labs(title=paste("Hr landscapes, N=", i, ", mu=", j, ", r=", k, " cols~1/var_mu, rows~1/var_rec", sep=""), x="Window", y=expression(H[r]))
-      p <- p + theme(axis.title=element_text(size=16),
-                     axis.text=element_text(size=12),
-                     axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                     legend.position="bottom")
-      save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c, ".png", sep=""), p, base_height=10, base_width=15)
-      
-      c <- c + 1
-    }
-  }
-}
-
-# zooming in plots with tiny mut rate variation
-p1 <- ggplot(data=filter(molten_windows,shapes_mu==1e+6, scales_mu==1e-9), aes(x=window, y=value, color=as.factor(scale_sel)))
-p1 <- p1 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
-p1 <- p1 + scale_x_discrete(breaks=pretty_breaks())
-p1 <- p1 + scale_y_continuous(breaks=pretty_breaks())
-p1 <- p1 + labs(title="Hr landscapes, shape_mu=1e+6, scale_mu=1e-9, rows~1/var_rec, cols~mean_rec", x="Window", y=expression(H[r]))
-p1 <- p1 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 1, ".png", sep=""), p1, base_height=10, base_width=15)
-
-p2 <- ggplot(data=filter(molten_windows, shapes_mu==1e+6, scales_mu==1e-8), aes(x=window, y=value, color=as.factor(scale_sel)))
-p2 <- p2 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
-p2 <- p2 + scale_x_discrete(breaks=pretty_breaks())
-p2 <- p2 + scale_y_continuous(breaks=pretty_breaks())
-p2 <- p2 + labs(title="Hr landscapes, shape_mu=1e+6, scale_mu=1e-8, rows~1/var_rec, cols~mean_rec", x="Window", y=expression(H[r]))
-p2 <- p2 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 2, ".png", sep=""), p2, base_height=10, base_width=15)
-
-p3 <- ggplot(data=filter(molten_windows, shapes_mu==1e+6, scales_mu==1e-7), aes(x=window, y=value, color=as.factor(scale_sel)))
-p3 <- p3 + geom_line() + facet_grid(shapes_rec~scales_rec) + theme_bw()
-p3 <- p3 + scale_x_discrete(breaks=pretty_breaks())
-p3 <- p3 + scale_y_continuous(breaks=pretty_breaks())
-p3 <- p3 + labs(title="Hr landscapes, shape_mu=1e+6, scale_mu=1e-7, rows~1/var_rec, cols~mean_rec", x="Window", y=expression(H[r]))
-p3 <- p3 + theme(axis.title=element_text(size=16),
-                 axis.text=element_text(size=12),
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.position="bottom")
-save_plot(paste("selection/single-pop/mut_rate_var_left/Hr_landscapes_", c + 3, ".png", sep=""), p3, base_height=10, base_width=15)
-
-# visualizing R^2
-molten_tbl <- pivot_longer(tbl, cols=c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2"), names_to="variable")
-
-p5 <- ggplot(data=filter(molten_tbl, scales_mu==1e-9), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
-p5 <- p5 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
-p5 <- p5 + geom_point(aes(shape=variable), size=4)
-p5 <- p5 + scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name = "",
-                              labels=c(expression(mu:alpha), expression(mu), expression(r:alpha), expression(r), expression(alpha), "Total"))
-p5 <- p5 + scale_x_continuous(breaks=unique(molten_tbl$shapes_mu), trans="log10") 
-p5 <- p5 + scale_y_continuous(breaks=pretty_breaks())
-p5 <- p5 + labs(title = "Var Explained, mu=1e-9, rows~1/var_rec, cols~mean_rec", x="~1/var_mu", y="Variance Explained (%)")
-p5 <- p5 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/mut_rate_var_left/R2_plot_1.png", p5, base_height=10, base_width=15)
-
-p6 <- ggplot(data=filter(molten_tbl, scales_mu==1e-8), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
-p6 <- p6 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
-p6 <- p6 + geom_point(aes(shape=variable), size=4)
-p6 <- p6 + scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name = "",
-                              labels=c(expression(mu:alpha), expression(mu), expression(r:alpha), expression(r), expression(alpha), "Total"))
-p6 <- p6 + scale_x_continuous(breaks=unique(molten_tbl$shapes_mu), trans="log10") 
-p6 <- p6 + scale_y_continuous(breaks=pretty_breaks())
-p6 <- p6 + labs(title = "Var Explained, mu=1e-8, rows~1/var_rec, cols~mean_rec", x="~1/var_mu", y="Variance Explained (%)")
-p6 <- p6 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/mut_rate_var_left/R2_plot_2.png", p6, base_height=10, base_width=15)
-
-p7 <- ggplot(data=filter(molten_tbl, scales_mu==1e-7), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
-p7 <- p7 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
-p7 <- p7 + geom_point(aes(shape=variable), size=4)
-p7 <- p7 + scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name = "",
-                              labels=c(expression(mu:alpha), expression(mu), expression(r:alpha), expression(r), expression(alpha),"Total"))
-p7 <- p7 + scale_x_continuous(breaks=unique(molten_tbl$shapes_mu), trans="log10") 
-p7 <- p7 + scale_y_continuous(breaks=pretty_breaks())
-p7 <- p7 + labs(title="Var Explained, mu=1e-7, rows~1/var_rec, cols~mean_rec", x="~1/var_mu", y="Variance Explained (%)")
-p7 <- p7 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/mut_rate_var_left/R2_plot_3.png", p7, base_height=10, base_width=15)
-```
-
 # Selection 2-populations
 
 ## No-migration
@@ -2273,11 +1985,11 @@ potentially with different selective coefficients between them
 
 N1 <- 10000
 N2 <- c(N1, N1 / 10)
-u <- 1e-7
-r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 0)
-s1 <- c(0, -5e-05, -2.5e-04, -5e-04, -1e-3)
-s2 <- c(0, -5e-05, -2.5e-04, -5e-04, -1e-3)
-sanc <- c(0, -5e-05, -1e-3)
+u <- 1e-8
+r  <- c(1e-5, 1e-6, 1e-7, 0)
+s1 <- c(0, -1e-04, -1e-3)
+s2 <- c(0, -1e-04, -1e-3)
+sanc <- c(0, -1e-3)
 split_time <- c(400, 2000) # in generations
 
 params <- crossing(N1, N2, u, r, s1, s2, sanc, split_time)
@@ -2301,7 +2013,7 @@ for(i in 1:n_models) {
   cat("  - name: X\n")
   cat("    epochs:\n")
   cat("      - end_time: ")
-  cat(split_time)
+  cat(params$split_time[i])
   cat("\n")
   cat("        start_size: ")
   cat(params$N1[i])
