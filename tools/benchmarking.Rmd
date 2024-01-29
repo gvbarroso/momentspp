@@ -24,6 +24,7 @@ library(lmtest)
 library(nlme)
 library(car)
 library(bigsnpr)
+library(data.table)
 
 library(reticulate)
 use_python("/usr/bin/python3")
@@ -1541,11 +1542,11 @@ for(i in 1:n_models) {
   
   cat(paste(i, "\n"))
   
-  N <- as.integer(params[i, 1])
-  r <- as.numeric(params[i, 2])
-  ul <- as.numeric(params[i, 3])
-  ur <- as.numeric(params[i, 4])
-  s <- as.numeric(params[i, 5])
+  N <- as.integer(params["N"][i,])
+  r <- as.numeric(params["r"][i,])
+  ul <- as.numeric(params["ul"][i,])
+  ur <- as.numeric(params["ur"][i,])
+  s <- as.numeric(params["s"][i,])
   f <- ul / ur
   
   name <- paste("model_", i, sep="")
@@ -1616,30 +1617,190 @@ cd ../../..
 
 ### Analyses
 
-```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
+Collect table with Hr values on the parameter grid
 
-N <- c(1000, 10000)
+```{r, BGS-mutvar-grid, include=F, eval=F, results=F, message=F, warning=F}
+
+params <- fread("~/../../media/gvbarroso/extradrive1/landscapes/params.csv", sep=",", header=T)
+params$pi0 <- 2 * params$N * params$ur
+n_models <- nrow(params)
+c <- 1
+hr <- numeric(length=n_models)
+
+for(i in r) {
+  cat(paste(c, "\n"))
+  print(Sys.time())
+  for(j in ul) {
+    for(k in ur) {
+      for(l in 1:length(s)) {
+        
+        moms <- read.table(paste("~/../../media/gvbarroso/extradrive1/landscapes/r_", i, "/ul_", j, "/ur_", k, "/model_", as.integer(c), "_expectations.txt", sep=""))
+        hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
+
+        c <- c + 1
+      }
+    }
+  }
+}
+
+params$Hr <- hr
+fwrite(params, "~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv", row.names=F, quote=F, sep=",")
+```
+
+```{r, BGS-mutvar-landscapes, include=F, eval=F, results=F, message=F, warning=F}
+
+lookup_tbl <- fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv")
+
+# constants
+N <- unique(lookup_tbl$N)
+num_constrained <- 1e+4 # number of (non-recombining) selected segment in chr
+
 # Gamma dist params
-# DFE
-scale_sel <- c(5e-6, 5e-5, 5e-4)
-shape_sel <- 20
-# mut rates
-scales_mu <- c(1e-8, 3e-9, 1e-9)
-shapes_mu <- c(1, 10, 30, 100, 300, 1e+3, 1e+9)
-# rec rates
+scale_sel <- c(1e-5, 2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
+shape_sel <- 10
+scales_mu <- c(1e-8, 3e-9, 1e-9, 3e-10, 1e-10)
+shapes_mu <- c(1, 10, 30, 100, 1e+9)
 scales_rec <- c(1e-8)
-shapes_rec <- c(0.1, 1, 10, 1e+3, 1e+9)
+shapes_rec <- c(0.1, 1, 10, 1e+9)
+
+# Geom dist params
+rec_trans_prob <- c(1e-3, 1e-4, 1e-5, 1e-6)
+mut_trans_prob <- c(1e-3, 1e-4, 1e-5, 1e-6)
+L <- c(1e+2, 1e+3) # average number of constrained sites within each (non-recombining) selected segment
 
 # TODO correlation between rec and mut
 
-params <- crossing(N, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec)
-params$scenario <- 1:nrow(params)
-n_models <- nrow(params)
+models <- crossing(N, L, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, rec_trans_prob, mut_trans_prob)
+models$scenario <- 1:nrow(models)
+n_models <- nrow(models)
 
-params <- read.table("selection/single-pop/mut_rate_var/params.csv", sep=",", header=T)
-n_models <- nrow(params)
-hr_BGS <- numeric(length=n_models)
-landscapes <- as.data.frame(matrix(nrow=n_models, ncol=w))
+fwrite(models, "~/../../media/gvbarroso/extradrive1/landscapes/models.csv", row.names=F, quote=F, sep=",")
+
+landscapes <- as.data.frame(matrix(nrow=n_models, ncol=G))
+
+for(i in 1:n_models) {
+
+  cat(paste("Building chromosome(s) for model ", i, "...\n", sep=""))
+  
+  constrained_lengths <- rgeom(n=models$num_constrained, prob=1/models$L[i])
+
+  mus <- rgamma(n=G, shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
+  rs <- rgamma(n=G, shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
+  ss <- -rgamma(n=G, shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
+  alpha <- 2 * models$N[i] * ss
+  
+  
+  while(any(alpha < -20)) { 
+    cat("Selection is too strong in at least one gene! Redrawing...\n")
+    ss <- -rgamma(n=G, shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
+    alpha <- 2 * models$N[i] * ss
+  }
+  
+  while(sum(rs) > 1e-1) { 
+    cat("Total recombination rate of chr is too high! Redrawing...\n")
+    rs <- rgamma(n=G, shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
+  }
+  
+  windows <- bind_cols(mus, rs, ss, .name_repair="unique")
+  names(windows) <- c("mus", "recs", "dfe")
+  windows$pi0 <- 2 * models$N[i] * windows$mus
+  windows$alpha <- alpha
+  
+  write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "/_windows.csv", sep=""), quote=F, row.names=F)
+  
+  for(j in 1:w) { # left locus
+    
+    for(k in 1:w) { # right locus
+      
+      mu_ratio <- l * windows$mus[j] / windows$mus[k] # left / right
+      total_r <- colSums(windows[j:k,])["recs"]
+      
+      name <- paste("model_", i, "_l_", j, "_r_", k, sep="")
+  
+  landscapes[i,] <- hr_BGS
+
+  windows$bin <- 1:nrow(windows)
+  molten_bins <- pivot_longer(windows, cols=c("mus", "recs", "alpha", "pi0", "hr_BGS"), names_to="variable")
+  
+  p1 <- ggplot(data=windows, aes(x=bin, y=hr_BGS))
+  p1 <- p1 + geom_line() + theme_bw()
+  p1 <- p1 + scale_x_discrete(breaks=pretty_breaks())
+  p1 <- p1 + scale_y_continuous(breaks=pretty_breaks())
+  p1 <- p1 + labs(title=NULL, x=NULL, y=expression(H[r]))
+  p1 <- p1 + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.y=element_blank(),
+                   axis.ticks=element_blank(),
+                   axis.title.x=element_blank())
+  
+  p2 <- ggplot(data=windows, aes(x=bin, y=mus))
+  p2 <- p2 + geom_line() + theme_bw()
+  p2 <- p2 + scale_x_discrete(breaks=pretty_breaks())
+  p2 <- p2 + scale_y_continuous(breaks=pretty_breaks())
+  p2 <- p2 + labs(title=NULL, x=NULL, y=expression(mu))
+  p2 <- p2 + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.y=element_blank(),
+                   axis.ticks=element_blank(),
+                   axis.title.x=element_blank())
+  
+  p3 <- ggplot(data=windows, aes(x=bin, y=recs))
+  p3 <- p3 + geom_line() + theme_bw()
+  p3 <- p3 + scale_x_discrete(breaks=pretty_breaks())
+  p3 <- p3 + scale_y_continuous(breaks=pretty_breaks())
+  p3 <- p3 + labs(title=NULL, x=NULL, y=expression(r))
+  p3 <- p3 + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.y=element_blank(),
+                   axis.ticks=element_blank(),
+                   axis.title.x=element_blank())
+  
+  p4 <- ggplot(data=windows, aes(x=bin, y=alpha))
+  p4 <- p4 + geom_line() + theme_bw()
+  p4 <- p4 + scale_x_discrete(breaks=pretty_breaks())
+  p4 <- p4 + scale_y_continuous(breaks=pretty_breaks())
+  p4 <- p4 + labs(title=NULL, x=NULL, y=expression(alpha))
+  p4 <- p4 + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.y=element_blank(),
+                   axis.ticks=element_blank(),
+                   axis.title.x=element_blank())
+  
+  comb <- plot_grid(p1, p2, p3, p4, ncol=1)
+  save_plot(paste("selection/single-pop/mut_rate_var/model_", i, "_landscapes.png", sep=""), comb, base_height=10, base_width=12)
+      
+  # standardizing
+  windows$ss_pi_BGS <- (windows$hr_BGS - mean(windows$hr_BGS)) / sd(windows$hr_BGS)
+  windows$ss_pi0 <- (windows$pi0 - mean(windows$pi0)) / sd(windows$pi0)
+  windows$ss_mus <- (windows$mus - mean(windows$mus)) / sd(windows$mus)
+  windows$ss_recs <- (windows$recs - mean(windows$recs)) / sd(windows$recs)
+  windows$ss_dfe <- (windows$dfe - mean(windows$dfe)) / sd(windows$dfe)
+  
+  m.pi.1 <- lm(ss_pi_BGS ~ ss_mus + ss_recs + ss_dfe + ss_mus:ss_dfe + ss_recs:ss_dfe, data=windows)
+  
+  summary(m.pi.1)
+
+  anova.pi <- Anova(m.pi.1)
+  apiss <- anova.pi$"Sum Sq"
+  anova.pi$VarExp <- apiss / sum(apiss)
+
+  r2[i, 1] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2] + anova.pi$VarExp[3] + anova.pi$VarExp[4] + anova.pi$VarExp[5]) * 100
+  r2[i, 2] <- anova.pi$VarExp[1] * 100
+  r2[i, 3] <- anova.pi$VarExp[2] * 100
+  r2[i, 4] <- anova.pi$VarExp[3] * 100
+  r2[i, 5] <- anova.pi$VarExp[4] * 100
+  r2[i, 6] <- anova.pi$VarExp[5] * 100
+}
+
+names(landscapes) <- 1:ncol(landscapes)
+tbl <- bind_cols(params, r2, landscapes)
+tbl$scale_sel <- -tbl$scale_sel
+write.csv(tbl, "selection/single-pop/mut_rate_var/tbl.csv", quote=F, row.names=F)
+
+molten_windows <- pivot_longer(tbl, cols=(ncol(params) + ncol(r2) + 1):ncol(tbl), names_to="window")
+molten_windows$window <- as.numeric(molten_windows$window)
+
+
 
 r2 <- as.data.frame(matrix(nrow=n_models, ncol=6))
 colnames(r2) <- c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2")
@@ -1729,119 +1890,6 @@ for(i in 1:n_models) {
     }
   }
 }
-
-for(i in 1:n_models) {
-  
-  cat(paste("Retrieving data from model ", i, "...\n"))
-  
-  windows <- read.csv(paste("selection/single-pop/mut_rate_var/model_", i, "_windows.csv", sep=""), header=T)
-  hr_BGS <- numeric(length=w)
-  hk95 <- numeric(length=w)
-  
-  for(j in 1:w) { # right locus (neutral)
-  
-    pi0 <- windows$pi0[j]  
-    one_minus_f <- numeric(length=w)
-    hudson_kaplan_95 <- numeric(length=w)
-      
-    for(k in 1:w) { # left locus (selected)
-      
-      name <- paste("model_", i, "_l_", k, "_r_", j, "_expectations.txt", sep="")
-      expectations <- read.table(paste("selection/single-pop/mut_rate_var/", name, sep=""))
-      
-      hr <- expectations[expectations$V1 == "Hr_0_0",]$V3
-      one_minus_f[k] <- hr / pi0
-      hudson_kaplan_95[k] <- 1 - (windows$mus[k] * l * windows$dfe[k]) / (2 * (windows$dfe[k] + colSums(windows[j:k,])["recs"])^2)
-    }
-    
-    hr_BGS[j] <- pi0 * prod(one_minus_f)
-    hk95[j] <- pi0 * prod(hudson_kaplan_95)
-  }
-  
-  landscapes[i,] <- hr_BGS
-  windows$hr_BGS <- hr_BGS
-  windows$hk95 <- hk95 # TODO incorporate in plots?
-  
-  windows$bin <- 1:nrow(windows)
-  molten_bins <- pivot_longer(windows, cols=c("mus", "recs", "alpha", "pi0", "hr_BGS"), names_to="variable")
-  
-  p1 <- ggplot(data=windows, aes(x=bin, y=hr_BGS))
-  p1 <- p1 + geom_line() + theme_bw()
-  p1 <- p1 + scale_x_discrete(breaks=pretty_breaks())
-  p1 <- p1 + scale_y_continuous(breaks=pretty_breaks())
-  p1 <- p1 + labs(title=NULL, x=NULL, y=expression(H[r]))
-  p1 <- p1 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p2 <- ggplot(data=windows, aes(x=bin, y=mus))
-  p2 <- p2 + geom_line() + theme_bw()
-  p2 <- p2 + scale_x_discrete(breaks=pretty_breaks())
-  p2 <- p2 + scale_y_continuous(breaks=pretty_breaks())
-  p2 <- p2 + labs(title=NULL, x=NULL, y=expression(mu))
-  p2 <- p2 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p3 <- ggplot(data=windows, aes(x=bin, y=recs))
-  p3 <- p3 + geom_line() + theme_bw()
-  p3 <- p3 + scale_x_discrete(breaks=pretty_breaks())
-  p3 <- p3 + scale_y_continuous(breaks=pretty_breaks())
-  p3 <- p3 + labs(title=NULL, x=NULL, y=expression(r))
-  p3 <- p3 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p4 <- ggplot(data=windows, aes(x=bin, y=alpha))
-  p4 <- p4 + geom_line() + theme_bw()
-  p4 <- p4 + scale_x_discrete(breaks=pretty_breaks())
-  p4 <- p4 + scale_y_continuous(breaks=pretty_breaks())
-  p4 <- p4 + labs(title=NULL, x=NULL, y=expression(alpha))
-  p4 <- p4 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  comb <- plot_grid(p1, p2, p3, p4, ncol=1)
-  save_plot(paste("selection/single-pop/mut_rate_var/model_", i, "_landscapes.png", sep=""), comb, base_height=10, base_width=12)
-      
-  # standardizing
-  windows$ss_pi_BGS <- (windows$hr_BGS - mean(windows$hr_BGS)) / sd(windows$hr_BGS)
-  windows$ss_pi0 <- (windows$pi0 - mean(windows$pi0)) / sd(windows$pi0)
-  windows$ss_mus <- (windows$mus - mean(windows$mus)) / sd(windows$mus)
-  windows$ss_recs <- (windows$recs - mean(windows$recs)) / sd(windows$recs)
-  windows$ss_dfe <- (windows$dfe - mean(windows$dfe)) / sd(windows$dfe)
-  
-  m.pi.1 <- lm(ss_pi_BGS ~ ss_mus + ss_recs + ss_dfe + ss_mus:ss_dfe + ss_recs:ss_dfe, data=windows)
-  
-  summary(m.pi.1)
-
-  anova.pi <- Anova(m.pi.1)
-  apiss <- anova.pi$"Sum Sq"
-  anova.pi$VarExp <- apiss / sum(apiss)
-
-  r2[i, 1] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2] + anova.pi$VarExp[3] + anova.pi$VarExp[4] + anova.pi$VarExp[5]) * 100
-  r2[i, 2] <- anova.pi$VarExp[1] * 100
-  r2[i, 3] <- anova.pi$VarExp[2] * 100
-  r2[i, 4] <- anova.pi$VarExp[3] * 100
-  r2[i, 5] <- anova.pi$VarExp[4] * 100
-  r2[i, 6] <- anova.pi$VarExp[5] * 100
-}
-
-names(landscapes) <- 1:ncol(landscapes)
-tbl <- bind_cols(params, r2, landscapes)
-tbl$scale_sel <- -tbl$scale_sel
-write.csv(tbl, "selection/single-pop/mut_rate_var/tbl.csv", quote=F, row.names=F)
-
-molten_windows <- pivot_longer(tbl, cols=(ncol(params) + ncol(r2) + 1):ncol(tbl), names_to="window")
-molten_windows$window <- as.numeric(molten_windows$window)
 
 # visualizing raw landscapes
 c=1

@@ -48,7 +48,7 @@ private:
 
   std::vector<size_t> popIndices_; // among all Moments in the Epoch to which *this belongs, stored for bookkeeping
   std::vector<std::shared_ptr<Moment>> moments_; // sorted alphabetically based on prefix_ and numerically based on popIndices_
-  std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, based on symmetries
+  std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, compressed based on population genetic symmetries
 
 public:
   SumStatsLibrary():
