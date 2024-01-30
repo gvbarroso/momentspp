@@ -1483,10 +1483,10 @@ assembly of whole chromosomes
 ```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- 10000
-r <- seq_log(from=1e-9, to=1e-2, length.out=100)
-ul <- seq_log(from=1e-10, to=1e-8, length.out=30)
-ur <- seq_log(from=1e-10, to=1e-8, length.out=30)
-s <- -seq_log(from=1e-5, to=1e-3, length.out=200)
+r <- seq_log(from=1e-15, to=1e-2, length.out=200)
+ul <- seq_log(from=1e-9, to=1e-7, length.out=30)
+ur <- seq_log(from=1e-9, to=1e-7, length.out=30)
+# s <- -seq_log(from=1e-5, to=1e-3, length.out=100)
 
 params <- crossing(N, r, ul, ur, s)
 params$scenario <- 1:nrow(params)
@@ -1540,7 +1540,9 @@ cd ../../..
 
 for(i in 1:n_models) {
   
-  cat(paste(i, "\n"))
+  if(i %% 10000 == 0) {
+    cat(paste(i, "\n"))
+  }
   
   N <- as.integer(params["N"][i,])
   r <- as.numeric(params["r"][i,])
@@ -1591,7 +1593,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-To get the lookup table
+Gets the lookup table
 
 ```{bash run-moments++BGS-mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
@@ -1599,16 +1601,23 @@ source ~/.bashrc
 
 cd selection/single-pop/mut_rate_var/
 
-for((i=1;i<=n_models;i++));
-do
-  cp opt.bpp model_$i
-  cd model_$i
-  
-  for m in *.yaml
-  do
-    momentspp params=opt.bpp F=$m O=25
+for r in r_*
+do 
+  cd $r
+  for ul in ul_*
+  do 
+    cd $ul
+    for ur in ur_*
+    do 
+      cd $ur
+      for f in model_*
+      do
+	      momentspp params=opt.bpp F=$f O=25 > /dev/null
+      done
+      cd ..
+    done
+    cd ..
   done
-  
   cd ..
 done
 
@@ -1653,52 +1662,62 @@ lookup_tbl <- fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.c
 
 # constants
 N <- unique(lookup_tbl$N)
-num_constrained <- 1e+4 # number of (non-recombining) selected segment in chr
+num_constrained <- 1e+3 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
 scale_sel <- c(1e-5, 2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
 shape_sel <- 10
 scales_mu <- c(1e-8, 3e-9, 1e-9, 3e-10, 1e-10)
-shapes_mu <- c(1, 10, 30, 100, 1e+9)
+shapes_mu <- c(1, 3, 10, 30, 1e+9)
 scales_rec <- c(1e-8)
-shapes_rec <- c(0.1, 1, 10, 1e+9)
+shapes_rec <- c(1, 3, 10, 30, 1e+9)
 
 # Geom dist params
-rec_trans_prob <- c(1e-3, 1e-4, 1e-5, 1e-6)
-mut_trans_prob <- c(1e-3, 1e-4, 1e-5, 1e-6)
-L <- c(1e+2, 1e+3) # average number of constrained sites within each (non-recombining) selected segment
-
-# TODO correlation between rec and mut
-
-models <- crossing(N, L, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, rec_trans_prob, mut_trans_prob)
+avg_rec_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
+avg_mut_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
+avg_constrained_lengths <- c(1e+3, 1e+4) 
+avg_neutral_lengths <- 1e+5
+  
+models <- crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, 
+                   avg_rec_spans, avg_mut_spans, avg_constrained_lengths, avg_neutral_lengths)
 models$scenario <- 1:nrow(models)
 n_models <- nrow(models)
 
 fwrite(models, "~/../../media/gvbarroso/extradrive1/landscapes/models.csv", row.names=F, quote=F, sep=",")
 
-landscapes <- as.data.frame(matrix(nrow=n_models, ncol=G))
-
+# we build chromosomes of length ~100 Mb neutral sites + constrained sites
 for(i in 1:n_models) {
 
   cat(paste("Building chromosome(s) for model ", i, "...\n", sep=""))
   
-  constrained_lengths <- rgeom(n=models$num_constrained, prob=1/models$L[i])
-
-  mus <- rgamma(n=G, shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
-  rs <- rgamma(n=G, shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
-  ss <- -rgamma(n=G, shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
-  alpha <- 2 * models$N[i] * ss
+  csl <- rgeom(n=models$num_constrained[i], prob=1/models$avg_constrained_lengths[i])
+  sum_csl <- sum(csl)
   
+  # we sample one neutral site every 100 bp in con-constrained segments
+  ncsl <- rgeom(n=models$num_constrained[i], prob=1/models$avg_neutral_lengths[i])
+  sum_ncsl <- sum(ncsl)
+    
+  L <- sum_csl + sum_ncsl
+  
+  rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
+  while(sum(rec_spans) < L) {
+    rec_spans <- c(rec_spans, rgeom(n=1, prob=1/models$avg_rec_spans[i]))
+  }
+  
+  mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[i]), prob=1/models$avg_mut_spans[i])
+  while(sum(mut_spans) < L) {
+    mut_spans <- c(mut_spans, rgeom(n=1, prob=1/models$avg_rec_spans[i]))
+  }
+  
+  mus <- rgamma(n=length(mut_spans), shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
+  rs <- rgamma(n=length(rec_spans), shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
+  ss <- -rgamma(n=models$num_constrained[i], shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
+  alpha <- 2 * models$N[i] * ss
   
   while(any(alpha < -20)) { 
     cat("Selection is too strong in at least one gene! Redrawing...\n")
-    ss <- -rgamma(n=G, shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
+    ss <- -rgamma(n=models$num_constrained[i], shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
     alpha <- 2 * models$N[i] * ss
-  }
-  
-  while(sum(rs) > 1e-1) { 
-    cat("Total recombination rate of chr is too high! Redrawing...\n")
-    rs <- rgamma(n=G, shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
   }
   
   windows <- bind_cols(mus, rs, ss, .name_repair="unique")
