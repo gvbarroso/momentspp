@@ -25,6 +25,7 @@ library(nlme)
 library(car)
 library(bigsnpr)
 library(data.table)
+library(GenomicRanges)
 
 library(reticulate)
 use_python("/usr/bin/python3")
@@ -1486,7 +1487,7 @@ N <- 10000
 r <- seq_log(from=1e-15, to=1e-2, length.out=200)
 ul <- seq_log(from=1e-9, to=1e-7, length.out=30)
 ur <- seq_log(from=1e-9, to=1e-7, length.out=30)
-# s <- -seq_log(from=1e-5, to=1e-3, length.out=100)
+s <- -seq_log(from=1e-5, to=1e-3, length.out=100)
 
 params <- crossing(N, r, ul, ur, s)
 params$scenario <- 1:nrow(params)
@@ -1666,8 +1667,8 @@ num_constrained <- 1e+3 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
 scale_sel <- c(1e-5, 2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
-shape_sel <- 10
-scales_mu <- c(1e-8, 3e-9, 1e-9, 3e-10, 1e-10)
+shape_sel <- c(10, 20)
+scales_mu <- c(1e-8)
 shapes_mu <- c(1, 3, 10, 30, 1e+9)
 scales_rec <- c(1e-8)
 shapes_rec <- c(1, 3, 10, 30, 1e+9)
@@ -1685,18 +1686,26 @@ n_models <- nrow(models)
 
 fwrite(models, "~/../../media/gvbarroso/extradrive1/landscapes/models.csv", row.names=F, quote=F, sep=",")
 
-# we build chromosomes of length ~100 Mb neutral sites + constrained sites
+# we build chromosomes of length ~100 Mb (neutral sites + constrained sites)
 for(i in 1:n_models) {
 
   cat(paste("Building chromosome(s) for model ", i, "...\n", sep=""))
   
+  N <- models$N[i]
+  
+  # 
+  #
+  # TODO: make all spans multiples of 100 or 1000?
+  #
+  #
+  
+  
   csl <- rgeom(n=models$num_constrained[i], prob=1/models$avg_constrained_lengths[i])
   sum_csl <- sum(csl)
   
-  # we sample one neutral site every 100 bp in con-constrained segments
   ncsl <- rgeom(n=models$num_constrained[i], prob=1/models$avg_neutral_lengths[i])
   sum_ncsl <- sum(ncsl)
-    
+  
   L <- sum_csl + sum_ncsl
   
   rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
@@ -1720,6 +1729,92 @@ for(i in 1:n_models) {
     alpha <- 2 * models$N[i] * ss
   }
   
+  constraints <- c(rbind(rep(0, models$num_constrained[i]), ss))
+  intervals <- c(rbind(ncsl, csl))
+  intervals <- bind_cols(chr="chr1", dplyr::lag(cumsum(intervals), n=1, default=0), dplyr::lag(cumsum(intervals), n=0, default=0))
+  names(intervals) <- c("chr", "start", "end")
+  intervals$s <- constraints
+  intervals_gr <- makeGRangesFromDataFrame(intervals, keep.extra.columns=T)
+  # for convenience when traversing the chr
+  selected_intervals <- filter(intervals, s < 0)
+  neutral_intervals <- filter(intervals, s == 0)
+  #
+  #
+  # eg 50 kb landscapes
+  #
+  #
+  
+  # TODO bin DFE landscape as well
+  
+  bins_50kb <- rep(5e+4, floor(L / 5e+4))
+  bins_50kb <- bind_cols(chr="chr1", dplyr::lag(cumsum(bins_50kb), n=1, default=0), dplyr::lag(cumsum(bins_50kb), n=0, default=0))
+  names(bins_50kb) <- c("chr", "start", "end")
+  gr_50kb <- makeGRangesFromDataFrame(bins_50kb)
+  
+  rmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans), n=1, default=0), dplyr::lag(cumsum(rec_spans), n=0, default=0), rs)
+  names(rmap) <- c("chr", "start", "end", "r")
+  rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T)
+  
+  mmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans), n=1, default=0), dplyr::lag(cumsum(mut_spans), n=0, default=0), mus)
+  names(mmap) <- c("chr", "start", "end", "u")
+  mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
+  
+  # binning recombination maps
+  hits <- findOverlaps(query=gr_50kb, subject=rec_gr) 
+  hit_list <- as.data.frame(hits)
+  names(hit_list) <- c("bins_50kb", "rec_bins")
+  rmap$rec_bins <- 1:nrow(rmap)
+  tmpr <- merge(rmap, hit_list)
+  rec_50kb <- tmpr %>% group_by(bins_50kb) %>% mutate(avg_rec=weighted.mean(r, end-start))
+  rec_50kb <- rec_50kb %>% distinct(bins_50kb, .keep_all=T)
+  
+  # binning mutation maps
+  hits <- findOverlaps(query=gr_50kb, subject=mut_gr) 
+  hit_list <- as.data.frame(hits)
+  names(hit_list) <- c("bins_50kb", "mut_bins")
+  mmap$mut_bins <- 1:nrow(mmap)
+  tmpm <- merge(mmap, hit_list)
+  mut_50kb <- tmpm %>% group_by(bins_50kb) %>% mutate(avg_mut=weighted.mean(u, end-start))
+  mut_50kb <- mut_50kb %>% distinct(bins_50kb, .keep_all=T)
+  
+  maps_50kb <- bind_cols(bins_50kb, rec_50kb["avg_rec"], mut_50kb["avg_mut"])
+  
+  neu_pos <- numeric(floor(sum_ncsl/1e+3))
+  hr <- numeric(floor(sum_ncsl/1e+3))
+
+  pos <- 1 # focal position in chr ---> TODO start at zero?
+  for(j in 1:nrow(neutral_intervals)) { 
+    
+    neu_span <- neutral_intervals$end[j] - neutral_intervals$start[j]
+    
+    # we sample one neutral site every 1 kp in non-constrained segments
+    for(k in 1:ceiling(neu_span/1e+3)) { 
+      
+      focal_ur <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=pos, end=pos))))["queryHits"][1,],]["u"]
+      pi0 <- 4 * N * as.numeric(focal_ur)
+      one_minus_f <- 1
+      
+      rem_left <- pos - neutral_intervals$start[j]
+      rem_right <- neutral_intervals$end[j] - pos
+      
+      for(l in 1:nrow(selected_intervals)) { # for every constrained locus
+      
+        s <- selected_intervals$s[l]
+        
+        focal_ul <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=selected_intervals$start[l],  end=selected_intervals$end[l]))))["queryHits"][1,],]["u"]
+        
+        total_r <- # TODO
+          
+        hr <- # get from lookup table ~ r, s, ul, ur
+        one_minus_f <- one_minus_f * (hr / pi0) ^ csl[l]
+      }
+      
+      hr_BGS[i] <- pi0 * one_minus_f
+      
+      pos <- pos + 1e+3
+    }
+  }
+  
   windows <- bind_cols(mus, rs, ss, .name_repair="unique")
   names(windows) <- c("mus", "recs", "dfe")
   windows$pi0 <- 2 * models$N[i] * windows$mus
@@ -1727,63 +1822,11 @@ for(i in 1:n_models) {
   
   write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "/_windows.csv", sep=""), quote=F, row.names=F)
   
-  for(j in 1:w) { # left locus
-    
-    for(k in 1:w) { # right locus
-      
-      mu_ratio <- l * windows$mus[j] / windows$mus[k] # left / right
-      total_r <- colSums(windows[j:k,])["recs"]
-      
-      name <- paste("model_", i, "_l_", j, "_r_", k, sep="")
-  
   landscapes[i,] <- hr_BGS
 
   windows$bin <- 1:nrow(windows)
   molten_bins <- pivot_longer(windows, cols=c("mus", "recs", "alpha", "pi0", "hr_BGS"), names_to="variable")
   
-  p1 <- ggplot(data=windows, aes(x=bin, y=hr_BGS))
-  p1 <- p1 + geom_line() + theme_bw()
-  p1 <- p1 + scale_x_discrete(breaks=pretty_breaks())
-  p1 <- p1 + scale_y_continuous(breaks=pretty_breaks())
-  p1 <- p1 + labs(title=NULL, x=NULL, y=expression(H[r]))
-  p1 <- p1 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p2 <- ggplot(data=windows, aes(x=bin, y=mus))
-  p2 <- p2 + geom_line() + theme_bw()
-  p2 <- p2 + scale_x_discrete(breaks=pretty_breaks())
-  p2 <- p2 + scale_y_continuous(breaks=pretty_breaks())
-  p2 <- p2 + labs(title=NULL, x=NULL, y=expression(mu))
-  p2 <- p2 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p3 <- ggplot(data=windows, aes(x=bin, y=recs))
-  p3 <- p3 + geom_line() + theme_bw()
-  p3 <- p3 + scale_x_discrete(breaks=pretty_breaks())
-  p3 <- p3 + scale_y_continuous(breaks=pretty_breaks())
-  p3 <- p3 + labs(title=NULL, x=NULL, y=expression(r))
-  p3 <- p3 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
-  
-  p4 <- ggplot(data=windows, aes(x=bin, y=alpha))
-  p4 <- p4 + geom_line() + theme_bw()
-  p4 <- p4 + scale_x_discrete(breaks=pretty_breaks())
-  p4 <- p4 + scale_y_continuous(breaks=pretty_breaks())
-  p4 <- p4 + labs(title=NULL, x=NULL, y=expression(alpha))
-  p4 <- p4 + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.y=element_blank(),
-                   axis.ticks=element_blank(),
-                   axis.title.x=element_blank())
   
   comb <- plot_grid(p1, p2, p3, p4, ncol=1)
   save_plot(paste("selection/single-pop/mut_rate_var/model_", i, "_landscapes.png", sep=""), comb, base_height=10, base_width=12)
@@ -1820,95 +1863,8 @@ molten_windows <- pivot_longer(tbl, cols=(ncol(params) + ncol(r2) + 1):ncol(tbl)
 molten_windows$window <- as.numeric(molten_windows$window)
 
 
-
 r2 <- as.data.frame(matrix(nrow=n_models, ncol=6))
 colnames(r2) <- c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2")
-
-for(i in 1:n_models) {
-  
-  cat(paste("Writing yaml files for model ", i, "...\n", sep=""))
-  
-  mus <- rgamma(n=w, shape=params$shapes_mu[i], scale=params$scales_mu[i]/params$shapes_mu[i])
-  rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
-  ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
-  alpha <- 2 * params$N[i] * ss
-  
-  while(any(alpha < -20)) { 
-    cat("Selection is too strong in at least one gene! Redrawing...\n")
-    ss <- -rgamma(n=w, shape=params$shape_sel[i], scale=params$scale_sel[i]/params$shape_sel[i])
-    alpha <- 2 * params$N[i] * ss
-  }
-  
-  while(sum(rs) > 1e-1) { 
-    cat("Total recombination rate of chr is too high! Redrawing...\n")
-    rs <- rgamma(n=w, shape=params$shapes_rec[i], scale=params$scales_rec[i]/params$shapes_rec[i])
-  }
-  
-  windows <- bind_cols(mus, rs, ss, .name_repair="unique")
-  names(windows) <- c("mus", "recs", "dfe")
-  windows$pi0 <- 2 * params$N[i] * windows$mus
-  windows$alpha <- alpha
-  
-  write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "/_windows.csv", sep=""), quote=F, row.names=F)
-  
-  for(j in 1:w) { # left locus
-    
-    for(k in 1:w) { # right locus
-      
-      mu_ratio <- l * windows$mus[j] / windows$mus[k] # left / right
-      total_r <- colSums(windows[j:k,])["recs"]
-      
-      name <- paste("model_", i, "_l_", j, "_r_", k, sep="")
-      sink(paste("selection/single-pop/mut_rate_var/model_", i, "/", name, ".yaml", sep=""))
-      
-      cat("time_units: generations\n")
-      cat("demes:\n")
-      cat("  - name: X\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        start_size: ")
-      cat(as.integer(params$N[i]))
-      cat("\n")
-      cat("metadata:\n")
-      cat("  - name: mutation\n")
-      cat("    left_factor: ")
-      
-      if(params$shapes_mu[i]==1e+9) { # enforces completely flat mu
-        cat(l)
-      } else {
-        cat(mu_ratio)
-      }
-      
-      cat("\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        rates: [")
-      
-      if(params$shapes_mu[i]==1e+9) { # enforces completely flat mu
-        cat(params$scales_mu[i])
-      } else {
-        cat(windows$mus[k])
-      }
-      
-      cat("]\n")
-      cat("  - name: recombination\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        rates: [")
-      cat(total_r)
-      cat("]\n")
-      cat("  - name: selection\n")
-      cat("    start_time: .inf\n")
-      cat("    epochs:\n")
-      cat("      - end_time: 0\n")
-      cat("        rates: [")
-      cat(windows$dfe[j])
-      cat("]\n")
-      
-      sink()
-    }
-  }
-}
 
 # visualizing raw landscapes
 c=1
