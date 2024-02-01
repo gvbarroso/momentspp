@@ -1663,7 +1663,7 @@ lookup_tbl <- fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.c
 
 # constants
 N <- unique(lookup_tbl$N)
-num_constrained <- 1e+3 # number of (non-recombining) selected segment in chr
+num_constrained <- 1e+2 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
 scale_sel <- c(1e-5, 2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
@@ -1676,7 +1676,7 @@ shapes_rec <- c(1, 3, 10, 30, 1e+9)
 # Geom dist params
 avg_rec_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
 avg_mut_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
-avg_constrained_lengths <- c(1e+3, 1e+4) 
+avg_constrained_lengths <- c(1e+2, 1e+4) 
 avg_neutral_lengths <- 1e+5
   
 models <- crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, 
@@ -1686,6 +1686,8 @@ n_models <- nrow(models)
 
 fwrite(models, "~/../../media/gvbarroso/extradrive1/landscapes/models.csv", row.names=F, quote=F, sep=",")
 
+jump_length <- 1e+3
+# TODO make this a function of jump_length
 # we build chromosomes of length ~100 Mb (neutral sites + constrained sites)
 for(i in 1:n_models) {
 
@@ -1732,16 +1734,11 @@ for(i in 1:n_models) {
   smap <- filter(intervals, s < 0)
   neutral_intervals <- filter(intervals, s == 0)
   
-  #
-  #
-  # eg 50 kb landscapes
-  #
-  #
-  
-  bins_50kb <- rep(5e+4, floor(L / 5e+4))
-  bins_50kb <- bind_cols(chr="chr1", dplyr::lag(cumsum(bins_50kb), n=1, default=0), dplyr::lag(cumsum(bins_50kb), n=0, default=0))
-  names(bins_50kb) <- c("chr", "start", "end")
-  gr_50kb <- makeGRangesFromDataFrame(bins_50kb)
+  # eg 1 Mb windows
+  bins <- rep(1e+6, floor(L / 1e+6))
+  bins <- bind_cols(chr="chr1", dplyr::lag(cumsum(bins), n=1, default=0), dplyr::lag(cumsum(bins), n=0, default=0))
+  names(bins) <- c("chr", "start", "end")
+  gr_bins <- makeGRangesFromDataFrame(bins)
   
   rmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans), n=1, default=0), dplyr::lag(cumsum(rec_spans), n=0, default=0), rs)
   names(rmap) <- c("chr", "start", "end", "r")
@@ -1752,47 +1749,49 @@ for(i in 1:n_models) {
   mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
   
   # binning recombination maps
-  hits <- findOverlaps(query=gr_50kb, subject=rec_gr) 
+  hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
   hit_list <- as.data.frame(hits)
-  names(hit_list) <- c("bins_50kb", "rec_bins")
+  names(hit_list) <- c("bins", "rec_bins")
   rmap$rec_bins <- 1:nrow(rmap)
   tmpr <- merge(rmap, hit_list)
-  rec_50kb <- tmpr %>% group_by(bins_50kb) %>% mutate(avg_rec=weighted.mean(r, end-start))
-  rec_50kb <- rec_50kb %>% distinct(bins_50kb, .keep_all=T)
+  rec_bins <- tmpr %>% group_by(bins) %>% mutate(avg_rec=weighted.mean(r, end-start))
+  rec_bins <- rec_bins %>% distinct(bins, .keep_all=T)
   
   # binning mutation maps
-  hits <- findOverlaps(query=gr_50kb, subject=mut_gr) 
+  hits <- findOverlaps(query=gr_bins, subject=mut_gr) 
   hit_list <- as.data.frame(hits)
-  names(hit_list) <- c("bins_50kb", "mut_bins")
+  names(hit_list) <- c("bins", "mut_bins")
   mmap$mut_bins <- 1:nrow(mmap)
   tmpm <- merge(mmap, hit_list)
-  mut_50kb <- tmpm %>% group_by(bins_50kb) %>% mutate(avg_mut=weighted.mean(u, end-start))
-  mut_50kb <- mut_50kb %>% distinct(bins_50kb, .keep_all=T)
+  mut_bins <- tmpm %>% group_by(bins) %>% mutate(avg_mut=weighted.mean(u, end-start))
+  mut_bins <- mut_bins %>% distinct(bins, .keep_all=T)
   
   # binning DFE
   dfe_gr <- makeGRangesFromDataFrame(intervals, keep.extra.columns=T)
-  hits <- findOverlaps(query=gr_50kb, subject=dfe_gr) 
+  hits <- findOverlaps(query=gr_bins, subject=dfe_gr) 
   hit_list <- as.data.frame(hits)
-  names(hit_list) <- c("bins_50kb", "dfe_bins")
-  intervals$dfe_bins <- 1:nrow(intervals)
+  names(hit_list) <- c("bins", "dfe")
+  intervals$dfe <- 1:nrow(intervals)
   tmpd <- merge(intervals, hit_list)
-  dfe_50kb <- tmpd %>% group_by(bins_50kb) %>% mutate(avg_s=weighted.mean(s, end-start))
-  dfe_50kb <- dfe_50kb %>% distinct(bins_50kb, .keep_all=T)
+  dfe_bins <- tmpd %>% group_by(bins) %>% mutate(avg_s=weighted.mean(s, end-start))
+  dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T)
   
-  maps_50kb <- bind_cols(bins_50kb, rec_50kb["avg_rec"], mut_50kb["avg_mut"], dfe_50kb["avg_s"])
+  # to use in the linear models
+  maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
   
-  neu_pos <- numeric(floor(sum_ncsl/1e+2))
-  hr_list <- numeric(floor(sum_ncsl/1e+2))
+  neu_pos <- numeric(floor(sum_ncsl/jump_length))
+  hr_list <- numeric(floor(sum_ncsl/jump_length))
 
   c <- 1 # indexer for containers neu_pos and hr_list
   pos <- 0 # focal position in chr 
   
+  Rprof()
   for(j in 1:nrow(neutral_intervals)) { 
     
     neu_span <- neutral_intervals$end[j] - neutral_intervals$start[j]
     
     # we sample one neutral site every 100 bp in non-constrained segments
-    for(k in 1:floor(neu_span/1e+2)) { 
+    for(k in 1:floor(neu_span/jump_length)) { 
       
       focal_ur <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=pos, end=pos))))["queryHits"][1,],]["u"]
       pi0 <- 2 * N * as.numeric(focal_ur)
@@ -1807,9 +1806,9 @@ for(i in 1:n_models) {
         if(pos < smap$start[l]) { # if focal neutral is to the left of focal constrained
           
           tmpr <- rmap
-          tmpr$start[1] <- pos # to start rec integration at pos
           tmpr <- filter(tmpr, start >= pos, start < smap$start[l])
-          
+          tmpr$start[1] <- pos # to start rec integration at pos
+
           s_r_intersect <- intersect(makeGRangesFromDataFrame(tmpr, keep.extra.columns=T), makeGRangesFromDataFrame(smap[1:l,], keep.extra.columns=T))
           sliced_range <- as.data.frame(ranges(s_r_intersect)) 
           tmpr$end[nrow(tmpr)] <- sliced_range$start[nrow(sliced_range)]  # to end rec integration at the start of (non-recombining) gene
@@ -1828,6 +1827,10 @@ for(i in 1:n_models) {
           tmpr <- tmpr %>% mutate(total_r=(weighted.mean(r, end-start) * (tmpr$end[nrow(tmpr)] - tmpr$start[1]))) # weighted sum
           total_r <- tmpr$total_r[1]
         }
+        
+        cat(paste("pos =", pos, "gene =", l, "\t"))
+        cat(paste(smap$start[l], smap$end[l], "\t"))
+        cat(paste("total_r =", total_r, "\n"))
 
         if(total_r < 1e-2) {
           
@@ -1852,11 +1855,12 @@ for(i in 1:n_models) {
       hr_list[c] <- pi0 * B
       neu_pos[c] <- pos
       
-      pos <- pos + 1e+2
+      pos <- pos + jump_length
       c <- c + 1
     }
   }
-
+  Rprof(NULL)
+  
   pos_hr_pairs <- bind_cols(neu_pos, hr_list)
   # TODO bin
   
