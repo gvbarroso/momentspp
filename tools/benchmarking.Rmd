@@ -1489,6 +1489,16 @@ lookup_ul <- seq_log(from=1e-9, to=1e-7, length.out=30)
 lookup_ur <- seq_log(from=1e-9, to=1e-7, length.out=30)
 lookup_s <- -seq_log(from=1e-5, to=1e-3, length.out=100)
 
+# for discretizing Gamma distributions and make look-up faster
+dt_u <- data.table(lookup_ul)
+dt_r <- data.table(lookup_r)
+dt_s <- data.table(sort(lookup_s))
+names(dt_s) <- "lookup_s"
+
+setattr(dt_u, "sorted", "lookup_ul")
+setattr(dt_r, "sorted", "lookup_r")
+setattr(dt_s, "sorted", "lookup_s")
+
 params <- crossing(N, lookup_r, lookup_ul, lookup_ur, lookup_s)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
@@ -1666,7 +1676,7 @@ N <- unique(lookup_tbl$N)
 num_constrained <- 30 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
-scale_sel <- c(1e-5, 2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
+scale_sel <- c(2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
 shape_sel <- c(10, 20)
 scales_mu <- c(1e-8)
 shapes_mu <- c(1, 3, 10, 30, 1e+9)
@@ -1717,6 +1727,11 @@ for(i in 1:n_models) {
   ss <- -rgamma(n=models$num_constrained[i], shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
   alpha <- 2 * models$N[i] * ss
   
+  # discretizes values to match lookup table precisely
+  disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$lookup_ul
+  disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r
+  disc_ss <- dt_s[dt_s[J(ss), roll="nearest", which=T]]$lookup_s
+  
   while(any(alpha < -20)) { 
     cat("Selection is too strong in at least one gene! Redrawing...\n")
     ss <- -rgamma(n=models$num_constrained[i], shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
@@ -1743,10 +1758,16 @@ for(i in 1:n_models) {
   rmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans), n=1, default=0), dplyr::lag(cumsum(rec_spans), n=0, default=0), rs)
   names(rmap) <- c("chr", "start", "end", "r")
   rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T)
+  rec_dt <- data.table(rmap)
+  setattr(rec_dt, "sorted", "start")
+  setattr(rec_dt, "sorted", "end")
   
   mmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans), n=1, default=0), dplyr::lag(cumsum(mut_spans), n=0, default=0), mus)
   names(mmap) <- c("chr", "start", "end", "u")
   mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
+  mut_dt <- data.table(mmap)
+  setattr(mut_dt, "sorted", "start")
+  setattr(mut_dt, "sorted", "end")
   
   # binning recombination maps
   hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
@@ -1790,26 +1811,29 @@ for(i in 1:n_models) {
     
     neu_span <- neutral_intervals$end[j] - neutral_intervals$start[j]
     
-    # we sample one neutral site every 100 bp in non-constrained segments
+    # we sample one neutral site every 'jump_length' bp in non-constrained segments
     for(k in 1:floor(neu_span/jump_length)) { 
       
-      focal_ur <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=pos, end=pos))))["queryHits"][1,],]["u"]
+      system.time(focal_ur <- mut_dt[J(pos), roll="nearest"]$u) # buggy
+      system.time(focal_ur <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=pos, end=pos))))["queryHits"][1,],]["u"])
       pi0 <- 2 * N * as.numeric(focal_ur)
       B <- 1 
       
       for(l in 1:nrow(smap)) { # for every constrained locus
       
         focal_s <- smap$s[l]
-        focal_ul <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=smap$start[l], end=smap$end[l]))))["queryHits"][1,],]["u"]
+        mbins <- as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=smap$start[l], end=smap$end[l]))))
+        mbins <- mmap[mbins$queryHits,] %>% mutate(avg_mu=(weighted.mean(u, end-start)))
+        focal_ul <- mbins$avg_mu[1]
         
         total_r <- 0
         if(pos < smap$start[l]) { # if focal neutral is to the left of focal constrained
           
           tmpr <- rmap
-          tmpr <- filter(tmpr, end >= pos, start < smap$start[l])
+          system.time(tmpr <- filter(tmpr, end >= pos, start < smap$start[l]))
           tmpr$start[1] <- pos # to start rec integration at pos
 
-          s_r_intersect <- intersect(makeGRangesFromDataFrame(tmpr, keep.extra.columns=T), makeGRangesFromDataFrame(smap[1:l,], keep.extra.columns=T))
+          system.time(s_r_intersect <- intersect(makeGRangesFromDataFrame(tmpr, keep.extra.columns=T), makeGRangesFromDataFrame(smap[1:l,], keep.extra.columns=T)))
           sliced_range <- as.data.frame(ranges(s_r_intersect)) 
           tmpr$end[nrow(tmpr)] <- sliced_range$start[nrow(sliced_range)]  # to end rec integration at the start of (non-recombining) gene
           
@@ -1840,8 +1864,9 @@ for(i in 1:n_models) {
           closest_ur <- lookup_ur[which.min(abs(lookup_ur - focal_ur))]
           closest_s <- lookup_s[which.min(abs(lookup_s - focal_s))]
           
-          entry <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur)
-          B <- B * (entry$Hr / entry$pi0) ^ csl[l]
+          system.time(lookup_tbl %>% filter(., r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur))
+          system.time(entry <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur))
+          #B <- B * (entry$Hr / entry$pi0) ^ csl[l]
           
           # TODO implement interpolation
           #hr <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur)$Hr
@@ -1860,6 +1885,7 @@ for(i in 1:n_models) {
     }
   }
   Rprof(NULL)
+  View(summaryRprof()$by.total)
   
   pos_hr_pairs <- bind_cols(neu_pos, hr_list)
   # TODO bin
