@@ -1712,14 +1712,14 @@ for(i in 1:n_models) {
   L <- sum_csl + sum_ncsl
   N <- models$N[i]
   
-  rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
-  while(sum(rec_spans) < L) {
-    rec_spans <- c(rec_spans, rgeom(n=1, prob=1/models$avg_rec_spans[i]))
+  rec_spans <- rgeom(n=ceiling(L/1e+4), prob=1/1e+4)
+  if(sum(rec_spans) < L) {
+    rec_spans <- c(rec_spans, L-sum(rec_spans))
   }
 
-  mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[i]), prob=1/models$avg_mut_spans[i])
-  while(sum(mut_spans) < L) {
-    mut_spans <- c(mut_spans, rgeom(n=1, prob=1/models$avg_rec_spans[i]))
+  mut_spans <- rgeom(n=ceiling(L/1e+4), prob=1/1e+4)
+  if(sum(mut_spans) < L) {
+    mut_spans <- c(mut_spans, L-sum(mut_spans))
   }
   
   mus <- rgamma(n=length(mut_spans), shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
