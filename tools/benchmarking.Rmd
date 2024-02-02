@@ -1673,7 +1673,7 @@ lookup_tbl <- fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.c
 
 # constants
 N <- unique(lookup_tbl$N)
-num_constrained <- 30 # number of (non-recombining) selected segment in chr
+num_constrained <- 100 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
 scale_sel <- c(2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
@@ -1686,7 +1686,7 @@ shapes_rec <- c(1, 3, 10, 30, 1e+9)
 # Geom dist params
 avg_rec_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
 avg_mut_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
-avg_constrained_lengths <- c(1e+2, 1e+4) 
+avg_constrained_lengths <- c(1e+3, 1e+4) 
 avg_neutral_lengths <- 1e+5
   
 models <- crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, 
@@ -1716,7 +1716,7 @@ for(i in 1:n_models) {
   while(sum(rec_spans) < L) {
     rec_spans <- c(rec_spans, rgeom(n=1, prob=1/models$avg_rec_spans[i]))
   }
-  
+
   mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[i]), prob=1/models$avg_mut_spans[i])
   while(sum(mut_spans) < L) {
     mut_spans <- c(mut_spans, rgeom(n=1, prob=1/models$avg_rec_spans[i]))
@@ -1727,16 +1727,16 @@ for(i in 1:n_models) {
   ss <- -rgamma(n=models$num_constrained[i], shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
   alpha <- 2 * models$N[i] * ss
   
-  # discretizes values to match lookup table precisely
-  disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$lookup_ul
-  disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r
-  disc_ss <- dt_s[dt_s[J(ss), roll="nearest", which=T]]$lookup_s
-  
   while(any(alpha < -20)) { 
     cat("Selection is too strong in at least one gene! Redrawing...\n")
     ss <- -rgamma(n=models$num_constrained[i], shape=models$shape_sel[i], scale=models$scale_sel[i]/models$shape_sel[i])
     alpha <- 2 * models$N[i] * ss
   }
+  
+  # discretizes values to match lookup table precisely
+  disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$lookup_ul
+  disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r
+  disc_ss <- dt_s[dt_s[J(ss), roll="nearest", which=T]]$lookup_s
   
   constraints <- c(rbind(rep(0, models$num_constrained[i]), ss))
   intervals <- c(rbind(ncsl, csl))
@@ -1744,6 +1744,8 @@ for(i in 1:n_models) {
   names(intervals) <- c("chr", "start", "end")
   intervals$s <- constraints
   intervals_gr <- makeGRangesFromDataFrame(intervals, keep.extra.columns=T)
+  
+  fwrite(intervals, "regions.bedgraph")
   
   # for convenience when traversing the chr
   smap <- filter(intervals, s < 0)
@@ -1757,17 +1759,36 @@ for(i in 1:n_models) {
   
   rmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans), n=1, default=0), dplyr::lag(cumsum(rec_spans), n=0, default=0), rs)
   names(rmap) <- c("chr", "start", "end", "r")
+  rmap$end[nrow(rmap)] <- L # clips leftover span in last bin
   rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T)
+  hits <- as.data.frame(findOverlaps(query=intervals_gr, subject=rec_gr))
+  gene_rec_bins <- filter(hits, queryHits %% 2 == 0)
+  rmap[unique(gene_rec_bins$subjectHits),]$r <- 0 # assigns zero rec rate to genic regions (with some splash around them)
+  rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T) # reset
   rec_dt <- data.table(rmap)
   setattr(rec_dt, "sorted", "start")
   setattr(rec_dt, "sorted", "end")
   
+  fwrite(rmap, "rec_map.bedgraph")
+  
   mmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans), n=1, default=0), dplyr::lag(cumsum(mut_spans), n=0, default=0), mus)
   names(mmap) <- c("chr", "start", "end", "u")
+  mmap$end[nrow(mmap)] <- L # clips leftover span in last bin
   mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
   mut_dt <- data.table(mmap)
   setattr(mut_dt, "sorted", "start")
   setattr(mut_dt, "sorted", "end")
+  
+  fwrite(mmap, "mut_map.bedgraph")
+  
+  # finding the cumulative recombination map over the useful intervals
+  samps <- rep(jump_length, floor(L/jump_length))
+  samp_pos <- bind_cols(chr="chr1", dplyr::lag(cumsum(samps), n=1, default=0), dplyr::lag(cumsum(samps), n=0, default=0))
+  names(samp_pos) <- c("chr", "start", "end")
+  samp_gr <- makeGRangesFromDataFrame(samp_pos)
+  x <- bind_rows(samp_pos, dplyr::select(smap, -s)) 
+  y <- arrange(x, start)
+  # TODO continue here
   
   # binning recombination maps
   hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
@@ -1815,7 +1836,7 @@ for(i in 1:n_models) {
     for(k in 1:floor(neu_span/jump_length)) { 
       
       system.time(focal_ur <- mut_dt[J(pos), roll="nearest"]$u) # buggy
-      system.time(focal_ur <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=pos, end=pos))))["queryHits"][1,],]["u"])
+      #system.time(focal_ur <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=pos, end=pos))))["queryHits"][1,],]["u"])
       pi0 <- 2 * N * as.numeric(focal_ur)
       B <- 1 
       
