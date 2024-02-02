@@ -1663,7 +1663,7 @@ lookup_tbl <- fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.c
 
 # constants
 N <- unique(lookup_tbl$N)
-num_constrained <- 1e+2 # number of (non-recombining) selected segment in chr
+num_constrained <- 30 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
 scale_sel <- c(1e-5, 2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
@@ -1806,7 +1806,7 @@ for(i in 1:n_models) {
         if(pos < smap$start[l]) { # if focal neutral is to the left of focal constrained
           
           tmpr <- rmap
-          tmpr <- filter(tmpr, start >= pos, start < smap$start[l])
+          tmpr <- filter(tmpr, end >= pos, start < smap$start[l])
           tmpr$start[1] <- pos # to start rec integration at pos
 
           s_r_intersect <- intersect(makeGRangesFromDataFrame(tmpr, keep.extra.columns=T), makeGRangesFromDataFrame(smap[1:l,], keep.extra.columns=T))
@@ -1841,7 +1841,7 @@ for(i in 1:n_models) {
           closest_s <- lookup_s[which.min(abs(lookup_s - focal_s))]
           
           entry <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur)
-          B <- B * entry$Hr / entry$pi0
+          B <- B * (entry$Hr / entry$pi0) ^ csl[l]
           
           # TODO implement interpolation
           #hr <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur)$Hr
