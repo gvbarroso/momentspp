@@ -1712,12 +1712,12 @@ for(i in 1:n_models) {
   L <- sum_csl + sum_ncsl
   N <- models$N[i]
   
-  rec_spans <- rgeom(n=ceiling(L/1e+4), prob=1/1e+4)
+  rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
   if(sum(rec_spans) < L) {
     rec_spans <- c(rec_spans, L-sum(rec_spans))
   }
 
-  mut_spans <- rgeom(n=ceiling(L/1e+4), prob=1/1e+4)
+  mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[i]), prob=1/models$avg_mut_spans[i])
   if(sum(mut_spans) < L) {
     mut_spans <- c(mut_spans, L-sum(mut_spans))
   }
@@ -1742,53 +1742,115 @@ for(i in 1:n_models) {
   intervals <- c(rbind(ncsl, csl))
   intervals <- bind_cols(chr="chr1", dplyr::lag(cumsum(intervals), n=1, default=0), dplyr::lag(cumsum(intervals), n=0, default=0))
   names(intervals) <- c("chr", "start", "end")
+  intervals$start <- intervals$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
   intervals$s <- constraints
   intervals_gr <- makeGRangesFromDataFrame(intervals, keep.extra.columns=T)
   
-  fwrite(intervals, "regions.bedgraph")
+  fwrite(intervals, "regions.csv")
   
   # for convenience when traversing the chr
   smap <- filter(intervals, s < 0)
   neutral_intervals <- filter(intervals, s == 0)
   
-  # eg 1 Mb windows
+  # for binning maps, eg 1 Mb windows
   bins <- rep(1e+6, floor(L / 1e+6))
   bins <- bind_cols(chr="chr1", dplyr::lag(cumsum(bins), n=1, default=0), dplyr::lag(cumsum(bins), n=0, default=0))
   names(bins) <- c("chr", "start", "end")
+  bins$start <- bins$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
   gr_bins <- makeGRangesFromDataFrame(bins)
   
   rmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans), n=1, default=0), dplyr::lag(cumsum(rec_spans), n=0, default=0), rs)
   names(rmap) <- c("chr", "start", "end", "r")
-  rmap$end[nrow(rmap)] <- L # clips leftover span in last bin
+  rmap$start <- rmap$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
   rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T)
   hits <- as.data.frame(findOverlaps(query=intervals_gr, subject=rec_gr))
-  gene_rec_bins <- filter(hits, queryHits %% 2 == 0)
-  rmap[unique(gene_rec_bins$subjectHits),]$r <- 0 # assigns zero rec rate to genic regions (with some splash around them)
+  gene_rec_bins <- filter(hits, queryHits %% 2 == 0) 
+  rmap[unique(gene_rec_bins$subjectHits),]$r <- 0 # TODO fix this: assigns zero rec rate to "genic" regions (with some splash around them) 
   rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T) # reset
   rec_dt <- data.table(rmap)
   setattr(rec_dt, "sorted", "start")
   setattr(rec_dt, "sorted", "end")
   
-  fwrite(rmap, "rec_map.bedgraph")
+  fwrite(rmap, "rec_map.csv")
   
   mmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans), n=1, default=0), dplyr::lag(cumsum(mut_spans), n=0, default=0), mus)
   names(mmap) <- c("chr", "start", "end", "u")
-  mmap$end[nrow(mmap)] <- L # clips leftover span in last bin
+  mmap$start <- mmap$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
   mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
   mut_dt <- data.table(mmap)
   setattr(mut_dt, "sorted", "start")
   setattr(mut_dt, "sorted", "end")
   
-  fwrite(mmap, "mut_map.bedgraph")
+  fwrite(mmap, "mut_map.csv")
   
   # finding the cumulative recombination map over the useful intervals
   samps <- rep(jump_length, floor(L/jump_length))
   samp_pos <- bind_cols(chr="chr1", dplyr::lag(cumsum(samps), n=1, default=0), dplyr::lag(cumsum(samps), n=0, default=0))
   names(samp_pos) <- c("chr", "start", "end")
+  samp_pos$start <- samp_pos$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
   samp_gr <- makeGRangesFromDataFrame(samp_pos)
-  x <- bind_rows(samp_pos, dplyr::select(smap, -s)) 
-  y <- arrange(x, start)
-  # TODO continue here
+  a <- bind_rows(samp_pos, dplyr::select(smap, -s))
+  a <- arrange(a, start)
+  
+  # some disgusting manipulation of the GR objects
+  red <- function(x) {
+    for(i in 1:(nrow(x) - 1)) {
+      if(x[i + 1, 2] < x[i, 3]) {
+        if((x[i, 3] - x[i, 2]) == (jump_length - 1)) {
+          x[i, 3] <- x[i + 1, 2] - 1
+        }
+        else {
+          x[i + 1, 2] <- x[i, 3] + 1
+        }
+      }
+    }
+    
+    return(x)
+  }
+  
+  y <- red(a)
+  while(any(y$end < y$start)) {
+    y <- y[-which(y$end - y$start < 0),]
+    y <- red(y)
+  }
+  y_gr <- makeGRangesFromDataFrame(y)
+
+  l <- list()
+  l[[1]] <- y_gr
+  l[[2]] <- gaps(y_gr)
+  z_gr <- unlist(as(l, "GRangesList"))
+  z_df <- arrange(as.data.frame(z_gr), start)
+  z_df$r <- 0
+  z_gr <- makeGRangesFromDataFrame(z_df)
+  
+  hits <- findOverlaps(query=z_gr, subject=rec_gr)
+  hit_list <- as.data.frame(hits)
+  names(hit_list) <- c("genomic_regions", "rec_bins")
+  
+  # list of genomic_regions that fall within a single recombination rate window
+  lookup_tbl_single <- as.data.frame(hit_list %>% group_by(genomic_regions) %>% filter(n() == 1))
+
+  # list of genomic_regions that fall within multiple recombination rate windows
+  lookup_tbl_multiple <- as.data.frame(hit_list %>% group_by(genomic_regions) %>% filter(n() > 1))
+  
+  pb <- txtProgressBar(min = 0, max = nrow(z_df), style = 3)
+  for(focal_window in 1:nrow(z_df)) {
+  
+    setTxtProgressBar(pb, focal_window)
+    
+    # if the genomic_region falls within a single recombination rate window
+    if(focal_window %in% lookup_tbl_single[,1]) {
+      row <- which(lookup_tbl_single$genomic_regions == focal_window)
+      z_df$r[focal_window] <- rmap$r[lookup_tbl_single[row, 2]]
+    }
+    else { # if it falls within multiple recombination rate windows
+      rec_bins <- lookup_tbl_multiple[lookup_tbl_multiple$genomic_regions == focal_window, 2]
+      z_df$r[focal_window] <- weighted.mean(rmap$r[rec_bins], rmap$end[rec_bins] - rmap$start[rec_bins])
+    }
+  }
+  close(pb)
+  z_df <- z_df %>% mutate(total_r=r * (end-start))
+  z_df$cumrec <- cumsum(z_df$total_r)
   
   # binning recombination maps
   hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
@@ -1877,7 +1939,7 @@ for(i in 1:n_models) {
         cat(paste(smap$start[l], smap$end[l], "\t"))
         cat(paste("total_r =", total_r, "\n"))
 
-        if(total_r < 1e-2) {
+        if(total_r < 1e-3) {
           
           # searching lookup table for closest match 
           closest_r <- lookup_r[which.min(abs(lookup_r - total_r))]
