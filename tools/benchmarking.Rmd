@@ -1712,10 +1712,12 @@ for(i in 1:n_models) {
   names(neutral_intervals) <- c("chr", "start", "end")
   neutral_intervals_gr <- makeGRangesFromDataFrame(neutral_intervals)
   
+  # recombination maps
   rec_spans_neutral <- rgeom(n=ceiling(sum_ncsl/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
   if(sum(rec_spans_neutral) < sum_ncsl) {
     rec_spans_neutral <- c(rec_spans_neutral, sum_ncsl - sum(rec_spans_neutral))
   }
+  # TODO deal with case sum(rec_spans_neutral) > sum_ncsl
   rec_spans_neutral <- rec_spans_neutral[-which(rec_spans_neutral==0)]
   
   rmap_neutral <- bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans_neutral), n=1, default=0), dplyr::lag(cumsum(rec_spans_neutral), n=0, default=0))
@@ -1728,8 +1730,7 @@ for(i in 1:n_models) {
   t <- t[which(diff(t)>1)] # deletes consecutive genes
   x <- dplyr::lag(diff(c(0, rmap_neutral$end[t], rmap_neutral$end[nrow(rmap_neutral)])), n=1, default=0) 
   x <- c(x, rmap_neutral$end[nrow(rmap_neutral)] - sum(x))
-  # updates neutral intervals after matching to the rec bins
-  ncsl <- x[-1] 
+  ncsl <- x[-1]  # updates neutral intervals after matching to the rec bins
   # checks visually
   neutral_intervals <- bind_cols(chr="chr1", dplyr::lag(cumsum(ncsl), n=1, default=0), dplyr::lag(cumsum(ncsl), n=0, default=0))
   names(neutral_intervals) <- c("chr", "start", "end")
@@ -1782,6 +1783,7 @@ for(i in 1:n_models) {
   names(intervals) <- c("chr", "start", "end")
   intervals$start <- intervals$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
   intervals$s <- constraints
+  intervals <- intervals[-nrow(intervals),] # deletes last gene because it isn't present in rec map
   intervals_gr <- makeGRangesFromDataFrame(intervals, keep.extra.columns=T)
   
   fwrite(intervals, "regions.csv")
@@ -1790,33 +1792,31 @@ for(i in 1:n_models) {
   smap <- filter(intervals, s<0)
   neutral_intervals <- filter(intervals, s==0)
   neutral_intervals_gr <- makeGRangesFromDataFrame(neutral_intervals)
+  dt_neutral_intervals <- data.table(neutral_intervals)
+  setattr(dt_neutral_intervals, "sorted", "end")
   
+  # mutation maps
   mut_spans_neutral <- rgeom(n=ceiling(sum_ncsl/models$avg_mut_spans[i]), prob=1/models$avg_mut_spans[i])
   if(sum(mut_spans_neutral) < sum_ncsl) {
     mut_spans_neutral <- c(mut_spans_neutral, sum_ncsl-sum(mut_spans_neutral))
   }
+  # TODO deal with case sum(mut_spans_neutral) > sum_ncsl
+  mut_spans_neutral <- mut_spans_neutral[-which(mut_spans_neutral==0)]
   
   mmap_neutral <- bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans_neutral), n=1, default=0), dplyr::lag(cumsum(mut_spans_neutral), n=0, default=0))
   names(mmap_neutral) <- c("chr", "start", "end")
-  mmap_neutral$start <- mmap_neutral$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
-  mmap_neutral_gr <- makeGRangesFromDataFrame(mmap_neutral)
-  neut_hits <- as.data.frame(findOverlaps(query=mmap_neutral_gr, subject=neutral_intervals_gr))
-  names(neut_hits) <- c("neut_mut_bin", "neut_segment")
+  dt_mmap <- data.table(mmap_neutral)
+  setattr(dt_mmap, "sorted", "end")
+  # adapt mut_spans_neutral to fit neutral intervals (reverse was done for rec map)
+  t <- dt_mmap[J(dt_neutral_intervals$end), roll="nearest", which=T]
+  dt_mmap$end[t] <- dt_neutral_intervals$end
   
-  # TODO pick up here
-  x <- which(diff(neut_hits$neut_segment)!=0)]
-  t <- c(unique(neut_hits$neut_mut_bin[which(diff(neut_hits$neut_segment)!=0)]), neut_hits$neut_mut_bin[nrow(neut_hits)]) # transition points 
-  mmap_neutral$end[t]
+  plot(x=1:100, y=mut_spans_neutral[1:100], type="s")
+  lines(x=1:100, y=dt_mmap$end[1:100] - dt_mmap$start[1:100], type="s", lty="dashed", col="red")
   
-  # NOTE as was done for rec maps => now adapt mut map instead of ncsl
-  #####
-  # updates neutral intervals after matching to the rec bins
-  ncsl <- x[-1] 
-  # checks visually
-  neutral_intervals <- bind_cols(chr="chr1", dplyr::lag(cumsum(ncsl), n=1, default=0), dplyr::lag(cumsum(ncsl), n=0, default=0))
-  names(neutral_intervals) <- c("chr", "start", "end")
-  neutral_intervals_gr <- makeGRangesFromDataFrame(neutral_intervals)
-  ######
+  ##
+  mut_spans_neutral <- dt_mmap$end - dt_mmap$start # TODO fix
+  ##  
   
   mu_r <- rgamma(n=length(mut_spans_neutral), shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
   mu_l <- rgamma(n=length(ncsl), shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
@@ -1825,23 +1825,16 @@ for(i in 1:n_models) {
   disc_mu_l <- dt_u[dt_u[J(mu_l), roll="nearest", which=T]]$lookup_ul
   
   mut_spans <- mut_spans_neutral
-  for(j in 1:(length(t))) {
-    rec_spans <- append(mut_spans, models$exon_lengths[i], after=(t[j]))
+  for(j in 0:(length(t)-1)) {
+    mut_spans <- append(mut_spans, models$exon_lengths[i], after=(t[j+1]+j))
   }
   
-  rs_ext <- rn
+  mus_ext <- mu_r
   for(j in 1:(length(t))) {
-    rs_ext <- append(rs_ext, rc[j], after=(t[j]))
+    mus_ext <- append(mus_ext, mu_l[j], after=(t[j]))
   }
   
-  
-  
-  
-  
-  
-  
-  
-  mmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans_neutral), n=1, default=0), dplyr::lag(cumsum(mut_spans_neutral), n=0, default=0), mus)
+  mmap <- bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans), n=1, default=0), dplyr::lag(cumsum(mut_spans), n=0, default=0), mus_ext)
   names(mmap) <- c("chr", "start", "end", "u")
   mmap$start <- mmap$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
   mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
@@ -1850,20 +1843,7 @@ for(i in 1:n_models) {
   setattr(mut_dt, "sorted", "end")
   
   fwrite(mmap, "mut_map.csv")
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
   
   # finding the cumulative recombination map over the useful intervals
   samps <- rep(jump_length, floor(L/jump_length))
@@ -1874,56 +1854,6 @@ for(i in 1:n_models) {
   a <- bind_rows(samp_pos, dplyr::select(smap, -s))
   a <- arrange(a, start)
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  # some disgusting manipulation of the GR objects
-  red <- function(x) {
-    for(i in 1:(nrow(x) - 1)) {
-      if(x[i + 1, 2] < x[i, 3]) {
-        if((x[i, 3] - x[i, 2]) == (jump_length - 1)) {
-          x[i, 3] <- x[i + 1, 2] - 1
-        }
-        else {
-          x[i + 1, 2] <- x[i, 3] + 1
-        }
-      }
-    }
-    
-    return(x)
-  }
-  
-  y <- red(a)
-  while(any(y$end < y$start)) {
-    y <- y[-which(y$end - y$start < 0),]
-    y <- red(y)
-  }
-  y_gr <- makeGRangesFromDataFrame(y)
-
-  l <- list()
-  l[[1]] <- y_gr
-  l[[2]] <- gaps(y_gr)
-  z_gr <- unlist(as(l, "GRangesList"))
-  z_df <- arrange(as.data.frame(z_gr), start)
-  z_df$r <- 0
-  z_gr <- makeGRangesFromDataFrame(z_df)
-  
-  hits <- findOverlaps(query=z_gr, subject=rec_gr)
-  hit_list <- as.data.frame(hits)
-  names(hit_list) <- c("genomic_regions", "rec_bins")
   
   # list of genomic_regions that fall within a single recombination rate window
   lookup_tbl_single <- as.data.frame(hit_list %>% group_by(genomic_regions) %>% filter(n() == 1))
@@ -1950,6 +1880,11 @@ for(i in 1:n_models) {
   z_df <- z_df %>% mutate(total_r=r * (end-start))
   z_df$cumrec <- cumsum(z_df$total_r)
   
+  
+  
+  
+  
+  # binning for linear models
   bins <- rep(bin_size, floor(L / bin_size))
   bins <- bind_cols(chr="chr1", dplyr::lag(cumsum(bins), n=1, default=0), dplyr::lag(cumsum(bins), n=0, default=0))
   names(bins) <- c("chr", "start", "end")
@@ -1987,6 +1922,7 @@ for(i in 1:n_models) {
   # to use in the linear models
   maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
   
+  # starts loop to get diversity at different positions of the genome
   neu_pos <- numeric(floor(sum_ncsl/jump_length))
   hr_list <- numeric(floor(sum_ncsl/jump_length))
 
