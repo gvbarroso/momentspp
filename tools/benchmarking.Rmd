@@ -1716,6 +1716,7 @@ for(i in 1:n_models) {
   if(sum(rec_spans_neutral) < sum_ncsl) {
     rec_spans_neutral <- c(rec_spans_neutral, sum_ncsl - sum(rec_spans_neutral))
   }
+  rec_spans_neutral <- rec_spans_neutral[-which(rec_spans_neutral==0)]
   
   rmap_neutral <- bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans_neutral), n=1, default=0), dplyr::lag(cumsum(rec_spans_neutral), n=0, default=0))
   names(rmap_neutral) <- c("chr", "start", "end")
@@ -1724,6 +1725,7 @@ for(i in 1:n_models) {
   neut_hits <- as.data.frame(findOverlaps(query=rmap_neutral_gr, subject=neutral_intervals_gr))
   names(neut_hits) <- c("neut_rec_bin", "neut_segment")
   t <- unique(c(unique(neut_hits$neut_rec_bin[which(diff(neut_hits$neut_segment)!=0)]), neut_hits$neut_rec_bin[nrow(neut_hits)])) # transition points
+  t <- t[which(diff(t)>1)] # deletes consecutive genes
   x <- dplyr::lag(diff(c(0, rmap_neutral$end[t], rmap_neutral$end[nrow(rmap_neutral)])), n=1, default=0) 
   x <- c(x, rmap_neutral$end[nrow(rmap_neutral)] - sum(x))
   # updates neutral intervals after matching to the rec bins
@@ -1731,6 +1733,7 @@ for(i in 1:n_models) {
   # checks visually
   neutral_intervals <- bind_cols(chr="chr1", dplyr::lag(cumsum(ncsl), n=1, default=0), dplyr::lag(cumsum(ncsl), n=0, default=0))
   names(neutral_intervals) <- c("chr", "start", "end")
+  neutral_intervals$start <- neutral_intervals$start + 1 
   neutral_intervals_gr <- makeGRangesFromDataFrame(neutral_intervals)
   
   rn <- rgamma(n=length(rec_spans_neutral), shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
@@ -1739,8 +1742,8 @@ for(i in 1:n_models) {
   disc_rc <- dt_r[dt_r[J(rc), roll="nearest", which=T]]$lookup_r
 
   rec_spans <- rec_spans_neutral
-  for(j in 1:(length(t))) {
-    rec_spans <- append(rec_spans, models$exon_lengths[i], after=(t[j]))
+  for(j in 0:(length(t)-1)) {
+    rec_spans <- append(rec_spans, models$exon_lengths[i], after=(t[j+1]+j))
   }
   
   rs_ext <- rn
@@ -1801,7 +1804,8 @@ for(i in 1:n_models) {
   names(neut_hits) <- c("neut_mut_bin", "neut_segment")
   
   # TODO pick up here
-  t <- unique(c(unique(neut_hits$neut_mut_bin[which(diff(neut_hits$neut_segment)!=0)]), neut_hits$neut_mut_bin[nrow(neut_hits)])) # transition points 
+  x <- which(diff(neut_hits$neut_segment)!=0)]
+  t <- c(unique(neut_hits$neut_mut_bin[which(diff(neut_hits$neut_segment)!=0)]), neut_hits$neut_mut_bin[nrow(neut_hits)]) # transition points 
   mmap_neutral$end[t]
   
   # NOTE as was done for rec maps => now adapt mut map instead of ncsl
