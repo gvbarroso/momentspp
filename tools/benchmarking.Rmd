@@ -1610,7 +1610,7 @@ Gets the lookup table
 
 source ~/.bashrc
 
-cd selection/single-pop/mut_rate_var/
+cd selection/single-pop/landscapes/
 
 for r in r_*
 do 
@@ -1726,7 +1726,7 @@ for(i in 1:n_models) {
 
   fwrite(intervals, "intervals_map.csv")
   
-  neutral <- filter(intervals, s==0)
+  neutral <- as.data.frame(filter(intervals[,2:4], s==0))
   dt_neutral <- data.table(neutral_intervals)
   setattr(dt_neutral, "sorted", "start")
   setattr(dt_neutral, "sorted", "end")
@@ -1737,7 +1737,7 @@ for(i in 1:n_models) {
   setattr(exons_dt, "sorted", "start")
   setattr(exons_dt, "sorted", "end")
   
-  fwrite(rmap, "exons_map.csv")
+  fwrite(exons, "exons_map.csv")
   
   rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
   while(sum(rec_spans) < L) {
@@ -1757,6 +1757,7 @@ for(i in 1:n_models) {
   rec_dt <- data.table(rmap)
   setattr(rec_dt, "sorted", "start")
   setattr(rec_dt, "sorted", "end")
+  setkey(rec_dt, start, end)
   
   fwrite(rmap, "rec_map.csv")
   
@@ -1778,49 +1779,29 @@ for(i in 1:n_models) {
   mut_dt <- data.table(mmap)
   setattr(mut_dt, "sorted", "start")
   setattr(mut_dt, "sorted", "end")
+  setkey(mut_dt, start, end)
   
   fwrite(mmap, "mut_map.csv")
 
-  
   # finding the cumulative recombination map over the useful intervals
-  samps <- rep(jump_length, floor(L/jump_length))
-  samp_pos <- bind_cols(chr="chr1", dplyr::lag(cumsum(samps), n=1, default=0), dplyr::lag(cumsum(samps), n=0, default=0))
-  names(samp_pos) <- c("chr", "start", "end")
-  samp_pos$start <- samp_pos$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
-  samp_gr <- makeGRangesFromDataFrame(samp_pos)
-  a <- bind_rows(samp_pos, dplyr::select(smap, -s))
-  a <- arrange(a, start)
-  
-  
-  # list of genomic_regions that fall within a single recombination rate window
-  lookup_tbl_single <- as.data.frame(hit_list %>% group_by(genomic_regions) %>% filter(n() == 1))
-
-  # list of genomic_regions that fall within multiple recombination rate windows
-  lookup_tbl_multiple <- as.data.frame(hit_list %>% group_by(genomic_regions) %>% filter(n() > 1))
-  
-  pb <- txtProgressBar(min = 0, max = nrow(z_df), style = 3)
-  for(focal_window in 1:nrow(z_df)) {
-  
-    setTxtProgressBar(pb, focal_window)
-    
-    # if the genomic_region falls within a single recombination rate window
-    if(focal_window %in% lookup_tbl_single[,1]) {
-      row <- which(lookup_tbl_single$genomic_regions == focal_window)
-      z_df$r[focal_window] <- rmap$r[lookup_tbl_single[row, 2]]
-    }
-    else { # if it falls within multiple recombination rate windows
-      rec_bins <- lookup_tbl_multiple[lookup_tbl_multiple$genomic_regions == focal_window, 2]
-      z_df$r[focal_window] <- weighted.mean(rmap$r[rec_bins], rmap$end[rec_bins] - rmap$start[rec_bins])
-    }
+  samp_pos <- unlist(apply(neutral, 1, function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
+  linear_pos <- sort(c(samp_pos, exons$start + models$exon_lengths[i]/2))
+  focal_mu <- numeric(length=length(linear_pos))
+  cum_rec <- numeric(length=length(linear_pos))
+  focal_mu[1] <- mmap[1,]$u
+  cum_rec[1] <- rmap[1,]$r
+  pb <- txtProgressBar(min=2, max=length(linear_pos), style=3)
+  for(j in 2:length(linear_pos)) {
+    setTxtProgressBar(pb, j)
+    focal_mu[j] <- filter(mmap, start <= linear_pos[j], end >= linear_pos[j])$u 
+    focal_r <- filter(rmap, start <= linear_pos[j], end >= linear_pos[j])$r 
+    cum_rec[j] <- cum_rec[j-1] + (linear_pos[j] - linear_pos[j-1]) * focal_r
   }
   close(pb)
-  z_df <- z_df %>% mutate(total_r=r * (end-start))
-  z_df$cumrec <- cumsum(z_df$total_r)
   
-  
-  
-  
-  
+  samp_map <- bind_cols(linear_pos, focal_mu, cum_rec)
+  names(samp_map) <- c("position", "focal_mu", "cumrec")
+
   # binning for linear models
   bins <- rep(bin_size, floor(L / bin_size))
   bins <- bind_cols(chr="chr1", dplyr::lag(cumsum(bins), n=1, default=0), dplyr::lag(cumsum(bins), n=0, default=0))
@@ -1829,6 +1810,8 @@ for(i in 1:n_models) {
   gr_bins <- makeGRangesFromDataFrame(bins)
   
   # binning recombination maps
+  rmap$start <- rmap$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
+  rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T)
   hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "rec_bins")
@@ -1838,6 +1821,8 @@ for(i in 1:n_models) {
   rec_bins <- rec_bins %>% distinct(bins, .keep_all=T)
   
   # binning mutation maps
+  mmap$start <- mmap$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
+  mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
   hits <- findOverlaps(query=gr_bins, subject=mut_gr) 
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "mut_bins")
@@ -1859,90 +1844,47 @@ for(i in 1:n_models) {
   # to use in the linear models
   maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
   
-  # starts loop to get diversity at different positions of the genome
-  neu_pos <- numeric(floor(sum_ncsl/jump_length))
-  hr_list <- numeric(floor(sum_ncsl/jump_length))
+  # starts loop to get pi at different positions of the genome
+  BGS <- numeric(length=length(samp_pos))
 
-  c <- 1 # indexer for containers neu_pos and hr_list
-  pos <- 0 # focal position in chr 
-  
   Rprof()
-  for(j in 1:nrow(neutral_intervals)) { 
+  for(j in 1:length(samp_pos)) { 
     
-    neu_span <- neutral_intervals$end[j] - neutral_intervals$start[j]
-    
-    # we sample one neutral site every 'jump_length' bp in non-constrained segments
-    for(k in 1:floor(neu_span/jump_length)) { 
+    pos <- samp_pos[j]
+    samp_slice <- filter(samp_map, position==pos)
+    focal_ur <- samp_slice$focal_mu
+    pi0 <- 2 * N * focal_ur
+    B <- 1 
       
-      system.time(focal_ur <- mut_dt[J(pos), roll="nearest"]$u) # buggy
-      #system.time(focal_ur <- mmap[as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=pos, end=pos))))["queryHits"][1,],]["u"])
-      pi0 <- 2 * N * as.numeric(focal_ur)
-      B <- 1 
+    for(k in 1:nrow(exons)) { 
       
-      for(l in 1:nrow(smap)) { # for every constrained locus
-      
-        focal_s <- smap$s[l]
-        mbins <- as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=smap$start[l], end=smap$end[l]))))
-        mbins <- mmap[mbins$queryHits,] %>% mutate(avg_mu=(weighted.mean(u, end-start)))
-        focal_ul <- mbins$avg_mu[1]
-        
-        total_r <- 0
-        if(pos < smap$start[l]) { # if focal neutral is to the left of focal constrained
-          
-          tmpr <- rmap
-          system.time(tmpr <- filter(tmpr, end >= pos, start < smap$start[l]))
-          tmpr$start[1] <- pos # to start rec integration at pos
+      focal_s <- exons$s[k]
+      # TODO slow, make faster:
+      mbins <- as.data.frame(findOverlaps(query=mut_gr, subject=makeGRangesFromDataFrame(data.frame(chr="chr1", start=exons$start[k], end=exons$end[k])))) 
+      mbins <- mmap[mbins$queryHits,] %>% mutate(avg_mu=(weighted.mean(u, end-start)))
+      focal_ul <- mbins$avg_mu[1]
+      # TODO slow, make faster (data.table bin search):
+      total_r <- abs(samp_map[samp_map$position==exons[k,]$start + 50,]$cumrec - samp_map[samp_map$position==pos,]$cumrec)
 
-          system.time(s_r_intersect <- intersect(makeGRangesFromDataFrame(tmpr, keep.extra.columns=T), makeGRangesFromDataFrame(smap[1:l,], keep.extra.columns=T)))
-          sliced_range <- as.data.frame(ranges(s_r_intersect)) 
-          tmpr$end[nrow(tmpr)] <- sliced_range$start[nrow(sliced_range)]  # to end rec integration at the start of (non-recombining) gene
-          
-          tmpr <- tmpr %>% mutate(total_r=(weighted.mean(r, end-start) * (tmpr$end[nrow(tmpr)] - tmpr$start[1]))) # weighted sum
-          total_r <- tmpr$total_r[1]
-        }
-        else {
-          
-          tmpr <- rmap
-          tmpr <- filter(tmpr, start <= pos, end > smap$start[l])
-          
-          tmpr$end[nrow(tmpr)] <- pos # to start rec integration at pos
-          tmpr$start[1] <- smap$start[l] # to end rec integration at the start of (non-recombining) gene
-          
-          tmpr <- tmpr %>% mutate(total_r=(weighted.mean(r, end-start) * (tmpr$end[nrow(tmpr)] - tmpr$start[1]))) # weighted sum
-          total_r <- tmpr$total_r[1]
-        }
+      #cat(paste("pos =", pos, "exon =", k, "\t"))
+      #cat(paste(exons$start[k], exons$end[k], "\t"))
+      #cat(paste("total_r =", total_r, "\n"))
+      closest_r <- lookup_r[which.min(abs(lookup_r - total_r))] # TODO implement interpolation
+      
+      if(total_r < 1e-3) {
+        #system.time(lookup_tbl %>% filter(., r==closest_r, s==closest_s, ul==focal_ul, ur==focal_ur))
+        #system.time(entry <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==focal_ul, ur==focal_ur))
+        #B <- B * (entry$Hr / entry$pi0) ^ models$exon_lengths[i]
         
-        cat(paste("pos =", pos, "gene =", l, "\t"))
-        cat(paste(smap$start[l], smap$end[l], "\t"))
-        cat(paste("total_r =", total_r, "\n"))
-
-        if(total_r < 1e-3) {
-          
-          # searching lookup table for closest match 
-          closest_r <- lookup_r[which.min(abs(lookup_r - total_r))]
-          closest_ul <- lookup_ul[which.min(abs(lookup_ul - focal_ul))]
-          closest_ur <- lookup_ur[which.min(abs(lookup_ur - focal_ur))]
-          closest_s <- lookup_s[which.min(abs(lookup_s - focal_s))]
-          
-          system.time(lookup_tbl %>% filter(., r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur))
-          system.time(entry <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur))
-          #B <- B * (entry$Hr / entry$pi0) ^ csl[l]
-          
-          # TODO implement interpolation
-          #hr <- filter(lookup_tbl, r==closest_r, s==closest_s, ul==closest_ul, ur==closest_ur)$Hr
-          #B <- B * (hr / pi0) ^ csl[l] # use coarse-grained predictions Good et al 2014?
-        }
-        else {
+        # TODO implement interpolation
+        hr <- filter(lookup_tbl, r==closest_r, s==focal_s, ul==focal_ul, ur==focal_ur)$Hr
+        B <- B * (hr / pi0) ^ models$exon_lengths[i] # use coarse-grained predictions Good et al 2014?
+      } else {
           break
-        }
       }
-      
-      hr_list[c] <- pi0 * B
-      neu_pos[c] <- pos
-      
-      pos <- pos + jump_length
-      c <- c + 1
     }
+    
+    BGS[j] <- pi0 * B
   }
   Rprof(NULL)
   View(summaryRprof()$by.total)
