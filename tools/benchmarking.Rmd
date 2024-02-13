@@ -1507,7 +1507,6 @@ fwrite(as.data.frame(lookup_r), "selection/single-pop/landscapes/r.csv", quote=F
 fwrite(as.data.frame(lookup_ul), "selection/single-pop/landscapes/ul.csv", quote=F, row.names=F, col.names=F)
 fwrite(as.data.frame(lookup_ur), "selection/single-pop/landscapes/ur.csv", quote=F, row.names=F, col.names=F)
 fwrite(as.data.frame(lookup_s), "selection/single-pop/landscapes/s.csv", quote=F, row.names=F, col.names=F)
-
 fwrite(params, "selection/single-pop/landscapes/params.csv", quote=F, row.names=F)
 
 Sys.setenv(num_models=n_models)
@@ -1637,12 +1636,12 @@ cd ../../..
 
 ### Analyses
 
-Collect table with Hr values on the parameter grid
+Collect lookup table with Hr values on the parameter grid
 
 ```{r, BGS-mutvar-grid, include=F, eval=F, results=F, message=F, warning=F}
 
 params <- fread("~/../../media/gvbarroso/extradrive1/landscapes/params.csv", sep=",", header=T)
-params$pi0 <- 2 * params$N * params$ur
+params$pi0 <- 2 * params$N * params$lookup_ur
 n_models <- nrow(params)
 c <- 1
 hr <- numeric(length=n_models)
@@ -1670,6 +1669,7 @@ fwrite(params, "~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv", 
 ```{r, BGS-mutvar-landscapes, include=F, eval=F, results=F, message=F, warning=F}
 
 lookup_tbl <- fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv")
+# TODO setkey
 
 # constants
 N <- unique(lookup_tbl$N)
@@ -1691,6 +1691,7 @@ exon_lengths <- c(100, 1000)
 models <- crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, 
                    avg_rec_spans, avg_mut_spans, avg_neutral_lengths, exon_lengths)
 models$scenario <- 1:nrow(models)
+models_dt <- setDT(models)
 n_models <- nrow(models)
 
 fwrite(models, "~/../../media/gvbarroso/extradrive1/landscapes/models.csv", row.names=F, quote=F, sep=",")
@@ -1727,13 +1728,13 @@ for(i in 1:n_models) {
   fwrite(intervals, "intervals_map.csv")
   
   neutral <- as.data.frame(filter(intervals[,2:4], s==0))
-  dt_neutral <- data.table(neutral_intervals)
+  dt_neutral <- setDT(neutral)
   setattr(dt_neutral, "sorted", "start")
   setattr(dt_neutral, "sorted", "end")
   
   exons <- filter(intervals, s < 0)
   exons$u <- 1e-8
-  exons_dt <- data.table(exons)
+  exons_dt <- setDT(exons)
   setattr(exons_dt, "sorted", "start")
   setattr(exons_dt, "sorted", "end")
   
@@ -1754,7 +1755,7 @@ for(i in 1:n_models) {
   rs <- rgamma(n=nrow(rmap), shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
   disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r
   rmap$r <- disc_rs
-  rec_dt <- data.table(rmap)
+  rec_dt <- setDT(rmap)
   setattr(rec_dt, "sorted", "start")
   setattr(rec_dt, "sorted", "end")
   setkey(rec_dt, start, end)
@@ -1776,7 +1777,7 @@ for(i in 1:n_models) {
   mus <- rgamma(n=nrow(mmap), shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
   disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$lookup_ul
   mmap$u <- disc_mus
-  mut_dt <- data.table(mmap)
+  mut_dt <- setDT(mmap)
   setattr(mut_dt, "sorted", "start")
   setattr(mut_dt, "sorted", "end")
   setkey(mut_dt, start, end)
@@ -1844,11 +1845,9 @@ for(i in 1:n_models) {
   # to use in the linear models
   maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
   
-  # starts loop to get pi at different positions of the genome
   BGS <- numeric(length=length(samp_pos))
-
-  Rprof()
-  for(j in 1:length(samp_pos)) { 
+  Rprof() # profiler
+  for(j in 1:length(samp_pos)) { # gets pi at different positions of the genome
     
     pos <- samp_pos[j]
     samp_slice <- filter(samp_map, position==pos)
@@ -1886,6 +1885,7 @@ for(i in 1:n_models) {
     
     BGS[j] <- pi0 * B
   }
+  
   Rprof(NULL)
   View(summaryRprof()$by.total)
   
