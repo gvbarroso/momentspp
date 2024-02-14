@@ -1484,10 +1484,10 @@ assembly of whole chromosomes
 ```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- 10000
-lookup_r <- seq_log(from=1e-15, to=1e-2, length.out=200)
-lookup_ul <- seq_log(from=1e-9, to=1e-7, length.out=30)
-lookup_ur <- seq_log(from=1e-9, to=1e-7, length.out=30)
-lookup_s <- -seq_log(from=1e-5, to=1e-3, length.out=100)
+lookup_r <- seq_log(from=1e-15, to=1e-2, length.out=200) # no need to round, will using spline interpolation
+lookup_ul <- round(seq_log(from=1e-9, to=1e-7, length.out=30), digits=11)
+lookup_ur <- round(seq_log(from=1e-9, to=1e-7, length.out=30), digits=11)
+lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=100), digits=11)
 
 # for discretizing Gamma distributions and make look-up faster
 dt_u <- data.table(lookup_ul)
@@ -1499,7 +1499,7 @@ setattr(dt_u, "sorted", "lookup_ul")
 setattr(dt_r, "sorted", "lookup_r")
 setattr(dt_s, "sorted", "lookup_s")
 
-params <- crossing(N, lookup_r, lookup_ul, lookup_ur, lookup_s)
+params <- setDT(crossing(N, lookup_r, lookup_ul, lookup_ur, lookup_s))
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
@@ -1668,8 +1668,10 @@ fwrite(params, "~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv", 
 
 ```{r, BGS-mutvar-landscapes, include=F, eval=F, results=F, message=F, warning=F}
 
+#setNumericRounding(0) # for binary search with data.table
+
 lookup_tbl <- setDT(fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv"))
-# TODO setkey
+setkey(lookup_tbl, lookup_ul, lookup_ur, lookup_s, lookup_r)
 
 # constants
 N <- unique(lookup_tbl$N)
@@ -1724,14 +1726,14 @@ for(i in 1:n_models) {
   names(intervals) <- c("chr", "start", "end")
   intervals$s <- c(rbind(rep(0, length(csl)), disc_ss), 0)
 
-  neutral <- filter(intervals[,2:4], s==0)
+  dt_neutral <- filter(intervals[,2:4], s==0)
   setattr(dt_neutral, "sorted", "start")
   setattr(dt_neutral, "sorted", "end")
   
-  exons <- filter(intervals, s < 0)
-  exons$u <- 1e-8
-  setattr(exons_dt, "sorted", "start")
-  setattr(exons_dt, "sorted", "end")
+  dt_exons <- filter(intervals, s < 0)
+  dt_exons$u <- 1.083e-08 # it is inside lookup_ul
+  setattr(dt_exons, "sorted", "start")
+  setattr(dt_exons, "sorted", "end")
   
   rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
   while(sum(rec_spans) < L) {
@@ -1768,8 +1770,8 @@ for(i in 1:n_models) {
   setkey(mmap, start, end)
   
   # finding the cumulative recombination map over the useful intervals (for loop with dplyr::filter seems to be best!)
-  samp_pos <- unlist(apply(neutral, 1, function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
-  linear_pos <- sort(c(samp_pos, exons$start + models$exon_lengths[i]/2))
+  samp_pos <- unlist(apply(dt_neutral, 1, function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
+  linear_pos <- sort(c(samp_pos, dt_exons$start + models$exon_lengths[i]/2))
   focal_mu <- numeric(length=length(linear_pos))
   cum_rec <- numeric(length=length(linear_pos))
   focal_mu[1] <- mmap[1,]$u
@@ -1825,32 +1827,36 @@ for(i in 1:n_models) {
   names(hit_list) <- c("bins", "dfe")
   intervals$dfe <- 1:nrow(intervals)
   tmpd <- merge(intervals, hit_list)
+  # avg_s encompasses density of constrained sites
   dfe_bins <- tmpd %>% group_by(bins) %>% mutate(avg_s=weighted.mean(s, end-start)) # avg_s encompasses density of constrained sites
   dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T)
   
-  # to use in the linear models
   maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
       
   BGS <- numeric(length=length(samp_pos))
-  Rprof() # profiler
-  for(j in 1:length(samp_pos)) { # TODO parallelize here
+  Rprof() 
+  # TODO parallelize here
+  pb <- txtProgressBar(min=1, max=length(samp_pos), style=3)
+  for(j in 1:length(samp_pos)) { 
+    
+    setTxtProgressBar(pb, j)
     
     pos <- samp_pos[j]
     focal_ur <- pos_dt[position==pos]$focal_mu
     pi0 <- 2 * N * focal_ur
     B <- 1 
       
-    for(k in 1:nrow(exons)) { 
+    for(k in 1:nrow(dt_exons)) { 
       
-      focal_s <- exons[k,]$s
-      focal_ul <- exons[k,]$u
-      total_r <- abs(pos_dt[pos_dt$position==exons[k,]$start + 50,]$cumrec - pos_dt[pos_dt$position==pos,]$cumrec)
+      focal_s <- dt_exons[k,]$s
+      focal_ul <- dt_exons[k,]$u
+      total_r <- abs(pos_dt[pos_dt$position==dt_exons[k,]$start + models$exon_lengths[i] / 2,]$cumrec - pos_dt[pos_dt$position==pos,]$cumrec)
 
       if(total_r < 1e-3) {
         # TODO implement interpolation
         closest_r <- lookup_r[which.min(abs(lookup_r - total_r))] 
-        hr <- filter(lookup_tbl, r==closest_r, s==focal_s, ul==focal_ul, ur==focal_ur)$Hr
-        B <- B * (hr / pi0) ^ models$exon_lengths[i] # use coarse-grained predictions Good et al 2014?
+        hr <- lookup_tbl[.(focal_ul, focal_ur, focal_s, closest_r)]$Hr
+        B <- B * (hr / pi0) ^ models$exon_lengths[i] 
       } else {
           break
       }
@@ -1860,7 +1866,8 @@ for(i in 1:n_models) {
   }
   
   Rprof(NULL)
-  View(summaryRprof()$by.total)
+  #View(summaryRprof()$by.total)
+  View(summaryRprof()$by.self)
   
   pos_hr_pairs <- bind_cols(neu_pos, hr_list)
   # TODO bin
