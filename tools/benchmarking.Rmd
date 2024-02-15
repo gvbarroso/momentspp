@@ -1484,30 +1484,25 @@ assembly of whole chromosomes
 ```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- 10000
-lookup_r <- seq_log(from=1e-15, to=1e-2, length.out=200) # no need to round, will using spline interpolation
-#lookup_ul <- round(seq_log(from=1e-9, to=1e-7, length.out=30), digits=11)
-lookup_ur <- round(seq_log(from=1e-9, to=1e-7, length.out=30), digits=11)
-lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=100), digits=11)
+u <- 1e-8 # "fake" mu
+# to get B-values, we only need to build a lookup table with variation in r & s (u_L will be constant, u_R varies later)
+lookup_r <- round(seq_log(from=1e-12, to=1e-3, length.out=500), digits=15)
+lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=200), digits=11)
 
 # for discretizing Gamma distributions and make look-up faster
-dt_u <- data.table(lookup_ul)
 dt_r <- data.table(lookup_r)
 dt_s <- data.table(lookup_s)
 
-setkey(dt_u, lookup_ul)
 setkey(dt_r, lookup_r)
 setkey(dt_s, lookup_s)
 
-params <- setDT(crossing(N, lookup_r, lookup_ur, lookup_s))
+params <- setDT(crossing(N, u, lookup_r, lookup_s))
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
-fwrite(as.data.frame(lookup_r), "selection/single-pop/landscapes/r.csv", quote=F, row.names=F, col.names=F)
-fwrite(as.data.frame(lookup_ul), "selection/single-pop/landscapes/ul.csv", quote=F, row.names=F, col.names=F)
-fwrite(as.data.frame(lookup_ur), "selection/single-pop/landscapes/ur.csv", quote=F, row.names=F, col.names=F)
-fwrite(as.data.frame(lookup_s), "selection/single-pop/landscapes/s.csv", quote=F, row.names=F, col.names=F)
+fwrite(dt_r, "selection/single-pop/landscapes/r.csv", quote=F, row.names=F, col.names=F)
+fwrite(dt_s, "selection/single-pop/landscapes/s.csv", quote=F, row.names=F, col.names=F)
 fwrite(params, "selection/single-pop/landscapes/params.csv", quote=F, row.names=F)
-
 Sys.setenv(num_models=n_models)
 
 ```
@@ -1523,25 +1518,6 @@ do
   mkdir r_$r
 done
 
-for d in r_*
-do
-  cat ul.csv | while IFS=, read -r ul
-  do
-    mkdir $d/ul_$ul
-  done
-done
-
-for d in r_*
-do
-  for e in $d/ul_*
-  do
-    cat ur.csv | while IFS=, read -r ur
-    do
-      mkdir $e/ur_$ur
-    done
-  done
-done
-
 cd ../../..
 ```
 
@@ -1553,15 +1529,13 @@ for(i in 1:n_models) {
     cat(paste(i, "\n"))
   }
   
-  N <- as.integer(params["N"][i,])
-  r <- as.numeric(params["r"][i,])
-  ul <- as.numeric(params["ul"][i,])
-  ur <- as.numeric(params["ur"][i,])
-  s <- as.numeric(params["s"][i,])
-  f <- ul / ur
-  
+  N <- as.integer(params[i,]$N)
+  u <- as.numeric(params[i,]$u)
+  r <- as.numeric(params[i,]$lookup_r)
+  s <- as.numeric(params[i,]$lookup_s)
+
   name <- paste("model_", i, sep="")
-  sink(paste("selection/single-pop/landscapes/r_", r, "/ul_", ul, "/ur_", ur, "/", name, ".yaml", sep=""))
+  sink(paste("selection/single-pop/landscapes/r_", r, "/", name, ".yaml", sep=""))
     
   cat("time_units: generations\n")
   cat("demes:\n")
@@ -1573,13 +1547,11 @@ for(i in 1:n_models) {
   cat("\n")
   cat("metadata:\n")
   cat("  - name: mutation\n")
-  cat("    left_factor: ")
-  cat(f)
-  cat("\n")
+  cat("    left_factor: 1\n")
   cat("    epochs:\n")
   cat("      - end_time: 0\n")
   cat("        rates: [")
-  cat(ur)
+  cat(u)
   cat("]\n")
   cat("  - name: recombination\n")
   cat("    epochs:\n")
@@ -1613,19 +1585,8 @@ cd selection/single-pop/landscapes/
 for r in r_*
 do 
   cd $r
-  for ul in ul_*
-  do 
-    cd $ul
-    for ur in ur_*
-    do 
-      cd $ur
-      for f in model_*
-      do
-	      momentspp params=opt.bpp F=$f O=25 > /dev/null
-      done
-      cd ..
-    done
-    cd ..
+  do
+	  momentspp params=opt.bpp F=$f O=25 > /dev/null
   done
   cd ..
 done
@@ -1639,41 +1600,33 @@ Collect lookup table with Hr values on the parameter grid
 
 ```{r, BGS-mutvar-grid, include=F, eval=F, results=F, message=F, warning=F}
 
-params <- fread("~/../../media/gvbarroso/extradrive1/landscapes/params.csv", sep=",", header=T)
-params$pi0 <- 2 * params$N * params$lookup_ur
+params <- fread("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/params.csv", sep=",", header=T)
 n_models <- nrow(params)
 c <- 1
 hr <- numeric(length=n_models)
 
-for(i in r) {
+for(i in 1:length(lookup_r)) {
   cat(paste(c, "\n"))
   print(Sys.time())
-  for(j in ul) {
-    for(k in ur) {
-      for(l in 1:length(s)) {
-        
-        moms <- read.table(paste("~/../../media/gvbarroso/extradrive1/landscapes/r_", i, "/ul_", j, "/ur_", k, "/model_", as.integer(c), "_expectations.txt", sep=""))
-        hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
-
-        c <- c + 1
-      }
-    }
+  for(j in 1:length(lookup_s)) {
+    moms <- read.table(paste("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/r_", lookup_r[i], "/model_", as.integer(c), "_expectations.txt", sep=""))
+    hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
+    c <- c + 1
   }
 }
 
 params$Hr <- hr
-fwrite(params, "~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv", row.names=F, quote=F, sep=",")
+fwrite(params, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/lookup_tbl.csv", row.names=F, quote=F, sep=",")
 ```
 
 ```{r, BGS-mutvar-landscapes, include=F, eval=F, results=F, message=F, warning=F}
 
-#setNumericRounding(0) # for binary search with data.table
-
-lookup_tbl <- setDT(fread("~/../../media/gvbarroso/extradrive1/landscapes/lookup_tbl.csv"))
-setkey(lookup_tbl, lookup_ul, lookup_ur, lookup_s, lookup_r)
+lookup_tbl <- setDT(fread("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/lookup_tbl.csv"))
+setkey(lookup_tbl, lookup_r, lookup_s)
 
 # constants
 N <- unique(lookup_tbl$N)
+u <- unique(lookup_tbl$u)
 num_constrained <- 1000 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
@@ -1694,7 +1647,7 @@ models <- setDT(crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, sc
 models$scenario <- 1:nrow(models)
 n_models <- nrow(models)
 
-fwrite(models, "~/../../media/gvbarroso/extradrive1/landscapes/models.csv", row.names=F, quote=F, sep=",")
+fwrite(models, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/models.csv", row.names=F, quote=F, sep=",")
 
 # make this for loop a function of jump_length and bin_size
 jump_length <- 1e+3
@@ -1728,7 +1681,7 @@ for(i in 1:n_models) {
   dt_neutral <- filter(intervals[,2:4], s==0)
   setkey(dt_neutral, start, end)
   dt_exons <- filter(intervals, s < 0)
-  dt_exons$u <- 1.083e-08 # it is inside lookup_ul 
+  dt_exons$u <- 1e-08 
   setkey(dt_exons, start, end)
 
   rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
@@ -1758,10 +1711,14 @@ for(i in 1:n_models) {
   }
   mut_spans <- mut_spans[-which(mut_spans==0)]
   
+  mu_dist <- round(seq_log(from=1e-9, to=1e-7, length.out=100), digits=11)
+  dt_u <- data.table(mu_dist)
+  setkey(dt_u, mu_dist)
+  
   mmap <- setDT(bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans), n=1, default=0), dplyr::lag(cumsum(mut_spans), n=0, default=0)))
   names(mmap) <- c("chr", "start", "end")
   mus <- rgamma(n=nrow(mmap), shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
-  disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$lookup_ul
+  disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$mu_dist
   mmap$u <- disc_mus
   setkey(mmap, start, end)
   
@@ -1825,75 +1782,36 @@ for(i in 1:n_models) {
   # pre-compute recombination distances from sampled neutral sites and exons:
   cr_samp <- pos_dt[position %in% samp_pos,]
   cr_exons <- pos_dt[position %in% (dt_exons$start + models$exon_lengths[i]/2),]
-  x <- as.data.frame(abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-")))
-  nrow(x)
-  length(cr_samp$cumrec) * length(cr_exons$cumrec)
-  # TODO pickup here
-  y <- which(x<1e-3)
-  
-  
-  
-  
-  
-  BGS <- numeric(length=length(samp_pos))
+  prd <- as.data.frame(abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-"))) # pairwise rec distance
+  names(prd) <- 1:ncol(prd)
+  relevant_exons <- apply(prd, 2, function(x) x < 1e-3)
+  exons_list <- apply(relevant_exons, 1, function(x) which(x))
+
+  # now the loop over sampled (neutral) sites starts
+  BGS <- numeric(length=length(exons_list))
   Rprof() 
-  pb <- txtProgressBar(min=1, max=length(samp_pos), style=3)
-  #system.time({
-  for(j in 1:length(samp_pos)) { 
-    
+  #pb <- txtProgressBar(min=1, max=length(exons_list), style=3)
+  system.time({
+  for(j in 1:length(samp_pos)) {
     #setTxtProgressBar(pb, j)
-    system.time({
-    pos <- samp_pos[j]
-    cumrec_to_pos <- pos_dt[pos_dt$position==pos,]$cumrec
-    focal_ur <- pos_dt[position==pos]$focal_mu
-    pi0 <- 2 * N * focal_ur
     B <- 1 
-    c <- 1
-    idx <- dt_exons[J(pos), roll="nearest", which=T] # index of closest exon
-    
-    # TODO perform search over relevant exons based on table x computed above
-    for(k in idx:nrow(dt_exons)) { # loop to the right
+    for(k in 1:length(exons_list[[j]])) { 
       
-      focal_s <- dt_exons[k,]$s
-      total_r <- abs(pos_dt[pos_dt$position==dt_exons[k,]$start + models$exon_lengths[i] / 2,]$cumrec - cumrec_to_pos)
-
-      if(total_r < 1e-3) {
-        # TODO implement interpolation
-        closest_r <- lookup_r[which.min(abs(lookup_r - total_r))] 
-        hr <- lookup_tbl[.(focal_ur, focal_s, closest_r)]$Hr
-        B <- B * (hr / pi0) ^ models$exon_lengths[i] 
-        
-        c <- c + 1
-      } else {
-          break
-      }
+      focal_s <- dt_exons[exons_list[[j]][k],]$s
+      total_r <- prd[j, exons_list[[j]][k]]
+      
+      # TODO get 3 closest r's, implement interpolation
+      closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
+      #closest_r <- lookup_r[which.min(abs(lookup_r - total_r))]
+      hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
+      B <- B * (hr / 2 * N * u) ^ models$exon_lengths[i] 
     }
     
-    if(idx > 1) {
-      for(k in idx:1) { # loop to the left
-
-        focal_s <- dt_exons[k,]$s
-        total_r <- abs(pos_dt[pos_dt$position==dt_exons[k,]$start + models$exon_lengths[i] / 2,]$cumrec - cumrec_to_pos)
-
-        if(total_r < 1e-3) {
-          # TODO implement interpolation
-          closest_r <- lookup_r[which.min(abs(lookup_r - total_r))]
-          hr <- lookup_tbl[.(focal_ur, focal_s, closest_r)]$Hr
-          B <- B * (hr / pi0) ^ models$exon_lengths[i]
-
-          c <- c + 1
-        } else {
-            break
-        }
-      }
-    }
-    
-    cat(paste("pos =", pos, "\t", c, "exons\n"))
-    BGS[j] <- pi0 * B
-    })
-  }
+    BGS[j] <-  2 * N * pos_dt[j,]$focal_mu * B
+  }})
+  
   Rprof(NULL)
-  #View(summaryRprof()$by.total)
+  View(summaryRprof()$by.total)
   View(summaryRprof()$by.self)
   
   pos_hr_pairs <- bind_cols(neu_pos, hr_list)
