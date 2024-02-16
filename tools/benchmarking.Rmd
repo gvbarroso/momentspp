@@ -1708,7 +1708,7 @@ for(i in 1:n_models) {
   }
   mut_spans <- mut_spans[mut_spans>0]
   
-  mu_dist <- round(seq_log(from=1e-9, to=1e-7, length.out=100), digits=11)
+  mu_dist <- round(seq_log(from=1e-10, to=1e-6, length.out=300), digits=11)
   dt_u <- data.table(mu_dist)
   setkey(dt_u, mu_dist)
   
@@ -1784,26 +1784,24 @@ for(i in 1:n_models) {
   getB <- function(focal_exon, x) { # x is the index of focal sampled site
     focal_s <- dt_exons[focal_exon,]$s
     total_r <- prd[x, focal_exon]
+    # NOTE: the grid on r is so fine-grained that in practice we don't need interpolation
     closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
     hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
     return((hr / (2 * N * u)) ^ models$exon_lengths[i])
   }
   
-  getBvals <- function(idx, exons) { # not used at the moment bc passing the indices is hard
-    B <- unlist(lapply(exons, getB, x=idx))
-    return(cumprod(B)[length(B)])
-  }
-  
-  # we finally get the Hr values per sampled site!
+  # we finally get the B-values per sampled site!
   B_values <- numeric(length=length(exons_per_samp_neut))
   for(j in 1:length(exons_per_samp_neut)) {
     B <- unlist(lapply(exons_per_samp_neut[[j]], getB, x=j))
     B_values[j] <- cumprod(B)[length(B)]
   }
   
+  system.time(B_map <- cubicspline(samp_pos, B_values, 1:L))
+  plot(1:5e+5, B_map[1:5e+5], type="l")
+  pis <- B_map * unlist(lapply(1:L, function(pos) mmap[J(pos), roll=T]$u))
   hrmap <- bind_cols(neu_pos, Hr_BGS)
-  # TODO bin
-  
+
   windows <- bind_cols(mus, rs, ss, .name_repair="unique")
   names(windows) <- c("mus", "recs", "dfe")
   windows$pi0 <- 2 * models$N[i] * windows$mus
