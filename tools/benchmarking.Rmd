@@ -1484,7 +1484,7 @@ assembly of whole chromosomes
 ```{r, BGS-mutvar-params, include=F, eval=F, results=F, message=F, warning=F}
 
 N <- 10000
-u <- 1e-8 # "fake" mu
+u <- 1e-8 # constant among exons as well as "fake" neutral mu used to get B-values
 # to get B-values, we only need to build a lookup table with variation in r & s (u_L will be constant, u_R varies later)
 lookup_r <- round(seq_log(from=1e-12, to=1e-3, length.out=500), digits=15)
 lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=200), digits=11)
@@ -1503,8 +1503,8 @@ n_models <- nrow(params)
 fwrite(dt_r, "selection/single-pop/landscapes/r.csv", quote=F, row.names=F, col.names=F)
 fwrite(dt_s, "selection/single-pop/landscapes/s.csv", quote=F, row.names=F, col.names=F)
 fwrite(params, "selection/single-pop/landscapes/params.csv", quote=F, row.names=F)
-Sys.setenv(num_models=n_models)
 
+Sys.setenv(num_models=n_models)
 ```
 
 ```{bash make_dirs_mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
@@ -1606,12 +1606,9 @@ c <- 1
 hr <- numeric(length=n_models)
 
 for(i in 1:length(lookup_r)) {
-  cat(paste(c, "\n"))
-  print(Sys.time())
   for(j in 1:length(lookup_s)) {
     moms <- read.table(paste("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/r_", lookup_r[i], "/model_", as.integer(c), "_expectations.txt", sep=""))
     hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
-    c <- c + 1
   }
 }
 
@@ -1651,7 +1648,7 @@ fwrite(models, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/m
 
 # make this for loop a function of jump_length and bin_size
 jump_length <- 1e+3
-bin_size <- 1e+5
+bin_size <- 1e+4
 
 for(i in 1:n_models) {
 
@@ -1692,7 +1689,7 @@ for(i in 1:n_models) {
     rec_spans <- rec_spans[cumsum(rec_spans) < L]
     rec_spans <- c(rec_spans, L - sum(rec_spans))
   }
-  rec_spans <- rec_spans[-which(rec_spans==0)]
+  rec_spans <- rec_spans[rec_spans>0]
   
   rmap <- setDT(bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans), n=1, default=0), dplyr::lag(cumsum(rec_spans), n=0, default=0)))
   names(rmap) <- c("chr", "start", "end")
@@ -1709,7 +1706,7 @@ for(i in 1:n_models) {
     mut_spans <- mut_spans[cumsum(mut_spans) < L]
     mut_spans <- c(mut_spans, L - sum(mut_spans))
   }
-  mut_spans <- mut_spans[-which(mut_spans==0)]
+  mut_spans <- mut_spans[mut_spans>0]
   
   mu_dist <- round(seq_log(from=1e-9, to=1e-7, length.out=100), digits=11)
   dt_u <- data.table(mu_dist)
@@ -1750,8 +1747,7 @@ for(i in 1:n_models) {
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "rec_bins")
   rmap$rec_bins <- 1:nrow(rmap)
-  tmpr <- merge(rmap, hit_list)
-  rec_bins <- tmpr %>% group_by(bins) %>% mutate(avg_rec=weighted.mean(r, end-start))
+  rec_bins <- merge(rmap, hit_list) %>% group_by(bins) %>% mutate(avg_rec=weighted.mean(r, end-start))
   rec_bins <- rec_bins %>% distinct(bins, .keep_all=T)
   
   # binning mutation maps
@@ -1761,8 +1757,7 @@ for(i in 1:n_models) {
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "mut_bins")
   mmap$mut_bins <- 1:nrow(mmap)
-  tmpm <- merge(mmap, hit_list)
-  mut_bins <- tmpm %>% group_by(bins) %>% mutate(avg_mut=weighted.mean(u, end-start))
+  mut_bins <- merge(mmap, hit_list) %>% group_by(bins) %>% mutate(avg_mut=weighted.mean(u, end-start))
   mut_bins <- mut_bins %>% distinct(bins, .keep_all=T)
   
   # binning DFE
@@ -1772,9 +1767,8 @@ for(i in 1:n_models) {
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "dfe")
   intervals$dfe <- 1:nrow(intervals)
-  tmpd <- merge(intervals, hit_list)
   # avg_s encompasses density of constrained sites
-  dfe_bins <- tmpd %>% group_by(bins) %>% mutate(avg_s=weighted.mean(s, end-start)) 
+  dfe_bins <- merge(intervals, hit_list) %>% group_by(bins) %>% mutate(avg_s=weighted.mean(s, end-start)) 
   dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T)
   
   maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
@@ -1785,36 +1779,29 @@ for(i in 1:n_models) {
   prd <- as.data.frame(abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-"))) # pairwise rec distance
   names(prd) <- 1:ncol(prd)
   relevant_exons <- apply(prd, 2, function(x) x < 1e-3)
-  exons_list <- apply(relevant_exons, 1, function(x) which(x))
+  exons_per_samp_neut <- apply(relevant_exons, 1, function(x) which(x))
 
-  # now the loop over sampled (neutral) sites starts
-  BGS <- numeric(length=length(exons_list))
-  Rprof() 
-  #pb <- txtProgressBar(min=1, max=length(exons_list), style=3)
-  system.time({
-  for(j in 1:length(samp_pos)) {
-    #setTxtProgressBar(pb, j)
-    B <- 1 
-    for(k in 1:length(exons_list[[j]])) { 
-      
-      focal_s <- dt_exons[exons_list[[j]][k],]$s
-      total_r <- prd[j, exons_list[[j]][k]]
-      
-      # TODO get 3 closest r's, implement interpolation
-      closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
-      #closest_r <- lookup_r[which.min(abs(lookup_r - total_r))]
-      hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
-      B <- B * (hr / 2 * N * u) ^ models$exon_lengths[i] 
-    }
-    
-    BGS[j] <-  2 * N * pos_dt[j,]$focal_mu * B
-  }})
+  getB <- function(focal_exon, x) { # x is the index of focal sampled site
+    focal_s <- dt_exons[focal_exon,]$s
+    total_r <- prd[x, focal_exon]
+    closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
+    hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
+    return((hr / (2 * N * u)) ^ models$exon_lengths[i])
+  }
   
-  Rprof(NULL)
-  View(summaryRprof()$by.total)
-  View(summaryRprof()$by.self)
+  getBvals <- function(idx, exons) { # not used at the moment bc passing the indices is hard
+    B <- unlist(lapply(exons, getB, x=idx))
+    return(cumprod(B)[length(B)])
+  }
   
-  pos_hr_pairs <- bind_cols(neu_pos, hr_list)
+  # we finally get the Hr values per sampled site!
+  B_values <- numeric(length=length(exons_per_samp_neut))
+  for(j in 1:length(exons_per_samp_neut)) {
+    B <- unlist(lapply(exons_per_samp_neut[[j]], getB, x=j))
+    B_values[j] <- cumprod(B)[length(B)]
+  }
+  
+  hrmap <- bind_cols(neu_pos, Hr_BGS)
   # TODO bin
   
   windows <- bind_cols(mus, rs, ss, .name_repair="unique")
