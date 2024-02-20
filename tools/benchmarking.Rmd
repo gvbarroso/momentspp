@@ -1842,7 +1842,7 @@ for(i in 1:n_models) {
   pl <- ggplot(data=xl, aes(x=rec, y=B, color=relevant))
   pl <- pl + geom_point() + theme_bw()
   pl <- pl + scale_y_log10()
-  pl <- pl + labs(title="B-values Left", x=NULL, y="B")
+  pl <- pl + labs(title="B-values Left", x=NULL, y=NULL)
   pl <- pl + theme(axis.title=element_text(size=16),
                    axis.text=element_text(size=12),
                    axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -1908,16 +1908,26 @@ for(i in 1:n_models) {
   setkey(hrmap, Pos)
   fwrite(hrmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/hrmap_m", i, "_j_", jump_length, ".csv", sep=""))
   
+  seg <- filter(exons, start > 1.5e+6, end < 2e+6)
+  exons_barcode <- ggplot(data=seg) + geom_segment(aes(x=start, xend=end, y=1, yend=1, size=3, color=s)) + theme_void() 
+  exons_barcode <- exons_barcode + theme(axis.title=element_blank(),
+                                         axis.text=element_blank(),
+                                         axis.text.x=element_blank(),
+                                         axis.ticks.x=element_blank(),
+                                         axis.ticks.y=element_blank(),
+                                         axis.text.y=element_blank(),
+                                         legend.position="none")
+  
   molten_div <- pivot_longer(hrmap, cols=c("Hr", "pi0"), names_to="Var")
-  ppi <- ggplot(data=molten_div[1:5e+5,], aes(x=Pos, y=value, color=Var))
+  ppi <- ggplot(data=molten_div[1:seg$end[nrow(seg)],], aes(x=Pos, y=value, color=Var))
   ppi <- ppi + geom_line() + theme_bw()
   ppi <- ppi + scale_y_log10()
-  ppi <- ppi + labs(title=paste("Window of model", i), x="Pos", y="Diversity")
+  ppi <- ppi + labs(title=paste("Window of model", i), x=NULL, y="Diversity")
   ppi <- ppi + theme(axis.title=element_text(size=16),
-                   axis.text=element_text(size=12),
-                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                   legend.position="bottom")
-  ppi
+                     axis.text=element_text(size=12),
+                     axis.text.x=element_blank(),
+                     legend.position="none")
+  a <- plot_grid(ppi, exons_barcode, ncol=1, align='v', axis='l', rel_heights=c(1, 0.1))
   
   #hrmap_j500 <- fread("selection/single-pop/test_data/hrmap_m2_j_500.csv")
   #hrmap_j1000 <- fread("selection/single-pop/test_data/hrmap_m2_j_1000.csv")
