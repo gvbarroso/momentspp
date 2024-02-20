@@ -26,6 +26,7 @@ library(car)
 library(bigsnpr)
 library(data.table)
 library(GenomicRanges)
+library(pracma)
 
 library(reticulate)
 use_python("/usr/bin/python3")
@@ -1486,7 +1487,7 @@ assembly of whole chromosomes
 N <- 10000
 u <- 1e-8 # constant among exons as well as "fake" neutral mu used to get B-values
 # to get B-values, we only need to build a lookup table with variation in r & s (u_L will be constant, u_R varies later)
-lookup_r <- round(seq_log(from=1e-12, to=1e-3, length.out=500), digits=15)
+lookup_r <- round(seq_log(from=1e-12, to=1e-2, length.out=500), digits=15)
 lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=200), digits=11)
 
 # for discretizing Gamma distributions and make look-up faster
@@ -1574,7 +1575,7 @@ for(i in 1:n_models) {
 
 ### Running moments++
 
-Gets the lookup table
+Computes lookup table
 
 ```{bash run-moments++BGS-mutvar, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
 
@@ -1609,6 +1610,7 @@ for(i in 1:length(lookup_r)) {
   for(j in 1:length(lookup_s)) {
     moms <- read.table(paste("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/r_", lookup_r[i], "/model_", as.integer(c), "_expectations.txt", sep=""))
     hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
+    c <- c + 1
   }
 }
 
@@ -1637,7 +1639,7 @@ shapes_rec <- c(1, 3, 10, 30, 1e+9)
 # Geom dist params
 avg_rec_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
 avg_mut_spans <- c(1e+3, 1e+4, 1e+5, 1e+6)
-avg_neutral_lengths <- 1e+4
+avg_neutral_lengths <- c(3e+3, 1e+4)
 exon_lengths <- c(100, 1000)  
 models <- setDT(crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, 
                 avg_rec_spans, avg_mut_spans, avg_neutral_lengths, exon_lengths))
@@ -1674,12 +1676,14 @@ for(i in 1:n_models) {
   names(intervals) <- c("chr", "start", "end")
   intervals$s <- c(rbind(rep(0, length(csl)), disc_ss), 0)
   setkey(intervals, start, end)
-  
+  fwrite(intervals, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/intervals_m", i, ".csv", sep=""), sep=",")
+
   dt_neutral <- filter(intervals[,2:4], s==0)
   setkey(dt_neutral, start, end)
   dt_exons <- filter(intervals, s < 0)
   dt_exons$u <- 1e-08 
   setkey(dt_exons, start, end)
+  fwrite(dt_exons, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/exons_m", i, ".csv", sep=""), sep=",")
 
   rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[i]), prob=1/models$avg_rec_spans[i])
   while(sum(rec_spans) < L) {
@@ -1697,6 +1701,7 @@ for(i in 1:n_models) {
   disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r
   rmap$r <- disc_rs
   setkey(rmap, start, end)
+  fwrite(rmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/rmap_m", i, ".csv", sep=""), sep=",")
   
   mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[i]), prob=1/models$avg_mut_spans[i])
   while(sum(mut_spans) < L) {
@@ -1718,6 +1723,7 @@ for(i in 1:n_models) {
   disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$mu_dist
   mmap$u <- disc_mus
   setkey(mmap, start, end)
+  fwrite(mmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/mmap_m", i, ".csv", sep=""), sep=",")
   
   # finding mu for each sampled pos and the cumulative recombination map over the useful intervals
   samp_pos <- unlist(apply(dt_neutral, 1, function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
@@ -1741,50 +1747,55 @@ for(i in 1:n_models) {
   gr_bins <- makeGRangesFromDataFrame(bins)
   
   # binning recombination maps
-  rmap$start <- rmap$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
-  rec_gr <- makeGRangesFromDataFrame(rmap, keep.extra.columns=T)
+  rmap2 <- rmap
+  rmap2$start <- rmap2$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
+  rec_gr <- makeGRangesFromDataFrame(rmap2, keep.extra.columns=T)
   hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "rec_bins")
-  rmap$rec_bins <- 1:nrow(rmap)
-  rec_bins <- merge(rmap, hit_list) %>% group_by(bins) %>% mutate(avg_rec=weighted.mean(r, end-start))
+  rmap2$rec_bins <- 1:nrow(rmap2)
+  rec_bins <- merge(rmap2, hit_list) %>% group_by(bins) %>% mutate(avg_rec=weighted.mean(r, end-start))
   rec_bins <- rec_bins %>% distinct(bins, .keep_all=T)
   
   # binning mutation maps
-  mmap$start <- mmap$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
-  mut_gr <- makeGRangesFromDataFrame(mmap, keep.extra.columns=T)
+  mmap2 <- mmap
+  mmap2$start <- mmap2$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
+  mut_gr <- makeGRangesFromDataFrame(mmap2, keep.extra.columns=T)
   hits <- findOverlaps(query=gr_bins, subject=mut_gr) 
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "mut_bins")
-  mmap$mut_bins <- 1:nrow(mmap)
-  mut_bins <- merge(mmap, hit_list) %>% group_by(bins) %>% mutate(avg_mut=weighted.mean(u, end-start))
+  mmap2$mut_bins <- 1:nrow(mmap2)
+  mut_bins <- merge(mmap2, hit_list) %>% group_by(bins) %>% mutate(avg_mut=weighted.mean(u, end-start))
   mut_bins <- mut_bins %>% distinct(bins, .keep_all=T)
   
   # binning DFE
-  intervals$start <- intervals$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
-  dfe_gr <- makeGRangesFromDataFrame(intervals, keep.extra.columns=T)
+  intervals2 <- intervals
+  intervals2$start <- intervals2$start + 1 # so that GRanges understands the intervals -> NOT in BEDGRAPH format
+  dfe_gr <- makeGRangesFromDataFrame(intervals2, keep.extra.columns=T)
   hits <- findOverlaps(query=gr_bins, subject=dfe_gr) 
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "dfe")
-  intervals$dfe <- 1:nrow(intervals)
+  intervals2$dfe <- 1:nrow(intervals2)
   # avg_s encompasses density of constrained sites
-  dfe_bins <- merge(intervals, hit_list) %>% group_by(bins) %>% mutate(avg_s=weighted.mean(s, end-start)) 
+  dfe_bins <- merge(intervals2, hit_list) %>% group_by(bins) %>% mutate(avg_s=weighted.mean(s, end-start)) 
   dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T)
   
   maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
   
-  # pre-compute recombination distances from sampled neutral sites and exons:
+  # pre-compute recombination distances between sampled neutral sites and exons, taking into account strength of selection
   cr_samp <- pos_dt[position %in% samp_pos,]
   cr_exons <- pos_dt[position %in% (dt_exons$start + models$exon_lengths[i]/2),]
-  prd <- as.data.frame(abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-"))) # pairwise rec distance
+  prd <- as.data.frame(2 * N * abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-"))) # pairwise rho
   names(prd) <- 1:ncol(prd)
-  relevant_exons <- apply(prd, 2, function(x) x < 1e-3)
+  erd <- prd # "effective" rec. distance is inversely proportional to alpha.
+  for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / abs(2 * N * dt_exons$s[j]) }
+  relevant_exons <- apply(erd, 2, function(x) x < 10 * N * 1e-3)
   exons_per_samp_neut <- apply(relevant_exons, 1, function(x) which(x))
 
   getB <- function(focal_exon, x) { # x is the index of focal sampled site
     focal_s <- dt_exons[focal_exon,]$s
-    total_r <- prd[x, focal_exon]
-    # NOTE: the grid on r is so fine-grained that in practice we don't need interpolation
+    total_r <- prd[x, focal_exon] / (2 * N)
+    # the grid on r is fine-grained enough that we don't need interpolation
     closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
     hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
     return((hr / (2 * N * u)) ^ models$exon_lengths[i])
@@ -1792,16 +1803,140 @@ for(i in 1:n_models) {
   
   # we finally get the B-values per sampled site!
   B_values <- numeric(length=length(exons_per_samp_neut))
+  pb <- txtProgressBar(min=1, max=length(exons_per_samp_neut), style=3)
   for(j in 1:length(exons_per_samp_neut)) {
+    setTxtProgressBar(pb, j)
     B <- unlist(lapply(exons_per_samp_neut[[j]], getB, x=j))
     B_values[j] <- cumprod(B)[length(B)]
   }
+  close(pb)
+  
+  # using max rec distance (r==1e-2) to check validity of threshold used above
+  rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
+  ex400 <- apply(rex, 1, function(x) which(x))
+  
+  Bl400 <- unlist(lapply(ex400[[1]], getB, x=1))
+  Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB, x=length(samp_pos)/4))
+  Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB, x=length(samp_pos)/2))
+  
+  Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, x=1))
+  Bqr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/4]], getB, x=length(samp_pos)/4))
+  Bmr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/2]], getB, x=length(samp_pos)/2))
+  
+  xl <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bl400))]), Bl400)
+  xq <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bq400))]), Bq400)
+  xm <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bm400))]), Bm400)
+  
+  names(xl) <- c("rec", "B")
+  names(xq) <- c("rec", "B")
+  names(xm) <- c("rec", "B")
+  
+  xl$CummBval <- cumprod(xl$B)
+  xq$CummBval <- cumprod(xq$B)
+  xm$CummBval <- cumprod(xm$B)
+    
+  xl$relevant <- xl$B %in% Blr
+  xq$relevant <- xq$B %in% Bqr
+  xm$relevant <- xm$B %in% Bmr
+  
+  pl <- ggplot(data=xl, aes(x=rec, y=B, color=relevant))
+  pl <- pl + geom_point() + theme_bw()
+  pl <- pl + scale_y_log10()
+  pl <- pl + labs(title="B-values Left", x=NULL, y="B")
+  pl <- pl + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.position="none")
+  
+  pq <- ggplot(data=xq, aes(x=rec, y=B, color=relevant))
+  pq <- pq + geom_point() + theme_bw()
+  pq <- pq + scale_y_log10()
+  pq <- pq + labs(title="B-values 1/4 chr", x=NULL, y=NULL)
+  pq <- pq + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.position="none")
+  
+  pm <- ggplot(data=xm, aes(x=rec, y=B, color=relevant))
+  pm <- pm + geom_point() + theme_bw()
+  pm <- pm + scale_y_log10()
+  pm <- pm + labs(title="B-values 1/2 chr", x=NULL, y=NULL)
+  pm <- pm + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.position="none")
+      
+  ql <- ggplot(data=xl, aes(x=rec, y=CummBval, color=relevant))
+  ql <- ql + geom_point() + theme_bw()
+  ql <- ql + scale_y_log10(limits=c(min(xl$CummBval), 1))
+  ql <- ql + labs(title="Cumm. B-value, Left", x="Cummulative Rho", y="B")
+  ql <- ql + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.position="bottom")
+  
+  qq <- ggplot(data=xq, aes(x=rec, y=CummBval, color=relevant))
+  qq <- qq + geom_point() + theme_bw()
+  qq <- qq + scale_y_log10()
+  qq <- qq + labs(title="Cumm. B-value, 1/4 chr", x="Cummulative Rho", y="B")
+  qq <- qq + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.position="bottom")
+  
+  qm <- ggplot(data=xm, aes(x=rec, y=CummBval, color=relevant))
+  qm <- qm + geom_point() + theme_bw()
+  qm <- qm + scale_y_log10()
+  qm <- qm + labs(title="Cumm. B-value, 1/2 chr", x="Cummulative Rho", y="B")
+  qm <- qm + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.position="bottom")
+  
+  cp <- plot_grid(pl, pq, pm, ql, qq, qm, nrow=2)
+  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/Bval_bench_m_", as.integer(i), ".png", sep=""), cp, base_height=10, base_width=12)
   
   system.time(B_map <- cubicspline(samp_pos, B_values, 1:L))
-  plot(1:5e+5, B_map[1:5e+5], type="l")
-  pis <- B_map * unlist(lapply(1:L, function(pos) mmap[J(pos), roll=T]$u))
-  hrmap <- bind_cols(neu_pos, Hr_BGS)
-
+  # here we have to use mmap2 which has closed intervals
+  ones <- rep(1, L)
+  pi0s <- invisible(apply(mmap2, 1, function(x) ones[as.numeric(x[2]):as.numeric(x[3])] * as.numeric(x[4]) * 2 * N))
+  pi0s <- unlist(pi0s)
+  pis <- invisible(apply(mmap2, 1, function(x) B_map[as.numeric(x[2]):as.numeric(x[3])] * as.numeric(x[4]) * 2 * N))
+  pis <- unlist(pis)
+  hrmap <- setDT(bind_cols(1:L, pis, pi0s))
+  names(hrmap) <- c("Pos", "Hr", "pi0")
+  setkey(hrmap, Pos)
+  fwrite(hrmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/hrmap_m", i, "_j_", jump_length, ".csv", sep=""))
+  
+  molten_div <- pivot_longer(hrmap, cols=c("Hr", "pi0"), names_to="Var")
+  ppi <- ggplot(data=molten_div[1:5e+5,], aes(x=Pos, y=value, color=Var))
+  ppi <- ppi + geom_line() + theme_bw()
+  ppi <- ppi + scale_y_log10()
+  ppi <- ppi + labs(title=paste("Window of model", i), x="Pos", y="Diversity")
+  ppi <- ppi + theme(axis.title=element_text(size=16),
+                   axis.text=element_text(size=12),
+                   axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+                   legend.position="bottom")
+  ppi
+  
+  #hrmap_j500 <- fread("selection/single-pop/test_data/hrmap_m2_j_500.csv")
+  #hrmap_j1000 <- fread("selection/single-pop/test_data/hrmap_m2_j_1000.csv")
+  #hrmap_j2000 <- fread("selection/single-pop/test_data/hrmap_m2_j_2000.csv")
+  
+  #hrj <- cbind.data.frame(hrmap_j500, hrmap_j1000$Hr, hrmap_j2000$Hr)
+  #names(hrj) <- c("pos", "j500", "j1000", "j2000")
+  #molten_hrj <- pivot_longer(hrj, cols=starts_with("j"), names_to="jump_length")  
+  
+  # plot comparing B-values obtained with cubic splines interpolation for different sampling densities
+  #csip <- ggplot(data=molten_hrj[1:5e+3,], aes(x=pos, y=value, color=jump_length))
+  #csip <- csip + geom_line() + theme_bw()
+  #csip <- csip + scale_y_log10()
+  #csip <- csip + labs(title="Hr interpolation ~ sampling density", x="pos", y="Hr")
+  #csip <- csip + theme(axis.title=element_text(size=16),
+  #                 axis.text=element_text(size=12),
+  #                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+  #                 legend.position="bottom")
+    
   windows <- bind_cols(mus, rs, ss, .name_repair="unique")
   names(windows) <- c("mus", "recs", "dfe")
   windows$pi0 <- 2 * models$N[i] * windows$mus
