@@ -719,7 +719,7 @@ p6 <- p6 + geom_point(data=filter(dd, Method!="twoLocusSim"), aes(x=r, y=value, 
 p6 <- p6 + scale_shape_manual(values=c(0, 1))
 p6 <- p6 + scale_x_log10(breaks = r) + scale_y_log10()
 p6 <- p6 + labs(x="r", y=expression(D^2))
-p6 <- p6 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p6 <- p6 + scale_color_manual(values=brewer.pal(n=3, name="Dark2"))
 p6 <- p6 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -731,9 +731,9 @@ dz <- filter(df_m, stats==commom_stats[2])
 p7 <- ggplot() + geom_errorbar(data=filter(dz, Method=="twoLocusSim"), aes(x=r, ymax=avg + 2*sd, ymin=avg - 2*sd, color=as.factor(N))) + facet_wrap(~s, nrow=1)
 p7 <- p7 + geom_point(data=filter(dz, Method!="twoLocusSim"), aes(x=r, y=value, color=as.factor(N), shape=Method, size=1)) + theme_bw()
 p7 <- p7 + scale_shape_manual(values=c(0, 1))
-p7 <- p7 + scale_x_log10(breaks = r) + scale_y_log10()
+p7 <- p7 + scale_x_log10(breaks=r) + scale_y_log10()
 p7 <- p7 + labs(x="r", y=expression(Dz))
-p7 <- p7 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p7 <- p7 + scale_color_manual(values=brewer.pal(n=3, name="Dark2"))
 p7 <- p7 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -747,7 +747,7 @@ p8 <- p8 + geom_point(data=filter(hl, Method!="twoLocusSim"), aes(x=r, y=value, 
 p8 <- p8 + scale_shape_manual(values=c(0, 1))
 p8 <- p8 + scale_x_log10(breaks=r) + scale_y_log10()
 p8 <- p8 + labs(x="r", y=expression(H[l]))
-p8 <- p8 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p8 <- p8 + scale_color_manual(values=brewer.pal(n=3, name="Dark2"))
 p8 <- p8 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -761,7 +761,7 @@ p9 <- p9 + geom_point(data=filter(hr, Method!="twoLocusSim"), aes(x=r, y=value, 
 p9 <- p9 + scale_shape_manual(values=c(0, 1))
 p9 <- p9 + scale_x_log10(breaks=r) + scale_y_log10()
 p9 <- p9 + labs(x="r", y=expression(H[r]))
-p9 <- p9 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p9 <- p9 + scale_color_manual(values=brewer.pal(n=3, name="Dark2"))
 p9 <- p9 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -775,7 +775,7 @@ p10 <- p10 + geom_point(data=filter(pi2, Method!="twoLocusSim"), aes(x=r, y=valu
 p10 <- p10 + scale_shape_manual(values=c(0, 1))
 p10 <- p10 + scale_x_log10(breaks=r) + scale_y_log10()
 p10 <- p10 + labs(x="r", y=expression(pi[2]))
-p10 <- p10 + scale_color_manual(values = brewer.pal(n=3, name="Dark2"))
+p10 <- p10 + scale_color_manual(values=brewer.pal(n=3, name="Dark2"))
 p10 <- p10 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
                  axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -1249,7 +1249,7 @@ p <- ggplot(data=filter(df3, l==1), aes(x=r, y=value, color=as.factor(s), shape=
 p <- p + geom_line() + geom_point(size=3) + facet_wrap(~N, nrow=2) + theme_bw()
 p <- p + geom_vline(data=filter(df3, l==1), aes(xintercept=-s, color=as.factor(s)), linetype="dashed")
 p <- p + scale_shape_manual(values=c(0, 1, 2))
-p <- p + scale_color_brewer(palette = "Accent")
+p <- p + scale_color_brewer(palette="Accent")
 p <- p + scale_x_log10(breaks=unique(df3$r))
 p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
 p <- p + labs(title="Diversity Reduction Factors, L=1, W=1", x="r", y=expression(1-f[j]))
@@ -1269,7 +1269,7 @@ p <- p + theme(panel.grid.major=element_blank(), panel.grid.minor=element_blank(
                panel.background=element_blank(), axis.line=element_line(colour="black"))
 p <- p + geom_vline(data=filter(df4, l==1), aes(xintercept=-s, color=as.factor(s)), linetype="dashed")
 p <- p + scale_shape_manual(values=c(0, 1))
-p <- p + scale_color_brewer(palette = "Dark2")
+p <- p + scale_color_brewer(palette="Dark2")
 p <- p + scale_x_continuous(breaks=unique(df4$rec))
 p <- p + scale_y_log10(breaks=pretty_breaks(), labels=function(x) format(x, scientific=T))
 p <- p + labs(title="Diversity Reduction Factors, L=1, W=100", x="cum. rec. rate.", y=expression(1-f[j]))
@@ -1669,7 +1669,7 @@ for(i in 1:n_models) {
     alpha <- 2 * models$N[i] * ss
   }
   
-  disc_ss <- dt_s[dt_s[J(ss), roll="nearest", which=T]]$lookup_s
+  disc_ss <- dt_s[dt_s[J(ss), roll="nearest", which=T]]$lookup_s # discretize
   
   intervals <- c(rbind(ncsl, csl))[-2*length(ncsl)]
   intervals <- setDT(bind_cols(chr="chr1", dplyr::lag(cumsum(intervals), n=1, default=0), dplyr::lag(cumsum(intervals), n=0, default=0)))
@@ -1698,7 +1698,7 @@ for(i in 1:n_models) {
   rmap <- setDT(bind_cols(chr="chr1", dplyr::lag(cumsum(rec_spans), n=1, default=0), dplyr::lag(cumsum(rec_spans), n=0, default=0)))
   names(rmap) <- c("chr", "start", "end")
   rs <- rgamma(n=nrow(rmap), shape=models$shapes_rec[i], scale=models$scales_rec[i]/models$shapes_rec[i])
-  disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r
+  disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r # discretize
   rmap$r <- disc_rs
   setkey(rmap, start, end)
   fwrite(rmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/rmap_m", i, ".csv", sep=""), sep=",")
@@ -1720,15 +1720,15 @@ for(i in 1:n_models) {
   mmap <- setDT(bind_cols(chr="chr1", dplyr::lag(cumsum(mut_spans), n=1, default=0), dplyr::lag(cumsum(mut_spans), n=0, default=0)))
   names(mmap) <- c("chr", "start", "end")
   mus <- rgamma(n=nrow(mmap), shape=models$shapes_mu[i], scale=models$scales_mu[i]/models$shapes_mu[i])
-  disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$mu_dist
+  disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$mu_dist # discretize
   mmap$u <- disc_mus
   setkey(mmap, start, end)
   fwrite(mmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/mmap_m", i, ".csv", sep=""), sep=",")
   
-  # finding mu for each sampled pos and the cumulative recombination map over the useful intervals
+  # finding mu for each sampled pos and the cumulative recombination map over the "sampling intervals"
   samp_pos <- unlist(apply(dt_neutral, 1, function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
   linear_pos <- sort(c(samp_pos, dt_exons$start + models$exon_lengths[i]/2))
-  # (the following searches take some time:)
+  # (the following searches may take a few minutes, depending the length of linear pos)
   focal_mu <- unlist(lapply(linear_pos, function(pos) mmap[J(pos), roll=T]$u))
   focal_r <- unlist(lapply(linear_pos, function(pos) rmap[J(pos), roll=T]$r))
   cum_rec <- numeric(length=length(linear_pos))
@@ -1739,7 +1739,7 @@ for(i in 1:n_models) {
   names(pos_dt) <- c("position", "focal_mu", "cumrec")
   setkey(pos_dt, position)
   
-  # binning for linear models
+  # defines bins for linear models
   bins <- rep(bin_size, floor(L / bin_size))
   bins <- bind_cols(chr="chr1", dplyr::lag(cumsum(bins), n=1, default=0), dplyr::lag(cumsum(bins), n=0, default=0))
   names(bins) <- c("chr", "start", "end")
@@ -1776,25 +1776,25 @@ for(i in 1:n_models) {
   hit_list <- as.data.frame(hits)
   names(hit_list) <- c("bins", "dfe")
   intervals2$dfe <- 1:nrow(intervals2)
-  # avg_s encompasses density of constrained sites
+  # NOTE: avg_s encompasses local density of constrained sites
   dfe_bins <- merge(intervals2, hit_list) %>% group_by(bins) %>% mutate(avg_s=weighted.mean(s, end-start)) 
   dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T)
   
   maps_bins <- bind_cols(bins, rec_bins["avg_rec"], mut_bins["avg_mut"], dfe_bins["avg_s"])
   
-  # pre-compute recombination distances between sampled neutral sites and exons, taking into account strength of selection
+  # pre-computes recombination distances between sampled neutral sites and exons, taking into account strength of selection
   cr_samp <- pos_dt[position %in% samp_pos,]
   cr_exons <- pos_dt[position %in% (dt_exons$start + models$exon_lengths[i]/2),]
   prd <- as.data.frame(2 * N * abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-"))) # pairwise rho
   names(prd) <- 1:ncol(prd)
-  erd <- prd # "effective" rec. distance is inversely proportional to alpha.
+  erd <- prd # "effective" rec. distance is inversely proportional to alpha
   for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / abs(2 * N * dt_exons$s[j]) }
   relevant_exons <- apply(erd, 2, function(x) x < 10 * N * 1e-3)
   exons_per_samp_neut <- apply(relevant_exons, 1, function(x) which(x))
 
-  getB <- function(focal_exon, x) { # x is the index of focal sampled site
+  getB <- function(focal_exon, focal_neutral) { 
     focal_s <- dt_exons[focal_exon,]$s
-    total_r <- prd[x, focal_exon] / (2 * N)
+    total_r <- prd[focal_neutral, focal_exon] / (2 * N)
     # the grid on r is fine-grained enough that we don't need interpolation
     closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
     hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
@@ -1806,7 +1806,7 @@ for(i in 1:n_models) {
   pb <- txtProgressBar(min=1, max=length(exons_per_samp_neut), style=3)
   for(j in 1:length(exons_per_samp_neut)) {
     setTxtProgressBar(pb, j)
-    B <- unlist(lapply(exons_per_samp_neut[[j]], getB, x=j))
+    B <- unlist(lapply(exons_per_samp_neut[[j]], getB, focal_neutral=j))
     B_values[j] <- cumprod(B)[length(B)]
   }
   close(pb)
@@ -1815,13 +1815,13 @@ for(i in 1:n_models) {
   rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
   ex400 <- apply(rex, 1, function(x) which(x))
   
-  Bl400 <- unlist(lapply(ex400[[1]], getB, x=1))
-  Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB, x=length(samp_pos)/4))
-  Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB, x=length(samp_pos)/2))
+  Bl400 <- unlist(lapply(ex400[[1]], getB, focal_neutral=1))
+  Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB, focal_neutral=length(samp_pos)/4))
+  Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB, focal_neutral=length(samp_pos)/2))
   
-  Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, x=1))
-  Bqr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/4]], getB, x=length(samp_pos)/4))
-  Bmr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/2]], getB, x=length(samp_pos)/2))
+  Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, focal_neutral=1))
+  Bqr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/4]], getB, focal_neutral=length(samp_pos)/4))
+  Bmr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/2]], getB, focal_neutral=length(samp_pos)/2))
   
   xl <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bl400))]), Bl400)
   xq <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bq400))]), Bq400)
@@ -1896,8 +1896,10 @@ for(i in 1:n_models) {
   cp <- plot_grid(pl, pq, pm, ql, qq, qm, nrow=2)
   save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/Bval_bench_m_", as.integer(i), ".png", sep=""), cp, base_height=10, base_width=12)
   
+  # getting B-values per site can also take some time:
   system.time(B_map <- cubicspline(samp_pos, B_values, 1:L))
-  # here we have to use mmap2 which has closed intervals
+  
+  # here it's easier to use mmap2 which has closed intervals:
   ones <- rep(1, L)
   pi0s <- invisible(apply(mmap2, 1, function(x) ones[as.numeric(x[2]):as.numeric(x[3])] * as.numeric(x[4]) * 2 * N))
   pi0s <- unlist(pi0s)
@@ -1908,7 +1910,8 @@ for(i in 1:n_models) {
   setkey(hrmap, Pos)
   fwrite(hrmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/hrmap_m", i, "_j_", jump_length, ".csv", sep=""))
   
-  seg <- filter(exons, start > 1.5e+6, end < 2e+6)
+  seg <- filter(dt_exons, start >= 0, end <= 4e+6)
+  wsize <- seg$end[nrow(seg)] - seg$start[1]
   exons_barcode <- ggplot(data=seg) + geom_segment(aes(x=start, xend=end, y=1, yend=1, size=3, color=s)) + theme_void() 
   exons_barcode <- exons_barcode + theme(axis.title=element_blank(),
                                          axis.text=element_blank(),
@@ -1920,39 +1923,28 @@ for(i in 1:n_models) {
   
   molten_div <- pivot_longer(hrmap, cols=c("Hr", "pi0"), names_to="Var")
   ppi <- ggplot(data=molten_div[1:seg$end[nrow(seg)],], aes(x=Pos, y=value, color=Var))
-  ppi <- ppi + geom_line() + theme_bw()
-  ppi <- ppi + scale_y_log10()
-  ppi <- ppi + labs(title=paste("Window of model", i), x=NULL, y="Diversity")
+  ppi <- ppi + geom_line(size=1.05) + theme_bw()
+  ppi <- ppi + scale_y_log10() 
+  ppi <- ppi + scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL, labels=c(expression(pi), expression(pi[0])))
+  ppi <- ppi + labs(title=paste("Diversity of a ", wsize, "-bp window of model ", i, sep=""), x=NULL, y="Pairwise Diversity")
   ppi <- ppi + theme(axis.title=element_text(size=16),
                      axis.text=element_text(size=12),
+                     axis.ticks.x=element_blank(),
                      axis.text.x=element_blank(),
-                     legend.position="none")
-  a <- plot_grid(ppi, exons_barcode, ncol=1, align='v', axis='l', rel_heights=c(1, 0.1))
+                     legend.position="top")
+  ppi2 <- plot_grid(ppi, exons_barcode, ncol=1, align='v', axis='l', rel_heights=c(1, 0.1))
+  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/pi_m", i, ".pdf", sep=""), ppi2, base_height=10, base_width=12) 
   
-  #hrmap_j500 <- fread("selection/single-pop/test_data/hrmap_m2_j_500.csv")
-  #hrmap_j1000 <- fread("selection/single-pop/test_data/hrmap_m2_j_1000.csv")
-  #hrmap_j2000 <- fread("selection/single-pop/test_data/hrmap_m2_j_2000.csv")
+  hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
+  hrmap <- hrmap[1:maps_bins$end[nrow(maps_bins)],]# trims the tail for convenience
+  avgs <- hrmap %>% group_by(bin) %>% summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0))
+  maps_bins$avg_pi <- avgs$avg_pi
+  maps_bins$avg_pi0 <- avgs$avg_pi0
   
-  #hrj <- cbind.data.frame(hrmap_j500, hrmap_j1000$Hr, hrmap_j2000$Hr)
-  #names(hrj) <- c("pos", "j500", "j1000", "j2000")
-  #molten_hrj <- pivot_longer(hrj, cols=starts_with("j"), names_to="jump_length")  
-  
-  # plot comparing B-values obtained with cubic splines interpolation for different sampling densities
-  #csip <- ggplot(data=molten_hrj[1:5e+3,], aes(x=pos, y=value, color=jump_length))
-  #csip <- csip + geom_line() + theme_bw()
-  #csip <- csip + scale_y_log10()
-  #csip <- csip + labs(title="Hr interpolation ~ sampling density", x="pos", y="Hr")
-  #csip <- csip + theme(axis.title=element_text(size=16),
-  #                 axis.text=element_text(size=12),
-  #                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-  #                 legend.position="bottom")
-    
-  windows <- bind_cols(mus, rs, ss, .name_repair="unique")
-  names(windows) <- c("mus", "recs", "dfe")
   windows$pi0 <- 2 * models$N[i] * windows$mus
   windows$alpha <- alpha
   
-  write.csv(windows, paste("selection/single-pop/mut_rate_var/model_", i, "/_windows.csv", sep=""), quote=F, row.names=F)
+  fwrite(windows, paste("selection/single-pop/mut_rate_var/model_", i, "/_windows.csv", sep=""))
   
   landscapes[i,] <- hr_BGS
 
@@ -2302,7 +2294,7 @@ pa1 <- pa1 + geom_point(size=3, shape=0) + geom_line() + theme_bw() + facet_grid
 pa1 <- pa1 + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
 pa1 <- pa1 + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6))
 pa1 <- pa1 + scale_shape_manual(values=c(0))
-pa1 <- pa1 + scale_color_brewer(palette = "Dark2")
+pa1 <- pa1 + scale_color_brewer(palette="Dark2")
 pa1 <- pa1 + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
 pa1 <- pa1 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
@@ -2317,7 +2309,7 @@ pa2 <- ggplot(data=subset(filter(df_sym_N, stats %in% c("pi2_1_1_1_2", "pi2_1_1_
 pa2 <- pa2 + geom_point(size=3, shape=0) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
 pa2 <- pa2 + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
 pa2 <- pa2 + scale_y_log10(breaks=c(1e-6, 2e-6, 3e-6, 4e-6, 5e-6, 1e-5))
-pa2 <- pa2 + scale_color_brewer(palette = "Dark2")
+pa2 <- pa2 + scale_color_brewer(palette="Dark2")
 pa2 <- pa2 + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
 pa2 <- pa2 + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
@@ -2330,7 +2322,7 @@ save_plot("selection/no_migration/pi2_cross_no-mig.png", pa2, base_height=12, ba
 pb <- ggplot(data=subset(filter(df_sym_N, str_detect(stats, "^Dr")), sanc == 0), aes(x=r, y=expectation, color=stats)) 
 pb <- pb + geom_point(size=3, shape=0) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
 pb <- pb + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
-pb <- pb + scale_color_brewer(palette = "Dark2")
+pb <- pb + scale_color_brewer(palette="Dark2")
 pb <- pb + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
 pb <- pb + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
@@ -2344,7 +2336,7 @@ pc <- ggplot(data=subset(filter(df_sym_N, str_detect(stats, "^H")), sanc == 0), 
 pc <- pc + geom_point(size=3, shape=0) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
 pc <- pc + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
 pc <- pc + scale_y_log10(breaks=pretty_breaks())
-pc <- pc + scale_color_brewer(palette = "Dark2")
+pc <- pc + scale_color_brewer(palette="Dark2")
 pc <- pc + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
 pc <- pc + theme(axis.title=element_text(size=16),
                  axis.text=element_text(size=12),
@@ -2358,7 +2350,7 @@ pd <- ggplot(data=filter(df_sym_N, stats %in% c("Hr_1_1", "Hr_2_2")), aes(x=r, y
 pd <- pd + geom_point(size=3) + geom_line() + theme_bw() + facet_grid(+alpha_1~alpha_2)
 pd <- pd + scale_x_log10(breaks=c(1e-12, 1e-6, 1e-5, 1e-4, 1e-3))
 pd <- pd + scale_y_log10(breaks=pretty_breaks())
-pd <- pd + scale_color_brewer(palette = "Dark2")
+pd <- pd + scale_color_brewer(palette="Dark2")
 pd <- pd + scale_shape_manual(values=c(0, 1))
 pd <- pd + labs(title="Symmetric Population Sizes", x="r", y="Expectation")
 pd <- pd + theme(axis.title=element_text(size=16),
@@ -2372,7 +2364,7 @@ save_plot("selection/no_migration/Hr_no-mig.png", pd, base_height=12, base_width
 pe <- ggplot(data=subset(filter(df_sym_N, str_detect(stats, "^Hl")), sanc == 0), aes(x=alpha_1, y=expectation, color=stats, shape=as.factor(alpha_2))) 
 pe <- pe + geom_point(size=3) + geom_line() + theme_bw() #+ facet_wrap(~alpha_2, nrow=1)
 pe <- pe + scale_y_log10(breaks=pretty_breaks())
-pe <- pe + scale_color_brewer(palette = "Dark2")
+pe <- pe + scale_color_brewer(palette="Dark2")
 pe <- pe + scale_shape_manual(values=0:length(levels(as.factor(df_sym_N$alpha_2))))
 pe <- pe + labs(title="Symmetric Population Sizes", x="alpha_1", y="Expectation")
 pe <- pe + theme(axis.title=element_text(size=16),
