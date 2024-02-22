@@ -1490,7 +1490,7 @@ u <- 1e-8 # constant among exons as well as "fake" neutral mu used to get B-valu
 lookup_r <- round(seq_log(from=1e-12, to=1e-2, length.out=500), digits=15)
 lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=200), digits=11)
 
-# for discretizing Gamma distributions and make look-up faster
+# for discretizing Gamma distributions
 dt_r <- data.table(lookup_r)
 dt_s <- data.table(lookup_s)
 
@@ -1623,30 +1623,40 @@ fwrite(params, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/l
 lookup_tbl <- setDT(fread("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/lookup_tbl.csv"))
 setkey(lookup_tbl, lookup_r, lookup_s)
 
+lookup_r <- unique(lookup_tbl$lookup_r)
+lookup_s <- unique(lookup_tbl$lookup_s)
+
+# for discretizing Gamma distributions and make look-up faster
+dt_r <- data.table(lookup_r)
+dt_s <- data.table(lookup_s)
+
+setkey(dt_r, lookup_r)
+setkey(dt_s, lookup_s)
+
 # constants
 N <- unique(lookup_tbl$N)
 u <- unique(lookup_tbl$u)
 num_constrained <- 1000 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
-scale_sel <- c(2.5e-5, 5e-5, 1e-4, 2.5e-4, 5e-4)
-shape_sel <- c(10, 20)
+scale_sel <- c(5e-5, 2.5e-4, 7.5e-4)
+shape_sel <- c(10)
 scales_mu <- c(1e-8)
-shapes_mu <- c(1, 3, 10, 30, 1e+9)
-scales_rec <- c(1e-7) # scaled up by 10x for a 10 Mb genome
-shapes_rec <- c(1, 3, 10, 30, 1e+9)
+shapes_mu <- c(3, 10, 30)
+scales_rec <- c(1e-7, 1e-8)
+shapes_rec <- c(1, 3, 10)
 
 # Geom dist params
-avg_rec_spans <- c(1e+3, 1e+4, 1e+5)
-avg_mut_spans <- c(1e+3, 1e+4, 1e+5)
+avg_rec_spans <- c(1e+3)
+avg_mut_spans <- c(1e+4)
 avg_neutral_lengths <- c(1e+4)
-exon_lengths <- c(100, 1000)  
+exon_lengths <- c(1000)  
 models <- setDT(crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, 
                 avg_rec_spans, avg_mut_spans, avg_neutral_lengths, exon_lengths))
 models$scenario <- 1:nrow(models)
 n_models <- nrow(models)
 
-fwrite(models, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/models.csv", row.names=F, quote=F, sep=",")
+fwrite(models, "~/Devel/momentspp/benchmarking/selection/single-pop/test_models/models.csv", row.names=F, quote=F, sep=",")
 
 jump_length <- 1e+3
 bin_size <- 1e+3 # smallest value, then 1e+4 and 1e+5 are achieved by further binning
@@ -1902,10 +1912,10 @@ for(i in 1:n_models) {
                    legend.position="bottom")
   
   cp <- plot_grid(pl, pq, pm, ql, qq, qm, nrow=2)
-  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/Bval_bench_m_", as.integer(i), ".png", sep=""), cp, base_height=10, base_width=12)
+  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/Bval_bench_m_", as.integer(i), ".png", sep=""), cp, base_height=10, base_width=12)
   
   # getting B-values per site can also take some time:
-  system.time(B_map <- cubicspline(samp_pos, B_values, 1:L))
+  B_map <- cubicspline(samp_pos, B_values, 1:L)
   
   # here it's easier to use mmap2 which has closed intervals:
   ones <- rep(1, L)
@@ -1918,7 +1928,7 @@ for(i in 1:n_models) {
   setkey(hrmap, Pos)
   #fwrite(hrmap, paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/hrmap_m", i, "_j_", jump_length, ".csv", sep=""))
   
-  seg <- filter(dt_exons, start >= 0, end <= 1e+7)
+  seg <- filter(dt_exons, start >= 0, end <= 1e+6)
   wsize <- seg$end[nrow(seg)] - seg$start[1]
   exons_barcode <- ggplot(data=seg) + geom_segment(aes(x=start, xend=end, y=1, yend=1, size=3, color=s)) + theme_void() 
   exons_barcode <- exons_barcode + theme(axis.title=element_blank(),
@@ -1941,7 +1951,7 @@ for(i in 1:n_models) {
                      axis.text.x=element_blank(),
                      legend.position="top")
   ppi2 <- plot_grid(ppi, exons_barcode, ncol=1, align='v', axis='l', rel_heights=c(1, 0.1))
-  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/pi_m", i, ".pdf", sep=""), ppi2, base_height=10, base_width=12) 
+  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/pi_m", i, ".pdf", sep=""), ppi2, base_height=10, base_width=12) 
   
   hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
   hrmap <- hrmap[1:maps_1kb$end[nrow(maps_1kb)],]# trims the tail for convenience
@@ -1955,16 +1965,15 @@ for(i in 1:n_models) {
   maps_1kb$std_r <- (maps_1kb$avg_rec - mean(maps_1kb$avg_rec)) / sd(maps_1kb$avg_rec)
   maps_1kb$std_pi <- (maps_1kb$avg_pi - mean(maps_1kb$avg_pi)) / sd(maps_1kb$avg_pi)
   
-  lin_models <- list(length=2)
-  lin_models[[1]] <- m.pi.1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_1kb)
-  lin_models[[2]] <- lm(std_pi ~ std_mu + std_r, data=maps_1kb)
+  m_1kb_1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_1kb)
+  m_1kb_2 <- lm(std_pi ~ std_mu + std_r, data=maps_1kb)
   
-  summary(lin_models[[1]])
-  summary(lin_models[[2]])
+  summary(m_1kb_1)
+  summary(m_1kb_2)
   
-  comp <- AIC(m.pi.1, m.pi.2) # model selection
+  comp <- AIC(m_1kb_1, m_1kb_2) # model comparison
   
-  anova.pi <- Anova(lin_models[[which.min(comp$AIC)]])
+  anova.pi <- Anova(m_1kb_1)
   apiss <- anova.pi$"Sum Sq"
   anova.pi$VarExp <- apiss / sum(apiss)
 
@@ -1981,15 +1990,15 @@ for(i in 1:n_models) {
   maps_100kb <- maps_1kb %>% group_by(bin_100kb) %>% summarise_at(c("std_pi", "std_s", "std_mu", "std_r", "avg_pi", "avg_s", "avg_mut", "avg_rec"), mean)
   
   # 10 kb
-  lmpi1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_10kb)
-  lmpi2 <- lm(std_pi ~ std_mu + std_r, data=maps_10kb)
+  m_10kb_1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_10kb)
+  m_10kb_2 <- lm(std_pi ~ std_mu + std_r, data=maps_10kb)
   
-  summary(lmpi1)
-  summary(lmpi2)
+  summary(m_10kb_1)
+  summary(m_10kb_2)
   
-  AIC(lmpi1, lmpi2) # model comparison
+  AIC(m_10kb_1, m_10kb_2) # model comparison
   
-  anova.pi <- Anova(lmpi1)
+  anova.pi <- Anova(m_10kb_1)
   apiss <- anova.pi$"Sum Sq"
   anova.pi$VarExp <- apiss / sum(apiss)
 
@@ -2000,15 +2009,15 @@ for(i in 1:n_models) {
   r2_tbl_10kb$`r:s`[i] <- anova.pi$VarExp[4] * 100
   
   # 100 kb
-  lmpi1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_100kb)
-  lmpi2 <- lm(std_pi ~ std_mu + std_r, data=maps_100kb)
+  m_100kb_1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_100kb)
+  m_100kb_2 <- lm(std_pi ~ std_mu + std_r, data=maps_100kb)
   
-  summary(lmpi1)
-  summary(lmpi2)
+  summary(m_100kb_1)
+  summary(m_100kb_2)
   
-  AIC(lmpi1, lmpi2) # model comparison
+  AIC(m_100kb_1, m_100kb_2) # model comparison
   
-  anova.pi <- Anova(lmpi1)
+  anova.pi <- Anova(m_100kb_1)
   apiss <- anova.pi$"Sum Sq"
   anova.pi$VarExp <- apiss / sum(apiss)
 
@@ -2018,7 +2027,7 @@ for(i in 1:n_models) {
   r2_tbl_100kb$s[i] <- anova.pi$VarExp[3] * 100
   r2_tbl_100kb$`r:s`[i] <- anova.pi$VarExp[4] * 100
   
-  
+  # plots
   pi_1kb <- ggplot(data=maps_1kb, aes(x=(bin -1) * 1e+4, y=avg_pi))
   pi_1kb <- pi_1kb + geom_line(data=maps_1kb) + theme_bw()
   pi_1kb <- pi_1kb + scale_y_continuous(breaks=pretty_breaks(), labels=scale.4d)
@@ -2044,20 +2053,20 @@ for(i in 1:n_models) {
   s_1kb <- s_1kb + scale_y_continuous(breaks=pretty_breaks(), labels=scientific)
   s_1kb <- s_1kb + labs(title=NULL, x=NULL, y="s") 
   s_1kb <- s_1kb + theme(axis.title.x=element_text(size=16),
-                           axis.text.x=element_blank(),
-                           axis.text.y=element_text(size=12),
-                           axis.title.y=element_text(size=16),
-                           plot.title=element_text(size=20), legend.position="none")
+                         axis.text.x=element_blank(),
+                         axis.text.y=element_text(size=12),
+                         axis.title.y=element_text(size=16),
+                         plot.title=element_text(size=20), legend.position="none")
   
   r_1kb <- ggplot(data=maps_1kb, aes(x=(bin -1) * 1e+4, y=avg_rec))
   r_1kb <- r_1kb + geom_line(data=maps_1kb) + theme_bw()
   r_1kb <- r_1kb + scale_y_continuous(breaks=pretty_breaks(), labels=scientific)
   r_1kb <- r_1kb + labs(title=NULL, x="Position", y="r") 
   r_1kb <- r_1kb + theme(axis.title.x=element_text(size=16),
-                           axis.text.x=element_text(size=12),
-                           axis.text.y=element_text(size=12),
-                           axis.title.y=element_text(size=16),
-                           plot.title=element_text(size=20), legend.position="none")
+                         axis.text.x=element_text(size=12),
+                         axis.text.y=element_text(size=12),
+                         axis.title.y=element_text(size=16),
+                         plot.title=element_text(size=20), legend.position="none")
 
   lands_1kb <- plot_grid(pi_1kb, u_1kb, s_1kb, r_1kb, align='v', ncol=1)
   
@@ -2115,37 +2124,37 @@ for(i in 1:n_models) {
   u_100kb <- u_100kb + scale_y_continuous(breaks=pretty_breaks(), labels=scientific)
   u_100kb <- u_100kb + labs(title=NULL, x=NULL, y=NULL) 
   u_100kb <- u_100kb + theme(axis.title.x=element_text(size=16),
-                         axis.text.x=element_blank(),
-                         axis.text.y=element_blank(),
-                         plot.title=element_text(size=20), legend.position="none")
+                             axis.text.x=element_blank(),
+                             axis.text.y=element_blank(),
+                             plot.title=element_text(size=20), legend.position="none")
   
   s_100kb <- ggplot(data=maps_100kb, aes(x=(bin_100kb -1) * 1e+6, y=avg_s))
   s_100kb <- s_100kb + geom_line(data=maps_100kb) + theme_bw()
   s_100kb <- s_100kb + scale_y_continuous(breaks=pretty_breaks(), labels=scientific)
   s_100kb <- s_100kb + labs(title=NULL, x=NULL, y=NULL) 
   s_100kb <- s_100kb + theme(axis.title.x=element_text(size=16),
-                           axis.text.x=element_blank(),
-                           axis.text.y=element_blank(),
-                           plot.title=element_text(size=20), legend.position="none")
+                             axis.text.x=element_blank(),
+                             axis.text.y=element_blank(),
+                             plot.title=element_text(size=20), legend.position="none")
   
   r_100kb <- ggplot(data=maps_100kb, aes(x=(bin_100kb -1) * 1e+6, y=avg_rec))
   r_100kb <- r_100kb + geom_line(data=maps_100kb) + theme_bw()
   r_100kb <- r_100kb + scale_y_continuous(breaks=pretty_breaks(), labels=scientific)
   r_100kb <- r_100kb + labs(title=NULL, x="Position", y=NULL) 
   r_100kb <- r_100kb + theme(axis.title.x=element_text(size=16),
-                           axis.text.x=element_text(size=12),
-                           axis.text.y=element_blank(),
-                           plot.title=element_text(size=20), legend.position="none")
+                             axis.text.x=element_text(size=12),
+                             axis.text.y=element_blank(),
+                             plot.title=element_text(size=20), legend.position="none")
 
   lands_100kb <- plot_grid(pi_100kb, u_100kb, s_100kb, r_100kb, align='v', ncol=1)
   
   lands_scales <- plot_grid(lands_1kb, lands_10kb, lands_100kb, nrow=1)
-  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/m", i, "_maps.png", sep=""), lands_scales, base_height=12, base_width=16)
+  save_plot(paste("~/Devel/momentspp/benchmarking/selection/single-pop/test_data/m", i, "_maps.png", sep=""), lands_scales, base_height=12, base_width=16)
 }
 
-fwrite(r2_tbl_1kb, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/r2_1kb.csv")
-fwrite(r2_tbl_10kb, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/r2_10kb.csv")
-fwrite(r2_tbl_100kb, "~/Devel/momentspp/benchmarking/selection/single-pop/landscapes/r2_100kb.csv")
+fwrite(r2_tbl_1kb, "~/Devel/momentspp/benchmarking/selection/single-pop/test_data/r2_1kb.csv")
+fwrite(r2_tbl_10kb, "~/Devel/momentspp/benchmarking/selection/single-pop/test_data/r2_10kb.csv")
+fwrite(r2_tbl_100kb, "~/Devel/momentspp/benchmarking/selection/single-pop/test_data/r2_100kb.csv")
 
 
 # visualizing R^2
