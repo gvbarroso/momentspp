@@ -343,8 +343,8 @@ for(i in 1:num_reps) {
 			                   as.numeric(x[4]) * 2 * N))
   pi0s <- unlist(pi0s)
   pis <- unlist(pis)
-  hrmap <- setDT(bind_cols(1:L, pis, pi0s))
-  names(hrmap) <- c("Pos", "Hr", "pi0")
+  hrmap <- setDT(bind_cols(1:L, pis, pi0s, B_map))
+  names(hrmap) <- c("Pos", "Hr", "pi0", "B")
   setkey(hrmap, Pos)
   fwrite(hrmap, paste("rep_", i, "/hrmap.csv", sep=""))
   

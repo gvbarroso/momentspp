@@ -1653,7 +1653,7 @@ avg_neutral_lengths <- c(1e+4)
 exon_lengths <- c(1000)  
 models <- setDT(crossing(N, num_constrained, shape_sel, scale_sel, shapes_mu, scales_mu, shapes_rec, scales_rec, 
                 avg_rec_spans, avg_mut_spans, avg_neutral_lengths, exon_lengths))
-models$scenario <- 1:nrow(models)
+models$model <- 1:nrow(models)
 n_models <- nrow(models)
 
 fwrite(models, "~/Devel/momentspp/benchmarking/selection/single-pop/test_models/models.csv", row.names=F, quote=F, sep=",")
@@ -2156,67 +2156,6 @@ fwrite(r2_tbl_1kb, "~/Devel/momentspp/benchmarking/selection/single-pop/test_dat
 fwrite(r2_tbl_10kb, "~/Devel/momentspp/benchmarking/selection/single-pop/test_data/r2_10kb.csv")
 fwrite(r2_tbl_100kb, "~/Devel/momentspp/benchmarking/selection/single-pop/test_data/r2_100kb.csv")
 
-
-# visualizing R^2
-molten_tbl <- pivot_longer(tbl, cols=c("Total_R2", "Mutation_R2", "Recombination_R2", "Selection_R2", "Mu:Sel_R2", "Rec:Sel_R2"), names_to="variable")
-
-# TODO change filter parameters (mu) after new set of evolutionary parameters is used
-
-p5 <- ggplot(data=filter(molten_tbl, N==1000, scales_mu==1e-9), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
-p5 <- p5 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
-p5 <- p5 + geom_point(aes(shape=variable), size=4)
-p5 <- p5 + scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name = "",
-                              labels=c(expression(mu:alpha), expression(mu), expression(r:alpha), expression(r), expression(alpha),"Total"))
-p5 <- p5 + scale_x_continuous(breaks=unique(molten_tbl$shapes_mu), trans="log10") 
-p5 <- p5 + scale_y_continuous(breaks=pretty_breaks())
-p5 <- p5 + labs(title = "Var Explained, N=1000, mu=1e-9, rows~1/var_rec, cols~mean_rec", x="~1/var_mu", y="Variance Explained (%)")
-p5 <- p5 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_1.png", p5, base_height=10, base_width=15)
-
-p6 <- ggplot(data=filter(molten_tbl, N==1000, scales_mu==1e-8), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
-p6 <- p6 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
-p6 <- p6 + geom_point(aes(shape=variable), size=4)
-p6 <- p6 + scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name = "",
-                              labels=c(expression(mu:alpha), expression(mu), expression(r:alpha), expression(r), expression(alpha),"Total"))
-p6 <- p6 + scale_x_continuous(breaks=unique(molten_tbl$shapes_mu), trans="log10") 
-p6 <- p6 + scale_y_continuous(breaks=pretty_breaks())
-p6 <- p6 + labs(title = "Var Explained, N=1000, mu=1e-8, rows~1/var_rec, cols~mean_rec", x="~1/var_mu", y="Variance Explained (%)")
-p6 <- p6 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_2.png", p6, base_height=10, base_width=15)
-
-p7 <- ggplot(data=filter(molten_tbl, N==10000, scales_mu==1e-9), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
-p7 <- p7 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
-p7 <- p7 + geom_point(aes(shape=variable), size=4)
-p7 <- p7 + scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name = "",
-                              labels=c(expression(mu:alpha), expression(mu), expression(r:alpha), expression(r), expression(alpha),"Total"))
-p7 <- p7 + scale_x_continuous(breaks=unique(molten_tbl$shapes_mu), trans="log10") 
-p7 <- p7 + scale_y_continuous(breaks=pretty_breaks())
-p7 <- p7 + labs(title = "Var Explained, N=10000, mu=1e-9, rows~1/var_rec, cols~mean_rec", x="~1/var_mu", y="Variance Explained (%)")
-p7 <- p7 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_3.png", p7, base_height=10, base_width=15)
-
-p8 <- ggplot(data=filter(molten_tbl, N==10000, scales_mu==1e-8), aes(x=shapes_mu, y=value, shape=variable, color=as.factor(scale_sel)))
-p8 <- p8 + geom_line() + facet_grid(shapes_rec~scales_rec)+ theme_bw()
-p8 <- p8 + geom_point(aes(shape=variable), size=4)
-p8 <- p8 + scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name = "",
-                              labels=c(expression(mu:alpha), expression(mu), expression(r:alpha), expression(r), expression(alpha),"Total"))
-p8 <- p8 + scale_x_continuous(breaks=unique(molten_tbl$shapes_mu), trans="log10") 
-p8 <- p8 + scale_y_continuous(breaks=pretty_breaks())
-p8 <- p8 + labs(title = "Var Explained, N=10000, mu=1e-8, rows~1/var_rec, cols~mean_rec", x="~1/var_mu", y="Variance Explained (%)")
-p8 <- p8 + theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-                 legend.text=element_text(size=16), legend.position="bottom")
-save_plot("selection/single-pop/R2_plot_4.png", p8, base_height=10, base_width=15)
 ```
 
 # Selection 2-populations
