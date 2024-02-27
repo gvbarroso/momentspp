@@ -17,7 +17,7 @@ scale.4d <- function(x) sprintf("%.4f", x)
 
 # loads the main tables
 models <- fread("models.csv")
-lookup_tbl <- setDT(fread("lookup_tbl.csv"))
+lookup_tbl <- fread("lookup_tbl.csv")
 setkey(lookup_tbl, lookup_r, lookup_s)
 
 lookup_r <- unique(lookup_tbl$lookup_r)
@@ -34,7 +34,7 @@ m <- as.numeric(args[1]) # model index
 
 # "global" parameters
 num_reps <- 10
-jump_length <- 1e+3 # sampling distance, for interpolating B-values
+jump_length <- 500 # sampling distance, for interpolating B-values
 bin_size <- 1e+3 # "basal" scale, larger windows are built after
 N <- unique(lookup_tbl$N)
 u <- unique(lookup_tbl$u)
@@ -339,7 +339,7 @@ for(i in 1:num_reps) {
   hrmap <- setDT(bind_cols(1:L, pis, pi0s, B_map))
   names(hrmap) <- c("Pos", "Hr", "pi0", "B")
   setkey(hrmap, Pos)
-  fwrite(hrmap, paste("rep_", i, "/hrmap.csv", sep=""))
+  fwrite(hrmap, paste("rep_", i, "/hrmap.csv", sep=""), compress="gzip")
   
   seg <- filter(dt_exons, start >= 0, end <= 1e+6)
   wsize <- seg$end[nrow(seg)] - seg$start[1]
@@ -377,8 +377,8 @@ for(i in 1:num_reps) {
   
   hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
   hrmap <- hrmap[1:maps_1kb$end[nrow(maps_1kb)],] # trims the tail (convenience)
-  avgs <- hrmap %>% group_by(bin) 
-          %>% summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0))
+  avgs <- hrmap %>% group_by(bin) %>%
+          summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0))
   maps_1kb$avg_pi <- avgs$avg_pi
   maps_1kb$bin <- 1:nrow(maps_1kb)
   

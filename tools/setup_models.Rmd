@@ -169,12 +169,12 @@ for(i in 1:length(lookup_r)) {
 }
 
 params$Hr <- hr
-fwrite(params, "lookup_tbl.csv", row.names=F, quote=F, sep=",")
+fwrite(params, "landscapes/lookup_tbl.csv", row.names=F, quote=F, sep=",")
 ```
 
 ```{r, landscapes, include=F, eval=F, results=F, message=F, warning=F}
 
-lookup_tbl <- fread("lookup_tbl.csv")
+lookup_tbl <- fread("landscapes/lookup_tbl.csv")
 setkey(lookup_tbl, lookup_r, lookup_s)
 
 lookup_r <- unique(lookup_tbl$lookup_r)
@@ -214,5 +214,5 @@ models <- setDT(crossing(N, num_constrained,
 models$model <- 1:nrow(models)
 n_models <- nrow(models)
 
-fwrite(models, "test_models/models.csv", row.names=F, quote=F, sep=",")
+fwrite(models, "test_models/models.csv", sep=",")
 ```
