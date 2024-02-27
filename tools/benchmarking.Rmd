@@ -1639,7 +1639,7 @@ u <- unique(lookup_tbl$u)
 num_constrained <- 1000 # number of (non-recombining) selected segment in chr
 
 # Gamma dist params
-scale_sel <- c(5e-5, 2.5e-4, 7.5e-4)
+scale_sel <- c(5e-5, 2.5e-4)
 shape_sel <- c(10)
 scales_mu <- c(1e-8)
 shapes_mu <- c(3, 10, 30)
@@ -1745,7 +1745,7 @@ for(i in 1:n_models) {
   
   # finding mu for each sampled pos and the cumulative recombination map over the "sampling intervals"
   samp_pos <- unlist(apply(dt_neutral, 1, function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
-  linear_pos <- sort(c(samp_pos, dt_exons$start + models$exon_lengths[i]/2))
+  linear_pos <- sort(c(samp_pos, dt_exons$start + 500))
   # (the following searches may take a few minutes, depending the length of linear pos)
   focal_mu <- unlist(lapply(linear_pos, function(pos) mmap[J(pos), roll=T]$u))
   focal_r <- unlist(lapply(linear_pos, function(pos) rmap[J(pos), roll=T]$r))
@@ -1802,7 +1802,7 @@ for(i in 1:n_models) {
   
   # pre-computes recombination distances between sampled neutral sites and exons, taking into account strength of selection
   cr_samp <- pos_dt[position %in% samp_pos,]
-  cr_exons <- pos_dt[position %in% (dt_exons$start + models$exon_lengths[i]/2),]
+  cr_exons <- pos_dt[position %in% (dt_exons$start + 500),]
   prd <- as.data.frame(2 * N * abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-"))) # pairwise rho
   names(prd) <- 1:ncol(prd)
   erd <- prd # "effective" rec. distance is inversely proportional to alpha
@@ -1816,19 +1816,24 @@ for(i in 1:n_models) {
     # the grid on r is fine-grained enough that we don't need interpolation
     closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
     hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
-    return((hr / (2 * N * u)) ^ models$exon_lengths[i])
+    return((hr / (2 * N * u)) ^ 1000)
   }
-  
+  system.time({
   # we finally get the B-values per sampled site!
   B_values <- numeric(length=length(exons_per_samp_neut))
   pb <- txtProgressBar(min=1, max=length(exons_per_samp_neut), style=3)
   for(j in 1:length(exons_per_samp_neut)) {
     setTxtProgressBar(pb, j)
-    B <- unlist(lapply(exons_per_samp_neut[[j]], getB, focal_neutral=j))
-    B_values[j] <- cumprod(B)[length(B)]
+    if(length(exons_per_samp_neut[[j]]) > 0) {
+       B <- unlist(lapply(exons_per_samp_neut[[j]], getB, focal_neutral=j))
+       B_values[j] <- cumprod(B)[length(B)]
+    }
+    else {
+      B_values[j] <- 1
+    }
   }
   close(pb)
-  
+  })
   # using max rec distance (r==1e-2) to check validity of threshold used above
   rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
   ex400 <- apply(rex, 1, function(x) which(x))

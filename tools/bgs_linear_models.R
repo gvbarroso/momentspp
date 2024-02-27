@@ -13,15 +13,18 @@ library(scales)
 scale.4d <- function(x) sprintf("%.4f", x)
 
 # first we check the correlation between B-values and pi
-# TODO use binned maps!
 for(i in 1:num_models) {
   for(j in 1:num_models) {
     hrmap <- fread(paste("model_", i, "/rep_", j, "/hrmap.csv", sep=""))
     hrmap$B <- hrmap$Hr / hrmap$pi0
-    cor.test(hrmap$B[1:50000], hrmap$Hr[1:50000])
-    plot(hrmap$Hr[1:50000], hrmap$B[1:50000])
+    hrmap$bin <- (hrmap$Pos - 1) %/% 1e+5
+    hrbins <- hrmap %>% group_by(bin) %>% summarize_at(vars(B, Hr, pi0), mean)
+    cor.test(hrbins$B, hrbins$Hr)
+    plot(hrbins$Hr, hrbins$B)
   }
 }
+
+# now we look at R^2 vs model parameters
 models <- fread("models.csv")
 num_models <- 36 # nrow(models)
 num_reps <- 10 # as.numeric(args[1])
