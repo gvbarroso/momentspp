@@ -13,20 +13,18 @@ library(pracma)
 library(bigsnpr)
 library(scales)
 
-scale.4d <- function(x) sprintf("%.4f", x)
+scale.4d <- function(x) sprintf("%.4f", x) # for plotting
 
 # loads the main tables
 models <- fread("models.csv")
 lookup_tbl <- fread("lookup_tbl.csv")
 setkey(lookup_tbl, lookup_r, lookup_s)
 
-lookup_r <- unique(lookup_tbl$lookup_r)
-lookup_s <- unique(lookup_tbl$lookup_s)
-
 # for discretizing Gamma distributions and make look-up faster
-dt_r <- data.table(lookup_r)
-dt_s <- data.table(lookup_s)
-
+dt_r <- data.table(unique(lookup_tbl$lookup_r))
+dt_s <- data.table(unique(lookup_tbl$lookup_s))
+names(dt_r) <- "lookup_r"
+names(dt_s) <- "lookup_s"
 setkey(dt_r, lookup_r)
 setkey(dt_s, lookup_s)
 
@@ -82,8 +80,8 @@ for(i in 1:num_reps) {
 
   dt_neutral <- filter(intervals[,2:4], s==0)
   setkey(dt_neutral, start, end)
-  dt_exons <- filter(intervals, s < 0)
-  dt_exons$u <- u 
+  dt_exons <- filter(intervals, s<0)
+  dt_exons$u <- u # all exons have same mut rate
   setkey(dt_exons, start, end)
   fwrite(dt_exons, paste("rep_", i, "/exons.csv", sep=""), sep=",")
 
@@ -223,18 +221,19 @@ for(i in 1:num_reps) {
     total_r <- prd[focal_neutral, focal_exon] / (2 * N) # TODO check if total_r remains reasonable for mpp (< 1e-2) since erd divides by alpha
     # the grid on r is fine-grained enough that we don't need interpolation
     closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
-    hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
+    hr <- lookup_tbl[.(closest_r, focal_s)]$Hr # lookup table has single u value
     return((hr / (2 * N * u)) ^ models$exon_lengths[m])
   }
   
-  # we finally get the B-values per sampled site! (this can take some time)
+  # we finally get the B-values per sampled site! 
+  # this takes time if there are many sampled sites influenced by many exons
   B_values <- numeric(length=length(exons_per_samp_neut))
   for(j in 1:length(exons_per_samp_neut)) {
     if(length(exons_per_samp_neut[[j]]) > 0) {
        B <- unlist(lapply(exons_per_samp_neut[[j]], getB, focal_neutral=j))
        B_values[j] <- cumprod(B)[length(B)]
     }
-    else {
+    else { # if no exons within relevant distance
       B_values[j] <- 1
     }
   }
@@ -341,6 +340,7 @@ for(i in 1:num_reps) {
   setkey(hrmap, Pos)
   fwrite(hrmap, paste("rep_", i, "/hrmap.csv", sep=""), compress="gzip")
   
+  # plotting diversity per site for an arbitrary segment of the chr
   seg <- filter(dt_exons, start >= 0, end <= 1e+6)
   wsize <- seg$end[nrow(seg)] - seg$start[1]
   barcode <- ggplot(data=seg) +
@@ -372,7 +372,7 @@ for(i in 1:num_reps) {
 	 
   ppi2 <- plot_grid(ppi, barcode, ncol=1, align='v', axis='l',
                     rel_heights=c(1, 0.1))
-  save_plot(paste("rep_", i, "/pis.ng", sep=""), 
+  save_plot(paste("rep_", i, "/pis.png", sep=""), 
             ppi2, base_height=10, base_width=12) 
   
   hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
