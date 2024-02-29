@@ -6,6 +6,7 @@ library(bigsnpr)
 library(tidyverse)
 library(data.table)
 library(GenomicRanges)
+library(cowplot)
 
 # loads the main tables
 models <- fread("models.csv.gz")
@@ -154,8 +155,9 @@ maps_1kb <- bind_cols(bins,
                       mut_bins["avg_mut"],
                       dfe_bins["avg_s"])
 
-maps_1kb$bin_10kb <- ((maps_1kb$bin - 1) %/% 10)
-maps_1kb$bin_100kb <- ((maps_1kb$bin - 1) %/% 100)
+maps_1kb$bin <- 1:nrow(maps_1kb)
+maps_1kb$bin_10kb <- (maps_1kb$bin - 1) %/% 10
+maps_1kb$bin_100kb <- (maps_1kb$bin - 1) %/% 100
 maps_10kb <- maps_1kb %>% group_by(bin_10kb) %>% 
              summarise_at(c("avg_s", "avg_mut", "avg_rec"), mean)
 maps_100kb <- maps_1kb %>% group_by(bin_100kb) %>% 
@@ -165,3 +167,52 @@ fwrite(maps_1kb, "maps_1kb.csv")
 fwrite(maps_10kb, "maps_10kb.csv")
 fwrite(maps_100kb, "maps_100kb.csv")
 
+# visualization of shapes of mutation rate distributions
+mut_spans <- rgeom(n=100, prob=1/models$avg_mut_spans[m])
+mut_spans <- mut_spans[mut_spans>0]
+
+avg_mu <- unique(models$scales_mu)
+shapes <- unique(models$shapes_mu)
+#                                                         TODO fix, needs has some hard-coded values at the moment
+mut_rates_3 <- rgamma(n=length(mut_spans), shapes[1], rate=shapes[1]) * avg_mu
+mut_rates_10 <- rgamma(n=length(mut_spans), shapes[2], rate=shapes[2]) * avg_mu
+mut_rates_30 <- rgamma(n=length(mut_spans), shapes[3], rate=shapes[3]) * avg_mu
+
+mmap <- setDT(bind_cols(dplyr::lag(cumsum(mut_spans), n=1, default=0),
+                        dplyr::lag(cumsum(mut_spans), n=0, default=0)))
+names(mmap) <- c("start", "end")
+mmap$`3` <- mut_rates_3
+mmap$`10` <- mut_rates_10
+mmap$`30` <- mut_rates_30
+
+molten_map <- pivot_longer(mmap, cols=c("3", "10", "30"), names_to="shape")
+p <- ggplot(data=molten_map, aes(x=start/1e+3, y=value,
+                                 color=as.factor(as.numeric(shape)))) +
+  geom_step() + theme_bw() +
+  scale_color_discrete(name="Shape", type=c("plum3", "seagreen3", "salmon3")) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks(), trans="log10") +
+  labs(title="Mutation landscapes for different shape parameters",
+       x="Position (kb)", y=expression(mu)) +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=16),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+q <- ggplot(data=molten_map, aes(x=value, fill=as.factor(as.numeric(shape)))) + 
+  geom_density(alpha=0.5) + theme_bw() +
+  scale_fill_discrete(name="Shape", type=c("plum3", "seagreen3", "salmon3")) +
+  scale_x_continuous(trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="Density of mutation rate distributions", x="Rate", y="Density") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("mut_rates_viz.png", plot_grid(p, q, nrow=1),
+          base_height=12, base_width=24)

@@ -5,10 +5,12 @@ library(R.utils)
 library(tidyverse)
 library(data.table)
 library(pracma) # cubic splines function
+library(cowplot)
 
-num_rounds <- 4 # for updating B-values due to interference selection
+num_rounds <- 3 # for updating B-values due to interference selection
 jump_length <- as.numeric(args[1]) # sampling dist., for interpolating B-values
 
+# loads results of bgs_maps.R
 mmap <- fread("mmap.csv")
 rmap <- fread("rmap.csv")
 smap <- fread("smap.csv")
@@ -17,6 +19,8 @@ lookup_tbl <- fread("lookup_tbl.csv.gz")
 dt_neutral <- filter(smap[,2:4], s==0)
 dt_exons <- filter(smap, s<0)
 
+setkey(mmap, start, end)
+setkey(rmap, start, end)
 setkey(smap, start, end)
 setkey(dt_neutral, start, end)
 setkey(dt_exons, start, end)
@@ -96,8 +100,92 @@ for(i in 1:num_rounds) {
 
 names(tbl) <- c(paste("iter_", rep(1:num_rounds), sep=""))
 tbl$pos <- linear_pos
-m_tbl <- pivot_longer(tbl, cols=starts_with("iter"), names_to="Iter")
-ggplot(data=m_tbl[5e+3:6e+3,], aes(x=pos, y=value, color=Iter)) + geom_point(aes(alpha=0.5)) + theme_bw()
+m_tbl <- pivot_longer(tbl, cols=starts_with("iter"), names_to="Iteration")
+ggplot(data=m_tbl[5e+4:6e+4,], aes(x=pos, y=value, color=Iteration)) + geom_point(aes(alpha=0.5)) + theme_bw()
+
+# pause for vizualizing the validity of threshold for spotting "relevant" exons
+rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
+ex400 <- apply(rex, 1, function(x) which(x))
+
+Bl400 <- unlist(lapply(ex400[[1]], getB, focal_neutral=1))
+Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB,
+                       focal_neutral=length(samp_pos)/4))
+Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB,
+                       focal_neutral=length(samp_pos)/2))
+
+Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, focal_neutral=1))
+Bqr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/4]], getB,
+                     focal_neutral=length(samp_pos)/4))
+Bmr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/2]], getB,
+                     focal_neutral=length(samp_pos)/2))
+
+xl <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bl400))]), Bl400)
+xq <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bq400))]), Bq400)
+xm <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bm400))]), Bm400)
+
+names(xl) <- c("rec", "B")
+names(xq) <- c("rec", "B")
+names(xm) <- c("rec", "B")
+
+xl$CummBval <- cumprod(xl$B)
+xq$CummBval <- cumprod(xq$B)
+xm$CummBval <- cumprod(xm$B)
+
+xl$relevant <- xl$B %in% Blr
+xq$relevant <- xq$B %in% Bqr
+xm$relevant <- xm$B %in% Bmr
+
+pl <- ggplot(data=xl, aes(x=rec, y=B, color=relevant)) +
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title="B-values Left", x=NULL, y=NULL) +
+  theme(axis.title=element_text(size=16),
+        axis.text=element_text(size=12),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="none")
+
+pq <- ggplot(data=xq, aes(x=rec, y=B, color=relevant)) +
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title="B-values 1/4 chr", x=NULL, y=NULL) +
+  theme(axis.title=element_text(size=16),
+        axis.text=element_text(size=12),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="none")
+
+pm <- ggplot(data=xm, aes(x=rec, y=B, color=relevant)) +
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title="B-values 1/2 chr", x=NULL, y=NULL) +
+  theme(axis.title=element_text(size=16),
+        axis.text=element_text(size=12),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="none")
+
+ql <- ggplot(data=xl, aes(x=rec, y=CummBval, color=relevant)) + geom_point() +
+  theme_bw() + scale_y_log10(limits=c(min(xl$CummBval), 1)) +
+  labs(title="Cumm. B-value, Left", x="Cummulative Rho", y="B") +
+  theme(axis.title=element_text(size=16),
+        axis.text=element_text(size=12),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+
+qq <- ggplot(data=xq, aes(x=rec, y=CummBval, color=relevant)) + 
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title="Cumm. B-value, 1/4 chr", x="Cummulative Rho", y="B") +
+  theme(axis.title=element_text(size=16),
+        axis.text=element_text(size=12),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+
+qm <- ggplot(data=xm, aes(x=rec, y=CummBval, color=relevant)) +
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title="Cumm. B-value, 1/2 chr", x="Cummulative Rho", y="B") +
+  theme(axis.title=element_text(size=16),
+        axis.text=element_text(size=12),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+
+cp <- plot_grid(pl, pq, pm, ql, qq, qm, nrow=2)
+save_plot(paste("rep_", i, "/Bvals.png", sep=""),
+          cp, base_height=10, base_width=12)
 
 # interpolating B-values for every site 1:L can also take some time
 B_map <- cubicspline(linear_pos, B_values, 1:L)
@@ -119,4 +207,15 @@ fwrite(hrmap, "hrmap.csv.gz", compress="gzip")
 
 # binning 
 hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
-avg <- hrmap %>% group_by(bin) %>% summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0))
+hrmap_1kb <- hrmap %>% group_by(bin) %>%
+             summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0), avg_B=mean(B))
+hrmap_1kb$bin_10kb <- hrmap_1kb$bin %/% 10
+hrmap_1kb$bin_100kb <- hrmap_1kb$bin %/% 100
+hrmap_10kb <- hrmap_1kb %>% group_by(bin_10kb) %>% 
+              summarise_at(c("avg_pi", "avg_pi0", "avg_B"), mean)
+hrmap_100kb <- hrmap_1kb %>% group_by(bin_100kb) %>% 
+               summarise_at(c("avg_pi", "avg_pi0", "avg_B"), mean)
+
+fwrite(hrmap_1kb, "hrmap_1kb.csv")
+fwrite(hrmap_10kb, "hrmap_10kb.csv")
+fwrite(hrmap_100kb, "hrmap_100kb.csv")

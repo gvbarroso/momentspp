@@ -14,7 +14,7 @@ toc_depth: 3
 knitr::opts_chunk$set(echo=TRUE)
 
 library(tidyverse)
-library(bigsnpr)
+library(bigsnpr) # for seq_log
 library(data.table)
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/selection/single-pop/")
