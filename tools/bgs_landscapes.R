@@ -107,7 +107,9 @@ for(i in 1:num_reps) {
   rmap$r <- disc_rs
   setkey(rmap, start, end)
   fwrite(rmap, paste("rep_", i, "/rmap.csv", sep=""), sep=",")
-
+  rmap2 <- rmap # save for binning, since rmap may be scaled by (local) Ne
+  rmap2$start <- rmap2$start + 1 # so that GRanges understands the intervals
+  
   mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[m]),
 	            	     prob=1/models$avg_mut_spans[m])
   while(sum(mut_spans) < L) {
@@ -134,13 +136,19 @@ for(i in 1:num_reps) {
   mmap$u <- disc_mus
   setkey(mmap, start, end)
   fwrite(mmap, paste("rep_", i, "/mmap.csv", sep=""), sep=",")
-
+  mmap2 <- mmap # save for binning, since mmap may be scaled by (local) Ne
+  mmap2$start <- mmap2$start + 1 # so that GRanges understands the intervals
+  
   # finding mu for each sampled pos and the cumulative recombination map
   samp_pos <- unlist(apply(dt_neutral, 1, function(x)
 	                  		   seq(from=x[1], to=x[2], by=jump_length))) + 1
   linear_pos <- sort(c(samp_pos, dt_exons$start + models$exon_lengths[m]/2))
   focal_mu <- unlist(lapply(linear_pos, function(pos) mmap[J(pos), roll=T]$u))
+  
+  ##B_map <- rep(1, linear_pos)
+  # come back HERE to apply interference selection:
   focal_r <- unlist(lapply(linear_pos, function(pos) rmap[J(pos), roll=T]$r))
+  ##focal_r <- focal_r * B_map[linear_pos]
   cum_rec <- numeric(length=length(linear_pos))
   cum_rec[1] <- focal_r[1]
 
@@ -151,60 +159,6 @@ for(i in 1:num_reps) {
   pos_dt <- setDT(bind_cols(linear_pos, focal_mu, cum_rec))
   names(pos_dt) <- c("position", "focal_mu", "cumrec")
   setkey(pos_dt, position)
-
-  # defines bins for linear models
-  bins <- rep(bin_size, floor(L / bin_size))
-  bins <- bind_cols(chr="chr1",
-		                dplyr::lag(cumsum(bins), n=1, default=0),
-	     	            dplyr::lag(cumsum(bins), n=0, default=0))
-  names(bins) <- c("chr", "start", "end")
-  bins$start <- bins$start + 1 # so that GRanges understands the intervals
-  gr_bins <- makeGRangesFromDataFrame(bins)
-  
-  # binning recombination maps
-  rmap2 <- rmap
-  rmap2$start <- rmap2$start + 1 # so that GRanges understands the intervals
-  rec_gr <- makeGRangesFromDataFrame(rmap2, keep.extra.columns=T)
-  hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
-  hit_list <- as.data.frame(hits)
-  names(hit_list) <- c("bins", "rec_bins")
-  rmap2$rec_bins <- 1:nrow(rmap2)
-  rec_bins <- merge(rmap2, hit_list) %>%
-	                  group_by(bins) %>%
-	                  mutate(avg_rec=weighted.mean(r, end-start))
-  rec_bins <- rec_bins %>% distinct(bins, .keep_all=T)
-  
-  # binning mutation maps
-  mmap2 <- mmap
-  mmap2$start <- mmap2$start + 1 # so that GRanges understands the intervals
-  mut_gr <- makeGRangesFromDataFrame(mmap2, keep.extra.columns=T)
-  hits <- findOverlaps(query=gr_bins, subject=mut_gr) 
-  hit_list <- as.data.frame(hits)
-  names(hit_list) <- c("bins", "mut_bins")
-  mmap2$mut_bins <- 1:nrow(mmap2)
-  mut_bins <- merge(mmap2, hit_list) %>%
-	            group_by(bins) %>%
-	            mutate(avg_mut=weighted.mean(u, end-start))
-  mut_bins <- mut_bins %>% distinct(bins, .keep_all=T)
-  
-  # binning DFE
-  intervals2 <- intervals
-  intervals2$start <- intervals2$start + 1 # so that GRanges understands
-  dfe_gr <- makeGRangesFromDataFrame(intervals2, keep.extra.columns=T)
-  hits <- findOverlaps(query=gr_bins, subject=dfe_gr) 
-  hit_list <- as.data.frame(hits)
-  names(hit_list) <- c("bins", "dfe")
-  intervals2$dfe <- 1:nrow(intervals2)
-  # NOTE: avg_s encompasses local density of constrained sites
-  dfe_bins <- merge(intervals2, hit_list) %>%
-	                  group_by(bins) %>%
-	                  mutate(avg_s=weighted.mean(s, end-start)) 
-  dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T)
-  
-  maps_1kb <- bind_cols(bins,
-                        rec_bins["avg_rec"],
-                        mut_bins["avg_mut"],
-                        dfe_bins["avg_s"])
   
   # pre-computes "effective" rec. dist. between sampled neutral sites and exons
   cr_samp <- pos_dt[position %in% samp_pos,]
@@ -217,15 +171,23 @@ for(i in 1:num_reps) {
   exons_per_samp_neut <- apply(relevant_exons, 1, function(x) which(x))
   
   getB <- function(focal_exon, focal_neutral) { 
-    focal_s <- dt_exons[focal_exon,]$s
-    total_r <- prd[focal_neutral, focal_exon] / (2 * N) # TODO check if total_r remains reasonable for mpp (< 1e-2) since erd divides by alpha
-    # the grid on r is fine-grained enough that we don't need interpolation
-    closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
-    hr <- lookup_tbl[.(closest_r, focal_s)]$Hr # lookup table has single u value
-    return((hr / (2 * N * u)) ^ models$exon_lengths[m])
+    total_r <- prd[focal_neutral, focal_exon] / (2 * N) 
+    if(total_r > 1e-2) {
+      return(1)
+    } else {
+      exon_pos <- dt_exons$start[focal_exon] + models$exon_lengths[m] / 2
+      focal_s <- dt_exons[focal_exon,]$s
+      ##focal_s <- focal_s * B_map[linear_pos]
+      # the grid on r is fine-grained enough that we don't need interpolation
+      closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
+      hr <- lookup_tbl[.(closest_r, focal_s)]$Hr # lookup table has single u val
+      # correction for interference on mu is applied by scaling exon length
+      ##return((hr / (2 * N * u)) ^ (models$exon_lengths[m] * B_map[exon_pos]))
+      return((hr / (2 * N * u)) ^ (models$exon_lengths[m]))
+    }
   }
   
-  # we finally get the B-values per sampled site! 
+  # gets the B-values per sampled site
   # this takes time if there are many sampled sites influenced by many exons
   B_values <- numeric(length=length(exons_per_samp_neut))
   for(j in 1:length(exons_per_samp_neut)) {
@@ -238,21 +200,104 @@ for(i in 1:num_reps) {
     }
   }
   
-  # using max rec distance (r==1e-2) to check validity of threshold used above
+  # interpolating B-values for every site 1:L can also take some time
+  B_map <- cubicspline(samp_pos, B_values, 1:L)
+ 
+  # here it's easier to use mmap2 which has closed intervals:
+  ones <- rep(1, L)
+  pi0s <- invisible(apply(mmap2, 1, function(x)
+			              ones[as.numeric(x[2]):as.numeric(x[3])] *
+			                   as.numeric(x[4]) * 2 * N))
+  pis <- invisible(apply(mmap2, 1, function(x)
+			             B_map[as.numeric(x[2]):as.numeric(x[3])] *
+			                   as.numeric(x[4]) * 2 * N))
+  pi0s <- unlist(pi0s)
+  pis <- unlist(pis)
+  hrmap <- setDT(bind_cols(1:L, pis, pi0s, B_map))
+  names(hrmap) <- c("Pos", "Hr", "pi0", "B")
+  setkey(hrmap, Pos)
+  fwrite(hrmap, paste("rep_", i, "/hrmap.csv", sep=""), compress="gzip") 
+  
+  # defines bins for linear models
+  bins <- rep(bin_size, floor(L / bin_size))
+  bins <- bind_cols(chr="chr1",
+                    dplyr::lag(cumsum(bins), n=1, default=0),
+                    dplyr::lag(cumsum(bins), n=0, default=0))
+  names(bins) <- c("chr", "start", "end")
+  bins$start <- bins$start + 1 # so that GRanges understands the intervals
+  gr_bins <- makeGRangesFromDataFrame(bins)
+  
+  # binning recombination maps
+  rec_gr <- makeGRangesFromDataFrame(rmap2, keep.extra.columns=T)
+  hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
+  hit_list <- as.data.frame(hits)
+  names(hit_list) <- c("bins", "rec_bins")
+  rmap2$rec_bins <- 1:nrow(rmap2)
+  rec_bins <- merge(rmap2, hit_list) %>%
+              group_by(bins) %>%
+              mutate(avg_rec=weighted.mean(r, end-start))
+  rec_bins <- rec_bins %>% distinct(bins, .keep_all=T) # start&end mean nothing
+  
+  # binning mutation maps
+  mut_gr <- makeGRangesFromDataFrame(mmap2, keep.extra.columns=T)
+  hits <- findOverlaps(query=gr_bins, subject=mut_gr) 
+  hit_list <- as.data.frame(hits)
+  names(hit_list) <- c("bins", "mut_bins")
+  mmap2$mut_bins <- 1:nrow(mmap2)
+  mut_bins <- merge(mmap2, hit_list) %>%
+              group_by(bins) %>%
+              mutate(avg_mut=weighted.mean(u, end-start))
+  mut_bins <- mut_bins %>% distinct(bins, .keep_all=T) # start&end mean nothing
+  
+  # binning DFE
+  intervals2 <- intervals
+  intervals2$start <- intervals2$start + 1 # so that GRanges understands
+  dfe_gr <- makeGRangesFromDataFrame(intervals2, keep.extra.columns=T)
+  hits <- findOverlaps(query=gr_bins, subject=dfe_gr) 
+  hit_list <- as.data.frame(hits)
+  names(hit_list) <- c("bins", "intervals")
+  intervals2$intervals <- 1:nrow(intervals2)
+  # NOTE: avg_s PER SITE encompasses local density of constrained sites
+  dfe_bins <- merge(intervals2, hit_list) %>%
+              group_by(bins) %>%
+              mutate(avg_s=weighted.mean(s, end-start)) 
+  dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T) # start&end mean nothing
+  
+  # binning Hr map is more straightforward because it's single-nucleotide
+  hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
+  hrmap <- hrmap[1:maps_1kb$end[nrow(maps_1kb)],] # trims the tail (convenience)
+  avgs <- hrmap %>% group_by(bin) %>%
+          summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0))
+  
+  maps_1kb <- bind_cols(bins,
+                        rec_bins["avg_rec"],
+                        mut_bins["avg_mut"],
+                        dfe_bins["avg_s"],
+                        avgs["avg_pi"])
+  
+  # using B-value map to correct for interference among exons
+  B_map_1kb <- hrmap %>% group_by(bin) %>% summarize(avg_B=mean(B))
+  B_map_1kb$start <- B_map_1kb$bin * 1e+3 + 1
+  B_map_1kb$end <- (B_map_1kb$bin + 1) * 1e+3 
+  B_map_1kb$end[nrow(B_map_1kb)] <- L
+  B_map_1kb$chr <- "chr1"
+  B_map_1kb <- B_map_1kb[, c("chr", "start", "end", "avg_B")]
+  
+  # using max rec distance (r==1e-2) to visually check validity of rec threshold
   rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
   ex400 <- apply(rex, 1, function(x) which(x))
   
   Bl400 <- unlist(lapply(ex400[[1]], getB, focal_neutral=1))
   Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB,
-			            focal_neutral=length(samp_pos)/4))
+                         focal_neutral=length(samp_pos)/4))
   Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB,
-			            focal_neutral=length(samp_pos)/2))
+                         focal_neutral=length(samp_pos)/2))
   
   Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, focal_neutral=1))
   Bqr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/4]], getB,
-		            focal_neutral=length(samp_pos)/4))
+                       focal_neutral=length(samp_pos)/4))
   Bmr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/2]], getB,
-		            focal_neutral=length(samp_pos)/2))
+                       focal_neutral=length(samp_pos)/2))
   
   xl <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bl400))]), Bl400)
   xq <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bq400))]), Bq400)
@@ -271,116 +316,91 @@ for(i in 1:num_reps) {
   xm$relevant <- xm$B %in% Bmr
   
   pl <- ggplot(data=xl, aes(x=rec, y=B, color=relevant)) +
-        geom_point() + theme_bw() + scale_y_log10() +
-        labs(title="B-values Left", x=NULL, y=NULL) +
-        theme(axis.title=element_text(size=16),
-              axis.text=element_text(size=12),
-              axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-              legend.position="none")
+    geom_point() + theme_bw() + scale_y_log10() +
+    labs(title="B-values Left", x=NULL, y=NULL) +
+    theme(axis.title=element_text(size=16),
+          axis.text=element_text(size=12),
+          axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+          legend.position="none")
   
   pq <- ggplot(data=xq, aes(x=rec, y=B, color=relevant)) +
-        geom_point() + theme_bw() + scale_y_log10() +
-        labs(title="B-values 1/4 chr", x=NULL, y=NULL) +
-        theme(axis.title=element_text(size=16),
-              axis.text=element_text(size=12),
-              axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-              legend.position="none")
+    geom_point() + theme_bw() + scale_y_log10() +
+    labs(title="B-values 1/4 chr", x=NULL, y=NULL) +
+    theme(axis.title=element_text(size=16),
+          axis.text=element_text(size=12),
+          axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+          legend.position="none")
   
   pm <- ggplot(data=xm, aes(x=rec, y=B, color=relevant)) +
-        geom_point() + theme_bw() + scale_y_log10() +
-        labs(title="B-values 1/2 chr", x=NULL, y=NULL) +
-        theme(axis.title=element_text(size=16),
-              axis.text=element_text(size=12),
-              axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-              legend.position="none")
+    geom_point() + theme_bw() + scale_y_log10() +
+    labs(title="B-values 1/2 chr", x=NULL, y=NULL) +
+    theme(axis.title=element_text(size=16),
+          axis.text=element_text(size=12),
+          axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+          legend.position="none")
   
   ql <- ggplot(data=xl, aes(x=rec, y=CummBval, color=relevant)) + geom_point() +
-        theme_bw() + scale_y_log10(limits=c(min(xl$CummBval), 1)) +
-        labs(title="Cumm. B-value, Left", x="Cummulative Rho", y="B") +
-        theme(axis.title=element_text(size=16),
-              axis.text=element_text(size=12),
-              axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-              legend.position="bottom")
+    theme_bw() + scale_y_log10(limits=c(min(xl$CummBval), 1)) +
+    labs(title="Cumm. B-value, Left", x="Cummulative Rho", y="B") +
+    theme(axis.title=element_text(size=16),
+          axis.text=element_text(size=12),
+          axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+          legend.position="bottom")
   
   qq <- ggplot(data=xq, aes(x=rec, y=CummBval, color=relevant)) + 
-        geom_point() + theme_bw() + scale_y_log10() +
-        labs(title="Cumm. B-value, 1/4 chr", x="Cummulative Rho", y="B") +
-        theme(axis.title=element_text(size=16),
-              axis.text=element_text(size=12),
-              axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-              legend.position="bottom")
+    geom_point() + theme_bw() + scale_y_log10() +
+    labs(title="Cumm. B-value, 1/4 chr", x="Cummulative Rho", y="B") +
+    theme(axis.title=element_text(size=16),
+          axis.text=element_text(size=12),
+          axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+          legend.position="bottom")
   
   qm <- ggplot(data=xm, aes(x=rec, y=CummBval, color=relevant)) +
-        geom_point() + theme_bw() + scale_y_log10() +
-        labs(title="Cumm. B-value, 1/2 chr", x="Cummulative Rho", y="B") +
-        theme(axis.title=element_text(size=16),
-              axis.text=element_text(size=12),
-              axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
-              legend.position="bottom")
+    geom_point() + theme_bw() + scale_y_log10() +
+    labs(title="Cumm. B-value, 1/2 chr", x="Cummulative Rho", y="B") +
+    theme(axis.title=element_text(size=16),
+          axis.text=element_text(size=12),
+          axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+          legend.position="bottom")
   
   cp <- plot_grid(pl, pq, pm, ql, qq, qm, nrow=2)
   save_plot(paste("rep_", i, "/Bvals.png", sep=""),
             cp, base_height=10, base_width=12)
   
-  # getting B-values per site can also take some time:
-  B_map <- cubicspline(samp_pos, B_values, 1:L)
- 
-  # here it's easier to use mmap2 which has closed intervals:
-  ones <- rep(1, L)
-  pi0s <- invisible(apply(mmap2, 1, function(x)
-			             ones[as.numeric(x[2]):as.numeric(x[3])] *
-			                  as.numeric(x[4]) * 2 * N))
-  pis <- invisible(apply(mmap2, 1, function(x)
-			             B_map[as.numeric(x[2]):as.numeric(x[3])] *
-			                   as.numeric(x[4]) * 2 * N))
-  pi0s <- unlist(pi0s)
-  pis <- unlist(pis)
-  hrmap <- setDT(bind_cols(1:L, pis, pi0s, B_map))
-  names(hrmap) <- c("Pos", "Hr", "pi0", "B")
-  setkey(hrmap, Pos)
-  fwrite(hrmap, paste("rep_", i, "/hrmap.csv", sep=""), compress="gzip")
-  
   # plotting diversity per site for an arbitrary segment of the chr
   seg <- filter(dt_exons, start >= 0, end <= 1e+6)
   wsize <- seg$end[nrow(seg)] - seg$start[1]
   barcode <- ggplot(data=seg) +
-	           geom_segment(aes(x=start, xend=end, y=1, yend=1, size=3, color=s))+
-	           theme_void() +
-             theme(axis.title=element_blank(),
-                   axis.text=element_blank(),
-                   axis.text.x=element_blank(),
-                   axis.ticks.x=element_blank(),
-                   axis.ticks.y=element_blank(),
-                   axis.text.y=element_blank(),
-                   legend.position="none")
+    geom_segment(aes(x=start, xend=end, y=1, yend=1, size=3, color=s))+
+    theme_void() +
+    theme(axis.title=element_blank(),
+          axis.text=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          legend.position="none")
   
   molten_div <- pivot_longer(hrmap, cols=c("Hr", "pi0"), names_to="Var")
   ppi <- ggplot(data=molten_div[1:seg$end[nrow(seg)],], 
                 aes(x=Pos, y=value, color=Var)) +
-         geom_line(linewidth=1.05) + theme_bw() + scale_y_log10() +
-         scale_color_discrete(type=c("plum3", "seagreen3"),
-			                        name=NULL, 
-			                        labels=c(expression(pi), expression(pi[0]))) +
-         labs(title=paste("Diversity of a ", wsize, 
-                          "-bp window of model ",i, sep=""),
-	            x=NULL, y="Pairwise Diversity") + 
-         theme(axis.title=element_text(size=16),
-               axis.text=element_text(size=12),
-               axis.ticks.x=element_blank(),
-               axis.text.x=element_blank(),
-               legend.position="top")
-	 
+    geom_line(linewidth=1.05) + theme_bw() + scale_y_log10() +
+    scale_color_discrete(type=c("plum3", "seagreen3"),
+                         name=NULL, 
+                         labels=c(expression(pi), expression(pi[0]))) +
+    labs(title=paste("Diversity of a ", wsize, 
+                     "-bp window of model ",i, sep=""),
+         x=NULL, y="Pairwise Diversity") + 
+    theme(axis.title=element_text(size=16),
+          axis.text=element_text(size=12),
+          axis.ticks.x=element_blank(),
+          axis.text.x=element_blank(),
+          legend.position="top")
+  
   ppi2 <- plot_grid(ppi, barcode, ncol=1, align='v', axis='l',
                     rel_heights=c(1, 0.1))
   save_plot(paste("rep_", i, "/pis.png", sep=""), 
             ppi2, base_height=10, base_width=12) 
-  
-  hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
-  hrmap <- hrmap[1:maps_1kb$end[nrow(maps_1kb)],] # trims the tail (convenience)
-  avgs <- hrmap %>% group_by(bin) %>%
-          summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0))
-  maps_1kb$avg_pi <- avgs$avg_pi
-  maps_1kb$bin <- 1:nrow(maps_1kb)
   
   # standardizing variables to help interpretation of linear coefficients
   maps_1kb$std_s <- (maps_1kb$avg_s - mean(maps_1kb$avg_s)) / 

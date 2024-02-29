@@ -1745,7 +1745,7 @@ for(i in 1:n_models) {
   
   # finding mu for each sampled pos and the cumulative recombination map over the "sampling intervals"
   samp_pos <- unlist(apply(dt_neutral, 1, function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
-  linear_pos <- sort(c(samp_pos, dt_exons$start + 500))
+  linear_pos <- sort(c(samp_pos, dt_exons$start + 50))
   # (the following searches may take a few minutes, depending the length of linear pos)
   focal_mu <- unlist(lapply(linear_pos, function(pos) mmap[J(pos), roll=T]$u))
   focal_r <- unlist(lapply(linear_pos, function(pos) rmap[J(pos), roll=T]$r))
@@ -1802,7 +1802,7 @@ for(i in 1:n_models) {
   
   # pre-computes recombination distances between sampled neutral sites and exons, taking into account strength of selection
   cr_samp <- pos_dt[position %in% samp_pos,]
-  cr_exons <- pos_dt[position %in% (dt_exons$start + 500),]
+  cr_exons <- pos_dt[position %in% (dt_exons$start + 50),]
   prd <- as.data.frame(2 * N * abs(outer(cr_samp$cumrec, cr_exons$cumrec, "-"))) # pairwise rho
   names(prd) <- 1:ncol(prd)
   erd <- prd # "effective" rec. distance is inversely proportional to alpha
@@ -1816,7 +1816,7 @@ for(i in 1:n_models) {
     # the grid on r is fine-grained enough that we don't need interpolation
     closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
     hr <- lookup_tbl[.(closest_r, focal_s)]$Hr
-    return((hr / (2 * N * u)) ^ 1000)
+    return((hr / (2 * N * u)) ^ 100)
   }
   system.time({
   # we finally get the B-values per sampled site!
