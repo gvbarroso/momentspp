@@ -1,0 +1,167 @@
+#!/usr/bin/env Rscript
+args=commandArgs(trailingOnly=T)
+
+library(R.utils)
+library(bigsnpr)
+library(tidyverse)
+library(data.table)
+library(GenomicRanges)
+
+# loads the main tables
+models <- fread("models.csv.gz")
+lookup_tbl <- fread("lookup_tbl.csv.gz")
+setkey(lookup_tbl, lookup_r, lookup_s)
+
+# for discretizing Gamma distributions and make look-up faster
+dt_r <- data.table(unique(lookup_tbl$lookup_r))
+dt_s <- data.table(unique(lookup_tbl$lookup_s))
+names(dt_r) <- "lookup_r"
+names(dt_s) <- "lookup_s"
+setkey(dt_r, lookup_r)
+setkey(dt_s, lookup_s)
+
+m <- as.numeric(args[1]) # index of focal model
+
+bin_size <- 1e+3 # "basal" scale, larger windows are built after
+N <- unique(lookup_tbl$N)
+u <- unique(lookup_tbl$u)
+
+ncsl <- rgeom(n=models$num_constrained[m] + 1, 
+              prob=1/models$avg_neutral_lengths[m])
+csl <- rep(models$exon_lengths[m], models$num_constrained[m]) 
+L <- sum(csl) + sum(ncsl)
+
+ss <- -rgamma(n=length(csl), shape=models$shape_sel[m],
+              scale=models$scale_sel[m]/models$shape_sel[m])
+alpha <- 2 * models$N[m] * ss
+
+while(any(alpha < -20)) { 
+  cat("Selection is too strong in at least one gene! Redrawing...\n")
+  ss <- -rgamma(n=length(csl), shape=models$shape_sel[m],
+                scale=models$scale_sel[m]/models$shape_sel[m])
+  alpha <- 2 * models$N[m] * ss
+}
+
+disc_ss <- dt_s[dt_s[J(ss), roll="nearest", which=T]]$lookup_s # discretize
+
+smap <- c(rbind(ncsl, csl))[-2*length(ncsl)]
+smap <- setDT(bind_cols(chr="chr1",
+		                    dplyr::lag(cumsum(smap), n=1, default=0),
+		                    dplyr::lag(cumsum(smap), n=0, default=0)))
+names(smap) <- c("chr", "start", "end")
+smap$s <- c(rbind(rep(0, length(csl)), disc_ss), 0)
+setkey(smap, start, end)
+fwrite(smap, "smap.csv")
+
+rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[m]),
+ 	                 prob=1/models$avg_rec_spans[m])
+while(sum(rec_spans) < L) {
+  rec_spans <- c(rec_spans, rgeom(n=1, prob=1/models$avg_rec_spans[m]))
+}
+if(sum(rec_spans) > L) {
+  rec_spans <- rec_spans[cumsum(rec_spans) < L]
+  rec_spans <- c(rec_spans, L - sum(rec_spans))
+}
+rec_spans <- rec_spans[rec_spans>0]
+
+rmap <- setDT(bind_cols(chr="chr1",
+        		  dplyr::lag(cumsum(rec_spans), n=1, default=0),
+		          dplyr::lag(cumsum(rec_spans), n=0, default=0)))  
+names(rmap) <- c("chr", "start", "end")
+rs <- rgamma(n=nrow(rmap),
+            shape=models$shapes_rec[m],
+            scale=models$scales_rec[m]/models$shapes_rec[m])
+disc_rs <- dt_r[dt_r[J(rs), roll="nearest", which=T]]$lookup_r # discretize
+rmap$r <- disc_rs
+setkey(rmap, start, end)
+fwrite(rmap, "rmap.csv")
+
+mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[m]),
+            	     prob=1/models$avg_mut_spans[m])
+while(sum(mut_spans) < L) {
+  mut_spans <- c(mut_spans, rgeom(n=1, prob=1/models$avg_mut_spans[m]))
+}
+if(sum(mut_spans) > L) {
+  mut_spans <- mut_spans[cumsum(mut_spans) < L]
+  mut_spans <- c(mut_spans, L - sum(mut_spans))
+}
+mut_spans <- mut_spans[mut_spans>0]
+
+mu_dist <- round(seq_log(from=1e-10, to=1e-6, length.out=300), digits=11)
+dt_u <- data.table(mu_dist)
+setkey(dt_u, mu_dist)
+
+mmap <- setDT(bind_cols(chr="chr1",
+         		  dplyr::lag(cumsum(mut_spans), n=1, default=0),
+		          dplyr::lag(cumsum(mut_spans), n=0, default=0)))
+names(mmap) <- c("chr", "start", "end")
+mus <- rgamma(n=nrow(mmap),
+            	shape=models$shapes_mu[m],
+            	scale=models$scales_mu[m]/models$shapes_mu[m])
+disc_mus <- dt_u[dt_u[J(mus), roll="nearest", which=T]]$mu_dist # discretize
+mmap$u <- disc_mus
+setkey(mmap, start, end)
+fwrite(mmap, "mmap.csv")
+
+# binning
+bins <- rep(bin_size, floor(L / bin_size))
+bins <- bind_cols(chr="chr1",
+                  dplyr::lag(cumsum(bins), n=1, default=0),
+                  dplyr::lag(cumsum(bins), n=0, default=0))
+names(bins) <- c("chr", "start", "end")
+bins$start <- bins$start + 1 # so that GRanges understands the intervals
+gr_bins <- makeGRangesFromDataFrame(bins)
+
+rmap2 <- rmap
+rmap2$start <- rmap2$start + 1 # so that GRanges understands the intervals
+rec_gr <- makeGRangesFromDataFrame(rmap2, keep.extra.columns=T)
+hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
+hit_list <- as.data.frame(hits)
+names(hit_list) <- c("bins", "rec_bins")
+rmap2$rec_bins <- 1:nrow(rmap2)
+rec_bins <- merge(rmap2, hit_list) %>%
+            group_by(bins) %>%
+            mutate(avg_rec=weighted.mean(r, end-start))
+rec_bins <- rec_bins %>% distinct(bins, .keep_all=T) # start&end mean nothing
+
+mmap2 <- mmap 
+mmap2$start <- mmap2$start + 1 # so that GRanges understands the intervals
+mut_gr <- makeGRangesFromDataFrame(mmap2, keep.extra.columns=T)
+hits <- findOverlaps(query=gr_bins, subject=mut_gr) 
+hit_list <- as.data.frame(hits)
+names(hit_list) <- c("bins", "mut_bins")
+mmap2$mut_bins <- 1:nrow(mmap2)
+mut_bins <- merge(mmap2, hit_list) %>%
+            group_by(bins) %>%
+            mutate(avg_mut=weighted.mean(u, end-start))
+mut_bins <- mut_bins %>% distinct(bins, .keep_all=T) # start&end mean nothing
+
+smap2 <- smap
+smap2$start <- smap2$start + 1 # so that GRanges understands
+dfe_gr <- makeGRangesFromDataFrame(smap2, keep.extra.columns=T)
+hits <- findOverlaps(query=gr_bins, subject=dfe_gr) 
+hit_list <- as.data.frame(hits)
+names(hit_list) <- c("bins", "smap")
+smap2$smap <- 1:nrow(smap2)
+# NOTE: avg_s PER SITE encompasses local density of constrained sites
+dfe_bins <- merge(smap2, hit_list) %>%
+            group_by(bins) %>%
+            mutate(avg_s=weighted.mean(s, end-start)) 
+dfe_bins <- dfe_bins %>% distinct(bins, .keep_all=T) # start&end mean nothing
+
+maps_1kb <- bind_cols(bins,
+                      rec_bins["avg_rec"],
+                      mut_bins["avg_mut"],
+                      dfe_bins["avg_s"])
+
+maps_1kb$bin_10kb <- ((maps_1kb$bin - 1) %/% 10)
+maps_1kb$bin_100kb <- ((maps_1kb$bin - 1) %/% 100)
+maps_10kb <- maps_1kb %>% group_by(bin_10kb) %>% 
+             summarise_at(c("avg_s", "avg_mut", "avg_rec"), mean)
+maps_100kb <- maps_1kb %>% group_by(bin_100kb) %>% 
+              summarise_at(c("avg_s", "avg_mut", "avg_rec"), mean)
+
+fwrite(maps_1kb, "maps_1kb.csv")
+fwrite(maps_10kb, "maps_10kb.csv")
+fwrite(maps_100kb, "maps_100kb.csv")
+

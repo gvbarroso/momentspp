@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 args=commandArgs(trailingOnly=T)
 
+library(R.utils)
 library(tidyverse)
 library(cowplot)
 library(MASS)
@@ -10,28 +11,107 @@ library(car)
 library(data.table)
 library(scales)
 
-scale.4d <- function(x) sprintf("%.4f", x)
-
-# first we check the correlation between B-values and pi
-for(i in 1:num_models) {
-  for(j in 1:num_models) {
-    hrmap <- fread(paste("model_", i, "/rep_", j, "/hrmap.csv", sep=""))
-    hrmap$B <- hrmap$Hr / hrmap$pi0
-    hrmap$bin <- (hrmap$Pos - 1) %/% 1e+5
-    hrbins <- hrmap %>% group_by(bin) %>% summarize_at(vars(B, Hr, pi0), mean)
-    cor.test(hrbins$B, hrbins$Hr)
-    plot(hrbins$Hr, hrbins$B)
-  }
-}
-
-# now we look at R^2 vs model parameters
-models <- fread("models.csv")
+models <- fread("models.csv.gz")
 num_models <- 36 # nrow(models)
 num_reps <- 10 # as.numeric(args[1])
 
-r2_tbl <- data.table()
+# tables for storing R^2 values from linear models
+r2_tbl_1kb <- as.data.frame(matrix(ncol=5, nrow=num_reps))
+r2_tbl_10kb <- as.data.frame(matrix(ncol=5, nrow=num_reps))
+r2_tbl_100kb <- as.data.frame(matrix(ncol=5, nrow=num_reps))
+
+names(r2_tbl_1kb) <- c("Total", "u", "r", "s", "r:s")
+names(r2_tbl_10kb) <- c("Total", "u", "r", "s", "r:s")
+names(r2_tbl_100kb) <- c("Total", "u", "r", "s", "r:s")
 
 for(i in 1:num_models) {
+  # standardizing variables to help interpretation of linear coefficients
+  maps_1kb$std_s <- (maps_1kb$avg_s - mean(maps_1kb$avg_s)) / 
+                    sd(maps_1kb$avg_s)
+  maps_1kb$std_mu <- (maps_1kb$avg_mut - mean(maps_1kb$avg_mut)) /
+                     sd(maps_1kb$avg_mut)
+  maps_1kb$std_r <- (maps_1kb$avg_rec - mean(maps_1kb$avg_rec)) / 
+                    sd(maps_1kb$avg_rec)
+  maps_1kb$std_pi <- (maps_1kb$avg_pi - mean(maps_1kb$avg_pi)) / 
+                     sd(maps_1kb$avg_pi)
+  
+  m_1kb_1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_1kb)
+  m_1kb_2 <- lm(std_pi ~ std_mu + std_r, data=maps_1kb)
+  
+  summary(m_1kb_1)
+  summary(m_1kb_2)
+  
+  comp <- AIC(m_1kb_1, m_1kb_2) # model comparison
+  
+  anova.pi <- Anova(m_1kb_1)
+  apiss <- anova.pi$"Sum Sq"
+  anova.pi$VarExp <- apiss / sum(apiss)
+  
+  r2_tbl_1kb$Total[i] <- (anova.pi$VarExp[1] +
+                            anova.pi$VarExp[2] +
+                            anova.pi$VarExp[3] +
+                            anova.pi$VarExp[4]) * 100
+  r2_tbl_1kb$u[i] <- anova.pi$VarExp[1] * 100
+  r2_tbl_1kb$r[i] <- anova.pi$VarExp[2] * 100
+  r2_tbl_1kb$s[i] <- anova.pi$VarExp[3] * 100
+  r2_tbl_1kb$`r:s`[i] <- anova.pi$VarExp[4] * 100
+  
+  # builds maps at larger genomic scales
+  maps_1kb$bin_10kb <- (maps_1kb$bin - 1) %/% 10
+  maps_1kb$bin_100kb <- (maps_1kb$bin - 1) %/% 100
+  maps_10kb <- maps_1kb %>%
+    group_by(bin_10kb) %>%
+    summarise_at(c("std_pi", "std_s", "std_mu", "std_r",
+                   "avg_pi", "avg_s", "avg_mut", "avg_rec"), mean)
+  
+  maps_100kb <- maps_1kb %>%
+    group_by(bin_100kb) %>%
+    summarise_at(c("std_pi", "std_s", "std_mu", "std_r",
+                   "avg_pi", "avg_s", "avg_mut", "avg_rec"), mean)
+  
+  # 10 kb
+  m_10kb_1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s, data=maps_10kb)
+  m_10kb_2 <- lm(std_pi ~ std_mu + std_r, data=maps_10kb)
+  
+  summary(m_10kb_1)
+  summary(m_10kb_2)
+  
+  AIC(m_10kb_1, m_10kb_2) # model comparison
+  
+  anova.pi <- Anova(m_10kb_1)
+  apiss <- anova.pi$"Sum Sq"
+  anova.pi$VarExp <- apiss / sum(apiss)
+  
+  r2_tbl_10kb$Total[i] <- (anova.pi$VarExp[1] + 
+                             anova.pi$VarExp[2] +
+                             anova.pi$VarExp[3] +
+                             anova.pi$VarExp[4]) * 100
+  r2_tbl_10kb$u[i] <- anova.pi$VarExp[1] * 100
+  r2_tbl_10kb$r[i] <- anova.pi$VarExp[2] * 100
+  r2_tbl_10kb$s[i] <- anova.pi$VarExp[3] * 100
+  r2_tbl_10kb$`r:s`[i] <- anova.pi$VarExp[4] * 100
+  
+  # 100 kb
+  m_100kb_1 <- lm(std_pi ~ std_mu + std_r + std_s + std_r:std_s,data=maps_100kb)
+  m_100kb_2 <- lm(std_pi ~ std_mu + std_r, data=maps_100kb)
+  
+  summary(m_100kb_1)
+  summary(m_100kb_2)
+  
+  AIC(m_100kb_1, m_100kb_2) # model comparison
+  
+  anova.pi <- Anova(m_100kb_1)
+  apiss <- anova.pi$"Sum Sq"
+  anova.pi$VarExp <- apiss / sum(apiss)
+  
+  r2_tbl_100kb$Total[i] <- (anova.pi$VarExp[1] + 
+                              anova.pi$VarExp[2] +
+                              anova.pi$VarExp[3] +
+                              anova.pi$VarExp[4]) * 100
+  r2_tbl_100kb$u[i] <- anova.pi$VarExp[1] * 100
+  r2_tbl_100kb$r[i] <- anova.pi$VarExp[2] * 100
+  r2_tbl_100kb$s[i] <- anova.pi$VarExp[3] * 100
+  r2_tbl_100kb$`r:s`[i] <- anova.pi$VarExp[4] * 100
   r2_mdl_1kb <- fread(paste("model_", i, "/r2_1kb.csv", sep=""))
   r2_mdl_10kb <- fread(paste("model_", i, "/r2_10kb.csv", sep=""))
   r2_mdl_100kb <- fread(paste("model_", i, "/r2_100kb.csv", sep=""))
@@ -83,6 +163,10 @@ for(i in 1:num_models) {
             base_height=10, base_width=15)
 }
   
+fwrite(r2_tbl_1kb, "r2_1kb.csv")
+fwrite(r2_tbl_10kb, "r2_10kb.csv")
+fwrite(r2_tbl_100kb, "r2_100kb.csv")
+
 # the plots above show us that by and large, sd over replicates is negligible
 # and u and s are the only meaningful variables affecting pi in these models
 # thus we simplify:

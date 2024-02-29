@@ -14,36 +14,19 @@ toc_depth: 3
 knitr::opts_chunk$set(echo=TRUE)
 
 library(tidyverse)
-library(cowplot)
-library(stringr)
-library(RColorBrewer)
-library(scales)
-library(plotly)
-library(MASS)
-library(lmtest)
-library(nlme)
-library(car)
 library(bigsnpr)
 library(data.table)
-library(GenomicRanges)
-library(pracma)
 
-library(reticulate)
-use_python("/usr/bin/python3")
-
-scale.4d <- function(x) sprintf("%.4f", x)
-
-knitr::opts_knit$set(root.dir="~/Devel/momentspp/benchmarking/selection/single-pop/")
+knitr::opts_knit$set(root.dir="~/Devel/momentspp/selection/single-pop/")
 ```
 
 This builds a look-up table on a dense parameter grid that will allow for fast 
 assembly of whole chromosomes
 
-```{r, params, include=F, eval=F, results=F, message=F, warning=F}
+```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
 N <- 10000
-u <- 1e-8 # constant among exons as well as "fake" neutral mu used to get B-values
-# to get B-values, we only need to build a lookup table with variation in r & s (u_L will be constant, u_R varies later)
+u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
 lookup_r <- round(seq_log(from=1e-12, to=1e-2, length.out=500), digits=15)
 lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=200), digits=11)
 
@@ -58,14 +41,13 @@ params <- setDT(crossing(N, u, lookup_r, lookup_s))
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
-fwrite(dt_r, "landscapes/r.csv", quote=F, row.names=F, col.names=F)
-fwrite(dt_s, "landscapes/s.csv", quote=F, row.names=F, col.names=F)
-fwrite(params, "landscapes/params.csv", quote=F, row.names=F)
+fwrite(dt_r, "r.csv", quote=F, row.names=F, col.names=F)
+fwrite(dt_s, "s.csv", quote=F, row.names=F, col.names=F)
+fwrite(params, "params.csv", quote=F, row.names=F)
 
-Sys.setenv(num_models=n_models)
 ```
 
-```{bash dirs, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
+```{bash dirs, engine.opts='-i', include=F, eval=T, results=F, warning=F}
 
 source ~/.bashrc
   
@@ -76,7 +58,7 @@ done
 
 ```
 
-```{r, demes, include=F, eval=F, results=F, message=F, warning=F}
+```{r, demes, include=F, eval=T, results=F, message=F, warning=F}
 
 for(i in 1:n_models) {
   
@@ -90,8 +72,7 @@ for(i in 1:n_models) {
   s <- as.numeric(params[i,]$lookup_s)
   
   name <- paste("model_", i, sep="")
-  sink(paste("selection/single-pop/landscapes/r_", r, "/", name, 
-             ".yaml", sep=""))
+  sink(paste("r_", r, "/", name, ".yaml", sep=""))
   
   cat("time_units: generations\n")
   cat("demes:\n")
@@ -132,7 +113,7 @@ for(i in 1:n_models) {
 
 Computes lookup table
 
-```{bash moments++, engine.opts='-i', include=F, eval=F, results=F, message=F, warning=F}
+```{bash moments++, engine.opts='-i', include=F, eval=T, results=F, warning=F}
 
 source ~/.bashrc
 
@@ -149,7 +130,7 @@ done
 
 Collect lookup table with Hr values on the parameter grid
 
-```{r, grid, include=F, eval=F, results=F, message=F, warning=F}
+```{r, grid, include=F, eval=T, results=F, message=F, warning=F}
 
 params <- fread("params.csv", sep=",", header=T)
 n_models <- nrow(params)
@@ -158,10 +139,8 @@ hr <- numeric(length=n_models)
 
 for(i in 1:length(lookup_r)) {
   for(j in 1:length(lookup_s)) {
-    moms <- read.table(paste("landscapes/r_", 
-                             lookup_r[i], 
-                             "/model_", 
-                             as.integer(c), 
+    moms <- read.table(paste("r_", lookup_r[i], 
+                             "/model_", as.integer(c), 
                              "_expectations.txt", sep=""))
     hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
     c <- c + 1
@@ -169,12 +148,12 @@ for(i in 1:length(lookup_r)) {
 }
 
 params$Hr <- hr
-fwrite(params, "landscapes/lookup_tbl.csv", row.names=F, quote=F, sep=",")
+fwrite(params, "lookup_tbl.csv.gz", compress="gzip")
 ```
 
-```{r, landscapes, include=F, eval=F, results=F, message=F, warning=F}
+```{r, landscapes, include=F, eval=T, results=F, message=F, warning=F}
 
-lookup_tbl <- fread("landscapes/lookup_tbl.csv")
+lookup_tbl <- fread("lookup_tbl.csv.gz")
 setkey(lookup_tbl, lookup_r, lookup_s)
 
 lookup_r <- unique(lookup_tbl$lookup_r)
@@ -214,5 +193,5 @@ models <- setDT(crossing(N, num_constrained,
 models$model <- 1:nrow(models)
 n_models <- nrow(models)
 
-fwrite(models, "test_models/models.csv", sep=",")
+fwrite(models, "models.csv.gz", compress="gzip")
 ```
