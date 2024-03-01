@@ -11,7 +11,11 @@ models <- fread("models.csv.gz")
 num_models <- nrow(models)
 num_reps <- 10
 
-# if scripts bgs_maps.R, bgs_pi.R and bgs_lm.R have been run within rep folders:
+r2_mdl_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
+r2_mdl_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
+r2_mdl_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
+
+# scripts bgs_maps.R, bgs_pi.R & bgs_lm.R have been run within model/rep folders
 for(i in 1:num_models) {
   for(j in 1:num_reps) {
     
@@ -23,9 +27,7 @@ for(i in 1:num_models) {
     m1kb <- fread(paste("/model_", i, "/rep_", j, "/map_1kb.csv.gz", sep=""))
     m10kb <- fread(paste("/model_", i, "/rep_", j, "/map_10kb.csv.gz", sep=""))
     m100kb <- fread(paste("/model_", i, "/rep_", j, "/map_100kb.csv.gz",sep=""))
-    
-    r2_tbl <- fread(paste("/model_", i, "/rep_", j, "/r2_tbl.csv", sep=""))
-    
+  
     # plots single-nucleotide diversity
     seg <- filter(smap, s<0, start >= 0, end <= 1e+6)
     wsize <- seg$end[nrow(seg)] - seg$start[1]
@@ -194,45 +196,70 @@ for(i in 1:num_models) {
     lands_scales <- plot_grid(lands_1kb, lands_10kb, lands_100kb, nrow=1)
     save_plot(paste("rep_", i, "/maps.png", sep=""),
               lands_scales, base_height=12, base_width=16)
-    
+  }
+}
+
+r2_tbl <- data.table()
+for(i in 1:num_models) {
+  # we convert num_rep tables of dimension (num_scales x 5) 
+  # to 3 tables of dimension num_reps x 5
+  r2_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
+  r2_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
+  r2_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
+  
+  for(j in 1:num_reps) {
+    tmp <- fread(paste("/model_", i, "/rep_", j, "/r2_tbl.csv", sep=""))
+    r2_1kb[j,] <- tmp[1,]
+    r2_10kb[j,] <- tmp[2,]
+    r2_100kb[j,] <- tmp[3,]
+  }
+  
+  tbl <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb)
+  tbl$model <- i
+  tbl$rep <- rep(1:10, 3)
+  tbl$scale <- c(rep(1, 10), rep(100, 10), rep(1000, 10)) # in kb
+  
+  r2_tbl <- rbind.data.frame(r2_tbl, tbl)
+}
+
 r2s <- r2_tbl %>% group_by(model, scale) %>% 
-       summarize_at(vars(Total, u, r, s, `r:s`), 
-               list(avg=mean, sd=sd))
+                  summarize_at(vars(Total, u, r, s, `r:s`), 
+                               list(avg=mean, sd=sd))
 
-
-molten_avgs <- pivot_longer(r2s, cols=ends_with("avg"), names_to="variable")
-p <- ggplot(data=filter(molten_avgs, model==i), 
-            aes(x=scale, y=value, shape=variable)) +
-  geom_line() + theme_bw() + geom_point(size=4) +
-  scale_shape_manual(values=c(0, 8, 2, 3, 1), name=NULL) +
-  scale_x_continuous(breaks=unique(molten_avgs$scale), trans="log10") +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title=paste("Model", i, "(Mean over replicates)"),
-       x="Map Scale (kb)", y="Variance Explained (%)") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.position="bottom")
-
-molten_sds <- pivot_longer(r2s, cols=ends_with("sd"), names_to="variable")
-q <- ggplot(data=filter(molten_sds, model==i), 
-            aes(x=scale, y=value, shape=variable)) +
-  geom_line() + theme_bw() + geom_point(size=4) +
-  scale_shape_manual(values=c(0, 8, 2, 3, 1), name=NULL) +
-  scale_x_continuous(breaks=unique(molten_sds$scale), trans="log10") +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title=paste("Model", i, "(SD over replicates)"),
-       x="Map Scale (kb)", y=NULL) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16), 
-        legend.position="bottom")
-
-save_plot(paste("model_", i, "_r2.png", sep=""), plot_grid(p, q, nrow=1), 
-          base_height=10, base_width=15)
-
+for(i in 1:num_models) {
+  molten_avgs <- pivot_longer(r2s, cols=ends_with("avg"), names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 8, 2, 3, 1), name=NULL) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Variance Explained (%)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(r2s, cols=ends_with("sd"), names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 8, 2, 3, 1), name=NULL) +
+    scale_x_continuous(breaks=unique(molten_sds$scale), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_r2.png", sep=""), plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+}
 
 # the plots above show us that by and large, sd over replicates is negligible
 # and u and s are the only meaningful variables affecting pi in these models
@@ -245,10 +272,10 @@ models_f <- dplyr::select(models, c(scale_sel,
                                     scales_rec, 
                                     model))
 r2_models <- merge(models_f, r2s_f, by="model")
-m_r2_models <- pivot_longer(r2_models, cols=ends_with("avg"), names_to="variable")
+m_r2_models <- pivot_longer(r2_models, cols=ends_with("avg"), names_to="var")
 
 p <- ggplot(data=filter(m_r2_models, shapes_rec==1), # focus shape_rec==1
-            aes(x=scale, y=value, color=as.factor(scale_sel), shape=variable)) +
+            aes(x=scale, y=value, color=as.factor(scale_sel), shape=var)) +
   geom_line() + geom_point(size=4) + theme_bw() + 
   facet_grid(+scales_rec~shapes_mu) +
   scale_shape_manual(values=c(0, 1, 2), name=NULL) +
@@ -290,7 +317,6 @@ q
 save_plot("r2_u_only.png", q, base_height=8, base_width=16)
 
 
-
 # check the correlation between B-values and pi
 for(i in 1:num_models) {
   for(j in 1:num_models) {
@@ -303,11 +329,12 @@ for(i in 1:num_models) {
   }
 }
 
-
 # meta linear model
-r2_models <- merge(select(models, c(model, scale_sel, shapes_mu, shapes_rec, scales_rec)),
-                   select(filter(r2s, scale==1), c(model, u_avg, s_avg, r_avg, `r:s_avg`)),
-                   by="model")
+r2_models <- merge(select(models, c(model, scale_sel, shapes_mu, 
+    shapes_rec, scales_rec)),
+    select(filter(r2s, scale==1), c(model, u_avg, s_avg, r_avg, `r:s_avg`)),
+    by="model")
+
 std_r2 <- as.data.frame(apply(r2_models[,2:ncol(r2_models)], 2, 
                               function(x) (x-mean(x)) / sd(x)))
 

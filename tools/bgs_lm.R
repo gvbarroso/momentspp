@@ -18,9 +18,10 @@ hrmap_1kb <- fread("hrmap_1kb.csv")
 hrmap_10kb <- fread("hrmap_10kb.csv")
 hrmap_100kb <- fread("hrmap_100kb.csv")
 
-maps_1kb$avg_pi <- hrmap_1kb$avg_pi[1:nrow(maps_1kb)] # trimming tail
-maps_10kb$avg_pi <- hrmap_10kb$avg_pi[1:nrow(maps_10kb)] # trimming tail
-maps_100kb$avg_pi <- hrmap_100kb$avg_pi[1:nrow(maps_100kb)] # trimming tail
+# trimming tails of hrmap to match rate maps
+maps_1kb$avg_pi <- hrmap_1kb$avg_pi[1:nrow(maps_1kb)] 
+maps_10kb$avg_pi <- hrmap_10kb$avg_pi[1:nrow(maps_10kb)]
+maps_100kb$avg_pi <- hrmap_100kb$avg_pi[1:nrow(maps_100kb)] 
 
 # table for storing R^2 values from linear models (rows are bin sizes)
 r2_tbl <- as.data.frame(matrix(ncol=5, nrow=3))
@@ -36,8 +37,8 @@ std_10kb <- as.data.frame(apply(tbl_10kb, 2, function(x) (x-mean(x)) / sd(x)))
 tbl_100kb <- dplyr::select(maps_100kb, c(avg_rec, avg_mut, avg_s, avg_pi))
 std_100kb <- as.data.frame(apply(tbl_100kb, 2, function(x) (x-mean(x)) / sd(x)))
 
-m_1kb_1 <- lm(avg_pi ~ avg_u + avg_r + avg_s + avg_r:avg_s, data=std_1kb)
-m_1kb_2 <- lm(avg_pi ~ avg_u + avg_r, data=std_1kb)
+m_1kb_1 <- lm(avg_pi ~ avg_mut + avg_rec + avg_s + avg_rec:avg_s, data=std_1kb)
+m_1kb_2 <- lm(avg_pi ~ avg_mut + avg_rec, data=std_1kb)
 
 summary(m_1kb_1)
 summary(m_1kb_2)
@@ -57,8 +58,8 @@ r2_tbl$r[1] <- anova.pi$VarExp[2] * 100
 r2_tbl$s[1] <- anova.pi$VarExp[3] * 100
 r2_tbl$`r:s`[1] <- anova.pi$VarExp[4] * 100
 
-m_10kb_1 <- lm(avg_pi ~ avg_u + avg_r + avg_s + avg_r:avg_s, data=std_10kb)
-m_10kb_2 <- lm(avg_pi ~ avg_u + avg_r, data=std_10kb)
+m_10kb_1 <- lm(avg_pi~ avg_mut + avg_rec + avg_s + avg_rec:avg_s, data=std_10kb)
+m_10kb_2 <- lm(avg_pi~ avg_mut + avg_rec, data=std_10kb)
 
 summary(m_10kb_1)
 summary(m_10kb_2)
@@ -78,8 +79,8 @@ r2_tbl$r[2] <- anova.pi$VarExp[2] * 100
 r2_tbl$s[2] <- anova.pi$VarExp[3] * 100
 r2_tbl$`r:s`[2] <- anova.pi$VarExp[4] * 100
 
-m_100kb_1 <- lm(avg_pi ~ avg_u + avg_r + avg_s + avg_r:avg_s, data=std_100kb)
-m_100kb_2 <- lm(avg_pi ~ avg_u + avg_r, data=std_100kb)
+m_100kb_1 <- lm(avg_pi~ avg_mut + avg_rec +avg_s + avg_rec:avg_s,data=std_100kb)
+m_100kb_2 <- lm(avg_pi~ avg_mut + avg_rec, data=std_100kb)
 
 summary(m_100kb_1)
 summary(m_100kb_2)

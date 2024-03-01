@@ -6,7 +6,7 @@ output:
   pdf_document:
   toc: true
 number_sections: true
-toc_depth: 3
+toc_depth: 1
 ---
   
 ```{r setup, include=F, message=F, warning=F}
@@ -19,6 +19,8 @@ library(data.table)
 
 knitr::opts_knit$set(root.dir="~/Devel/momentspp/selection/single-pop/")
 ```
+
+# Creating folders and files
 
 This builds a look-up table on a dense parameter grid that will allow for fast 
 assembly of whole chromosomes
@@ -57,6 +59,8 @@ do
 done
 
 ```
+
+Creates demes files that will be used as input for moments++
 
 ```{r, demes, include=F, eval=T, results=F, message=F, warning=F}
 
@@ -111,7 +115,7 @@ for(i in 1:n_models) {
 
 # Running moments++
 
-Computes lookup table
+Computes summary statistics for each parameter combination in lookup_tbl
 
 ```{bash moments++, engine.opts='-i', include=F, eval=T, results=F, warning=F}
 
@@ -128,7 +132,7 @@ done
 
 ```
 
-Collect lookup table with Hr values on the parameter grid
+Collects lookup table with Hr values on the parameter grid
 
 ```{r, grid, include=F, eval=T, results=F, message=F, warning=F}
 
@@ -148,8 +152,12 @@ for(i in 1:length(lookup_r)) {
 }
 
 params$Hr <- hr
-fwrite(params, "lookup_tbl.csv.gz", compress="gzip")
+fwrite(params, "lookup_tbl.csv.gz", compress="gzip") # used by other scripts
+
 ```
+
+Builds a table of models from which to build genomic landscapes (bgs_maps.R)
+and compute expected nucleotide diversity (bgs_pi.R)
 
 ```{r, landscapes, include=F, eval=T, results=F, message=F, warning=F}
 

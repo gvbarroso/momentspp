@@ -14,7 +14,7 @@ library(scales)
 # pairwise diversity along the chromosome simulated by bgs_maps.R
 
 num_inter <- 3 # for updating B-values due to interference selection
-jump_length <- as.numeric(args[1]) # sampling dist., for interpolating B-values
+jump_length <- as.numeric(args[1]) # sampling distance for interpolating B-vals
 
 # loads results of bgs_maps.R
 mmap <- fread("mmap.csv")
@@ -23,7 +23,7 @@ smap <- fread("smap.csv")
 lookup_tbl <- fread("lookup_tbl.csv.gz")
 
 dt_neutral <- filter(smap[,2:4], s==0)
-dt_exons <- filter(smap, s<0)
+dt_exons <- filter(smap[,2:4], s<0)
 
 setkey(mmap, start, end)
 setkey(rmap, start, end)
@@ -63,6 +63,7 @@ for(i in 1:num_inter) {
   cr_exons <- pos_dt[position %in% (dt_exons$start + exon_lengths / 2),]
   prd <- as.data.frame(2 * N * abs(outer(pos_dt$cumrec, cr_exons$cumrec, "-")))
   names(prd) <- 1:ncol(prd)
+  
   erd <- prd # "effective" rec. distance is inversely proportional to alpha
   for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / abs(2 * N * dt_exons$s[j]) }
   relevant_exons <- apply(erd, 2, function(x) x < 10 * N * 1e-3)
@@ -139,14 +140,14 @@ fwrite(hrmap_100kb, "hrmap_100kb.csv")
 
 # visualizing the iterative correction for interference selection
 names(tbl) <- c(paste("iter_", rep(1:num_inter), sep=""))
-tbl$pos <- linear_pos
+tbl$pos <- as.integer(linear_pos)
 m_tbl <- pivot_longer(tbl, cols=starts_with("iter"), names_to="Iteration")
 
-pa <- ggplot(data=m_tbl[5e+4:6e+4,], aes(x=pos, y=value, color=Iteration)) + 
-  geom_point(aes(alpha=0.5)) + theme_bw() +
+pa <- ggplot(data=m_tbl[1e+3:3e+3,], aes(x=pos, y=value, color=Iteration)) + 
+  geom_point(aes(alpha=0.5)) + theme_bw() + geom_line() + 
   scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_log10(breaks=pretty_breaks()) +
-  labs(title="Iterarive correction for interference", x="Pos", y="B-value") +
+  scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none") + 
+  labs(title="Iterative correction for interference", x="Pos", y="B-value") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
         axis.text.x=element_text(size=12),
@@ -154,21 +155,23 @@ pa <- ggplot(data=m_tbl[5e+4:6e+4,], aes(x=pos, y=value, color=Iteration)) +
         legend.title=element_text(size=16),
         legend.position="bottom")
 
+save_plot("Interf.png", pa, base_height=8, base_width=16)
+
 # visualizing the validity of threshold for spotting "relevant" exons
 rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
 ex400 <- apply(rex, 1, function(x) which(x))
 
-Bl400 <- unlist(lapply(ex400[[1]], getB, focal_neutral=1))
+Bl400 <- unlist(lapply(ex400[[1]], getB, focal_samp=1))
 Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB,
-                       focal_neutral=length(samp_pos)/4))
+                       focal_samp=length(samp_pos) %/% 4))
 Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB,
-                       focal_neutral=length(samp_pos)/2))
+                       focal_samp=length(samp_pos) %/% 2))
 
-Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, focal_neutral=1))
+Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, focal_samp=1))
 Bqr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/4]], getB,
-                     focal_neutral=length(samp_pos)/4))
+                     focal_samp=length(samp_pos) %/% 4))
 Bmr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/2]], getB,
-                     focal_neutral=length(samp_pos)/2))
+                     focal_samp=length(samp_pos) %/% 2))
 
 xl <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bl400))]), Bl400)
 xq <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bq400))]), Bq400)
@@ -235,5 +238,4 @@ qm <- ggplot(data=xm, aes(x=rec, y=CummBval, color=relevant)) +
         legend.position="bottom")
 
 cp <- plot_grid(pl, pq, pm, ql, qq, qm, nrow=2)
-save_plot(paste("rep_", i, "/Bvals.png", sep=""),
-          cp, base_height=10, base_width=12)
+save_plot("Bvals.png", cp, base_height=10, base_width=15)
