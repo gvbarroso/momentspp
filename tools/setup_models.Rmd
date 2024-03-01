@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Devel/momentspp/selection/single-pop/")
+knitr::opts_knit$set(root.dir="~/Desktop/test_mpp")
 ```
 
 # Creating folders and files
@@ -46,7 +46,6 @@ n_models <- nrow(params)
 fwrite(dt_r, "r.csv", quote=F, row.names=F, col.names=F)
 fwrite(dt_s, "s.csv", quote=F, row.names=F, col.names=F)
 fwrite(params, "params.csv", quote=F, row.names=F)
-
 ```
 
 ```{bash dirs, engine.opts='-i', include=F, eval=T, results=F, warning=F}
@@ -57,7 +56,6 @@ cat r.csv | while IFS=, read -r r
 do
   mkdir r_$r
 done
-
 ```
 
 Creates demes files that will be used as input for moments++
@@ -110,7 +108,6 @@ for(i in 1:n_models) {
   
   sink()
 }
-
 ```
 
 # Running moments++
@@ -129,7 +126,6 @@ do
   done
   cd ..
 done
-
 ```
 
 Collects lookup table with Hr values on the parameter grid
@@ -153,7 +149,6 @@ for(i in 1:length(lookup_r)) {
 
 params$Hr <- hr
 fwrite(params, "lookup_tbl.csv.gz", compress="gzip") # used by other scripts
-
 ```
 
 Builds a table of models from which to build genomic landscapes (bgs_maps.R)
@@ -183,13 +178,13 @@ num_constrained <- 1000 # number of (non-recombining) selected segment in chr
 scale_sel <- c(5e-5, 2.5e-4)
 shape_sel <- c(10)
 scales_mu <- c(1e-8)
-shapes_mu <- c(3, 10, 30, 100)
-scales_rec <- c(1e-6, 1e-7, 1e-8)
+shapes_mu <- c(100)
+scales_rec <- c(1e-7, 1e-6)
 shapes_rec <- c(1)
 
 # Geom dist params
 avg_rec_spans <- c(1e+4)
-avg_mut_spans <- c(1e+4, 1e+5, 5e+5)
+avg_mut_spans <- c(1e+5)
 avg_neutral_lengths <- c(1e+4)
 exon_lengths <- c(1000)  
 models <- setDT(crossing(N, num_constrained, 
@@ -201,5 +196,28 @@ models <- setDT(crossing(N, num_constrained,
 models$model <- 1:nrow(models)
 n_models <- nrow(models)
 
+Sys.setenv(n_models=n_models)
 fwrite(models, "models.csv.gz", compress="gzip")
+```
+
+```{bash folders, engine.opts='-i', include=F, eval=T, results=F, warning=F}
+
+source ~/.bashrc
+
+for((i=1;i<=n_models;i++))
+do 
+  mkdir model_$i
+done
+
+for((i=1;i<=n_models;i++))
+do
+  cd model_$i
+  
+  for((j=1;j<=5;j++))
+  do
+    mkdir rep_$j
+  done
+  
+  cd ..
+done
 ```

@@ -16,11 +16,18 @@ library(scales)
 num_inter <- 3 # for updating B-values due to interference selection
 jump_length <- as.numeric(args[1]) # sampling distance for interpolating B-vals
 
+lookup_tbl <- fread("../../lookup_tbl.csv.gz")
+
+dt_r <- data.table(unique(lookup_tbl[,3]))
+dt_s <- data.table(unique(lookup_tbl[,4]))
+
+setkey(dt_r, lookup_r)
+setkey(dt_s, lookup_s)
+
 # loads results of bgs_maps.R
 mmap <- fread("mmap.csv")
 rmap <- fread("rmap.csv")
 smap <- fread("smap.csv")
-lookup_tbl <- fread("lookup_tbl.csv.gz")
 
 dt_neutral <- filter(smap[,2:4], s==0)
 dt_exons <- filter(smap[,2:4], s<0)
@@ -92,11 +99,11 @@ for(i in 1:num_inter) {
   tmp <- B_values
   cat(paste("Computing B's...(iteration ", i, " of ", num_inter, ")\n", sep=""))
   pb <- txtProgressBar(min=1, max=length(exons_per_samp_site), style=3)
-  for(j in 1:length(exons_per_samp_site)) {
-    setTxtProgressBar(pb, j)
-    if(length(exons_per_samp_site[[j]]) > 0) {
-      B <- unlist(lapply(exons_per_samp_site[[j]], getB, focal_samp=j))
-      tmp[j] <- cumprod(B)[length(B)]
+  for(k in 1:length(exons_per_samp_site)) {
+    setTxtProgressBar(pb, k)
+    if(length(exons_per_samp_site[[k]]) > 0) {
+      B <- unlist(lapply(exons_per_samp_site[[k]], getB, focal_samp=k))
+      tmp[k] <- cumprod(B)[length(B)]
     }
   }
   close(pb)
@@ -162,16 +169,16 @@ rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
 ex400 <- apply(rex, 1, function(x) which(x))
 
 Bl400 <- unlist(lapply(ex400[[1]], getB, focal_samp=1))
-Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB,
-                       focal_samp=length(samp_pos) %/% 4))
-Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB,
-                       focal_samp=length(samp_pos) %/% 2))
+Bq400 <- unlist(lapply(ex400[[length(neut_pos)/4]], getB,
+                       focal_samp=length(neut_pos) %/% 4))
+Bm400 <- unlist(lapply(ex400[[length(neut_pos)/2]], getB,
+                       focal_samp=length(neut_pos) %/% 2))
 
-Blr <- unlist(lapply(exons_per_samp_neut[[1]], getB, focal_samp=1))
-Bqr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/4]], getB,
-                     focal_samp=length(samp_pos) %/% 4))
-Bmr <- unlist(lapply(exons_per_samp_neut[[length(samp_pos)/2]], getB,
-                     focal_samp=length(samp_pos) %/% 2))
+Blr <- unlist(lapply(exons_per_samp_site[[1]], getB, focal_samp=1))
+Bqr <- unlist(lapply(exons_per_samp_site[[length(neut_pos)/4]], getB,
+                     focal_samp=length(neut_pos) %/% 4))
+Bmr <- unlist(lapply(exons_per_samp_site[[length(neut_pos)/2]], getB,
+                     focal_samp=length(neut_pos) %/% 2))
 
 xl <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bl400))]), Bl400)
 xq <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bq400))]), Bq400)
@@ -237,5 +244,5 @@ qm <- ggplot(data=xm, aes(x=rec, y=CummBval, color=relevant)) +
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
 
-cp <- plot_grid(pl, pq, pm, ql, qq, qm, nrow=2)
+cp <- plot_grid(pl, pq, pm, ql, qq, qm, align='v', nrow=2)
 save_plot("Bvals.png", cp, base_height=10, base_width=15)
