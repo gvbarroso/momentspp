@@ -2,7 +2,6 @@
 args=commandArgs(trailingOnly=T)
 
 library(R.utils)
-library(bigsnpr)
 library(tidyverse)
 library(data.table)
 library(GenomicRanges)
@@ -27,7 +26,7 @@ for(i in 1:num_models) {
     
     r2_tbl <- fread(paste("/model_", i, "/rep_", j, "/r2_tbl.csv", sep=""))
     
-    # plots single-nucleotide pi
+    # plots single-nucleotide diversity
     seg <- filter(smap, s<0, start >= 0, end <= 1e+6)
     wsize <- seg$end[nrow(seg)] - seg$start[1]
     barcode <- ggplot(data=seg) +
@@ -190,7 +189,7 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    lands_100kb <- plot_grid(pi_100kb,u_100kb,s_100kb, r_100kb, align='v', ncol=1)
+    lands_100kb <- plot_grid(pi_100kb,u_100kb,s_100kb,r_100kb, align='v',ncol=1)
     
     lands_scales <- plot_grid(lands_1kb, lands_10kb, lands_100kb, nrow=1)
     save_plot(paste("rep_", i, "/maps.png", sep=""),
@@ -292,7 +291,7 @@ save_plot("r2_u_only.png", q, base_height=8, base_width=16)
 
 
 
-# first we check the correlation between B-values and pi
+# check the correlation between B-values and pi
 for(i in 1:num_models) {
   for(j in 1:num_models) {
     hrmap <- fread(paste("model_", i, "/rep_", j, "/hrmap.csv", sep=""))

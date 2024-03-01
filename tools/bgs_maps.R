@@ -2,7 +2,7 @@
 args=commandArgs(trailingOnly=T)
 
 library(R.utils)
-library(bigsnpr)
+library(bigsnpr) # for seq_log()
 library(tidyverse)
 library(data.table)
 library(GenomicRanges)
@@ -173,23 +173,21 @@ mut_spans <- mut_spans[mut_spans>0]
 
 avg_mu <- unique(models$scales_mu)
 shapes <- unique(models$shapes_mu)
-#                                                         TODO fix, needs has some hard-coded values at the moment
-mut_rates_3 <- rgamma(n=length(mut_spans), shapes[1], rate=shapes[1]) * avg_mu
-mut_rates_10 <- rgamma(n=length(mut_spans), shapes[2], rate=shapes[2]) * avg_mu
-mut_rates_30 <- rgamma(n=length(mut_spans), shapes[3], rate=shapes[3]) * avg_mu
+mus <- list(length=length(shapes))
+for(i in 1:length(shapes)) {
+  mus[[i]] <- rgamma(n=length(mut_spans), shapes[i], rate=shapes[i]) * avg_mu
+}
 
-mmap <- setDT(bind_cols(dplyr::lag(cumsum(mut_spans), n=1, default=0),
-                        dplyr::lag(cumsum(mut_spans), n=0, default=0)))
-names(mmap) <- c("start", "end")
-mmap$`3` <- mut_rates_3
-mmap$`10` <- mut_rates_10
-mmap$`30` <- mut_rates_30
+tmp <- setDT(bind_cols(dplyr::lag(cumsum(mut_spans), n=1, default=0),
+                       dplyr::lag(cumsum(mut_spans), n=0, default=0)))
+mmap <- cbind.data.frame(tmp, cbind.data.frame(unlist(mus)))
+names(mmap) <- c("start", "end", as.character(shapes))
 
-molten_map <- pivot_longer(mmap, cols=c("3", "10", "30"), names_to="shape")
+molten_map <- pivot_longer(mmap, cols=as.character(shapes), names_to="shape")
 p <- ggplot(data=molten_map, aes(x=start/1e+3, y=value,
                                  color=as.factor(as.numeric(shape)))) +
   geom_step() + theme_bw() +
-  scale_color_discrete(name="Shape", type=c("plum3", "seagreen3", "salmon3")) +
+  scale_color_discrete(name="Shape") +
   scale_x_continuous(breaks=pretty_breaks()) +
   scale_y_continuous(breaks=pretty_breaks(), trans="log10") +
   labs(title="Mutation landscapes for different shape parameters",
@@ -203,7 +201,7 @@ p <- ggplot(data=molten_map, aes(x=start/1e+3, y=value,
 
 q <- ggplot(data=molten_map, aes(x=value, fill=as.factor(as.numeric(shape)))) + 
   geom_density(alpha=0.5) + theme_bw() +
-  scale_fill_discrete(name="Shape", type=c("plum3", "seagreen3", "salmon3")) +
+  scale_fill_discrete(name="Shape") +
   scale_x_continuous(trans="log10") +
   scale_y_continuous(breaks=pretty_breaks()) +
   labs(title="Density of mutation rate distributions", x="Rate", y="Density") +
