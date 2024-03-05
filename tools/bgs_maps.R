@@ -24,9 +24,9 @@ setkey(dt_s, lookup_s)
 
 m <- as.numeric(args[1]) # index of focal model
 
-bin_size <- 1e+3 # "basal" scale, larger windows are built after
 N <- unique(lookup_tbl$N)
 u <- unique(lookup_tbl$u)
+bin_size <- 1e+3 # "basal" scale, larger windows are built after
 
 ncsl <- rgeom(n=models$num_constrained[m] + 1, 
               prob=1/models$avg_neutral_lengths[m])

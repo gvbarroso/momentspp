@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Desktop/test_mpp")
+knitr::opts_knit$set(root.dir="~/Desktop/test_mpp/")
 ```
 
 # Creating folders and files
@@ -29,6 +29,7 @@ assembly of whole chromosomes
 
 N <- 10000
 u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
+# rounding is required so that directory names don't diverge due to precision
 lookup_r <- round(seq_log(from=1e-12, to=1e-2, length.out=500), digits=15)
 lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=200), digits=11)
 
@@ -50,6 +51,7 @@ fwrite(params, "params.csv", quote=F, row.names=F)
 
 ```{bash dirs, engine.opts='-i', include=F, eval=T, results=F, warning=F}
 
+# NOTE: this chunks requires that the r_* directories do not already exist
 source ~/.bashrc
   
 cat r.csv | while IFS=, read -r r
@@ -58,10 +60,11 @@ do
 done
 ```
 
-Creates demes files that will be used as input for moments++
+Creates files that will be used as input for moments++
 
 ```{r, demes, include=F, eval=T, results=F, message=F, warning=F}
 
+# writes demes files specifying models
 for(i in 1:n_models) {
   
   if(i %% 10000 == 0) {
@@ -120,10 +123,12 @@ source ~/.bashrc
 
 for r in r_*
 do 
+  cp opt.bpp $r
   cd $r
+  for f in *.yaml
   do
 	  momentspp params=opt.bpp F=$f O=25 > /dev/null
-  done
+	done
   cd ..
 done
 ```
@@ -139,9 +144,9 @@ hr <- numeric(length=n_models)
 
 for(i in 1:length(lookup_r)) {
   for(j in 1:length(lookup_s)) {
-    moms <- read.table(paste("r_", lookup_r[i], 
-                             "/model_", as.integer(c), 
-                             "_expectations.txt", sep=""))
+    moms <- fread(paste("r_", lookup_r[i], 
+                        "/model_", as.integer(c), 
+                        "_expectations.txt", sep=""))
     hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
     c <- c + 1
   }
