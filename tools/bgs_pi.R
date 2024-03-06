@@ -173,7 +173,7 @@ hrmap <- setDT(bind_cols(1:L, pis, pi0s, B_map))
 names(hrmap) <- c("Pos", "Hr", "pi0", "B")
 fwrite(hrmap, "hrmap.csv.gz", compress="gzip") 
 
-# binning in preparation to run
+# binning in preparation to execute bgs_lm.R and bgs_viz.R
 hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
 hrmap_1kb <- hrmap %>% group_by(bin) %>%
   summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0), avg_B=mean(B))
@@ -184,9 +184,24 @@ hrmap_10kb <- hrmap_1kb %>% group_by(bin_10kb) %>%
 hrmap_100kb <- hrmap_1kb %>% group_by(bin_100kb) %>% 
   summarise_at(c("avg_pi", "avg_pi0", "avg_B"), mean)
 
-fwrite(hrmap_1kb, "hrmap_1kb.csv")
-fwrite(hrmap_10kb, "hrmap_10kb.csv")
-fwrite(hrmap_100kb, "hrmap_100kb.csv")
+# loads results of bgs_maps.R
+maps_1kb <- fread("maps_1kb.csv")
+maps_10kb <- fread("maps_10kb.csv")
+maps_100kb <- fread("maps_100kb.csv")
+
+# appends hrmaps by their trimming tails
+maps_1kb$avg_pi <- hrmap_1kb$avg_pi[1:nrow(maps_1kb)] 
+maps_10kb$avg_pi <- hrmap_10kb$avg_pi[1:nrow(maps_10kb)]
+maps_100kb$avg_pi <- hrmap_100kb$avg_pi[1:nrow(maps_100kb)] 
+
+maps_1kb$avg_B <- hrmap_1kb$avg_B[1:nrow(maps_1kb)] 
+maps_10kb$avg_B <- hrmap_10kb$avg_B[1:nrow(maps_10kb)]
+maps_100kb$avg_B <- hrmap_100kb$avg_B[1:nrow(maps_100kb)] 
+
+# over-writing
+fwrite(maps_1kb, "maps_1kb.csv")
+fwrite(maps_10kb, "maps_10kb.csv")
+fwrite(maps_100kb, "maps_100kb.csv")
 
 # visualizing the iterative correction for interference selection
 names(tbl) <- c(paste("iter_", rep(1:num_iter), sep=""))
@@ -247,7 +262,7 @@ xm$relevant <- xm$B %in% Bmr
 
 pl <- ggplot(data=xl, aes(x=rec, y=B, color=relevant)) +
   geom_point() + theme_bw() + scale_y_log10() +
-  labs(title="B-values Left", x=NULL, y=NULL) +
+  labs(title="B-values Left", x=NULL, y="B") +
   scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=12),
