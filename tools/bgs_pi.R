@@ -1,3 +1,10 @@
+# Date created: 04/03/2024
+# Author: Gustavo V. Barroso
+# This script does the heavy-lifting of the pipeline to simulate genomic
+# landscapes. Here we compute B-values for sampled sites,
+# interpolate them and multiply by local mu to generate predictions of
+# pairwise diversity along the chromosome that was simulated by bgs_maps.R
+
 #!/usr/bin/env Rscript
 args=commandArgs(trailingOnly=T)
 
@@ -7,11 +14,6 @@ library(data.table)
 library(pracma) # for cubicspline()
 library(cowplot)
 library(scales)
-
-# This script does the heavy-lifting of the pipeline to simulate genomic
-# landscapes. Here we compute B-values for sampled sites,
-# interpolate them and multiply by local mu to generate predictions of
-# pairwise diversity along the chromosome that was simulated by bgs_maps.R
 
 num_iter <- 4 # for updating B-values due to interference selection
 jump_length <- as.numeric(args[1]) # sampling distance for interpolating B-vals
@@ -48,17 +50,16 @@ L <- mmap$end[nrow(mmap)] # seq length, same for all maps
 
 # finding mu for each sampled position
 neut_pos <- unlist(apply(dt_neutral, 1, 
-              function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
-linear_pos <- sort(c(neut_pos, dt_exons$start + exon_lengths / 2))
+                         function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
+samp_pos <- sort(c(neut_pos, dt_exons$start + exon_lengths / 2)) # sampled sites
 
-focal_mu <- unlist(lapply(linear_pos, function(pos) mmap[J(pos), roll=T]$u))
+focal_mu <- unlist(lapply(samp_pos, function(pos) mmap[J(pos), roll=T]$u))
 
-pos_dt <- setDT(bind_cols(linear_pos, focal_mu))
-pos_dt$idx <- 1:nrow(pos_dt)
-names(pos_dt) <- c("position", "focal_mu", "idx")
+pos_dt <- setDT(bind_cols(samp_pos, focal_mu))
+names(pos_dt) <- c("position", "focal_mu")
 setkey(pos_dt, position)
 
-# thinning sampled neutral sites clustered away from exons
+# thinning sampled neutral sites clustered away from exons to decrease runtime
 # heuristic: downsample to a maximum of 5 sampled neutral sites between exons
 pos_dt$neutral <- pos_dt$position %in% neut_pos
 runs <- rle(pos_dt$neutral)
@@ -70,8 +71,8 @@ long_runs <- filter(runs, run_length > 5)
 short_runs$start_idx <- short_runs$end_idx - short_runs$run_length + 1
 short_runs <- dplyr::select(short_runs, c(start_idx, end_idx))
 short_pos <- unique(unlist(apply(short_runs, 1,
-               function(x) seq(from=x[1], to=x[2], by=1))))
-  
+                                 function(x) seq(from=x[1], to=x[2], by=1))))
+
 long_runs$start_idx <- long_runs$end_idx - long_runs$run_length + 1
 long_runs <- dplyr::select(long_runs, c(start_idx, end_idx))
 
@@ -87,23 +88,24 @@ thinned_neut <- c(apply(long_runs, 1, get_5_pts))
 thinned_pos <- sort(c(thinned_neut, short_pos))
 
 pos_dt <- pos_dt[thinned_pos,] # thinning
-linear_pos <- pos_dt$position # updates after thinning
+pos_dt$idx <- 1:nrow(pos_dt) # indexing
+samp_pos <- pos_dt$position # updates after thinning
 
-B_values <- rep(1, length(linear_pos)) # init 
+B_values <- rep(1, length(samp_pos)) # init 
 tbl <- as.data.frame(matrix(ncol=num_iter, nrow=length(B_values))) # for viz
 
 for(i in 1:num_iter) {
   # approximates cumulative rec by looking at r at sampled sites only
-  focal_r <- unlist(lapply(linear_pos, function(pos) rmap[J(pos), roll=T]$r)) 
+  focal_r <- unlist(lapply(samp_pos, function(pos) rmap[J(pos), roll=T]$r)) 
   focal_r <- focal_r * B_values
-  cum_rec <- numeric(length=length(linear_pos))
+  cum_rec <- numeric(length=length(samp_pos))
   cum_rec[1] <- focal_r[1]
-
-  for(j in 2:length(linear_pos)) {
-    cum_rec[j] <- cum_rec[j-1] + (linear_pos[j] - linear_pos[j-1]) * focal_r[j]
+  
+  for(j in 2:length(samp_pos)) {
+    cum_rec[j] <- cum_rec[j-1] + (samp_pos[j] - samp_pos[j-1]) * focal_r[j]
   }
   pos_dt$cumrec <- cum_rec
-
+  
   # pre-computes "effective" rec. dist. between sampled sites and exons
   cr_exons <- pos_dt[position %in% (dt_exons$start + exon_lengths / 2),]
   prd <- as.data.frame(2 * N * abs(outer(pos_dt$cumrec, cr_exons$cumrec, "-")))
@@ -112,6 +114,7 @@ for(i in 1:num_iter) {
   erd <- prd # "effective" rec. distance is inversely proportional to alpha
   for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / abs(2 * N * dt_exons$s[j]) }
   relevant_exons <- apply(erd, 2, function(x) x < 10 * N * 1e-3)
+  # identifying relevant exons (w.r.t. linked selection) for each sampled site
   exons_per_samp_site <- apply(relevant_exons, 1, function(x) which(x))
   
   getB <- function(focal_exon, focal_samp) { # arguments are site indices
@@ -119,7 +122,7 @@ for(i in 1:num_iter) {
     if(total_r > 1e-2) { return(1) } # not in lookup_tbl, too high anyway
     else {
       exon_pos <- dt_exons$start[focal_exon] + exon_lengths / 2 # midpoint pos
-      idx <- pos_dt[.(exon_pos)]$idx # index within pos_dt
+      idx <- pos_dt[.(exon_pos)]$idx # index within pos_dt / samp_pos
       dt_exons[focal_exon,]$s <- dt_exons[focal_exon,]$s * B_values[idx]
       focal_s <- dt_exons[focal_exon,]$s
       
@@ -147,23 +150,22 @@ for(i in 1:num_iter) {
     }
   }
   close(pb)
-
-  cat(tail(tmp))
+  
   B_values <- tmp
   tbl[,i] <- B_values
 }
 
 # interpolating B-values for every site 1:L can also take some time
-B_map <- cubicspline(linear_pos, B_values, 1:L)
+B_map <- cubicspline(samp_pos, B_values, 1:L)
 ones <- rep(1, L)
 
 # uses closed intervals for mmap & rmap (+1 start coordinates)
 pi0s <- invisible(apply(mmap, 1, function(x)
-                  ones[(as.numeric(x[2])+1):as.numeric(x[3])] *
-                  as.numeric(x[4]) * 2 * N))
+  ones[(as.numeric(x[2])+1):as.numeric(x[3])] *
+    as.numeric(x[4]) * 2 * N))
 pis <- invisible(apply(mmap, 1, function(x)
-                 B_map[(as.numeric(x[2])+1):as.numeric(x[3])] *
-                 as.numeric(x[4]) * 2 * N))
+  B_map[(as.numeric(x[2])+1):as.numeric(x[3])] *
+    as.numeric(x[4]) * 2 * N))
 
 pi0s <- unlist(pi0s)
 pis <- unlist(pis)
@@ -171,16 +173,16 @@ hrmap <- setDT(bind_cols(1:L, pis, pi0s, B_map))
 names(hrmap) <- c("Pos", "Hr", "pi0", "B")
 fwrite(hrmap, "hrmap.csv.gz", compress="gzip") 
 
-# binning 
+# binning in preparation to run
 hrmap$bin <- ((hrmap$Pos - 1) %/% bin_size)
 hrmap_1kb <- hrmap %>% group_by(bin) %>%
-             summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0), avg_B=mean(B))
+  summarize(avg_pi=mean(Hr), avg_pi0=mean(pi0), avg_B=mean(B))
 hrmap_1kb$bin_10kb <- hrmap_1kb$bin %/% 10
 hrmap_1kb$bin_100kb <- hrmap_1kb$bin %/% 100
 hrmap_10kb <- hrmap_1kb %>% group_by(bin_10kb) %>% 
-              summarise_at(c("avg_pi", "avg_pi0", "avg_B"), mean)
+  summarise_at(c("avg_pi", "avg_pi0", "avg_B"), mean)
 hrmap_100kb <- hrmap_1kb %>% group_by(bin_100kb) %>% 
-               summarise_at(c("avg_pi", "avg_pi0", "avg_B"), mean)
+  summarise_at(c("avg_pi", "avg_pi0", "avg_B"), mean)
 
 fwrite(hrmap_1kb, "hrmap_1kb.csv")
 fwrite(hrmap_10kb, "hrmap_10kb.csv")
@@ -188,7 +190,7 @@ fwrite(hrmap_100kb, "hrmap_100kb.csv")
 
 # visualizing the iterative correction for interference selection
 names(tbl) <- c(paste("iter_", rep(1:num_iter), sep=""))
-tbl$pos <- as.integer(linear_pos)
+tbl$pos <- as.integer(samp_pos)
 m_tbl <- pivot_longer(tbl, cols=starts_with("iter"), names_to="Iteration")
 
 pa <- ggplot(data=m_tbl[1e+3:3e+3,], aes(x=pos, y=value, color=Iteration)) + 
@@ -206,18 +208,24 @@ pa <- ggplot(data=m_tbl[1e+3:3e+3,], aes(x=pos, y=value, color=Iteration)) +
 save_plot("Interf.png", pa, base_height=8, base_width=16)
 
 # visualizing the validity of threshold for spotting "relevant" exons
-rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
-ex400 <- apply(rex, 1, function(x) which(x))
+rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2) 
+ex400 <- apply(rex, 1, function(x) which(x)) # flagging all exons w/ rho < 400
 
-Bl400 <- unlist(lapply(ex400[[1]], getB, focal_samp=1))
-Bq400 <- unlist(lapply(ex400[[length(neut_pos)/4]], getB,
+# B's at left-most site in chr, counting exons < 400 rho
+Bl400 <- unlist(lapply(ex400[,1], getB, focal_samp=1))
+# B's at site 1/4 in chr, counting exons < 400 rho
+Bq400 <- unlist(lapply(ex400[,length(neut_pos)/4], getB,
                        focal_samp=length(neut_pos) %/% 4))
-Bm400 <- unlist(lapply(ex400[[length(neut_pos)/2]], getB,
+# B's at site in middle of chr, counting exons < 400 rho
+Bm400 <- unlist(lapply(ex400[,length(neut_pos)/2], getB,
                        focal_samp=length(neut_pos) %/% 2))
 
+# B's at left-most site in chr, counting exons flagged as relevant in erd matrix
 Blr <- unlist(lapply(exons_per_samp_site[[1]], getB, focal_samp=1))
+# B's at site 1/4 in chr, counting exons flagged as relevant in erd matrix
 Bqr <- unlist(lapply(exons_per_samp_site[[length(neut_pos)/4]], getB,
                      focal_samp=length(neut_pos) %/% 4))
+# B's at site in middle of chr, counting exons flagged as relevant in erd matrix
 Bmr <- unlist(lapply(exons_per_samp_site[[length(neut_pos)/2]], getB,
                      focal_samp=length(neut_pos) %/% 2))
 
@@ -240,6 +248,7 @@ xm$relevant <- xm$B %in% Bmr
 pl <- ggplot(data=xl, aes(x=rec, y=B, color=relevant)) +
   geom_point() + theme_bw() + scale_y_log10() +
   labs(title="B-values Left", x=NULL, y=NULL) +
+  scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=12),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -248,6 +257,7 @@ pl <- ggplot(data=xl, aes(x=rec, y=B, color=relevant)) +
 pq <- ggplot(data=xq, aes(x=rec, y=B, color=relevant)) +
   geom_point() + theme_bw() + scale_y_log10() +
   labs(title="B-values 1/4 chr", x=NULL, y=NULL) +
+  scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=12),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -256,6 +266,7 @@ pq <- ggplot(data=xq, aes(x=rec, y=B, color=relevant)) +
 pm <- ggplot(data=xm, aes(x=rec, y=B, color=relevant)) +
   geom_point() + theme_bw() + scale_y_log10() +
   labs(title="B-values 1/2 chr", x=NULL, y=NULL) +
+  scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=12),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -263,7 +274,10 @@ pm <- ggplot(data=xm, aes(x=rec, y=B, color=relevant)) +
 
 ql <- ggplot(data=xl, aes(x=rec, y=CummBval, color=relevant)) + geom_point() +
   theme_bw() + scale_y_log10(limits=c(min(xl$CummBval), 1)) +
-  labs(title="Cumm. B-value, Left", x="Cummulative Rho", y="B") +
+  labs(title="Cum. B-value, Left", x="Cummulative Rho", y="B") +
+  scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL,
+                       labels=c(expression(rho < 400),
+                                paste(expression(r/s), " < 50"))) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=12),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -271,7 +285,10 @@ ql <- ggplot(data=xl, aes(x=rec, y=CummBval, color=relevant)) + geom_point() +
 
 qq <- ggplot(data=xq, aes(x=rec, y=CummBval, color=relevant)) + 
   geom_point() + theme_bw() + scale_y_log10() +
-  labs(title="Cumm. B-value, 1/4 chr", x="Cummulative Rho", y="B") +
+  labs(title="Cum. B-value, 1/4 chr", x="Cummulative Rho", y="B") +
+  scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL,
+                       labels=c(expression(rho < 400),
+                                paste(expression(r/s), " < 50"))) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=12),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
@@ -279,7 +296,10 @@ qq <- ggplot(data=xq, aes(x=rec, y=CummBval, color=relevant)) +
 
 qm <- ggplot(data=xm, aes(x=rec, y=CummBval, color=relevant)) +
   geom_point() + theme_bw() + scale_y_log10() +
-  labs(title="Cumm. B-value, 1/2 chr", x="Cummulative Rho", y="B") +
+  labs(title="Cum. B-value, 1/2 chr", x="Cummulative Rho", y="B") +
+  scale_color_discrete(type=c("plum3", "seagreen3"), name=NULL,
+                       labels=c(expression(rho < 400),
+                                paste(expression(r/s), " < 50"))) +
   theme(axis.title=element_text(size=16),
         axis.text=element_text(size=12),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
