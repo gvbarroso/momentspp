@@ -183,8 +183,8 @@ num_constrained <- 1000 # number of (non-recombining) selected segment in chr
 scale_sel <- c(5e-5, 2.5e-4)
 shape_sel <- c(10)
 scales_mu <- c(1e-8)
-shapes_mu <- c(100)
-scales_rec <- c(1e-7, 1e-6)
+shapes_mu <- c(10, 100)
+scales_rec <- c(1e-8)
 shapes_rec <- c(1)
 
 # Geom dist params

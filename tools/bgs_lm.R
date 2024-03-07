@@ -30,10 +30,10 @@ maps_100kb <- fread("maps_100kb.csv")
 r2_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
 names(r2_tbl) <- c("Total", "u", "B")
 
-# standardizing variables to help interpretation of linear coefficients
+# NOTE linear models technically cannot be fit when the mutation map is flat 
+# because in this case pi = B (and the residual sum of squares is zero)
 
-# NOTE linear models cannot be fit when the mutation map is flat because
-# in this case pi = B and the residual sum of squares is zero
+# standardizing variables to help interpretation of linear coefficients
 tbl_1kb <- dplyr::select(maps_1kb, c(avg_mut, avg_B, avg_pi))
 std_1kb <- as.data.frame(apply(tbl_1kb, 2, function(x) (x-mean(x)) / sd(x)))
 

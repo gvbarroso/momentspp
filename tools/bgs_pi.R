@@ -136,7 +136,7 @@ for(i in 1:num_iter) {
     }
   }
   
-  tmp <- B_values # temporary copy
+  tmp <- B_values # temporary copy to avoid mixing old and new B-vals in getB()
   cat(paste("Computing B's...(iteration ", i, " of ", num_iter, ")\n", sep=""))
   pb <- txtProgressBar(min=1, max=length(exons_per_samp_site), style=3)
   for(k in 1:length(exons_per_samp_site)) {
@@ -159,12 +159,12 @@ for(i in 1:num_iter) {
 B_map <- cubicspline(samp_pos, B_values, 1:L)
 ones <- rep(1, L)
 
-# uses closed intervals for mmap & rmap (+1 start coordinates)
+# uses closed intervals to map values from for mmap (+1 start coordinates)
 pi0s <- invisible(apply(mmap, 1, function(x)
-  ones[(as.numeric(x[2])+1):as.numeric(x[3])] *
+  ones[(as.numeric(x[2]) + 1):as.numeric(x[3])] *
     as.numeric(x[4]) * 2 * N))
 pis <- invisible(apply(mmap, 1, function(x)
-  B_map[(as.numeric(x[2])+1):as.numeric(x[3])] *
+  B_map[(as.numeric(x[2]) + 1):as.numeric(x[3])] *
     as.numeric(x[4]) * 2 * N))
 
 pi0s <- unlist(pi0s)
@@ -227,22 +227,22 @@ rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2)
 ex400 <- apply(rex, 1, function(x) which(x)) # flagging all exons w/ rho < 400
 
 # B's at left-most site in chr, counting exons < 400 rho
-Bl400 <- unlist(lapply(ex400[,1], getB, focal_samp=1))
+Bl400 <- unlist(lapply(ex400[[1]], getB, focal_samp=1)) # NOTE ex400[,1] Linux
 # B's at site 1/4 in chr, counting exons < 400 rho
-Bq400 <- unlist(lapply(ex400[,length(neut_pos)/4], getB,
-                       focal_samp=length(neut_pos) %/% 4))
+Bq400 <- unlist(lapply(ex400[[length(samp_pos)/4]], getB, # NOTE ex400[,*] Linux
+                       focal_samp=length(samp_pos) %/% 4))
 # B's at site in middle of chr, counting exons < 400 rho
-Bm400 <- unlist(lapply(ex400[,length(neut_pos)/2], getB,
-                       focal_samp=length(neut_pos) %/% 2))
+Bm400 <- unlist(lapply(ex400[[length(samp_pos)/2]], getB, # NOTE ex400[,*] Linux
+                       focal_samp=length(samp_pos) %/% 2))
 
 # B's at left-most site in chr, counting exons flagged as relevant in erd matrix
 Blr <- unlist(lapply(exons_per_samp_site[[1]], getB, focal_samp=1))
 # B's at site 1/4 in chr, counting exons flagged as relevant in erd matrix
-Bqr <- unlist(lapply(exons_per_samp_site[[length(neut_pos)/4]], getB,
-                     focal_samp=length(neut_pos) %/% 4))
+Bqr <- unlist(lapply(exons_per_samp_site[[length(samp_pos)/4]], getB,
+                     focal_samp=length(samp_pos) %/% 4))
 # B's at site in middle of chr, counting exons flagged as relevant in erd matrix
-Bmr <- unlist(lapply(exons_per_samp_site[[length(neut_pos)/2]], getB,
-                     focal_samp=length(neut_pos) %/% 2))
+Bmr <- unlist(lapply(exons_per_samp_site[[length(samp_pos)/2]], getB,
+                     focal_samp=length(samp_pos) %/% 2))
 
 xl <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bl400))]), Bl400)
 xq <- cbind.data.frame(as.numeric(prd[1, as.numeric(names(Bq400))]), Bq400)
