@@ -8,6 +8,8 @@
 
 suppressMessages({
   library(R.utils)
+  library(cowplot)
+  library(scales)
   library(tidyverse)
   library(data.table)
   library(GenomicRanges)
@@ -25,19 +27,37 @@ r2_mdl_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
 r2_mdl_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
 r2_mdl_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
 
+scale.4d <- function(x) sprintf("%.4f", x) # for ajusting precision in plots
+
 # bgs_maps.R, bgs_pi.R & bgs_lm.R must have been run within model/rep dirs
 for(i in 1:num_models) {
+  
+  cm_list_1kb <- list(length=num_reps)
+  cm_list_10kb <- list(length=num_reps)
+  cm_list_100kb <- list(length=num_reps)
+  
   for(j in 1:num_reps) {
     
-    smap <- fread(paste("/model_", i, "/rep_", j, "/smap.csv", sep=""))
-    rmap <- fread(paste("/model_", i, "/rep_", j, "/rmap.csv", sep=""))
-    mmap <- fread(paste("/model_", i, "/rep_", j, "/mmap.csv", sep=""))
-    hrmap <- fread(paste("/model_", i, "/rep_", j, "/hrmap.csv.gz", sep=""))
+    smap <- fread(paste("model_", i, "/rep_", j, "/smap.csv", sep=""))
+    rmap <- fread(paste("model_", i, "/rep_", j, "/rmap.csv", sep=""))
+    mmap <- fread(paste("model_", i, "/rep_", j, "/mmap.csv", sep=""))
+    hrmap <- fread(paste("model_", i, "/rep_", j, "/hrmap.csv.gz", sep=""))
     
-    m1kb <- fread(paste("/model_", i, "/rep_", j, "/map_1kb.csv", sep=""))
-    m10kb <- fread(paste("/model_", i, "/rep_", j, "/map_10kb.csv", sep=""))
-    m100kb <- fread(paste("/model_", i, "/rep_", j, "/map_100kb.csv",sep=""))
+    m1kb <- fread(paste("model_", i, "/rep_", j, "/maps_1kb.csv", sep=""))
+    m10kb <- fread(paste("model_", i, "/rep_", j, "/maps_10kb.csv", sep=""))
+    m100kb <- fread(paste("model_", i, "/rep_", j, "/maps_100kb.csv",sep=""))
   
+    # simple correlations
+    cm_list_1kb[[j]] <- cor(dplyr::select(m1kb, 
+                            c(avg_rec, avg_mut, avg_s, avg_pi, avg_B)),
+                            method="spearman")
+    cm_list_10kb[[j]] <- cor(dplyr::select(m10kb, 
+                             c(avg_rec, avg_mut, avg_s, avg_pi, avg_B)),
+                             method="spearman")
+    cm_list_100kb[[j]] <- cor(dplyr::select(m100kb, 
+                              c(avg_rec, avg_mut, avg_s, avg_pi, avg_B)),
+                              method="spearman")
+    
     # plots single-nucleotide diversity for a ~1 Mb window
     seg <- filter(smap, s<0, start >= 0, end <= 1e+6)
     wsize <- seg$end[nrow(seg)] - seg$start[1]
@@ -245,28 +265,59 @@ for(i in 1:num_models) {
     save_plot(paste("rep_", i, "/uB.png", sep=""),
               uB_scales, base_height=12, base_width=16)
   }
+  
+  # back to the simple correlations, computing the mean over replicates
+  mat_1 <- do.call(cbind, cm_list_1kb)
+  mat_1 <- array(mat_1, dim=c(dim(cm_list_1kb[[1]]), length(cm_list_1kb)))
+  cm1 <- as.data.frame(apply(mat_1, c(1, 2), mean, na.rm=TRUE))
+  names(cm1) <- c("r", "u", "s", "pi", "B")
+  row.names(cm1) <- c("r", "u", "s", "pi", "B")
+    
+  mat_10 <- do.call(cbind, cm_list_10kb)
+  mat_10 <- array(mat_10, dim=c(dim(cm_list_10kb[[1]]), length(cm_list_10kb)))
+  cm10 <- as.data.frame(apply(mat_10, c(1, 2), mean, na.rm=TRUE))
+  names(cm10) <- c("r", "u", "s", "pi", "B")
+  row.names(cm10) <- c("r", "u", "s", "pi", "B")
+  
+  mat_100 <- do.call(cbind, cm_list_100kb)
+  mat_100 <- array(mat_100,dim=c(dim(cm_list_100kb[[1]]),length(cm_list_100kb)))
+  cm100 <- as.data.frame(apply(mat_100, c(1, 2), mean, na.rm=TRUE))
+  names(cm100) <- c("r", "u", "s", "pi", "B")
+  row.names(cm100) <- c("r", "u", "s", "pi", "B")
+  
+  fwrite(cm1, paste("model_", i, "/avg_cor_mat_1kb.csv", sep=""))
+  fwrite(cm10, paste("model_", i, "/avg_cor_mat_10kb.csv", sep=""))
+  fwrite(cm100, paste("model_", i, "/avg_cor_mat_100kb.csv", sep=""))
+  
+  mc1 <- cm1 %>% as_tibble() %>% mutate(Var1=rownames(cm10)) %>% 
+      pivot_longer(names_to = "Var2", values_to = "val", cols=rownames(cm10))
+  
+  ggplot(mc1, aes(Var1, Var2, fill=val)) + geom_tile() +
+    scale_fill_gradient(low="white", high="blue") + theme_ipsum()
 }
 
+# visualization of R^2 across models
 r2_tbl <- data.table()
 for(i in 1:num_models) {
   # converts num_rep R^2 tables of dim (3 x 3: 1kb, 10kb, 100kb x Total, u, B)
   # into 3 tables of dimension num_reps x 3 (Total, u, B)
-  r2_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
-  r2_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
-  r2_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  r2_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   
   for(j in 1:num_reps) {
-    tmp <- fread(paste("/model_", i, "/rep_", j, "/r2_tbl.csv", sep=""))
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_tbl.csv", sep=""))
+    
     r2_1kb[j,] <- tmp[1,]
     r2_10kb[j,] <- tmp[2,]
     r2_100kb[j,] <- tmp[3,]
   }
   
   tbl <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb)
+  names(tbl) <- c("Total", "u", "B", "scale")
   tbl$model <- i
   tbl$rep <- rep(1:10, 3)
-  #tbl$scale <- c(rep(1, 10), rep(100, 10), rep(1000, 10)) # in kb
-  
+
   r2_tbl <- rbind.data.frame(r2_tbl, tbl)
 }
 
@@ -279,7 +330,7 @@ for(i in 1:num_models) {
   p <- ggplot(data=filter(molten_avgs, model==i), 
               aes(x=scale, y=value, shape=variable)) +
     geom_line() + theme_bw() + geom_point(size=4) +
-    scale_shape_manual(values=c(0, 8, 2, 3, 1), name=NULL) +
+    scale_shape_manual(values=c(0, 1, 8), name=NULL) +
     scale_x_continuous(breaks=unique(molten_avgs$scale), trans="log10") +
     scale_y_continuous(breaks=pretty_breaks()) +
     labs(title=paste("Model", i, "(Mean over replicates)"),
@@ -294,7 +345,7 @@ for(i in 1:num_models) {
   q <- ggplot(data=filter(molten_sds, model==i), 
               aes(x=scale, y=value, shape=variable)) +
     geom_line() + theme_bw() + geom_point(size=4) +
-    scale_shape_manual(values=c(0, 8, 2, 3, 1), name=NULL) +
+    scale_shape_manual(values=c(0, 1, 8), name=NULL) +
     scale_x_continuous(breaks=unique(molten_sds$scale), trans="log10") +
     scale_y_continuous(breaks=pretty_breaks()) +
     labs(title=paste("Model", i, "(SD over replicates)"),
@@ -309,11 +360,8 @@ for(i in 1:num_models) {
             base_height=10, base_width=15)
 }
 
-# the plots above show us that by and large, sd over replicates is negligible
-# and u and s are the only meaningful variables affecting pi in these models
-# thus we simplify:
-r2s_f <- dplyr::select(r2s, -starts_with("r")) %>% 
-         dplyr::select(., -ends_with("sd"))
+# we simplify plots a little
+r2s_f <- dplyr::select(r2s, -Total) %>% dplyr::select(., -ends_with("sd"))
 models_f <- dplyr::select(models, c(scale_sel,
                                     shapes_mu,
                                     shapes_rec, 
@@ -361,21 +409,8 @@ q <- ggplot(data=filter(m_r2_models, shapes_rec==1, variable=="u_avg"),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-q
+
 save_plot("r2_u_only.png", q, base_height=8, base_width=16)
-
-
-# check the correlation between B-values and r, s
-for(i in 1:num_models) {
-  for(j in 1:num_models) {
-    hrmap <- fread(paste("model_", i, "/rep_", j, "/hrmap.csv", sep=""))
-    hrmap$B <- hrmap$Hr / hrmap$pi0
-    hrmap$bin <- (hrmap$Pos - 1) %/% 1e+5
-    hrbins <- hrmap %>% group_by(bin) %>% summarize_at(vars(B, Hr, pi0), mean)
-    cor.test(hrbins$B, hrbins$Hr)
-    plot(hrbins$Hr, hrbins$B)
-  }
-}
 
 # meta linear model
 r2_models <- merge(select(models, c(model, scale_sel, shapes_mu, 
