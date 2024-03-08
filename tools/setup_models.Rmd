@@ -202,7 +202,7 @@ models$model <- 1:nrow(models)
 n_models <- nrow(models)
 
 Sys.setenv(n_models=n_models)
-fwrite(models, "models.csv.gz", compress="gzip")
+fwrite(models, "models.csv")
 ```
 
 ```{bash folders, engine.opts='-i', include=F, eval=T, results=F, warning=F}
@@ -226,3 +226,6 @@ do
   cd ..
 done
 ```
+
+# TODO 
+Add Python chunk with fwdpy11 simulations
