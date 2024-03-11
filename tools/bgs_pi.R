@@ -146,6 +146,7 @@ for(i in 1:num_iter) {
     }
   }
   
+  # TODO flip and loop over exons, subset lookup_tbl by closest_s to make it faster
   tmp <- B_values # temporary copy to avoid mixing old and new B-vals in getB()
   cat(paste("Computing B's...(iteration ", i, " of ", num_iter, ")\n", sep=""))
   pb <- txtProgressBar(min=1, max=length(exons_per_samp_site), style=3)
