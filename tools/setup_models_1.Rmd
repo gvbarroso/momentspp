@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Desktop/test_mpp/")
+knitr::opts_knit$set(root.dir="~/Desktop/test_mpp_demo/")
 ```
 
 # Creating folders and files
@@ -27,7 +27,10 @@ assembly of whole chromosomes
 
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
-N <- 10000
+# in practice a two-epoch demographic model, even under equilibrium
+Na <- 10000 # ancestral N
+N1 <- c(Na, Na / 5, Na * 2) # current N
+t <- c(1000, 10000)
 u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
 lookup_r <- round(seq_log(from=1e-12, to=1e-2, length.out=500), digits=15)
@@ -40,7 +43,7 @@ dt_s <- data.table(lookup_s)
 setkey(dt_r, lookup_r)
 setkey(dt_s, lookup_s)
 
-params <- setDT(crossing(N, u, lookup_r, lookup_s))
+params <- setDT(crossing(Na, N1, t, u, lookup_r, lookup_s))
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
@@ -71,7 +74,9 @@ for(i in 1:n_models) {
     cat(paste(i, "\n"))
   }
   
-  N <- as.integer(params[i,]$N)
+  Na <- as.integer(params[i,]$Na)
+  N1 <- as.integer(params[i,]$N1)
+  t <- as.integer(params[i,]$t)
   u <- as.numeric(params[i,]$u)
   r <- as.numeric(params[i,]$lookup_r)
   s <- as.numeric(params[i,]$lookup_s)
@@ -83,9 +88,15 @@ for(i in 1:n_models) {
   cat("demes:\n")
   cat("  - name: X\n")
   cat("    epochs:\n")
+  cat("      - end_time: ")
+  cat(t)
+  cat("\n")
+  cat("        start_size: ")
+  cat(Na)
+  cat("\n")
   cat("      - end_time: 0\n")
   cat("        start_size: ")
-  cat(N)
+  cat(N1)
   cat("\n")
   cat("metadata:\n")
   cat("  - name: mutation\n")

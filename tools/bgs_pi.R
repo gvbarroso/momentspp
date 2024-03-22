@@ -218,6 +218,8 @@ fwrite(maps_100kb, "maps_100kb.csv")
 # visualizing the iterative correction for interference selection
 names(tbl) <- c(paste("iter_", rep(1:num_iter), sep=""))
 tbl$pos <- as.integer(samp_pos)
+fwrite(tbl, "interf_iter.csv")
+
 m_tbl <- pivot_longer(tbl, cols=starts_with("iter"), names_to="Iteration")
 
 pa <- ggplot(data=filter(m_tbl, pos>1e+6, pos<2e+6),
