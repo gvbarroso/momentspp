@@ -81,3 +81,4 @@ p <- ggplot(data=mmap_100kb, aes(x=bin_100kb, y=avg_u)) +
         legend.position="top")
 
 save_plot("emp_mmap_100kb.png", p, base_height=10, base_width=12)
+

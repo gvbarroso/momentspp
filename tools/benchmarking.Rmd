@@ -78,7 +78,7 @@ cp sim_sel.bpp selection/single-pop/bench
 
 # Neutrality
 
-Here we benchmark moments++ against moments.LD when s=0
+Here we benchmark moments++ against moments.LD when s==0
 
 ## No-migration
 
