@@ -204,6 +204,7 @@ for i in range(1, n_models):
 ```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
 
 params <- fread("params.csv")
+n_models <- nrow(params)
 
 commom_stats <- c("DD_0_0",
                   "Dr_0_0_(1-2p0)^1",
@@ -282,12 +283,12 @@ tbl_py_ns <- bind_rows(tbl_py_n40, tbl_py_n80)
 
 tbl_pp <- full_join(mpp, tbl_py_ns, by=c("stats", colnames(params)))
 names(tbl_pp)[1] <- "mpp"
-names(tbl_pp)[11] <- "m2l"
+names(tbl_pp)[10] <- "m2l"
 tbl_pp <- tbl_pp %>% mutate(ratio=mpp/m2l)
 
 # plots
-p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1], sample_size==80),
-        aes(x=r, y=ratio)) +
+p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1],
+                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
   labs(title="Ratios mpp / m2l, rows->alpha, cols->order", 
@@ -299,8 +300,8 @@ p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1], sample_size==80),
         legend.position="bottom")
 save_plot("dd_ratios.png", p1, base_height=24, base_width=12)
 
-p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2], sample_size==80),
-        aes(x=r, y=ratio)) +
+p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2], 
+                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
   labs(title="Ratios mpp / m2l, rows->alpha, cols->order", x="r", y="Dz") +
@@ -311,8 +312,8 @@ p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2], sample_size==80),
         legend.position="bottom")
 save_plot("dz_ratios.png", p2, base_height=24, base_width=12)
 
-p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3], sample_size==80),
-        aes(x=r, y=ratio)) +
+p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3], 
+                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
   labs(title="Ratios mpp / m2l, rows->alpha, cols->order",
@@ -324,8 +325,8 @@ p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3], sample_size==80),
         legend.position="bottom")
 save_plot("hl_ratios.png", p3, base_height=24, base_width=12)
 
-p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4], sample_size==60),
-        aes(x=r, y=ratio)) +
+p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
+                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
   labs(title="Ratios mpp / m2l, rows->alpha, cols->order",
@@ -335,10 +336,10 @@ p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4], sample_size==60),
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("bench/hr_ratios.png", p4, base_height=24, base_width=12)
+save_plot("hr_ratios.png", p4, base_height=24, base_width=12)
 
-p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5], sample_size==80),
-        aes(x=r, y=ratio)) +
+p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5], 
+                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() +  
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
   labs(title="Ratios mpp / m2l, rows->alpha, cols->order",
@@ -348,7 +349,7 @@ p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5], sample_size==80),
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("selection/single-pop/bench/pi2_ratios.png",
+save_plot("pi2_ratios.png",
           p5, base_height=24, base_width=12)
 
 # compare to HK95 pred
@@ -370,22 +371,22 @@ for(n in unique(molten_hr$N)) {
           axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
           legend.position="bottom")
   q
-  save_plot(paste("Hr, N=", n, ", r=1e-8.png", sep=""), q)
+  save_plot(paste("Hr, N=", n, ", r=1e-8.png", sep=""), q,
+            base_height=10, base_width=12)
 }
 
 for(a in unique(molten_hr$alpha)) {
  r <- ggplot(data=filter(molten_hr, alpha==a), aes(x=r, y=value, color=method)) +
       geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~order) +
-  scale_x_log10(breaks=r) + scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_log10() +
+  scale_y_continuous(breaks=pretty_breaks()) +
   labs(title=paste("Hr, alpha=", a, sep=""), x="r", y=expression(H[r])) +
   theme(axis.title=element_text(size=12),
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
   r
-  save_plot(paste("Hr, alpha=", a, ".png", sep=""), r)
+  save_plot(paste("Hr, alpha=", a, ".png", sep=""), r,
+            base_height=10, base_width=12)
 }
-
-
-
 ```
