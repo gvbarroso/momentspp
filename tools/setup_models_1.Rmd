@@ -29,12 +29,12 @@ assembly of whole chromosomes
 
 # in practice a two-epoch demographic model, even under equilibrium
 Na <- 10000 # ancestral N
-N1 <- c(Na, Na / 2, Na / 5, Na / 10, 2 * Na, 5 * Na, 10 * Na) # current N
-t <- c(100, 1000, 10000) # in generations
+N1 <- c(Na / 2, Na / 5, Na / 10, 2 * Na, 5 * Na, 10 * Na) # current N
+t <- c(100, 500, 2500) # in generations
 u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
-lookup_r <- round(seq_log(from=1e-12, to=1e-2, length.out=500), digits=15)
-lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=200), digits=11)
+lookup_r <- round(seq_log(from=1e-9, to=1e-2, length.out=300), digits=15)
+lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=100), digits=11)
 
 # for discretizing Gamma distributions
 dt_r <- data.table(lookup_r)
@@ -102,10 +102,15 @@ for(i in 1:n_models) {
   cat("        start_size: ")
   cat(Na)
   cat("\n")
-  cat("      - end_time: 0\n")
-  cat("        start_size: ")
-  cat(N1)
-  cat("\n")
+  
+  for(j in seq(from=t, to=0, by=-10)) {
+    cat("      - end_time: ")
+    cat(paste(as.character(j), "\n", sep=""))
+    cat("        start_size: ")
+    cat(N1)
+    cat("\n")
+  }
+  
   cat("metadata:\n")
   cat("  - name: mutation\n")
   cat("    left_factor: 1\n")

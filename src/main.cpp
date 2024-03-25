@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 14/12/2023
+ * Last modified: 25/03/2024
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 14/Dec/2023 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 25/Mar/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -186,10 +186,10 @@ int main(int argc, char *argv[]) {
   else
     epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath());
 
-  if(options.verbose())
+  //if(options.verbose())
   {
-    std::string file = options.getLabel() + "_steady-state.txt";
-    std::ofstream fout(file);
+    std::string fileName = options.getLabel() + "_steady-state.txt";
+    std::ofstream fout(fileName);
 
     epochs.front()->printMoments(fout);
     fout.close();
@@ -207,13 +207,14 @@ int main(int argc, char *argv[]) {
       model->getIndependentParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
-      std::string file = model->getName() + "_expectations.txt";
-      std::ofstream fout(file);
+      std::string fileName = model->getName() + "_expectations.txt";
+      std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
+      model->printAliasedMomentsPerEpoch(model->getName());
 
       fout.close();
-      std::cout << "\nCheck output file " << file << ".\n\n";
+      std::cout << "\nCheck output file " << fileName << ".\n\n";
     }
 
     else

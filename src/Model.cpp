@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/10/2023
+ * Last modified: 25/03/2024
  *
  */
 
@@ -26,6 +26,7 @@ void Model::computeExpectedSumStats()
   {
     epochs_[i]->transferStatistics(expected_); // copying values from epoch i-1 into epoch i according to population ancestry
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
+    epochs_[i]->updateMoments(expected_); // updates inside sslib, NOTE line added on 25 March 2024 to print epoch-specific moments
   }
 
   if(epochs_.size() > 1) // final epoch
@@ -33,6 +34,18 @@ void Model::computeExpectedSumStats()
     epochs_.back()->transferStatistics(expected_);
     epochs_.back()->computeExpectedSumStats(expected_);
     epochs_.back()->updateMoments(expected_); // updates inside sslib
+  }
+}
+
+void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
+{
+  for(size_t i = 0; i < epochs_.size(); ++i) // epochs are sorted from past to present
+  {
+    std::string fileName = modelName + "_" +  epochs_[i]->getName() + "_expectations.txt";
+    std::ofstream fout(fileName);
+
+    epochs_[i]->printMoments(fout);
+    fout.close();
   }
 }
 

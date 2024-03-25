@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 05/09/2023
+ * Last modified: 25/03/2024
  *
  */
 
@@ -143,6 +143,8 @@ public:
   }
 
   void computeExpectedSumStats();
+
+  void printAliasedMomentsPerEpoch(const std::string& modelName);
 
   void printAliasedMoments(std::ostream& stream);
 
