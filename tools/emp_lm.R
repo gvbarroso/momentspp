@@ -19,7 +19,16 @@ suppressMessages({
 print(Sys.time())
 cat("Fitting linear models pi ~ u + B...\n")
 
-chr_list <- c(17:18, 21:22)
+chr_list <- c(1:4, 17:22)
+
+tbl_10kb <- data.frame()
+for(i in chr_list) {
+  name <- paste("chr", i, ".10kb.tsv", sep="")
+  tbl <- fread(paste("primate_data/", name, sep=""))
+  tbl$bin <- 1:nrow(tbl)
+  tbl$chr <- i
+  tbl_10kb <- rbind.data.frame(tbl_10kb, tbl)
+}
 
 tbl_100kb <- data.frame()
 for(i in chr_list) {
@@ -27,7 +36,7 @@ for(i in chr_list) {
   tbl <- fread(paste("primate_data/", name, sep=""))
   tbl$bin <- 1:nrow(tbl)
   tbl$chr <- i
-  tbl_100kb <- rbind.data.frame(tbl, tbl_100kb)
+  tbl_100kb <- rbind.data.frame(tbl_100kb, tbl)
 }
 
 tbl_1Mb <- data.frame()
@@ -36,18 +45,19 @@ for(i in chr_list) {
   tbl <- fread(paste("primate_data/", name, sep=""))
   tbl$bin <- 1:nrow(tbl)
   tbl$chr <- i
-  tbl_1Mb <- rbind.data.frame(tbl, tbl_1Mb)
+  tbl_1Mb <- rbind.data.frame(tbl_1Mb, tbl)
 }
 
-# table for storing R^2 values from linear models (rows are bin sizes)
-r2_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
-names(r2_tbl) <- c("Total", "u", "B")
-r2_tbl$scale <- c(1e+4, 1e+5, 1e+6)
-
-# NOTE linear models technically cannot be fit when the mutation map is flat 
-# because in this case pi==B (and the residual sum of squares is zero)
-
 # standardizing variables to help interpretation of linear coefficients
+## 10 kb
+std_10kb <- dplyr::select(tbl_10kb, c(mu, r, pi, sub))
+names(std_10kb)[3] <- "diversity"
+std_10kb <- as.data.frame(apply(std_10kb[,1:ncol(std_10kb)], 2,
+              function(x) (x-mean(x, na.rm=T)) / sd(x, na.rm=T)))
+std_10kb$bin <- tbl_10kb$bin
+std_10kb$chr <- tbl_10kb$chr
+
+## 100 kb
 std_100kb <- dplyr::select(tbl_100kb, c(mu, r, pi))
 names(std_100kb)[3] <- "diversity"
 std_100kb <- as.data.frame(apply(std_100kb[,1:ncol(std_100kb)], 2,
@@ -55,123 +65,72 @@ std_100kb <- as.data.frame(apply(std_100kb[,1:ncol(std_100kb)], 2,
 std_100kb$bin <- tbl_100kb$bin
 std_100kb$chr <- tbl_100kb$chr
 
-# standardizing variables to help interpretation of linear coefficients
+## 1 Mb
 std_1Mb <- dplyr::select(tbl_1Mb, c(mu, r, pi))
 names(std_1Mb)[3] <- "diversity"
 std_1Mb <- as.data.frame(apply(std_1Mb[,1:ncol(std_1Mb)], 2,
-                         function(x) (x-mean(x, na.rm=T)) / sd(x, na.rm=T)))
+              function(x) (x-mean(x, na.rm=T)) / sd(x, na.rm=T)))
 std_1Mb$bin <- tbl_1Mb$bin
 std_1Mb$chr <- tbl_1Mb$chr
 
-m.pi.1Mb.1 <- lm(diversity ~ (mu + r + chr)^2, data=std_1Mb)
-summary(m.pi.1Mb.1)
+# linear models
+## tables for storing coefficients from linear models
+beta_pi_10kb <- as.data.frame(matrix(ncol=3, nrow=length(chr_list)))
+names(beta_pi_10kb) <- c("Total", "r", "u")
+beta_pi_10kb$chr <- chr_list
+beta_sub_10kb <- beta_pi_10kb
 
-m.pi.100kb.1 <- lm(diversity ~ (mu + r + chr)^2, data=std_100kb)
-summary(m.pi.100kb.1)
+beta_pi_100kb <- as.data.frame(matrix(ncol=3, nrow=length(chr_list)))
+names(beta_pi_100kb) <- c("Total", "r", "u")
+beta_pi_100kb$chr <- chr_list
+beta_sub_100kb <- beta_pi_100kb
 
-m.pi.100kb.2 <- lm(diversity ~ (r + chr)^2, data=std_100kb)
-summary(m.pi.100kb.2)
+beta_pi_1Mb <- as.data.frame(matrix(ncol=3, nrow=length(chr_list)))
+names(beta_pi_1Mb) <- c("Total", "r", "u")
+beta_pi_1Mb$chr <- chr_list
+beta_sub_1Mb <- beta_pi_1Mb
 
-plot(resid(m.pi.100kb.1)~fitted(m.pi.100kb.1))
-hist(resid(m.pi.100kb.1), nclass = 30)
-dwtest(m.pi.100kb.1)
-hmctest(m.pi.100kb.1, nsim=10000) 
-
-g.pi.100kb.1 <- gls(diversity ~ (mu + r + mu:r), data=std_100kb, 
-                    cor=corAR1(0, ~bin|chr), method="ML", na.action=na.omit)
-
-summary(g.pi.100kb.1)
-vif(g.pi.100kb.1)
-
-g.pi.100kb.2 <- gls(diversity ~ (mu + r + mu:r), data=std_100kb, 
-                  weights=varPower(0, ~mu|chr), cor=corAR1(0, ~bin|chr), 
-                  method="ML", na.action=na.omit)
-
-summary(g.pi.100kb.2)
-vif(g.pi.100kb.2)
-
-AIC(g.pi.100kb.1, g.pi.100kb.2)
-AIC(m.pi.100kb, g.pi.100kb.1)
-
-anova.pi <- Anova(m_1kb)
-apiss <- anova.pi$"Sum Sq"
-anova.pi$VarExp <- apiss / sum(apiss)
-
-r2_tbl$Total[1] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2]) * 100
-r2_tbl$u[1] <- anova.pi$VarExp[1] * 100
-r2_tbl$B[1] <- anova.pi$VarExp[2] * 100
-
-
-m.pi.100kb <- lm(diversity ~ (mu + r)^2, data=filter(std_100kb, chr==17))
-summary(m.pi.100kb)
-
-g.pi.100kb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_100kb, chr==17), 
-                   cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.100kb.3)
-vif(g.pi.100kb.3)
-
-m.pi.100kb <- lm(diversity ~ (mu + r)^2, data=filter(std_100kb, chr==18))
-summary(m.pi.100kb)
-
-g.pi.100kb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_100kb, chr==18), 
+pb <- txtProgressBar(min=1, max=length(chr_list), style=3)
+for(i in 1:length(chr_list)) {
+  
+  setTxtProgressBar(pb, i)
+  
+  # linear models on pi
+  gls.pi.10kb <- gls(diversity ~ mu + r, data=filter(std_10kb, chr==chr_list[i]),
                     cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.100kb.3)
-vif(g.pi.100kb.3)
-
-m.pi.100kb <- lm(diversity ~ (mu + r)^2, data=filter(std_100kb, chr==21))
-summary(m.pi.100kb)
-
-g.pi.100kb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_100kb, chr==21), 
+  beta_pi_10kb[i, 1] <- gls.pi.10kb$coefficients[2] + gls.pi.10kb$coefficients[3]
+  beta_pi_10kb[i, 2] <- gls.pi.10kb$coefficients[2]
+  beta_pi_10kb[i, 3] <- gls.pi.10kb$coefficients[3]
+  
+  gls.pi.100kb <- gls(diversity ~ mu + r, data=filter(std_100kb, chr==chr_list[i]),
                     cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.100kb.3)
-vif(g.pi.100kb.3)
-
-m.pi.100kb <- lm(diversity ~ (mu + r)^2, data=filter(std_100kb, chr==22))
-summary(m.pi.100kb)
-
-g.pi.100kb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_100kb, chr==22), 
+  beta_pi_100kb[i, 1] <- gls.pi.100kb$coefficients[2] + gls.pi.100kb$coefficients[3]
+  beta_pi_100kb[i, 2] <- gls.pi.100kb$coefficients[2]
+  beta_pi_100kb[i, 3] <- gls.pi.100kb$coefficients[3]
+  
+  gls.pi.1Mb <- gls(diversity ~ mu + r, data=filter(std_1Mb, chr==chr_list[i]),
                     cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.100kb.3)
-vif(g.pi.100kb.3)
-
-
-#
-m.pi.1Mb <- lm(diversity ~ (mu + r)^2, data=filter(std_1Mb, chr==17))
-summary(m.pi.1Mb)
-
-g.pi.1Mb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_1Mb, chr==17), 
-                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.1Mb.3)
-vif(g.pi.1Mb.3)
-
-m.pi.1Mb <- lm(diversity ~ (mu + r)^2, data=filter(std_1Mb, chr==18))
-summary(m.pi.1Mb)
-
-g.pi.1Mb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_1Mb, chr==18), 
-                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.1Mb.3)
-vif(g.pi.1Mb.3)
-
-m.pi.1Mb <- lm(diversity ~ (mu + r)^2, data=filter(std_1Mb, chr==21))
-summary(m.pi.1Mb)
-
-g.pi.1Mb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_1Mb, chr==21), 
-                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.1Mb.3)
-vif(g.pi.1Mb.3)
-
-m.pi.1Mb <- lm(diversity ~ (mu + r)^2, data=filter(std_1Mb, chr==22))
-summary(m.pi.1Mb)
-
-g.pi.1Mb.3 <- gls(diversity ~ (mu + r + mu:r), data=filter(std_1Mb, chr==22), 
-                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-
-summary(g.pi.1Mb.3)
-vif(g.pi.1Mb.3)
+  beta_pi_1Mb[i, 1] <- gls.pi.1Mb$coefficients[2] + gls.pi.1Mb$coefficients[3]
+  beta_pi_1Mb[i, 2] <- gls.pi.1Mb$coefficients[2]
+  beta_pi_1Mb[i, 3] <- gls.pi.1Mb$coefficients[3]
+  
+  # linear models on divergence
+  gls.sub.10kb <- gls(sub ~ mu + r, data=filter(std_10kb, chr==chr_list[i]),
+                      cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
+  beta_sub_10kb[i, 1] <- gls.sub.10kb$coefficients[2] + gls.sub.10kb$coefficients[3]
+  beta_sub_10kb[i, 2] <- gls.sub.10kb$coefficients[2]
+  beta_sub_10kb[i, 3] <- gls.sub.10kb$coefficients[3]
+  
+  gls.sub.100kb <- gls(sub ~ mu + r, data=filter(std_100kb, chr==chr_list[i]),
+                       cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
+  beta_sub_100kb[i, 1] <- gls.sub.100kb$coefficients[2] + gls.sub.100kb$coefficients[3]
+  beta_sub_100kb[i, 2] <- gls.sub.100kb$coefficients[2]
+  beta_sub_100kb[i, 3] <- gls.sub.100kb$coefficients[3]
+  
+  gls.sub.1Mb <- gls(sub ~ mu + r, data=filter(std_1Mb, chr==chr_list[i]),
+                     cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
+  beta_sub_1Mb[i, 1] <- gls.sub.1Mb$coefficients[2] + gls.sub.1Mb$coefficients[3]
+  beta_sub_1Mb[i, 2] <- gls.sub.1Mb$coefficients[2]
+  beta_sub_1Mb[i, 3] <- gls.sub.1Mb$coefficients[3]
+}
+close(pb)
