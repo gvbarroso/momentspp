@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 11/10/2023
+ * Last modified: 26/03/2024
  *
  */
 
@@ -219,6 +219,8 @@ public:
   void updateMoments(const Eigen::VectorXd& y);
 
   void printMoments(std::ostream& stream);
+
+  void printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream, size_t interval);
 
   void printRecursions(std::ostream& stream);
 

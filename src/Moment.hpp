@@ -28,11 +28,11 @@ class Moment
 {
 
 protected:
-  std::string name_; // e.g. "pi2_1100_l_00", names is unique to *this Moment
+  std::string name_; // e.g. "pi2_1100_(1-2p0)^2", name is unique to *this Moment
   std::string prefix_; // e.g. "pi2"
   std::vector<size_t> popIndices_; // population indices associated with main statistic
-  std::vector<size_t> factorIndices_; // population indices associalted with each (1-2p) factor
-  size_t position_; // within the Y vector and SumStatsLibrary basis_
+  std::vector<size_t> factorIndices_; // population indices associated with each (1-2p) factor
+  size_t position_; // index within the Y vector (see Epoch::computeExpectedSumStats()) and SumStatsLibrary basis_
   double value_; // expectation
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry

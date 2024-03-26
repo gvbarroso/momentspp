@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 13/10/2023
+ * Last modified: 26/03/2024
  *
  */
 
@@ -71,6 +71,23 @@ void Epoch::printMoments(std::ostream& stream)
 
   for(auto& m : tmp)
     stream << m->getName() << " = " << m->getValue() << "\n";
+}
+
+void Epoch::printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream, size_t interval)
+{
+  std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
+  size_t numTimeSteps = duration() / interval + 1; // prints intermediate values every interval generations
+
+  for(size_t i = 0; i < numTimeSteps; ++i)
+  {
+    y = transitionMatrix_.pow(interval) * y;
+
+    for(size_t j = 0; j < tmp.size(); ++j)
+    {
+      if(tmp[j]->getName() == "Hr_0_0" || tmp[j]->getName() == "Hl_0_0")
+        stream << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n";
+    }
+  }
 }
 
 void Epoch::printRecursions(std::ostream& stream)

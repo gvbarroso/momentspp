@@ -30,7 +30,7 @@ assembly of whole chromosomes
 # in practice a two-epoch demographic model, even under equilibrium
 Na <- 10000 # ancestral N
 N1 <- c(Na / 2, Na / 5, Na / 10, 2 * Na, 5 * Na, 10 * Na) # current N
-t <- c(100, 500, 2500) # in generations
+t <- 2500 # in generations
 u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
 lookup_r <- round(seq_log(from=1e-9, to=1e-2, length.out=300), digits=15)
@@ -102,15 +102,10 @@ for(i in 1:n_models) {
   cat("        start_size: ")
   cat(Na)
   cat("\n")
-  
-  for(j in seq(from=t, to=0, by=-10)) {
-    cat("      - end_time: ")
-    cat(paste(as.character(j), "\n", sep=""))
-    cat("        start_size: ")
-    cat(N1)
-    cat("\n")
-  }
-  
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(N1)
+  cat("\n")
   cat("metadata:\n")
   cat("  - name: mutation\n")
   cat("    left_factor: 1\n")
@@ -141,30 +136,38 @@ for(i in 1:n_models) {
 
 Computes summary statistics for each parameter combination in lookup_tbl
 
-```{bash moments++, engine.opts='-i', include=F, eval=T, results=F, warning=F}
+```{bash moments++, engine.opts='-i', include=F, eval=F, results=F, warning=F}
 
-source ~/.bashrc
+#!/bin/bash
 
 for r in r_*
-do 
-  #cp opt.bpp $r
+do
   cd $r
   for s in s_*
   do
     cd $s
-    for f in *.yaml
+    for f in model_*.yaml
     do
-	    momentspp params=opt.bpp F=$f O=200 > /dev/null
-	  done
-	  cd ..
-	done
+      # this is to get the correct Order of (1-2p)
+      # which is a function of 2Ns (maximum = 2N/1000 here)
+      N=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
+      x=$((2*$N/1000))
+      if [[ $x -gt 90 ]]
+      then
+        momentspp params=opt.bpp F=$f O=$x > /dev/null
+      else
+        momentspp params=opt.bpp F=$f O=50
+      fi
+    done
+    cd ..
+  done
   cd ..
 done
 ```
 
 Collects lookup table with Hr values on the parameter grid
 
-```{r, grid, include=F, eval=T, results=F, message=F, warning=F}
+```{r, grid, include=F, eval=F, results=F, message=F, warning=F}
 
 params <- fread("params.csv", sep=",", header=T)
 n_models <- nrow(params)

@@ -146,6 +146,8 @@ public:
 
   void printAliasedMomentsPerEpoch(const std::string& modelName);
 
+  void printHetMomentsIntermediate(const std::string& modelName, size_t interval);
+
   void printAliasedMoments(std::ostream& stream);
 
   void compressParameters(bool aliasOverEpochs, bool aliasOverPops);
