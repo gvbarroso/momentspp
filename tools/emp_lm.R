@@ -58,7 +58,7 @@ std_10kb$bin <- tbl_10kb$bin
 std_10kb$chr <- tbl_10kb$chr
 
 ## 100 kb
-std_100kb <- dplyr::select(tbl_100kb, c(mu, r, pi))
+std_100kb <- dplyr::select(tbl_100kb, c(mu, r, pi, sub))
 names(std_100kb)[3] <- "diversity"
 std_100kb <- as.data.frame(apply(std_100kb[,1:ncol(std_100kb)], 2,
                 function(x) (x-mean(x, na.rm=T)) / sd(x, na.rm=T)))
@@ -66,7 +66,7 @@ std_100kb$bin <- tbl_100kb$bin
 std_100kb$chr <- tbl_100kb$chr
 
 ## 1 Mb
-std_1Mb <- dplyr::select(tbl_1Mb, c(mu, r, pi))
+std_1Mb <- dplyr::select(tbl_1Mb, c(mu, r, pi, sub))
 names(std_1Mb)[3] <- "diversity"
 std_1Mb <- as.data.frame(apply(std_1Mb[,1:ncol(std_1Mb)], 2,
               function(x) (x-mean(x, na.rm=T)) / sd(x, na.rm=T)))
@@ -75,62 +75,56 @@ std_1Mb$chr <- tbl_1Mb$chr
 
 # linear models
 ## tables for storing coefficients from linear models
-beta_pi_10kb <- as.data.frame(matrix(ncol=3, nrow=length(chr_list)))
-names(beta_pi_10kb) <- c("Total", "r", "u")
+beta_pi_10kb <- as.data.frame(matrix(ncol=2, nrow=length(chr_list)))
+names(beta_pi_10kb) <- c("r", "u")
 beta_pi_10kb$chr <- chr_list
 beta_sub_10kb <- beta_pi_10kb
 
-beta_pi_100kb <- as.data.frame(matrix(ncol=3, nrow=length(chr_list)))
-names(beta_pi_100kb) <- c("Total", "r", "u")
+beta_pi_100kb <- as.data.frame(matrix(ncol=2, nrow=length(chr_list)))
+names(beta_pi_100kb) <- c("r", "u")
 beta_pi_100kb$chr <- chr_list
 beta_sub_100kb <- beta_pi_100kb
 
-beta_pi_1Mb <- as.data.frame(matrix(ncol=3, nrow=length(chr_list)))
-names(beta_pi_1Mb) <- c("Total", "r", "u")
+beta_pi_1Mb <- as.data.frame(matrix(ncol=2, nrow=length(chr_list)))
+names(beta_pi_1Mb) <- c("r", "u")
 beta_pi_1Mb$chr <- chr_list
 beta_sub_1Mb <- beta_pi_1Mb
 
-pb <- txtProgressBar(min=1, max=length(chr_list), style=3)
+pb <- txtProgressBar(min=1, max=length(chr_list) + 1, style=3)
 for(i in 1:length(chr_list)) {
   
   setTxtProgressBar(pb, i)
   
   # linear models on pi
-  gls.pi.10kb <- gls(diversity ~ mu + r, data=filter(std_10kb, chr==chr_list[i]),
-                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-  beta_pi_10kb[i, 1] <- gls.pi.10kb$coefficients[2] + gls.pi.10kb$coefficients[3]
-  beta_pi_10kb[i, 2] <- gls.pi.10kb$coefficients[2]
-  beta_pi_10kb[i, 3] <- gls.pi.10kb$coefficients[3]
+  #gls.pi.10kb <- gls(diversity ~ mu + r, data=filter(std_10kb, chr==chr_list[i]),
+  #                  cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
+  #beta_pi_10kb$u[i] <- gls.pi.10kb$coefficients[2]
+  #beta_pi_10kb$r[i] <- gls.pi.10kb$coefficients[3]
   
-  gls.pi.100kb <- gls(diversity ~ mu + r, data=filter(std_100kb, chr==chr_list[i]),
-                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-  beta_pi_100kb[i, 1] <- gls.pi.100kb$coefficients[2] + gls.pi.100kb$coefficients[3]
-  beta_pi_100kb[i, 2] <- gls.pi.100kb$coefficients[2]
-  beta_pi_100kb[i, 3] <- gls.pi.100kb$coefficients[3]
+  gls.pi.100kb <- gls(diversity ~ mu + r, data=na.omit(filter(std_100kb, chr==chr_list[i])),
+                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit, verbose=T)
+  beta_pi_100kb$u[i] <- gls.pi.100kb$coefficients[2]
+  beta_pi_100kb$r[i] <- gls.pi.100kb$coefficients[3]
   
   gls.pi.1Mb <- gls(diversity ~ mu + r, data=filter(std_1Mb, chr==chr_list[i]),
                     cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-  beta_pi_1Mb[i, 1] <- gls.pi.1Mb$coefficients[2] + gls.pi.1Mb$coefficients[3]
-  beta_pi_1Mb[i, 2] <- gls.pi.1Mb$coefficients[2]
-  beta_pi_1Mb[i, 3] <- gls.pi.1Mb$coefficients[3]
+  beta_pi_1Mb$u[i] <- gls.pi.1Mb$coefficients[2]
+  beta_pi_1Mb$r[i] <- gls.pi.1Mb$coefficients[3]
   
   # linear models on divergence
-  gls.sub.10kb <- gls(sub ~ mu + r, data=filter(std_10kb, chr==chr_list[i]),
-                      cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-  beta_sub_10kb[i, 1] <- gls.sub.10kb$coefficients[2] + gls.sub.10kb$coefficients[3]
-  beta_sub_10kb[i, 2] <- gls.sub.10kb$coefficients[2]
-  beta_sub_10kb[i, 3] <- gls.sub.10kb$coefficients[3]
+  #gls.sub.10kb <- gls(sub ~ mu + r, data=filter(std_10kb, chr==chr_list[i]),
+  #                    cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
+  #beta_sub_10kb$u[i] <- gls.sub.10kb$coefficients[2]
+  #beta_sub_10kb$r[i] <- gls.sub.10kb$coefficients[3]
   
   gls.sub.100kb <- gls(sub ~ mu + r, data=filter(std_100kb, chr==chr_list[i]),
                        cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-  beta_sub_100kb[i, 1] <- gls.sub.100kb$coefficients[2] + gls.sub.100kb$coefficients[3]
-  beta_sub_100kb[i, 2] <- gls.sub.100kb$coefficients[2]
-  beta_sub_100kb[i, 3] <- gls.sub.100kb$coefficients[3]
+  beta_sub_100kb$u[i] <- gls.sub.100kb$coefficients[2]
+  beta_sub_100kb$r[i] <- gls.sub.100kb$coefficients[3]
   
   gls.sub.1Mb <- gls(sub ~ mu + r, data=filter(std_1Mb, chr==chr_list[i]),
                      cor=corAR1(0, ~bin), method="ML", na.action=na.omit)
-  beta_sub_1Mb[i, 1] <- gls.sub.1Mb$coefficients[2] + gls.sub.1Mb$coefficients[3]
-  beta_sub_1Mb[i, 2] <- gls.sub.1Mb$coefficients[2]
-  beta_sub_1Mb[i, 3] <- gls.sub.1Mb$coefficients[3]
+  beta_sub_1Mb$u[i] <- gls.sub.1Mb$coefficients[2]
+  beta_sub_1Mb$r[i] <- gls.sub.1Mb$coefficients[3]
 }
 close(pb)

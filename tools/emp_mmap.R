@@ -6,7 +6,7 @@ suppressMessages({
   library(cowplot)
 })
 
-setwd("~/Devel/momentspp/benchmarking/selection/single-pop/SeplyarskiyEtAl2023/")
+setwd("~/Data/moments++/")
 
 mmap_chr1 <- fread("VCFs/1_rate_v5.2_TFBS_correction_all.vcf.bgz",
                    showProgress=T, verbose=T, nrows=3*1e+7, 
