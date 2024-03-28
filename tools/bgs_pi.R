@@ -1,5 +1,5 @@
 # Date created: 04/03/2024
-# Last modified: 08/03/2024
+# Last modified: 28/03/2024
 # Author: Gustavo V. Barroso
 # This script does the heavy-lifting of the pipeline to simulate genomic
 # landscapes. Here we compute B-values for sampled sites,
@@ -24,6 +24,7 @@ suppressMessages({
   library(pracma) # for cubicspline()
   library(cowplot)
   library(scales)
+  library(RColorBrewer)
 })
 
 print(Sys.time())
@@ -216,15 +217,19 @@ fwrite(maps_10kb, "maps_10kb.csv")
 fwrite(maps_100kb, "maps_100kb.csv")
 
 # visualizing the iterative correction for interference selection
-names(tbl) <- c(paste("iter_", rep(1:num_iter), sep=""))
+names(tbl) <- as.character(1:num_iter)
 tbl$pos <- as.integer(samp_pos)
 fwrite(tbl, "interf_iter.csv")
+  
+m_tbl <- pivot_longer(tbl, cols=as.character(1:num_iter), names_to="Iteration")
+m_tbl$Iteration <- as.numeric(m_tbl$Iteration)
 
-m_tbl <- pivot_longer(tbl, cols=starts_with("iter"), names_to="Iteration")
-
+nb_cols <- ncol(tbl) - 1
+mycolors <- colorRampPalette(brewer.pal(8, "YlOrRd"))(nb_cols)
 pa <- ggplot(data=filter(m_tbl, pos>1e+6, pos<2e+6),
-             aes(x=pos, y=value, color=Iteration)) + 
+             aes(x=pos, y=value, color=as.factor(Iteration))) + 
   geom_point(aes(alpha=0.5)) + theme_bw() + geom_line() + 
+  scale_fill_manual(values=mycolors) +
   scale_x_continuous(breaks=pretty_breaks()) +
   scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none") + 
   labs(title="Iterative correction for interference", x="Pos", y="B-value") +
@@ -235,7 +240,70 @@ pa <- ggplot(data=filter(m_tbl, pos>1e+6, pos<2e+6),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("Interf.png", pa, base_height=8, base_width=16)
+save_plot("Interf_B-vals.png", pa, base_height=8, base_width=16)
+
+avg_bvals <- as.data.frame(apply(tbl[,1:(ncol(tbl)-1)], 2, mean))
+sd_bvals <- as.data.frame(apply(tbl[,1:(ncol(tbl)-1)], 2, sd))
+cv_bvals <- sd_bvals / avg_bvals
+names(cv_bvals) <- "cv_bvals"
+cv_bvals$iter <- 1:nrow(cv_bvals)
+
+pb <- ggplot(data=cv_bvals, aes(x=iter, y=cv_bvals)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title="Iterative correction for interference", x="Iter", y="CV(B)")+
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("Interf_CV_Bvals.png", pb, base_height=8, base_width=16)
+
+diffs <- as.data.frame(matrix(nrow=nrow(tbl), ncol=ncol(tbl)-2))
+for(i in 2:(ncol(tbl)-1)) {
+  diffs[,i-1] <- tbl[,..i] - tbl[,..i-1]
+}
+names(diffs) <- 1:ncol(diffs)
+
+mean_diffs <- as.data.frame(apply(diffs, 2, mean))
+names(mean_diffs) <- "diff"
+mean_diffs$iter <- 1:nrow(mean_diffs)
+
+pc <- ggplot(data=mean_diffs, aes(x=iter, y=diff)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title="Iterative correction for interference", x="Iter", y="Mean(Diff)")+
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("Interf_mean_diffs.png", pc, base_height=8, base_width=12)
+
+sd_diffs <- as.data.frame(apply(diffs, 2, sd))
+names(sd_diffs) <- "diff"
+sd_diffs$iter <- 1:nrow(sd_diffs)
+
+pd <- ggplot(data=sd_diffs, aes(x=iter, y=diff)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_fill_manual(values=mycolors) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title="Iterative correction for interference", x="Iter", y="SD(Diff)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("Interf_sd_diffs.png", pd, base_height=8, base_width=12)
 
 # visualizing the validity of threshold for spotting "relevant" exons
 rex <- apply(prd, 2, function(x) x < 4 * N * 1e-2) 
