@@ -170,21 +170,50 @@ Collects lookup table with Hr values on the parameter grid
 ```{r, grid, include=F, eval=F, results=F, message=F, warning=F}
 
 params <- fread("params.csv", sep=",", header=T)
+
 n_models <- nrow(params)
-c <- 1
+t <- unique(params$t)
+
+# Het stats over time
+hrs <- as.data.frame(matrix(nrow=n_models, ncol=251))
+hls <- as.data.frame(matrix(nrow=n_models, ncol=251))
+
+names(hrs) <- as.character(seq(from=t, to=0, by=-10))
+names(hls) <- as.character(seq(from=t, to=0, by=-10))
+
+# Het stats at present time
 hr <- numeric(length=n_models)
+hl <- numeric(length=n_models)
 
 for(i in 1:length(lookup_r)) {
+  cat(paste(i, "\n"))
+  print(Sys.time())
   for(j in 1:length(lookup_s)) {
-    moms <- fread(paste("r_", lookup_r[i], 
-                        "/model_", as.integer(c), 
-                        "_expectations.txt", sep=""))
-    hr[c] <- moms[moms$V1 == "Hr_0_0",]$V3
-    c <- c + 1
+    filenames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
+                            pattern="*e_1_expectations.txt", full.names=TRUE)
+    
+    for(k in 1:length(filenames)) {
+      moms <- fread(filenames[k])
+      idx <- as.numeric(strsplit(strsplit(filenames[k], "_e_1")[[1]][1], 
+                                 "model_")[[1]][2])
+      
+      hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
+      hrs[idx,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
+      
+      hl[idx] <- moms[501, 3]
+      hr[idx] <- moms[502, 3]
+    }
   }
 }
 
-params$Hr <- hr
+params_hl <- cbind.data.frame(params, hls)
+params_hr <- cbind.data.frame(params, hrs)
+
+fwrite(params_hl, "hl_time.csv.gz", compress="gzip") # used by other scripts
+fwrite(params_hr, "hr_time.csv.gz", compress="gzip") # used by other scripts
+
+params$hr <- hr
+params$hl <- hl
 fwrite(params, "lookup_tbl.csv.gz", compress="gzip") # used by other scripts
 ```
 
