@@ -135,7 +135,7 @@ for(i in 1:num_iter) {
       exon_pos <- dt_exons$start[focal_exon] + exon_lengths / 2 # midpoint pos
       idx <- pos_dt[.(exon_pos)]$idx # index within pos_dt / samp_pos
       dt_exons[focal_exon,]$s <- dt_exons[focal_exon,]$s * B_values[idx]
-      focal_s <- dt_exons[focal_exon,]$s # TODO add N/Ne term when demo changes?
+      focal_s <- dt_exons[focal_exon,]$s 
       
       # lookup_tbl grid is fine-grained enough, we don't need interpolation
       closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]

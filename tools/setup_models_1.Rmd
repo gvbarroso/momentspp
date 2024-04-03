@@ -30,7 +30,7 @@ assembly of whole chromosomes
 # in practice a two-epoch demographic model, even under equilibrium
 Na <- 10000 # ancestral N
 N1 <- c(Na / 2, Na / 5, Na / 10, 2 * Na, 5 * Na, 10 * Na) # current N
-t <- 2500 # in generations
+t <- 50000 # in generations
 u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
 lookup_r <- round(seq_log(from=1e-9, to=1e-2, length.out=300), digits=15)
@@ -189,12 +189,12 @@ for(i in 1:length(lookup_r)) {
   cat(paste(i, "\n"))
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
-    filenames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                            pattern="*e_1_expectations.txt", full.names=TRUE)
+    fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
+                         pattern="*e_1_expectations.txt", full.names=TRUE)
     
-    for(k in 1:length(filenames)) {
-      moms <- fread(filenames[k])
-      idx <- as.numeric(strsplit(strsplit(filenames[k], "_e_1")[[1]][1], 
+    for(k in 1:length(fnames)) {
+      moms <- fread(fnames[k])
+      idx <- as.numeric(strsplit(strsplit(fnames[k], "_e_1")[[1]][1], 
                                  "model_")[[1]][2])
       
       hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
