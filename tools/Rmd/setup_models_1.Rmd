@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/pilot")
+knitr::opts_knit$set(root.dir="~/Data/mpp_data/paper_1/single_neutral")
 ```
 
 # Creating folders and files
@@ -29,12 +29,12 @@ assembly of whole chromosomes
 
 # in practice a two-epoch demographic model, even under equilibrium
 Na <- 10000 # ancestral N
-N1 <- c(Na / 2, Na / 5, Na / 10, 2 * Na, 5 * Na, 10 * Na) # current N
+N1 <- c(Na / 10, 10 * Na) # current N
 t <- 50000 # in generations
 u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
-lookup_r <- round(seq_log(from=1e-9, to=1e-2, length.out=300), digits=15)
-lookup_s <- round(-seq_log(from=1e-5, to=1e-3, length.out=100), digits=11)
+lookup_r <- c(1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2)
+lookup_s <- c(-1e-3, -5e-4, -2.5e-4, -1e-4, -5e-5, -2.5e-5, -1e-5)
 
 # for discretizing Gamma distributions
 dt_r <- data.table(lookup_r)
