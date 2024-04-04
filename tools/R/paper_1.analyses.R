@@ -14,9 +14,9 @@ suppressMessages({
   library(RColorBrewer)
 })
 
-setwd("~/Data/momentspp/paper_1/")
+setwd("~/Data/momentspp/paper_1/single_neutral")
 
-params <- fread("pilot/params.csv")
+params <- fread("params.csv")
 
 Na <- unique(params$Na)
 N1 <- unique(params$N1)
@@ -24,22 +24,23 @@ t <- unique(params$t)
 
 demo_models <- crossing(Na, N1, t)
 num_demo_models <- nrow(demo_models)
-pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=251))
-names(pi0) <- as.character(seq(from=t, to=0, by=-10))
+sampling_times <- seq(from=t, to=0, by=-100)
+pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=length(sampling_times)))
+names(pi0) <- as.character(sampling_times)
 
 for(i in 1:num_demo_models) {
   
-  moms <- fread(paste("pilot/demo_neutral/model_", i, 
+  moms <- fread(paste("demo/model_", i, 
                       "_e_1_expectations.txt", sep=""))
   
   pi0[i,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
 }
 
 demo_pi0 <- cbind.data.frame(demo_models, pi0)
-fwrite(demo_pi0, "pilot/demo_neutral/demo_pi0.csv")
+fwrite(demo_pi0, "demo/demo_pi0.csv")
 
 m_pi0 <- pivot_longer(demo_pi0, 
-                      cols=as.character(seq(from=t, to=0, by=-10)),
+                      cols=as.character(sampling_times),
                       names_to="Generation", values_to="pi0")
 m_pi0$Generation <- as.numeric(m_pi0$Generation)
 
@@ -59,13 +60,13 @@ p <- ggplot(data=m_pi0, aes(x=Generation, y=pi0)) +
         strip.text=element_text(size=14),
         legend.position="bottom")
 
-save_plot("pilot/demo_neutral/pi0_demo.png", p, base_height=8, base_width=16)
+save_plot("demo/pi0_demo.png", p, base_height=8, base_width=16)
 
 d <- ggplot(data=demo_models) + theme_bw() + 
      facet_wrap(~N1, labeller=labeller(N1=N.labs)) +
      geom_segment(aes(x=0, xend=t, y=N1, yend=N1), linewidth=1.5) +
      geom_segment(aes(x=t, xend=t, y=N1, yend=Na), linewidth=1.5) +
-     geom_segment(aes(x=t, xend=t+100, y=Na, yend=Na), linewidth=1.5) +
+     geom_segment(aes(x=t, xend=t+5000, y=Na, yend=Na), linewidth=1.5) +
      scale_y_log10() +
      scale_x_continuous(breaks=c(0, 1000, t)) +
      labs(title="Demographic Models", 
@@ -79,11 +80,10 @@ d <- ggplot(data=demo_models) + theme_bw() +
            strip.text=element_text(size=14),
            legend.position="bottom")
 
-save_plot("pilot/demo_neutral/demo_models.png",
-          d, base_height=8, base_width=16)
+save_plot("demo/demo_models.png", d, base_height=8, base_width=16)
 
 # loads tables from setup_models_1.Rmd
-lookup_tbl <- fread("pilot/lookup_tbl.csv.gz")
+lookup_tbl <- fread("lookup_tbl.csv.gz")
 setkey(lookup_tbl, lookup_r, lookup_s)
 
 look_s <- setDT(as.data.frame(unique(params$lookup_s)))
@@ -95,12 +95,12 @@ names(look_s) <- "lookup_s"
 setkey(look_r, lookup_r)
 setkey(look_s, lookup_s)
 
-hl_demo <- fread("pilot/hl_time.csv.gz")
-hr_demo <- fread("pilot/hr_time.csv.gz")
+hl_demo <- fread("hl_time.csv.gz")
+hr_demo <- fread("hr_time.csv.gz")
 
 plots <- list(length=length(unique(lookup_tbl$N1)))
 for(i in 1:length(unique(lookup_tbl$N1))) {
-  plots[[i]] <- ggplot(data=filter(lookup_tbl, lookup_r==1e-9,
+  plots[[i]] <- ggplot(data=filter(lookup_tbl, lookup_r==1e-8,
                                    N1==unique(lookup_tbl$N1)[i]), 
                                    aes(x=-lookup_s, y=hr)) + theme_bw() +
     geom_point() + geom_line() + scale_x_log10() + scale_y_continuous() +
@@ -115,10 +115,10 @@ for(i in 1:length(unique(lookup_tbl$N1))) {
 }
 
 x <- plot_grid(plotlist=plots)
-save_plot("pilot/hr_s_n.png", x, base_height=8, base_width=16)
+save_plot("hr_s_n.png", x, base_height=8, base_width=16)
 
 m_hr_demo <- pivot_longer(filter(hr_demo, N1==N1[1]), 
-                          cols=as.character(seq(from=t, to=0, by=-10)),
+                          cols=as.character(sampling_times),
                           names_to="Generation", values_to="Hr")
 m_hr_demo$Generation <- as.numeric(m_hr_demo$Generation)
 m_hr_demo <- setDT(m_hr_demo)
@@ -128,185 +128,125 @@ m_hr_demo <- left_join(m_hr_demo, dplyr::select(m_pi0, -c(Na, t)),
                        by=c("N1", "Generation"))
 
 # simulate chr landscapes
-num_exons <- 500
-ncsl <- rgeom(n=num_exons + 1, prob=1e-4)
+num_exons <- 100
+ncsl <- rep(1000, num_exons)  #rgeom(n=num_exons + 1, prob=1e-4)
 exon_lengths <- 1e+3
 csl <- rep(exon_lengths, num_exons) 
 L <- sum(csl) + sum(ncsl)
 
-ss <- -rgamma(n=num_exons, shape=10, scale=1e-4)
-disc_ss <- look_s[look_s[J(ss), roll="nearest", which=T]]$lookup_s # discretize
+for(i in nrow(look_s)) {
+  ss <- rep(as.numeric(look_s[i]), num_exons)
 
-smap <- suppressWarnings(c(rbind(ncsl, csl))[-2*length(ncsl)])
-smap <- suppressMessages(setDT(bind_cols(chr="chr1",
+  smap <- suppressWarnings(c(rbind(ncsl, csl)))
+  smap <- suppressMessages(setDT(bind_cols(chr="chr1",
                                dplyr::lag(cumsum(smap), n=1, default=0),
                                dplyr::lag(cumsum(smap), n=0, default=0))))
-names(smap) <- c("chr", "start", "end")
-smap$s <- c(rbind(rep(0, length(csl)), disc_ss), 0)
-setkey(smap, start, end)
-fwrite(smap, "pilot/smap.csv")
+  names(smap) <- c("chr", "start", "end")
+  smap$s <- c(rbind(rep(0, length(csl)), ss))
+  setkey(smap, start, end)
 
-rec_spans <- rgeom(n=ceiling(L/1e+3), prob=1e-3)
-while(sum(rec_spans) < L) {
-  rec_spans <- c(rec_spans, rgeom(n=1, prob=1e-3))
-}
-if(sum(rec_spans) > L) {
-  rec_spans <- rec_spans[cumsum(rec_spans) < L]
-  rec_spans <- c(rec_spans, L - sum(rec_spans))
-}
-rec_spans <- rec_spans[rec_spans>0]
+  dt_neutral <- filter(smap[,2:4], s==0)
+  dt_exons <- filter(smap[,2:4], s<0)
+  
+  rmap <- setDT(bind_cols(chr="chr1", start=0, end=L, r=1e-8)) # flat
+  mmap <- setDT(bind_cols(chr="chr1", start=0, end=L, u=1e-8)) # flat
 
-rmap <- suppressMessages(setDT(bind_cols(chr="chr1",
-                               dplyr::lag(cumsum(rec_spans), n=1, default=0),
-                               dplyr::lag(cumsum(rec_spans), n=0, default=0))))  
-names(rmap) <- c("chr", "start", "end")
-rs <- rgamma(n=nrow(rmap), shape=1, scale=1e-7)
-disc_rs <- look_r[look_r[J(rs), roll="nearest", which=T]]$lookup_r # discretize
-rmap$r <- disc_rs
-setkey(rmap, start, end)
-fwrite(rmap, "pilot/rmap.csv")
+  setkey(mmap, start, end)
+  setkey(rmap, start, end)
+  setkey(smap, start, end)
+  setkey(dt_neutral, start, end)
+  setkey(dt_exons, start, end)
 
-mmap <- setDT(bind_cols(chr="chr1", start=0, end=L, u=1e-8)) # flat
-fwrite(rmap, "pilot/mmap.csv")
+  # plot B over time for this single sampled site
+  samp_pos <- sort(c(dt_neutral[nrow(dt_neutral)/2]$start + 500, dt_exons$start + exon_lengths / 2)) # sampled sites
+  focal_mu <- rep(1e-8, length(samp_pos))
+  
+  pos_dt <- suppressMessages(setDT(bind_cols(samp_pos, focal_mu)))
+  names(pos_dt) <- c("position", "focal_mu")
+  setkey(pos_dt, position)
 
-dt_neutral <- filter(smap[,2:4], s==0)
-dt_exons <- filter(smap[,2:4], s<0)
-
-setkey(mmap, start, end)
-setkey(rmap, start, end)
-setkey(smap, start, end)
-setkey(dt_neutral, start, end)
-setkey(dt_exons, start, end)
-
-# goal: plot the B landscape over time!
-# finding mu for each sampled position (currently constant in this example)
-jump_length <- 500
-neut_pos <- unlist(apply(dt_neutral, 1, 
-                      function(x) seq(from=x[1], to=x[2], by=jump_length))) + 1
-samp_pos <- sort(c(neut_pos, dt_exons$start + exon_lengths / 2)) # sampled sites
-
-focal_mu <- unlist(lapply(samp_pos, function(pos) mmap[J(pos), roll=T]$u))
-
-pos_dt <- suppressMessages(setDT(bind_cols(samp_pos, focal_mu)))
-names(pos_dt) <- c("position", "focal_mu")
-setkey(pos_dt, position)
-
-# thinning sampled neutral sites clustered away from exons to decrease runtime
-# heuristic: downsample to a maximum no. of sampled neutral sites between exons
-downsample <- 5
-pos_dt$neutral <- pos_dt$position %in% neut_pos
-runs <- rle(pos_dt$neutral)
-runs <- cbind.data.frame(runs$lengths, cumsum(runs$lengths), runs$values)  
-names(runs) <- c("run_length", "end_idx", "neutral")
-short_runs <- filter(runs, run_length <= downsample)
-long_runs <- filter(runs, run_length > downsample)
-
-short_runs$start_idx <- short_runs$end_idx - short_runs$run_length + 1
-short_runs <- dplyr::select(short_runs, c(start_idx, end_idx))
-short_pos <- unique(unlist(apply(short_runs, 1, function(x) seq(x[1], x[2],1))))
-
-long_runs$start_idx <- long_runs$end_idx - long_runs$run_length + 1
-long_runs <- dplyr::select(long_runs, c(start_idx, end_idx))
-
-downsample_pts <- function(y) {
-  if(downsample==1) { return(seq(min(y), max(y), downsample)) }
-  else {
-    return(as.integer(seq(min(y),max(y), (max(y) - min(y)) %/% (downsample-1))))
-  }
-}
-
-thinned_neut <- unlist(apply(long_runs, 1, downsample_pts))
-thinned_pos <- sort(unique(c(thinned_neut, short_pos)))
-
-pos_dt <- pos_dt[thinned_pos,] # thinning based on downsample
-pos_dt$idx <- 1:nrow(pos_dt) # indexing
-samp_pos <- pos_dt$position # updates after thinning
-
-# downsample generations to make testing faster
-m_hr_demo <- filter(m_hr_demo, Generation %in% seq(from=0, to=5e+4, by=500))
-
-tbl_gen <- as.data.frame(matrix(ncol=length(unique(m_hr_demo$Generation)), 
+  tbl_gen <- as.data.frame(matrix(ncol=length(unique(m_hr_demo$Generation)), 
                                 nrow=length(samp_pos)))
-names(tbl_gen) <- as.character(sort(unique(m_hr_demo$Generation), 
+  names(tbl_gen) <- as.character(sort(unique(m_hr_demo$Generation), 
                                     decreasing=T))
-tbl_gen$pos <- samp_pos
+  tbl_gen$pos <- samp_pos
 
-c <- 1
-for(g in sort(unique(m_hr_demo$Generation), decreasing=T)) {
-
-  print(Sys.time())
-  cat(paste(g, "\n"))
+  c <- 1
+  for(g in sort(unique(m_hr_demo$Generation), decreasing=T)) {
   
-  Ne_bar <- unique(filter(m_hr_demo, Generation==g)$pi0) / 
-            (2*unique(m_hr_demo$u))
-  
-  #num_iter <- 1 NOTE: the following is without interference correction ATM
-  B_values <- rep(1, length(samp_pos)) # init 
-  
-  # approximates cumulative rec by looking at r at sampled sites only
-  focal_r <- unlist(lapply(samp_pos, function(pos) rmap[J(pos), roll=T]$r)) 
-  focal_r <- focal_r * B_values
-  cum_rec <- numeric(length=length(samp_pos))
-  cum_rec[1] <- focal_r[1]
-  
-  for(j in 2:length(samp_pos)) {
-    cum_rec[j] <- cum_rec[j-1] + (samp_pos[j] - samp_pos[j-1]) * focal_r[j]
-  }
-  pos_dt$cumrec <- cum_rec
-  
-  # pre-computes "effective" rec. dist. between sampled sites and exons
-  cr_exons <- pos_dt[position %in% (dt_exons$start + exon_lengths / 2),]
-  prd <- as.data.frame(2*Ne_bar*abs(outer(pos_dt$cumrec, cr_exons$cumrec, "-")))
-  names(prd) <- 1:ncol(prd)
-  
-  erd <- prd # "effective" rec. distance is inversely proportional to alpha
-  for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / abs(2 * Ne_bar * dt_exons$s[j]) }
-  relevant_exons <- apply(erd, 2, function(x) x < 10 * Ne_bar * 1e-3)
-  # identifying relevant exons (w.r.t. linked selection) for each sampled site
-  exons_per_samp_site <- apply(relevant_exons, 1, function(x) which(x))
-  
-  getB <- function(focal_exon, focal_samp) { # arguments are site indices
-    total_r <- prd[focal_samp, focal_exon] / (2 * Ne_bar) 
-    if(total_r > 1e-2) { return(1) }
-    else {
-      exon_pos <- dt_exons$start[focal_exon] + exon_lengths / 2 # midpoint
-      idx <- pos_dt[.(exon_pos)]$idx # index within pos_dt / samp_pos
-      dt_exons[focal_exon,]$s <- dt_exons[focal_exon,]$s * B_values[idx]
-      focal_s <- dt_exons[focal_exon,]$s
-      
-      closest_r <- look_r[look_r[.(total_r), roll="nearest", which=T]]
-      closest_s <- look_s[look_s[.(focal_s), roll="nearest", which=T]]
-      
-      # both Hr and pi0 are scaled linearly by Ne_bar -> need not include it
-      hr <- m_hr_demo[.(N1[1], closest_r, closest_s, g)]$Hr 
-      pi0 <- m_hr_demo[.(N1[1], closest_r, closest_s, g)]$pi0 
-      return((hr / pi0) ^ (exon_lengths * B_values[idx]))
+    print(Sys.time())
+    cat(paste(g, "\n"))
+    
+    Ne_bar <- unique(filter(m_hr_demo, Generation==g)$pi0) / 
+              (2*unique(m_hr_demo$u))
+    
+    #num_iter <- 1 NOTE: the following is without interference correction ATM
+    B_values <- rep(1, length(samp_pos)) # init 
+    
+    # approximates cumulative rec by looking at r at sampled sites only
+    focal_r <- unlist(lapply(samp_pos, function(pos) rmap[J(pos), roll=T]$r)) 
+    focal_r <- focal_r * B_values
+    cum_rec <- numeric(length=length(samp_pos))
+    cum_rec[1] <- focal_r[1]
+    
+    for(j in 2:length(samp_pos)) {
+      cum_rec[j] <- cum_rec[j-1] + (samp_pos[j] - samp_pos[j-1]) * focal_r[j]
     }
-  }
-  
-  # TODO flip and loop over exons, subset lookup_tbl by closest_s to make it faster
-  tmp <- B_values # temporary copy to avoid mixing old and new B-vals in getB()
-  cat("Computing B's...\n")
-  pb <- txtProgressBar(min=1, max=length(exons_per_samp_site), style=3)
-  for(k in 1:length(exons_per_samp_site)) {
-    setTxtProgressBar(pb, k)
-    if(length(exons_per_samp_site[[k]]) > 0) {
-      B <- unlist(lapply(exons_per_samp_site[[k]], getB, focal_samp=k))
-      tmp[k] <- cumprod(B)[length(B)]
+    pos_dt$cumrec <- cum_rec
+    
+    # pre-computes "effective" rec. dist. between sampled sites and exons
+    cr_exons <- pos_dt[position %in% (dt_exons$start + exon_lengths / 2),]
+    prd <- as.data.frame(2*Ne_bar*abs(outer(pos_dt$cumrec, cr_exons$cumrec, "-")))
+    names(prd) <- 1:ncol(prd)
+    
+    erd <- prd # "effective" rec. distance is inversely proportional to alpha
+    for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / abs(2 * Ne_bar * dt_exons$s[j]) }
+    relevant_exons <- apply(erd, 2, function(x) x < 10 * Ne_bar * 1e-3)
+    # identifying relevant exons (w.r.t. linked selection) for each sampled site
+    exons_per_samp_site <- apply(relevant_exons, 1, function(x) which(x))
+    
+    getB <- function(focal_exon, focal_samp) { # arguments are site indices
+      total_r <- prd[focal_samp, focal_exon] / (2 * Ne_bar) 
+      if(total_r > 1e-2) { return(1) }
+      else {
+        exon_pos <- dt_exons$start[focal_exon] + exon_lengths / 2 # midpoint
+        idx <- pos_dt[.(exon_pos)]$idx # index within pos_dt / samp_pos
+        dt_exons[focal_exon,]$s <- dt_exons[focal_exon,]$s * B_values[idx]
+        focal_s <- dt_exons[focal_exon,]$s
+        
+        closest_r <- look_r[look_r[.(total_r), roll="nearest", which=T]]
+        closest_s <- look_s[look_s[.(focal_s), roll="nearest", which=T]]
+        
+        # both Hr and pi0 are scaled linearly by Ne_bar -> need not include it
+        hr <- m_hr_demo[.(N1[1], closest_r, closest_s, g)]$Hr 
+        pi0 <- m_hr_demo[.(N1[1], closest_r, closest_s, g)]$pi0 
+        return((hr / pi0) ^ (exon_lengths * B_values[idx]))
+      }
     }
-    else {
-      tmp[k] <- 1 
+    
+    tmp <- B_values # temporary copy to avoid mixing old and new B-vals in getB()
+    cat("Computing B's...\n")
+    pb <- txtProgressBar(min=1, max=length(exons_per_samp_site), style=3)
+    for(k in 1:length(exons_per_samp_site)) {
+      setTxtProgressBar(pb, k)
+      if(length(exons_per_samp_site[[k]]) > 0) {
+        B <- unlist(lapply(exons_per_samp_site[[k]], getB, focal_samp=k))
+        tmp[k] <- cumprod(B)[length(B)]
+      }
+      else {
+        tmp[k] <- 1 
+      }
     }
+    close(pb)
+    
+    B_values <- tmp
+    tbl_gen[,c] <- B_values
+    
+    c <- c + 1
   }
-  close(pb)
-  
-  B_values <- tmp
-  tbl_gen[,c] <- B_values
-  
-  c <- c + 1
+  fwrite(tbl_gen, paste("B-vals_time_s_", look_s[i], ".csv", sep=""))
 }
 
-fwrite(tbl_gen, "pilot/B-vals_per_gen_.csv")
 
 m_tbl <- pivot_longer(tbl_gen, 
                       cols=as.character(sort(unique(m_hr_demo$Generation), 
@@ -328,7 +268,7 @@ pa <- ggplot(data=m_tbl, aes(x=pos, y=value, color=as.factor(Generation))) +
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("pilot/B-vals_time.png", pa, base_height=8, base_width=16)
+save_plot("B-vals_time.png", pa, base_height=8, base_width=16)
 
 
 cat("Performing cubic splines interpolation...")
@@ -379,4 +319,4 @@ for(i in 1:length(unique(lookup_tbl$N1))) {
 }
 
 x <- plot_grid(plotlist=plots)
-save_plot("pilot/stats_time.png", x, base_height=8, base_width=16)
+save_plot("stats_time.png", x, base_height=8, base_width=16)

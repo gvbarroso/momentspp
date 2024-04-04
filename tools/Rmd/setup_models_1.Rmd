@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Data/mpp_data/paper_1/single_neutral")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/single_neutral")
 ```
 
 # Creating folders and files
@@ -173,13 +173,14 @@ params <- fread("params.csv", sep=",", header=T)
 
 n_models <- nrow(params)
 t <- unique(params$t)
+sampling_times <- seq(from=t, to=0, by=-100)
 
 # Het stats over time
-hrs <- as.data.frame(matrix(nrow=n_models, ncol=251))
-hls <- as.data.frame(matrix(nrow=n_models, ncol=251))
+hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
+hls <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
 
-names(hrs) <- as.character(seq(from=t, to=0, by=-10))
-names(hls) <- as.character(seq(from=t, to=0, by=-10))
+names(hrs) <- as.character(sampling_times)
+names(hls) <- as.character(sampling_times)
 
 # Het stats at present time
 hr <- numeric(length=n_models)
@@ -200,8 +201,9 @@ for(i in 1:length(lookup_r)) {
       hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
       hrs[idx,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
       
-      hl[idx] <- moms[501, 3]
-      hr[idx] <- moms[502, 3]
+      # expectations at present time
+      hl[idx] <- moms[nrow(moms) - 1, 3]
+      hr[idx] <- moms[nrow(moms), 3]
     }
   }
 }
