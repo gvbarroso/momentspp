@@ -128,13 +128,22 @@ m_hr_demo <- left_join(m_hr_demo, dplyr::select(m_pi0, -c(Na, t)),
                        by=c("N1", "Generation"))
 
 # simulate chr landscapes
-num_exons <- 100
+num_exons <- 1001
 ncsl <- rep(1000, num_exons)  #rgeom(n=num_exons + 1, prob=1e-4)
 exon_lengths <- 1e+3
 csl <- rep(exon_lengths, num_exons) 
 L <- sum(csl) + sum(ncsl)
 
-for(i in nrow(look_s)) {
+tbl_gen <- as.data.frame(matrix(ncol=length(unique(m_hr_demo$Generation)), 
+                                nrow=nrow(look_s)))
+names(tbl_gen) <- as.character(sort(unique(m_hr_demo$Generation), 
+                                  decreasing=T))
+
+for(i in 1:nrow(look_s)) {
+  
+  print(Sys.time())
+  cat(paste(i, "\n"))
+  
   ss <- rep(as.numeric(look_s[i]), num_exons)
 
   smap <- suppressWarnings(c(rbind(ncsl, csl)))
@@ -158,24 +167,26 @@ for(i in nrow(look_s)) {
   setkey(dt_exons, start, end)
 
   # plot B over time for this single sampled site
-  samp_pos <- sort(c(dt_neutral[nrow(dt_neutral)/2]$start + 500, dt_exons$start + exon_lengths / 2)) # sampled sites
+  samp_pos <- sort(c(dt_neutral[nrow(dt_neutral)/2]$start + 500, 
+                     dt_exons$start + exon_lengths / 2)) # sampled sites
   focal_mu <- rep(1e-8, length(samp_pos))
   
   pos_dt <- suppressMessages(setDT(bind_cols(samp_pos, focal_mu)))
   names(pos_dt) <- c("position", "focal_mu")
+  pos_dt$idx <- 1:nrow(pos_dt) # indexing
   setkey(pos_dt, position)
 
-  tbl_gen <- as.data.frame(matrix(ncol=length(unique(m_hr_demo$Generation)), 
-                                nrow=length(samp_pos)))
-  names(tbl_gen) <- as.character(sort(unique(m_hr_demo$Generation), 
-                                    decreasing=T))
-  tbl_gen$pos <- samp_pos
+  #tbl_gen <- as.data.frame(matrix(ncol=length(unique(m_hr_demo$Generation)), 
+  #                              nrow=length(samp_pos)))
+  #names(tbl_gen) <- as.character(sort(unique(m_hr_demo$Generation), 
+  #                                  decreasing=T))
+  #tbl_gen$pos <- samp_pos
 
   c <- 1
   for(g in sort(unique(m_hr_demo$Generation), decreasing=T)) {
   
-    print(Sys.time())
-    cat(paste(g, "\n"))
+    #print(Sys.time())
+    #cat(paste(g, "\n"))
     
     Ne_bar <- unique(filter(m_hr_demo, Generation==g)$pi0) / 
               (2*unique(m_hr_demo$u))
@@ -204,6 +215,7 @@ for(i in nrow(look_s)) {
     relevant_exons <- apply(erd, 2, function(x) x < 10 * Ne_bar * 1e-3)
     # identifying relevant exons (w.r.t. linked selection) for each sampled site
     exons_per_samp_site <- apply(relevant_exons, 1, function(x) which(x))
+    # class(exons_per_samp_site) [1] "matrix" "array" 
     
     getB <- function(focal_exon, focal_samp) { # arguments are site indices
       total_r <- prd[focal_samp, focal_exon] / (2 * Ne_bar) 
@@ -215,20 +227,21 @@ for(i in nrow(look_s)) {
         focal_s <- dt_exons[focal_exon,]$s
         
         closest_r <- look_r[look_r[.(total_r), roll="nearest", which=T]]
-        closest_s <- look_s[look_s[.(focal_s), roll="nearest", which=T]]
-        
+
         # both Hr and pi0 are scaled linearly by Ne_bar -> need not include it
-        hr <- m_hr_demo[.(N1[1], closest_r, closest_s, g)]$Hr 
-        pi0 <- m_hr_demo[.(N1[1], closest_r, closest_s, g)]$pi0 
+        hr <- m_hr_demo[.(N1[1], closest_r, focal_s, g)]$Hr 
+        pi0 <- m_hr_demo[.(N1[1], closest_r, focal_s, g)]$pi0 
         return((hr / pi0) ^ (exon_lengths * B_values[idx]))
       }
     }
     
     tmp <- B_values # temporary copy to avoid mixing old and new B-vals in getB()
-    cat("Computing B's...\n")
-    pb <- txtProgressBar(min=1, max=length(exons_per_samp_site), style=3)
-    for(k in 1:length(exons_per_samp_site)) {
-      setTxtProgressBar(pb, k)
+    #cat("Computing B's...\n")
+    #pb <- txtProgressBar(min=0, max=length(exons_per_samp_site), style=3)
+    #for(k in 1:length(exons_per_samp_site)) {
+    samp_neut <- filter(pos_dt, position==dt_neutral[nrow(dt_neutral)/2]$start + 500)$idx
+    for(k in samp_neut) {
+      #setTxtProgressBar(pb, k)
       if(length(exons_per_samp_site[[k]]) > 0) {
         B <- unlist(lapply(exons_per_samp_site[[k]], getB, focal_samp=k))
         tmp[k] <- cumprod(B)[length(B)]
@@ -237,16 +250,16 @@ for(i in nrow(look_s)) {
         tmp[k] <- 1 
       }
     }
-    close(pb)
+    #close(pb)
     
     B_values <- tmp
-    tbl_gen[,c] <- B_values
+    tbl_gen[i, c] <- B_values[samp_neut]
     
     c <- c + 1
   }
-  fwrite(tbl_gen, paste("B-vals_time_s_", look_s[i], ".csv", sep=""))
 }
 
+fwrite(tbl_gen, paste("B-vals_time_s_", look_s[i], ".csv", sep=""))
 
 m_tbl <- pivot_longer(tbl_gen, 
                       cols=as.character(sort(unique(m_hr_demo$Generation), 

@@ -10,12 +10,12 @@ metadata:
   - name: mutation
     left_factor: 1
     epochs:
-      - rates: [1e-6]
+      - rates: [1e-8]
   - name: recombination
     epochs:
       - rates: [1e-6]
   - name: selection
     start_time: .inf
     epochs:
-      - rates: [-2e-4]
+      - rates: [0]
         end_time: 0
