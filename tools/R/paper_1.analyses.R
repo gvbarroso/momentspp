@@ -100,7 +100,7 @@ hr_demo <- fread("hr_time.csv.gz")
 
 plots <- list(length=length(unique(lookup_tbl$N1)))
 for(i in 1:length(unique(lookup_tbl$N1))) {
-  plots[[i]] <- ggplot(data=filter(lookup_tbl, lookup_r==1e-8,
+  plots[[i]] <- ggplot(data=filter(lookup_tbl, lookup_r==1e-10,
                                    N1==unique(lookup_tbl$N1)[i]), 
                                    aes(x=-lookup_s, y=hr)) + theme_bw() +
     geom_point() + geom_line() + scale_x_log10() + scale_y_continuous() +
@@ -114,28 +114,102 @@ for(i in 1:length(unique(lookup_tbl$N1))) {
           legend.position="bottom")
 }
 
-x <- plot_grid(plotlist=plots)
-save_plot("hr_s_n.png", x, base_height=8, base_width=16)
+p <- plot_grid(plotlist=plots)
+save_plot("hr_s_n.png", p, base_height=8, base_width=16)
+
+###############################
+#
+# single constrained locus
+#
+###############################
+
+m_het_demo <- pivot_longer(hr_demo, cols=as.character(sampling_times),
+                          names_to="Generation", values_to="Hr")
+m_het_demo$Generation <- as.numeric(m_het_demo$Generation)
+m_het_demo <- setDT(m_het_demo)
+setkey(m_het_demo, N1, lookup_r, lookup_s, Generation)
+
+m_het_demo <- left_join(m_het_demo, dplyr::select(m_pi0, -c(Na, t)),
+                       by=c("N1", "Generation"))
+m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 10000 # exon has L sites
+m_het_demo$scaled_Hr <- m_het_demo$pi0 * m_het_demo$B
+  
+hl_gen <- pivot_longer(hl_demo, cols=as.character(sampling_times),
+                       names_to="Generation", values_to="Hl")
+hl_gen$Generation <- as.numeric(hl_gen$Generation)
+hl_gen <- setDT(hl_gen)
+hl_gen <- arrange(hl_gen, scenario, Generation)
+setkey(hl_gen, N1, lookup_r, lookup_s, Generation)
+
+m_het_demo$Hl <- hl_gen$Hl
+m_het_demo$piN_pi0 <- m_het_demo$Hl / m_het_demo$pi0
+m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$scaled_Hr
+
+fwrite(m_het_demo, "stats_demo.csv")
+
+m_demo <- pivot_longer(m_het_demo, cols=c(pi0, scaled_Hr, Hl, B, piN_pi0, piN_piS), 
+                       names_to="statistic")
+
+svals <- c(-1e-3, -1e-4, -1e-5) # unique(m_tbl$lookup_s), downsampling now
+for(mom in unique(m_demo$statistic)) {
+  
+  plot_list <- list(length=length(svals))
+  c <- 1
+  
+  for(s in svals) {
+    p <- ggplot(data=filter(m_demo, statistic==mom, lookup_s==s, lookup_r==1e-10),
+                aes(x=Generation, y=value)) + 
+      geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(N1)) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none")
+    if(c==length(svals)) {
+      p <- p + labs(title=NULL, x="Generation", y=paste(mom, "(s=", s, ")", sep="")) +
+        theme(axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_text(size=12),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="none")
+    } else if(c==1) {
+      p <- p + labs(title="Temporal dynamics of Hl after a size change (cols->N1)",
+                    x=NULL, y=paste(mom, "(s=", s, ")", sep="")) +
+        theme(axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_blank(),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="none")
+    } else {
+      p <- p + labs(title=NULL, x=NULL, y=paste(mom, "(s=", s, ")", sep="")) +
+        theme(axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_blank(),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="none")
+    }
+    
+    plot_list[[c]] <- p
+    c <- c + 1
+  }
+  
+  mom_plot <- plot_grid(plotlist=plot_list, ncol=1, align='v')
+  save_plot(paste(mom, "_time.png", sep=""), mom_plot, base_height=10, base_width=12)
+}
+
+#####################################
+#
+# multiple constrained loci
+#
+#####################################
+
+num_exons <- 1001
+ncsl <- rep(50000, num_exons)
+exon_lengths <- 1000
+csl <- rep(exon_lengths, num_exons) 
+L <- sum(csl) + sum(ncsl)
 
 for(N in unique(hr_demo$N1)) {
-  
-  Nanc <- unique(m_hr_demo$Na)
-  
-  m_hr_demo <- pivot_longer(filter(hr_demo, N1==N), 
-                            cols=as.character(sampling_times),
-                            names_to="Generation", values_to="Hr")
-  m_hr_demo$Generation <- as.numeric(m_hr_demo$Generation)
-  m_hr_demo <- setDT(m_hr_demo)
-  setkey(m_hr_demo, N1, lookup_r, lookup_s, Generation)
-  
-  m_hr_demo <- left_join(m_hr_demo, dplyr::select(m_pi0, -c(Na, t)),
-                         by=c("N1", "Generation"))
-  
-  num_exons <- 1001
-  ncsl <- rep(50000, num_exons)
-  exon_lengths <- 1000
-  csl <- rep(exon_lengths, num_exons) 
-  L <- sum(csl) + sum(ncsl)
   
   Bvals_gen <- as.data.frame(matrix(ncol=length(sampling_times), 
                                     nrow=nrow(look_s)))
@@ -176,12 +250,15 @@ for(N in unique(hr_demo$N1)) {
     names(pos_dt) <- c("position", "focal_mu")
     pos_dt$idx <- 1:nrow(pos_dt) # indexing
     setkey(pos_dt, position)
+    
+    Nanc <- unique(m_het_demo$Na)
+    m_hr_N <- filter(m_het_demo, N1==N) 
   
     c <- 1
-    for(g in sort(unique(m_hr_demo$Generation), decreasing=T)) {
+    for(g in sort(unique(m_hr_N$Generation), decreasing=T)) {
   
-      Ne_bar <- unique(filter(m_hr_demo, Generation==g)$pi0) / 
-                (2*unique(m_hr_demo$u))
+      Ne_bar <- unique(filter(m_hr_N, Generation==g)$pi0) / 
+                (2*unique(m_hr_N$u))
       
       #num_iter <- 1 NOTE: the following is without interference correction ATM
       B_values <- rep(1, length(all_pos)) # init 
@@ -227,8 +304,8 @@ for(N in unique(hr_demo$N1)) {
           closest_r <- look_r[look_r[.(total_r), roll="nearest", which=T]]
   
           # both Hr and pi0 are scaled linearly by Ne_bar -> need not include it
-          hr <- m_hr_demo[.(N, closest_r, focal_s, g)]$Hr 
-          pi0 <- m_hr_demo[.(N, closest_r, focal_s, g)]$pi0 
+          hr <- m_hr_N[.(N, closest_r, focal_s, g)]$Hr 
+          pi0 <- m_hr_N[.(N, closest_r, focal_s, g)]$pi0 
           return((hr / pi0) ^ (exon_lengths * B_values[idx]))
         }
       }
@@ -253,8 +330,7 @@ for(N in unique(hr_demo$N1)) {
   }
   
   Bvals_gen$s <- look_s$lookup_s
-  m_Bs <- pivot_longer(Bvals_gen, cols=as.character(sampling_times),
-                       names_to="Generation")
+  m_Bs <- pivot_longer(Bvals_gen, cols=as.character(sampling_times))
   
   tbl_gen <- pivot_longer(filter(hl_demo, N1==N, lookup_r==2.001000e-05), 
                           cols=as.character(sampling_times),
@@ -270,71 +346,12 @@ for(N in unique(hr_demo$N1)) {
 }
 
 tbl_bottleneck <- fread("tbl_gen_N1_1000.csv")
-tbl_expansion <- fread("tbl_gen_N1_100000.csv")
-
-
-pa <- ggplot(data=m_tbl, aes(x=Generation, y=value)) + 
-  geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(s)) +
-  #scale_fill_manual(values=mycolors) +
-  scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none") + 
-  labs(title="B-value map over time", x="Generation", y="B-value") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        legend.position="bottom")
-
-save_plot("B-vals_time.png", pa, base_height=8, base_width=16)
-
-
-cat("Performing cubic splines interpolation...")
-B_map <- cubicspline(all_pos, B_values, 1:L)
-cat("done.\nNow preparing output files.\n")
-ones <- rep(1, L)
-
-
-
-
-
-# focusing on a particular (r, s) pair
-closest_s <- look_s[which.min(abs(look_s - -1.5e-4))]
-closest_r <- look_r[which.min(abs(look_r - 1e-8))]
-
-plots <- list(length=length(unique(lookup_tbl$N1)))
-for(i in 1:length(unique(lookup_tbl$N1))) {
+tbl_expansion <- fread("tbl_gen_N1_1e+05.csv")
+tbl_demo <- rbind.data.frame(tbl_bottleneck, tbl_expansion)
+tbl_demo$Hr <- tbl_demo$B * tbl_demo$pi0
+tbl_demo$piN_pi0 <- tbl_demo$Hl / tbl_demo$pi0
+tbl_demo$piN_piS <- tbl_demo$Hl / tbl_demo$Hr
   
-  tmp_hl <- filter(m_hl_demo, N1==unique(m_hl_demo$N1)[i], 
-                              lookup_r==closest_r, 
-                              lookup_s==closest_s)
-  tmp_hr <- filter(m_hl_demo, N1==unique(m_hr_demo$N1)[i], 
-                              lookup_r==closest_r, 
-                              lookup_s==closest_s)
-  tmp_pi0 <- filter(m_pi0, N1==unique(m_hr_demo$N1)[i])
-  
-  
-  stats <- tmp_hr
-  stats$Hl <- tmp_hl$Hl
-  stats$pi0 <- tmp_pi0$pi0
-  stats$B <- stats$Hr / stats$pi0
-  stats$E <- stats$Hl / stats$pi0
-    
-  m_stats <- pivot_longer(stats, cols=c(B), names_to="Statistic")
-    
-  plots[[i]] <- ggplot(data=m_stats, aes(x=Generation,
-                                         y=value, 
-                                         color=Statistic)) +
-                  geom_point() + geom_line() +  theme_bw() + scale_y_log10() +
-                  labs(title=NULL, x="Generation", y=NULL) +
-                  theme(axis.title=element_text(size=16), 
-                        axis.text=element_text(size=12), 
-                        axis.text.x=element_text(size=12),
-                        legend.text=element_text(size=16),
-                        legend.title=element_text(size=16),
-                        strip.text=element_text(size=14),
-                        legend.position="bottom")
-}
-
-x <- plot_grid(plotlist=plots)
-save_plot("stats_time.png", x, base_height=8, base_width=16)
+m_tbl <- pivot_longer(tbl_demo, cols=c(pi0, Hr, Hl, B, piN_pi0, piN_piS),
+                      names_to="statistic")
+fwrite(m_tbl, "tbl_demo.csv")

@@ -2,21 +2,17 @@ time_units: generations
 demes:
   - name: X
     epochs:
-      - end_time: 7000
-        start_size: 8000  
-      - end_time: 3000
-        start_size: 4000
       - end_time: 0
-        start_size: 50000
+        start_size: 10000  
 metadata:
   - name: mutation
     epochs:
-      - rates: [1e-6]
+      - rates: [1e-7]
   - name: recombination
     epochs:
-      - rates: [1e-5]
+      - rates: [1e-9]
   - name: selection
-    start_time: 7000
+    start_time: .inf
     epochs:
-      - rates: [0]
-        end_time: 3000
+      - rates: [-1.25e-4]
+        end_time: 0
