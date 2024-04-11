@@ -169,7 +169,7 @@ Collects lookup table with Hr values on the parameter grid
 
 ```{r, grid, include=F, eval=F, results=F, message=F, warning=F}
 
-params <- fread("params.csv", sep=",", header=T)
+params <- read_csv("params.csv", col_names=T)
 
 n_models <- nrow(params)
 t <- unique(params$t)
@@ -194,12 +194,12 @@ for(i in 1:length(lookup_r)) {
                          pattern="*e_1_expectations.txt", full.names=TRUE)
     
     for(k in 1:length(fnames)) {
-      moms <- fread(fnames[k])
+      moms <- read_delim(fnames[k], delim=" ", col_names=F)
       idx <- as.numeric(strsplit(strsplit(fnames[k], "_e_1")[[1]][1], 
                                  "model_")[[1]][2])
       
-      hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
-      hrs[idx,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
+      hls[idx,] <- t(dplyr::select(filter(moms, X1=="Hl_0_0"), X3))
+      hrs[idx,] <- t(dplyr::select(filter(moms, X1=="Hr_0_0"), X3))
       
       # expectations at present time
       hl[idx] <- moms[nrow(moms) - 1, 3]

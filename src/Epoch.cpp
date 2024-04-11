@@ -70,7 +70,7 @@ void Epoch::printMoments(std::ostream& stream)
   std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
 
   for(auto& m : tmp)
-    stream << m->getName() << " = " << m->getValue() << "\n";
+    stream << std::setprecision(16) << m->getName() << " = " << m->getValue() << "\n";
 }
 
 void Epoch::printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream, size_t interval)
@@ -83,7 +83,7 @@ void Epoch::printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream
     for(size_t j = 0; j < tmp.size(); ++j)
     {
       if(tmp[j]->getName() == "Hr_0_0" || tmp[j]->getName() == "Hl_0_0")
-        stream << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n";
+        stream << std::setprecision(16) << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n";
     }
 
     y = transitionMatrix_.pow(interval) * y;

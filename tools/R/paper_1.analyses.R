@@ -16,6 +16,12 @@ suppressMessages({
 
 setwd("~/Data/momentspp/paper_1/single_neutral")
 
+#########################
+#
+# Set up
+#
+#########################
+
 params <- fread("params.csv")
 
 Na <- unique(params$Na)
@@ -30,8 +36,8 @@ names(pi0) <- as.character(sampling_times)
 
 for(i in 1:num_demo_models) {
   
-  moms <- fread(paste("demo/model_", i, 
-                      "_e_1_expectations.txt", sep=""))
+  moms <- read.csv(paste("demo/model_", i, 
+                      "_e_1_expectations.txt", sep=""), sep=" ", header=F)
   
   pi0[i,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
 }
@@ -100,7 +106,7 @@ hr_demo <- fread("hr_time.csv.gz")
 
 plots <- list(length=length(unique(lookup_tbl$N1)))
 for(i in 1:length(unique(lookup_tbl$N1))) {
-  plots[[i]] <- ggplot(data=filter(lookup_tbl, lookup_r==1e-10,
+  plots[[i]] <- ggplot(data=filter(lookup_tbl, lookup_r==1e-6,
                                    N1==unique(lookup_tbl$N1)[i]), 
                                    aes(x=-lookup_s, y=hr)) + theme_bw() +
     geom_point() + geom_line() + scale_x_log10() + scale_y_continuous() +
@@ -131,7 +137,7 @@ setkey(m_het_demo, N1, lookup_r, lookup_s, Generation)
 
 m_het_demo <- left_join(m_het_demo, dplyr::select(m_pi0, -c(Na, t)),
                        by=c("N1", "Generation"))
-m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 10000 # exon has L sites
+m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1000 # exon has L sites
 m_het_demo$scaled_Hr <- m_het_demo$pi0 * m_het_demo$B
   
 hl_gen <- pivot_longer(hl_demo, cols=as.character(sampling_times),
@@ -147,7 +153,7 @@ m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$scaled_Hr
 
 fwrite(m_het_demo, "stats_demo.csv")
 
-m_demo <- pivot_longer(m_het_demo, cols=c(pi0, scaled_Hr, Hl, B, piN_pi0, piN_piS), 
+m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, Hl, B, piN_pi0, piN_piS), 
                        names_to="statistic")
 
 svals <- c(-1e-3, -1e-4, -1e-5) # unique(m_tbl$lookup_s), downsampling now
@@ -171,7 +177,7 @@ for(mom in unique(m_demo$statistic)) {
               legend.title=element_text(size=16),
               legend.position="none")
     } else if(c==1) {
-      p <- p + labs(title="Temporal dynamics of Hl after a size change (cols->N1)",
+      p <- p + labs(title=paste("Temporal dynamics of", mom, "after a size change"),
                     x=NULL, y=paste(mom, "(s=", s, ")", sep="")) +
         theme(axis.title=element_text(size=16), 
               axis.text=element_text(size=12), 
@@ -196,6 +202,63 @@ for(mom in unique(m_demo$statistic)) {
   mom_plot <- plot_grid(plotlist=plot_list, ncol=1, align='v')
   save_plot(paste(mom, "_time.png", sep=""), mom_plot, base_height=10, base_width=12)
 }
+
+d_stats <- m_het_demo %>% 
+     group_by(scenario) %>% 
+     reframe(N1=N1, lookup_r=lookup_r, lookup_s=lookup_s, Generation=Generation,
+             d_pi0=-c(diff(pi0)[1], diff(pi0))/pi0,
+             d_Hl=-c(diff(Hl)[1], diff(Hl))/Hl,
+             d_Hr=-c(diff(scaled_Hr)[1], diff(scaled_Hr))/scaled_Hr,
+             d_B=-c(diff(B)[1], diff(B))/B,
+             d_piN_pi0=-c(diff(piN_pi0)[1], diff(piN_pi0))/piN_pi0,
+             d_piN_piS=-c(diff(piN_piS)[1], diff(piN_piS))/piN_piS)
+
+m_demo_d <- pivot_longer(d_stats, cols=starts_with("d_"), names_to="statistic")
+
+c <- 1
+plot_list <- list(length=length(unique(m_demo_d$N1)))
+
+for(N in unique(m_demo_d$N1)) {
+  p <- ggplot(data=filter(m_demo_d, N1==N, lookup_r==1e-6,
+                          lookup_s %in% c(-1e-3, -1e-4, -1e-5), 
+                          statistic %in% c("d_Hl", "d_Hr", "d_pi0")),
+              aes(x=Generation, y=value, color=statistic)) + 
+    geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(lookup_s)) +
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) + guides(alpha="none")
+    if(c==length(unique(m_demo_d$N1))) {
+      p <- p + labs(title=NULL, x="Generation", y="Rate of Change") +
+        theme(axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_text(size=12),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="bottom")
+    } else if(c==1) {
+      p <- p + labs(title="Temporal dynamics of statistics after a size change (rows->N1)",
+                    x=NULL, y="Rate of change") +
+        theme(axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_blank(),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="none")
+    } else {
+      p <- p + labs(title=NULL, x=NULL, y="Rate of change") +
+        theme(axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_blank(),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="none")
+    }
+  
+  plot_list[[c]] <- p
+  c <- c + 1
+}
+
+cp <- plot_grid(plotlist=plot_list, ncol=1, align='v')
+save_plot("diffs_stats_time.png", cp, base_height=10, base_width=12)
 
 #####################################
 #
