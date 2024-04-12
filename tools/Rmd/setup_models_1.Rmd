@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Data/mpp_data/paper_1/single_neutral")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/single_neutral")
 ```
 
 # Creating folders and files
@@ -28,13 +28,14 @@ assembly of whole chromosomes
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
 # in practice a two-epoch demographic model, even under equilibrium
-Na <- 10000 # ancestral N
+Na <- 1e+4 # ancestral N
 N1 <- c(Na / 10, 10 * Na) # current N
+N2 <- c(N1, Na)
 t <- 50000 # in generations
 u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
-lookup_r <- c(1e-9, 1e-8, 1e-7, 1e-6, 1e-5) #round(seq_log(from=1e-9, to=1e-2, length.out=300), digits=15)
-lookup_s <- c(-1e-2, -1e-3, -1e-4, -1e-5)
+lookup_r <- c(1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2)
+lookup_s <- c(-1e-3, -1e-4, -1e-5)
 
 # for discretizing Gamma distributions
 dt_r <- data.table(lookup_r)
@@ -169,7 +170,7 @@ Collects lookup table with Hr values on the parameter grid
 
 ```{r, grid, include=F, eval=F, results=F, message=F, warning=F}
 
-params <- read_csv("params.csv", col_names=T)
+params <- fread("params.csv")
 
 n_models <- nrow(params)
 t <- unique(params$t)
@@ -194,12 +195,12 @@ for(i in 1:length(lookup_r)) {
                          pattern="*e_1_expectations.txt", full.names=TRUE)
     
     for(k in 1:length(fnames)) {
-      moms <- read_delim(fnames[k], delim=" ", col_names=F)
+      moms <- fread(fnames[k])
       idx <- as.numeric(strsplit(strsplit(fnames[k], "_e_1")[[1]][1], 
                                  "model_")[[1]][2])
       
-      hls[idx,] <- t(dplyr::select(filter(moms, X1=="Hl_0_0"), X3))
-      hrs[idx,] <- t(dplyr::select(filter(moms, X1=="Hr_0_0"), X3))
+      hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
+      hrs[idx,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
       
       # expectations at present time
       hl[idx] <- moms[nrow(moms) - 1, 3]

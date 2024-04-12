@@ -9,12 +9,13 @@ suppressMessages({
   library(tidyverse)
   library(data.table)
   library(pracma) # for cubicspline()
+  library(bigsnpr) # for seq_log
   library(cowplot)
   library(scales)
   library(RColorBrewer)
 })
 
-setwd("~/Data/mpp_data/paper_1/single_neutral")
+setwd("~/Data/momentspp/paper_1/single_neutral")
 
 #########################
 #
@@ -104,28 +105,9 @@ setkey(look_s, lookup_s)
 hl_demo <- fread("hl_time.csv.gz")
 hr_demo <- fread("hr_time.csv.gz")
 
-plots <- list(length=length(unique(lookup_tbl$N1)))
-for(i in 1:length(unique(lookup_tbl$N1))) {
-  plots[[i]] <- ggplot(data=filter(lookup_tbl, lookup_r==1e-6,
-                                   N1==unique(lookup_tbl$N1)[i]), 
-                                   aes(x=-lookup_s, y=hr)) + theme_bw() +
-    geom_point() + geom_line() + scale_x_log10() + scale_y_continuous() +
-    labs(title=NULL, x="s",  y="Hr") +
-    theme(axis.title=element_text(size=16), 
-          axis.text=element_text(size=12), 
-          axis.text.x=element_text(size=12),
-          legend.text=element_text(size=16),
-          legend.title=element_text(size=16),
-          strip.text=element_text(size=14),
-          legend.position="bottom")
-}
-
-p <- plot_grid(plotlist=plots)
-save_plot("hr_s_n.png", p, base_height=8, base_width=16)
-
 ###############################
 #
-# single constrained locus
+# Single constrained locus
 #
 ###############################
 
@@ -153,23 +135,25 @@ m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$scaled_Hr
 
 fwrite(m_het_demo, "stats_demo.csv")
 
-m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, Hl, B, piN_pi0, piN_piS), 
-                       names_to="statistic")
+m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
+                      Hl, B, piN_pi0, piN_piS), names_to="statistic")
 
-svals <- c(-1e-3, -1e-4, -1e-5) # unique(m_tbl$lookup_s), downsampling now
+svals <- c(-1e-3, -1e-4, -1e-5)
 for(mom in unique(m_demo$statistic)) {
   
   plot_list <- list(length=length(svals))
   c <- 1
   
   for(s in svals) {
-    p <- ggplot(data=filter(m_demo, statistic==mom, lookup_s==s, lookup_r==1e-10),
+    p <- ggplot(data=filter(m_demo, statistic==mom, 
+                            lookup_s==s, lookup_r==1e-8),
                 aes(x=Generation, y=value)) + 
       geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(N1)) +
       scale_x_continuous(breaks=pretty_breaks()) +
       scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none")
     if(c==length(svals)) {
-      p <- p + labs(title=NULL, x="Generation", y=paste(mom, "(s=", s, ")", sep="")) +
+      p <- p + labs(title=NULL, x="Generation", 
+                    y=paste(mom, "(s=", s, ")", sep="")) +
         theme(axis.title=element_text(size=16), 
               axis.text=element_text(size=12), 
               axis.text.x=element_text(size=12),
@@ -177,7 +161,7 @@ for(mom in unique(m_demo$statistic)) {
               legend.title=element_text(size=16),
               legend.position="none")
     } else if(c==1) {
-      p <- p + labs(title=paste("Temporal dynamics of", mom, "after a size change"),
+      p <- p + labs(title=paste("Temporal dynamics after a size change"),
                     x=NULL, y=paste(mom, "(s=", s, ")", sep="")) +
         theme(axis.title=element_text(size=16), 
               axis.text=element_text(size=12), 
@@ -200,19 +184,22 @@ for(mom in unique(m_demo$statistic)) {
   }
   
   mom_plot <- plot_grid(plotlist=plot_list, ncol=1, align='v')
-  save_plot(paste(mom, "_time.png", sep=""), mom_plot, base_height=10, base_width=12)
+  save_plot(paste(mom, "_time.png", sep=""),
+            mom_plot, base_height=10, base_width=12)
 }
 
 het_list <- list(length=length(svals))
 c <- 1
 
 for(s in svals) {
-  p <- ggplot(data=filter(m_demo, statistic==c("scaled_Hr", "pi0"), lookup_s==s, lookup_r==1e-10),
+  p <- ggplot(data=filter(m_demo, statistic==c("scaled_Hr", "pi0"),
+                          lookup_s==s, lookup_r==1e-8),
               aes(x=Generation, y=value, color=statistic)) + 
     geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(N1)) +
     scale_x_continuous(breaks=pretty_breaks()) +
     scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none")
-    labs(title="Temporal dynamics after a size change", x="Generation", y="Value") +
+    labs(title="Temporal dynamics after a size change",
+         x="Generation", y="Value") +
     theme(axis.title=element_text(size=16), 
           axis.text=element_text(size=12), 
           axis.text.x=element_text(size=12),
@@ -229,7 +216,8 @@ save_plot("het_time.png", het_plot, base_height=10, base_width=12)
 
 r <- ggplot(data=filter(m_demo, Generation==50000, N1==1e+5, statistic=="B"),
        aes(x=lookup_r, y=value)) + 
-  geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(lookup_s), nrow=1) +
+  geom_point() + theme_bw() + geom_line() + 
+  facet_wrap(~as.factor(lookup_s), nrow=1) +
   scale_x_log10(breaks=unique(m_demo$lookup_r)) +
   scale_y_continuous(breaks=pretty_breaks()) + guides(alpha="none") +
   labs(title=NULL, x="r", y="B") +
@@ -274,7 +262,7 @@ for(N in unique(m_demo_d$N1)) {
               legend.title=element_text(size=16),
               legend.position="bottom")
     } else if(c==1) {
-      p <- p + labs(title="Temporal dynamics of statistics after a size change (rows->N1)",
+      p <- p + labs(title="Temporal dynamics of statistics after a size change",
                     x=NULL, y="Rate of change") +
         theme(axis.title=element_text(size=16), 
               axis.text=element_text(size=12), 
@@ -298,6 +286,75 @@ for(N in unique(m_demo_d$N1)) {
 
 cp <- plot_grid(plotlist=plot_list, ncol=1, align='v')
 save_plot("diffs_stats_time.png", cp, base_height=10, base_width=12)
+
+#####################################
+#
+# multiple constrained loci part 1
+#
+#####################################
+
+# back
+m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1 
+m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
+                       Hl, B, piN_pi0, piN_piS), names_to="statistic")
+
+Bs_bottleneck <- filter(m_demo, N1==1e+3, statistic=="B")
+interp_tbl <- data.frame()
+  
+for(s in unique(Bs_bottleneck$lookup_s)) {
+  print(Sys.time())
+  cat(paste(s, "\n"))
+  for(gen in unique(Bs_bottleneck$Generation)) {
+    tmp <- filter(Bs_bottleneck, lookup_s==s, Generation==gen)
+    Bs_interp <- cubicspline(tmp$lookup_r, tmp$value, seq_log(from=1e-8, to=1e-2, length.out=1000))
+    tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-5, length.out=1000), Bs_interp, s, gen)
+    names(tmp) <- c("r", "B", "s", "Generation")
+    
+    interp_tbl <- rbind.data.frame(interp_tbl, tmp)
+  }
+}
+
+interp_dt <- setDT(interp_tbl)
+setkey(interp_dt, r)
+
+num_exons <- 101
+ncsl <- rep(1, num_exons)
+exon_lengths <- 1000
+csl <- rep(exon_lengths, num_exons) 
+L <- sum(csl) + sum(ncsl)
+
+maps <- suppressWarnings(c(rbind(ncsl, csl)))
+maps <- suppressMessages(setDT(bind_cols(chr="chr1",
+    dplyr::lag(cumsum(maps), n=1, default=0),
+    dplyr::lag(cumsum(maps), n=0, default=0))))
+names(maps) <- c("chr", "start", "end")
+maps$u <- 1e-8
+maps$s <- c(rbind(rep(0, length(csl)), 1)) # indicator, whether is selected
+maps$r <- 1e-8 * (maps$end - maps$start)
+maps$cum_r <- cumsum(maps$r)
+setkey(maps, start, end)
+
+B_gen <- numeric(length=length(unique(interp_tbl$Generation)))
+c <- 1
+
+for(g in sort(unique(interp_tbl$Generation), decreasing=T)) {
+  
+  print(Sys.time())
+  cat(paste(g, "\n"))
+  
+  gen_B <- 1
+  for(i in 1:nrow(maps)) {
+    focal_r <- maps$cum_r[i]
+    for(focal_s in unique(interp_tbl$s)) { 
+      tmp <- filter(interp_dt, s==focal_s, Generation==g)
+      focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
+      gen_B <- gen_B * (focal_B ^ (exon_lengths / 3))
+    }
+  }
+  
+  B_gen[c] <- gen_B
+  c <- c + 1
+}
 
 #####################################
 #
@@ -381,14 +438,17 @@ for(N in unique(hr_demo$N1)) {
     
       prd <- 1
       if(N <= Nanc) {
-        prd <- as.data.frame(2*N*abs(outer(pos_dt$cumrec, cr_exons$cumrec, "-")))
+        prd <- as.data.frame(2*N*abs(outer(pos_dt$cumrec,
+                                           cr_exons$cumrec, "-")))
       } else {
-        prd <- as.data.frame(2*Ne_bar*abs(outer(pos_dt$cumrec, cr_exons$cumrec, "-")))
+        prd <- as.data.frame(2*Ne_bar*abs(outer(pos_dt$cumrec,
+                                                cr_exons$cumrec, "-")))
       }
       names(prd) <- 1:ncol(prd)
       
       erd <- prd # "effective" rec. distance is inversely proportional to alpha
-      for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / abs(2 * Ne_bar * dt_exons$s[j]) }
+      for(j in 1:ncol(erd)) { erd[,j] <- erd[,j] / 
+        abs(2 * Ne_bar * dt_exons$s[j]) }
       relevant_exons <- apply(erd, 2, function(x) x < 10 * Ne_bar * 1e-3)
       # identifying relevant exons (w.r.t. linked selection) for each sampled site
       exons_per_samp_site <- apply(relevant_exons, 1, function(x) which(x))
@@ -413,7 +473,8 @@ for(N in unique(hr_demo$N1)) {
       }
       
       tmp <- B_values 
-      samp_neut <- filter(pos_dt, position==dt_neutral[nrow(dt_neutral)/2]$start + 500)$idx
+      samp_neut <- filter(pos_dt, 
+          position==dt_neutral[nrow(dt_neutral)/2]$start + 500)$idx
       for(k in samp_neut) {
         if(length(exons_per_samp_site[[k]]) > 0) {
           B <- unlist(lapply(exons_per_samp_site[[k]], getB, focal_samp=k))
