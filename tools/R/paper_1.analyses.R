@@ -317,7 +317,7 @@ for(s in unique(Bs_bottleneck$lookup_s)) {
 interp_dt <- setDT(interp_tbl)
 setkey(interp_dt, r)
 
-num_exons <- 101
+num_exons <- 100
 ncsl <- rep(1, num_exons)
 exon_lengths <- 1000
 csl <- rep(exon_lengths, num_exons) 
@@ -330,31 +330,84 @@ maps <- suppressMessages(setDT(bind_cols(chr="chr1",
 names(maps) <- c("chr", "start", "end")
 maps$u <- 1e-8
 maps$s <- c(rbind(rep(0, length(csl)), 1)) # indicator, whether is selected
-maps$r <- 1e-8 * (maps$end - maps$start)
+maps$r <- 1e-10 * (maps$end - maps$start)
 maps$cum_r <- cumsum(maps$r)
 setkey(maps, start, end)
 
-B_gen <- numeric(length=length(unique(interp_tbl$Generation)))
-c <- 1
+dt_neut <- filter(maps, s==0)
+dt_exons <- filter(maps, s==1)
+# DFE proportions
+dt_exons$p1 <- runif(nrow(dt_exons), min=0, max=1)
+p2 <- numeric(length=nrow(dt_exons))
+for(i in 1:nrow(dt_exons)) {
+  p2[i] <- runif(1, min=0, max=1-dt_exons$p1[i])
+}
+dt_exons$p2 <- p2
+dt_exons$p3 <- 1 - dt_exons$p2 - dt_exons$p1
 
-for(g in sort(unique(interp_tbl$Generation), decreasing=T)) {
-  
-  print(Sys.time())
-  cat(paste(g, "\n"))
-  
-  gen_B <- 1
-  for(i in 1:nrow(maps)) {
-    focal_r <- maps$cum_r[i]
-    for(focal_s in unique(interp_tbl$s)) { 
-      tmp <- filter(interp_dt, s==focal_s, Generation==g)
-      focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
-      gen_B <- gen_B * (focal_B ^ (exon_lengths / 3))
-    }
+
+interp_dt[which(interp_dt$B > 1)]$B <- 1 # dirty fix of interpolation errors
+
+
+getB <- function(exon_id, samp_id, g) { # id, id, generation
+  focal_r <- abs(dt_neut[samp_id]$cum_r - dt_exons[exon_id]$cum_r) 
+  if(focal_r > 1e-2) { 
+    return(1)
+  } else {
+    cum_B <- 1 # over the dfe of sites of this exon
+    
+    # strong selection component
+    tmp <- filter(interp_dt, s==-1e-3, Generation==g)
+    focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
+    cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p1[exon_id]))
+    
+    # moderate selection component
+    tmp <- filter(interp_dt, s==-1e-4, Generation==g)
+    focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
+    cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p2[exon_id]))
+    
+    # weak selection component
+    tmp <- filter(interp_dt, s==-1e-5, Generation==g)
+    focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
+    cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p3[exon_id]))
+    
+    return(cum_B)
   }
+}
+
+B_maps_gen <- as.data.frame(matrix(ncol=nrow(dt_neut),
+    nrow=length(unique(interp_tbl$Generation))))
+
+c <- 1
+for(g in sort(unique(interp_tbl$Generation), decreasing=F)) {
+  for(i in 1:nrow(dt_neut)) {
+    
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, g=g)
+    B_maps_gen[c, i] <- cumprod(b)[length(b)]
+  }
+
+  print(Sys.time())
+  cat(paste(g, " = ", B_maps_gen[c, ], "\n"))
   
-  B_gen[c] <- gen_B
   c <- c + 1
 }
+
+tbl <- cbind.data.frame(sort(unique(interp_tbl$Generation), decreasing=F), B_gen)
+names(tbl) <- c("Generation", "B")
+
+c <- ggplot(data=tbl, aes(x=Generation, y=B)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x="Generation", y="B") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("B_many_exons.png", c)
 
 #####################################
 #
@@ -475,6 +528,7 @@ for(N in unique(hr_demo$N1)) {
       tmp <- B_values 
       samp_neut <- filter(pos_dt, 
           position==dt_neutral[nrow(dt_neutral)/2]$start + 500)$idx
+      
       for(k in samp_neut) {
         if(length(exons_per_samp_site[[k]]) > 0) {
           B <- unlist(lapply(exons_per_samp_site[[k]], getB, focal_samp=k))
