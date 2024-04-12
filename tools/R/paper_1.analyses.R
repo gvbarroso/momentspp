@@ -227,6 +227,21 @@ for(s in svals) {
 het_plot <- plot_grid(plotlist=het_list, ncol=1, align='v')
 save_plot("het_time.png", het_plot, base_height=10, base_width=12)
 
+r <- ggplot(data=filter(m_demo, Generation==50000, N1==1e+5, statistic=="B"),
+       aes(x=lookup_r, y=value)) + 
+  geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(lookup_s), nrow=1) +
+  scale_x_log10(breaks=unique(m_demo$lookup_r)) +
+  scale_y_continuous(breaks=pretty_breaks()) + guides(alpha="none") +
+  labs(title=NULL, x="r", y="B") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("B_r.png", r, base_height=7, base_width=10)
+
 d_stats <- m_het_demo %>% 
      group_by(scenario) %>% 
      reframe(N1=N1, lookup_r=lookup_r, lookup_s=lookup_s, Generation=Generation,
