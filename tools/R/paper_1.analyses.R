@@ -14,7 +14,7 @@ suppressMessages({
   library(RColorBrewer)
 })
 
-setwd("~/Data/momentspp/paper_1/single_neutral")
+setwd("~/Data/mpp_data/paper_1/single_neutral")
 
 #########################
 #
@@ -202,6 +202,30 @@ for(mom in unique(m_demo$statistic)) {
   mom_plot <- plot_grid(plotlist=plot_list, ncol=1, align='v')
   save_plot(paste(mom, "_time.png", sep=""), mom_plot, base_height=10, base_width=12)
 }
+
+het_list <- list(length=length(svals))
+c <- 1
+
+for(s in svals) {
+  p <- ggplot(data=filter(m_demo, statistic==c("scaled_Hr", "pi0"), lookup_s==s, lookup_r==1e-10),
+              aes(x=Generation, y=value, color=statistic)) + 
+    geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(N1)) +
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none")
+    labs(title="Temporal dynamics after a size change", x="Generation", y="Value") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.title=element_text(size=16),
+          legend.position="bottom")
+    
+  het_list[[c]] <- p
+  c <- c + 1
+}
+
+het_plot <- plot_grid(plotlist=het_list, ncol=1, align='v')
+save_plot("het_time.png", het_plot, base_height=10, base_width=12)
 
 d_stats <- m_het_demo %>% 
      group_by(scenario) %>% 
