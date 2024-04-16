@@ -13,6 +13,8 @@ suppressMessages({
   library(cowplot)
   library(scales)
   library(RColorBrewer)
+  library(shiny)
+  library(bslib)
 })
 
 setwd("~/Data/momentspp/paper_1/single_neutral")
@@ -293,13 +295,14 @@ save_plot("diffs_stats_time.png", cp, base_height=10, base_width=12)
 #
 #####################################
 
-# back
+# reset
 m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1 
 m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
                        Hl, B, piN_pi0, piN_piS), names_to="statistic")
 
+# assembles lookup tables with continuous recombination from 1e-8 to 1e-2
 Bs_bottleneck <- filter(m_demo, N1==1e+3, statistic=="B")
-interp_tbl <- data.frame()
+interp_bottleneck <- data.frame()
   
 for(s in unique(Bs_bottleneck$lookup_s)) {
   print(Sys.time())
@@ -307,35 +310,56 @@ for(s in unique(Bs_bottleneck$lookup_s)) {
   for(gen in unique(Bs_bottleneck$Generation)) {
     tmp <- filter(Bs_bottleneck, lookup_s==s, Generation==gen)
     Bs_interp <- cubicspline(tmp$lookup_r, tmp$value, seq_log(from=1e-8, to=1e-2, length.out=1000))
-    tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-5, length.out=1000), Bs_interp, s, gen)
+    tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-2, length.out=1000), Bs_interp, s, gen)
     names(tmp) <- c("r", "B", "s", "Generation")
     
-    interp_tbl <- rbind.data.frame(interp_tbl, tmp)
+    interp_bottleneck <- rbind.data.frame(interp_bottleneck, tmp)
   }
 }
 
-interp_dt <- setDT(interp_tbl)
-setkey(interp_dt, r)
+dt_bottleneck <- setDT(interp_bottleneck)
+setkey(dt_bottleneck, r, s)
 
+Bs_expansion <- filter(m_demo, N1==1e+5, statistic=="B")
+interp_expansion <- data.frame()
+
+for(s in unique(Bs_expansion$lookup_s)) {
+  print(Sys.time())
+  cat(paste(s, "\n"))
+  for(gen in unique(Bs_expansion$Generation)) {
+    tmp <- filter(Bs_expansion, lookup_s==s, Generation==gen)
+    Bs_interp <- cubicspline(tmp$lookup_r, tmp$value, seq_log(from=1e-8, to=1e-2, length.out=1000))
+    tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-2, length.out=1000), Bs_interp, s, gen)
+    names(tmp) <- c("r", "B", "s", "Generation")
+    
+    interp_expansion <- rbind.data.frame(interp_expansion, tmp)
+  }
+}
+
+dt_expansion <- setDT(interp_expansion)
+setkey(dt_expansion, r, s)
+
+# set up chr
 num_exons <- 100
-ncsl <- rep(1, num_exons)
+ncsl <- rep(0, num_exons)
 exon_lengths <- 1000
 csl <- rep(exon_lengths, num_exons) 
 L <- sum(csl) + sum(ncsl)
 
-maps <- suppressWarnings(c(rbind(ncsl, csl)))
+maps <- suppressWarnings(c(rbind(csl, ncsl)))
 maps <- suppressMessages(setDT(bind_cols(chr="chr1",
     dplyr::lag(cumsum(maps), n=1, default=0),
     dplyr::lag(cumsum(maps), n=0, default=0))))
 names(maps) <- c("chr", "start", "end")
 maps$u <- 1e-8
-maps$s <- c(rbind(rep(0, length(csl)), 1)) # indicator, whether is selected
-maps$r <- 1e-10 * (maps$end - maps$start)
+maps$s <- c(rbind(rep(1, length(ncsl)), 0)) # indicator, whether is selected
+maps$r <- 1e-8 * (maps$end - maps$start)
 maps$cum_r <- cumsum(maps$r)
 setkey(maps, start, end)
 
 dt_neut <- filter(maps, s==0)
 dt_exons <- filter(maps, s==1)
+
 # DFE proportions
 dt_exons$p1 <- runif(nrow(dt_exons), min=0, max=1)
 p2 <- numeric(length=nrow(dt_exons))
@@ -345,29 +369,30 @@ for(i in 1:nrow(dt_exons)) {
 dt_exons$p2 <- p2
 dt_exons$p3 <- 1 - dt_exons$p2 - dt_exons$p1
 
+dt_exons$p1 <- 1/3
+dt_exons$p2 <- 1/3
+dt_exons$p3 <- 1/3
+dt_exons$avg_s <- dt_exons$p1 * -1e-3 + dt_exons$p2 * -1e-4 + dt_exons$p3 * -1e-5
 
-interp_dt[which(interp_dt$B > 1)]$B <- 1 # dirty fix of interpolation errors
-
-
-getB <- function(exon_id, samp_id, g) { # id, id, generation
+getB <- function(exon_id, samp_id, look_tbl) { # id, id, data.table for generation
   focal_r <- abs(dt_neut[samp_id]$cum_r - dt_exons[exon_id]$cum_r) 
   if(focal_r > 1e-2) { 
     return(1)
   } else {
     cum_B <- 1 # over the dfe of sites of this exon
-    
+
     # strong selection component
-    tmp <- filter(interp_dt, s==-1e-3, Generation==g)
+    tmp <- filter(look_tbl, s==-1e-3)
     focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
     cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p1[exon_id]))
     
     # moderate selection component
-    tmp <- filter(interp_dt, s==-1e-4, Generation==g)
+    tmp <- filter(look_tbl, s==-1e-4)
     focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
     cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p2[exon_id]))
     
     # weak selection component
-    tmp <- filter(interp_dt, s==-1e-5, Generation==g)
+    tmp <- filter(look_tbl, s==-1e-5)
     focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
     cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p3[exon_id]))
     
@@ -375,43 +400,101 @@ getB <- function(exon_id, samp_id, g) { # id, id, generation
   }
 }
 
-B_maps_gen <- as.data.frame(matrix(ncol=nrow(dt_neut),
-    nrow=length(unique(interp_tbl$Generation))))
+# thinning for speed
+bt_df <- filter(dt_bottleneck, Generation %in% seq(from=0, to=50000, by=10000))
+exp_df <- filter(dt_expansion, Generation %in% seq(from=0, to=50000, by=10000))
+
+B_maps_bottleneck <- as.data.frame(matrix(ncol=nrow(dt_neut),
+    nrow=length(unique(bt_df$Generation))))
+
+B_maps_expansion <- as.data.frame(matrix(ncol=nrow(dt_neut),
+    nrow=length(unique(exp_df$Generation))))
 
 c <- 1
-for(g in sort(unique(interp_tbl$Generation), decreasing=F)) {
+for(g in sort(unique(bt_df$Generation), decreasing=F)) {
+  
+  print(Sys.time())
+  cat(paste(g, "\n"))
+  
   for(i in 1:nrow(dt_neut)) {
     
-    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, g=g)
-    B_maps_gen[c, i] <- cumprod(b)[length(b)]
+    tmp <- filter(bt_df, Generation==g)
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=tmp)
+    B_maps_bottleneck[c, i] <- cumprod(b)[length(b)]
+    
+    tmp <- filter(exp_df, Generation==g)
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=tmp)
+    B_maps_expansion[c, i] <- cumprod(b)[length(b)]
   }
-
-  print(Sys.time())
-  cat(paste(g, " = ", B_maps_gen[c, ], "\n"))
   
   c <- c + 1
 }
 
-tbl <- cbind.data.frame(sort(unique(interp_tbl$Generation), decreasing=F), B_gen)
-names(tbl) <- c("Generation", "B")
+names(B_maps_bottleneck) <- dt_neut$end
+B_maps_bottleneck$Generation <- sort(unique(bt_df$Generation), decreasing=F)
+B_maps_bottleneck$N1 <- 1e+3
+  
+names(B_maps_expansion) <- dt_neut$end
+B_maps_expansion$Generation <- sort(unique(exp_df$Generation), decreasing=F)
+B_maps_expansion$N1 <- 1e+5
 
-c <- ggplot(data=tbl, aes(x=Generation, y=B)) + 
-  geom_point() + theme_bw() + geom_line() + 
-  scale_x_continuous(breaks=pretty_breaks()) +
+# TODO continue here
+bmaps_demo <- rbind.data.frame(B_maps_bottleneck, B_maps_expansion)
+m_Bmap_demo <- pivot_longer(bmaps_demo, cols=as.character(dt_neut$end), names_to="Position")
+
+fwrite(m_Bmap_demo, "m_Bmap_demo.csv")
+m_Bmap_demo <- fread("m_Bmap_demo.csv")
+
+ui <- page_sidebar(
+  title="B-value maps over time",
+  sidebar=sliderInput(
+    inputId="Generation",
+    label="Generation:",
+    min=0,
+    max=50000,
+    step=5000,
+    value=50000
+  ),
+  plotOutput(outputId="Bmap")
+)
+
+server <- function(input, output) {
+  output$Bmap <- renderPlot({
+    p <- ggplot(data=filter(m_Bmap_demo, N1==1e+5),
+                aes(x=Position, y=value)) + 
+      geom_point() + theme_bw() + #geom_line() +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      labs(title="B-value map over time", x="Position", y="B") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+    
+    p
+  }, res = 100)
+}
+
+shinyApp(ui, server)
+
+c <- ggplot(data=filter(m_Bmap_demo),
+            aes(x=Position, y=value, color=Generation)) + facet_wrap(~N1) +
+  geom_point() + theme_bw() + #geom_line() +
   scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title=NULL, x="Generation", y="B") +
+  labs(title="B-value maps over time", x="Position", y="B") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
-        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        axis.text.x=element_text(size=12),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("B_many_exons.png", c)
+save_plot("Bmap_time.png", c)
 
 #####################################
 #
-# multiple constrained loci
+# multiple constrained loci part 2
 #
 #####################################
 
