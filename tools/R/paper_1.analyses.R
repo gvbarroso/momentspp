@@ -339,6 +339,10 @@ for(s in unique(Bs_expansion$lookup_s)) {
 dt_expansion <- setDT(interp_expansion)
 setkey(dt_expansion, r, s)
 
+# thinning for speed
+bt_df <- filter(dt_bottleneck, Generation %in% seq(from=0, to=50000, by=1000))
+exp_df <- filter(dt_expansion, Generation %in% seq(from=0, to=50000, by=1000))
+
 # set up chr
 num_exons <- 100
 ncsl <- rep(0, num_exons)
@@ -381,28 +385,12 @@ getB <- function(exon_id, samp_id, look_tbl) { # id, id, data.table for generati
   } else {
     cum_B <- 1 # over the dfe of sites of this exon
 
-    # strong selection component
-    tmp <- filter(look_tbl, s==-1e-3)
-    focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
+    focal_B <- look_tbl[look_tbl[.(focal_r), roll="nearest", which=T]]$B
     cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p1[exon_id]))
-    
-    # moderate selection component
-    tmp <- filter(look_tbl, s==-1e-4)
-    focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
-    cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p2[exon_id]))
-    
-    # weak selection component
-    tmp <- filter(look_tbl, s==-1e-5)
-    focal_B <- tmp[tmp[.(focal_r), roll="nearest", which=T]]$B
-    cum_B <- cum_B * (focal_B ^ (exon_lengths * dt_exons$p3[exon_id]))
     
     return(cum_B)
   }
 }
-
-# thinning for speed
-bt_df <- filter(dt_bottleneck, Generation %in% seq(from=0, to=50000, by=10000))
-exp_df <- filter(dt_expansion, Generation %in% seq(from=0, to=50000, by=10000))
 
 B_maps_bottleneck <- as.data.frame(matrix(ncol=nrow(dt_neut),
     nrow=length(unique(bt_df$Generation))))
@@ -416,15 +404,39 @@ for(g in sort(unique(bt_df$Generation), decreasing=F)) {
   print(Sys.time())
   cat(paste(g, "\n"))
   
+  bt_tmp <- filter(bt_df, Generation==g)
+  exp_tmp <- filter(exp_df, Generation==g)
+  
+  bt_strong <- filter(bt_tmp, s==-1e-3)
+  bt_moderate <- filter(bt_tmp, s==-1e-4)
+  bt_weak <- filter(bt_tmp, s==-1e-5)
+  
+  exp_strong <- filter(exp_tmp, s==-1e-3)
+  exp_moderate <- filter(exp_tmp, s==-1e-4)
+  exp_weak <- filter(exp_tmp, s==-1e-5)
+
   for(i in 1:nrow(dt_neut)) {
+
+    B_bt <- 1
+    B_exp <- 1
     
-    tmp <- filter(bt_df, Generation==g)
-    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=tmp)
-    B_maps_bottleneck[c, i] <- cumprod(b)[length(b)]
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=bt_strong)
+    B_bt <- B_bt * cumprod(b)[length(b)]
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=bt_moderate)
+    B_bt <- B_bt * cumprod(b)[length(b)]
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=bt_weak)
+    B_bt <- B_bt * cumprod(b)[length(b)]
     
-    tmp <- filter(exp_df, Generation==g)
-    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=tmp)
-    B_maps_expansion[c, i] <- cumprod(b)[length(b)]
+    B_maps_bottleneck[c, i] <- B_bt
+    
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=exp_strong)
+    B_exp <- B_exp * cumprod(b)[length(b)]
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=exp_moderate)
+    B_exp <- B_exp * cumprod(b)[length(b)]
+    b <- sapply(1:nrow(dt_exons), getB, samp_id=i, look_tbl=exp_weak)
+    B_exp <- B_exp * cumprod(b)[length(b)]
+    
+    B_maps_expansion[c, i] <- B_exp
   }
   
   c <- c + 1
@@ -438,7 +450,6 @@ names(B_maps_expansion) <- dt_neut$end
 B_maps_expansion$Generation <- sort(unique(exp_df$Generation), decreasing=F)
 B_maps_expansion$N1 <- 1e+5
 
-# TODO continue here
 bmaps_demo <- rbind.data.frame(B_maps_bottleneck, B_maps_expansion)
 m_Bmap_demo <- pivot_longer(bmaps_demo, cols=as.character(dt_neut$end), names_to="Position")
 
@@ -447,30 +458,37 @@ m_Bmap_demo <- fread("m_Bmap_demo.csv")
 
 ui <- page_sidebar(
   title="B-value maps over time",
-  sidebar=sliderInput(
-    inputId="Generation",
+  sidebar=sidebar(
+    sliderInput(inputId="Generation",
     label="Generation:",
     min=0,
     max=50000,
-    step=5000,
-    value=50000
+    step=1000,
+    value=50000),
+    checkboxInput("by_demography", "Show Ne", TRUE),
+    checkboxGroupInput(
+      "N1", "Post-equilibrium Ne",
+      choices=unique(m_Bmap_demo$N1), 
+      selected=unique(m_Bmap_demo$N1[1])
+    ),
   ),
   plotOutput(outputId="Bmap")
 )
 
 server <- function(input, output) {
   output$Bmap <- renderPlot({
-    p <- ggplot(data=filter(m_Bmap_demo, N1==1e+5),
-                aes(x=Position, y=value)) + 
-      geom_point() + theme_bw() + #geom_line() +
-      scale_y_continuous(breaks=pretty_breaks()) +
-      labs(title="B-value map over time", x="Position", y="B") +
+    p <- ggplot(data=filter(m_Bmap_demo, N1==input$N1, Generation==input$Generation),
+                aes(x=Position, y=value)) + list(
+      geom_point(), theme_bw(),
+      scale_y_continuous(breaks=pretty_breaks()),
+      if(input$by_demography) aes(color=N1),
+      labs(title=NULL, x="Position", y="B"),
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
-            axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+            axis.text.x=element_text(size=12),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
-            legend.position="bottom")
+            legend.position="none"))
     
     p
   }, res = 100)
@@ -478,9 +496,9 @@ server <- function(input, output) {
 
 shinyApp(ui, server)
 
-c <- ggplot(data=filter(m_Bmap_demo),
-            aes(x=Position, y=value, color=Generation)) + facet_wrap(~N1) +
-  geom_point() + theme_bw() + #geom_line() +
+c <- ggplot(data=m_Bmap_demo,aes(x=Position, y=value, color=Generation)) +
+  geom_point() + facet_wrap(~N1) + theme_bw() + #geom_line() +
+  scale_color_continuous(name="Generation") +
   scale_y_continuous(breaks=pretty_breaks()) +
   labs(title="B-value maps over time", x="Position", y="B") +
   theme(axis.title=element_text(size=16), 
@@ -491,6 +509,21 @@ c <- ggplot(data=filter(m_Bmap_demo),
         legend.position="bottom")
 
 save_plot("Bmap_time.png", c)
+
+d <- ggplot(data=filter(m_Bmap_demo, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4)),
+            aes(x=Generation, y=value, color=as.factor(Position))) +
+  geom_point() + theme_bw() + facet_wrap(~N1) + geom_line() +
+  scale_color_discrete(name="Position") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="B-value maps over time", x="Generation", y="B") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("Bpos_time.png", d)
 
 #####################################
 #
