@@ -32,9 +32,9 @@ Na <- 1e+4 # ancestral N
 N1 <- c(Na / 10, 10 * Na) # current N
 N2 <- c(N1, Na)
 t <- 50000 # in generations
-u <- 1e-8 # constant among exons as well as "fake" neutral u used to get B-vals
+u <- c(1e-8, 1e-9) # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
-lookup_r <- c(1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2)
+lookup_r <- c(1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)
 lookup_s <- c(-1e-3, -1e-4, -1e-5)
 
 # for discretizing Gamma distributions
@@ -171,6 +171,9 @@ Collects lookup table with Hr values on the parameter grid
 ```{r, grid, include=F, eval=F, results=F, message=F, warning=F}
 
 params <- fread("params.csv")
+
+lookup_r <- unique(params$lookup_r)
+lookup_s <- unique(params$lookup_s)
 
 n_models <- nrow(params)
 t <- unique(params$t)
