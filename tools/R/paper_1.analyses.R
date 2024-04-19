@@ -233,7 +233,8 @@ het_plot <- plot_grid(plotlist=het_list, ncol=1, align='v')
 save_plot(paste("het_time_u_", 1e-8, ".png", sep=""),
           het_plot, base_height=10, base_width=12)
 
-r <- ggplot(data=filter(m_demo, Generation==50000, u==1e-8, N1==1e+5, statistic=="B"),
+r <- ggplot(data=filter(m_demo, Generation==50000,
+                        u==1e-8, N1==1e+5, statistic=="B"),
        aes(x=lookup_r, y=value)) + 
   geom_point() + theme_bw() + geom_line() + 
   facet_wrap(~as.factor(lookup_s), nrow=1) +
@@ -247,7 +248,8 @@ r <- ggplot(data=filter(m_demo, Generation==50000, u==1e-8, N1==1e+5, statistic=
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot(paste("B_r_u_", 1e-8, ".png", sep=""), r, base_height=7, base_width=10)
+save_plot(paste("B_r_u_", 1e-8, ".png", sep=""), r,
+          base_height=7, base_width=10)
 
 d_stats <- filter(m_het_demo, u==1e-8) %>% 
      group_by(scenario) %>% 
@@ -526,6 +528,7 @@ for(mu in unique(bt_df$u)) {
 
 m_Bmap_demo <- pivot_longer(bmaps_demo, cols=as.character(dt_neut$end), 
                             names_to="Position")
+m_Bmap_demo$Position <- as.numeric(m_Bmap_demo$Position)
 
 fwrite(bmaps_demo, "bmaps_demo.csv")
 fwrite(m_Bmap_demo, "m_Bmap_demo.csv")
@@ -542,21 +545,21 @@ ui <- page_sidebar(
     max=50000,
     step=1000,
     value=50000),
-    checkboxInput("by_demography", "Show Ne", TRUE),
-    checkboxInput("by_selection", "Show s", TRUE),
-    checkboxInput("by_mutation", "Show u", TRUE),
+    checkboxInput("by_demography", "Show Ne", T),
+    checkboxInput("by_selection", "Show s", T),
+    checkboxInput("by_mutation", "Show u", T),
     checkboxGroupInput(
-      "N1", "Post-equilibrium Ne",
+      "N1", "Ne (color)",
       choices=unique(m_Bmap_demo$N1), 
       selected=unique(m_Bmap_demo$N1[1])
     ),
     checkboxGroupInput(
-      "s", "selection coeff.",
+      "s", "s (shape)",
       choices=unique(m_Bmap_demo$s), 
       selected=unique(m_Bmap_demo$s[1])
     ),
     checkboxGroupInput(
-      "s", "mutation rate",
+      "u", "u",
       choices=unique(m_Bmap_demo$u), 
       selected=unique(m_Bmap_demo$u[1])
     )
@@ -571,17 +574,20 @@ server <- function(input, output) {
                             s==input$s,
                             u==input$u,
                             Generation==input$Generation),
-                aes(x=Position, y=value)) + list(
-      geom_point(), theme_bw(),
-      scale_y_continuous(breaks=pretty_breaks()),
-      if(input$by_demography) aes(color=N1),
-      labs(title=NULL, x="Position", y="B"),
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="none"))
+                aes(x=Position, y=value)) + 
+      list(
+        geom_point(), theme_bw(),
+        scale_y_continuous(breaks=pretty_breaks()),
+        if(input$by_demography) aes(color=as.factor(N1)),
+        if(input$by_selection) aes(shape=as.factor(s)),
+        labs(title=NULL, x="Position", y="B"),
+        theme(axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_text(size=12),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="none")
+      )
     
     p
   }, res = 100)
