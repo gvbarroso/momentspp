@@ -32,9 +32,10 @@ Na <- 1e+4 # ancestral N
 N1 <- c(Na / 10, 10 * Na) # current N
 N2 <- c(N1, Na)
 t <- 50000 # in generations
-u <- c(1e-8, 1e-9) # constant among exons as well as "fake" neutral u used to get B-vals
+u <- c(1e-8) # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
-lookup_r <- c(1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3)
+lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=25),
+                  seq(from=1e-4, to=1e-2, length.out=25))), digits=10)
 lookup_s <- c(-1e-3, -1e-4, -1e-5)
 
 # for discretizing Gamma distributions
@@ -177,7 +178,7 @@ lookup_s <- unique(params$lookup_s)
 
 n_models <- nrow(params)
 t <- unique(params$t)
-sampling_times <- seq(from=t, to=0, by=-100)
+sampling_times <- seq(from=t, to=0, by=-1000)
 
 # Het stats over time
 hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
@@ -217,10 +218,6 @@ params_hr <- cbind.data.frame(params, hrs)
 
 fwrite(params_hl, "hl_time.csv.gz", compress="gzip") # used by other scripts
 fwrite(params_hr, "hr_time.csv.gz", compress="gzip") # used by other scripts
-
-params$hr <- hr
-params$hl <- hl
-fwrite(params, "lookup_tbl.csv.gz", compress="gzip") # used by other scripts
 ```
 
 # TODO 

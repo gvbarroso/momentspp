@@ -34,7 +34,7 @@ u <- unique(params$u)
 
 demo_models <- crossing(u, Na, N1, t)
 num_demo_models <- nrow(demo_models)
-sampling_times <- seq(from=t, to=0, by=-100)
+sampling_times <- seq(from=t, to=0, by=-1000)
 pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
@@ -58,40 +58,34 @@ N.labs <- paste("Model ", 1:num_demo_models)
 names(N.labs) <- rep(as.character(unique(demo_models$N1)),
                      length(unique(demo_models$u)))
 
-p1 <- ggplot(data=filter(m_pi0, u==1e-8), aes(x=Generation, y=pi0)) + 
-  facet_wrap(~N1, labeller=labeller(N1=N.labs[1:2])) +
-  geom_point(size=0.5) + geom_line() + theme_bw() + 
-  labs(title=paste("Trajectory of Heterozygosity after size change, u =", 1e-8), 
-       x="Generations ago", y=expression(pi[0])) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        strip.text=element_text(size=14),
-        legend.position="bottom")
+plot_list <- list(length=length(u))
+c <- 1
+for(mu in u) {
+  p <- ggplot(data=filter(m_pi0, u==mu), aes(x=Generation, y=pi0)) + 
+    facet_wrap(~N1, labeller=labeller(N1=N.labs[1:2])) +
+    geom_point(size=0.5) + geom_line() + theme_bw() + 
+    labs(title=paste("Trajectory of Heterozygosity after size change, u =", mu), 
+         x="Generations ago", y=expression(pi[0])) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.title=element_text(size=16),
+          strip.text=element_text(size=14),
+          legend.position="bottom")
+  
+  plot_list[[c]] <- p
+  c <- c + 1
+}
 
-p2 <- ggplot(data=filter(m_pi0, u==1e-9), aes(x=Generation, y=pi0)) + 
-  facet_wrap(~N1, labeller=labeller(N1=N.labs[3:4])) +
-  geom_point(size=0.5) + geom_line() + theme_bw() + 
-  labs(title=paste("Trajectory of Heterozygosity after size change, u =", 1e-9), 
-       x="Generations ago", y=NULL) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        strip.text=element_text(size=14),
-        legend.position="bottom")
-
-pi0_demo <- plot_grid(p1, p2, ncol=2)
+pi0_demo <- plot_grid(plotlist=plot_list, ncol=length(u))
 save_plot("demo/pi0_demo.png", pi0_demo, base_height=8, base_width=16)
 
 d <- ggplot(data=demo_models) + theme_bw() + 
      facet_wrap(~N1, labeller=labeller(N1=N.labs)) +
      geom_segment(aes(x=0, xend=t, y=N1, yend=N1), linewidth=1.5) +
      geom_segment(aes(x=t, xend=t, y=N1, yend=Na), linewidth=1.5) +
-     geom_segment(aes(x=t, xend=t+5000, y=Na, yend=Na), linewidth=1.5) +
+     geom_segment(aes(x=t, xend=t+t/10, y=Na, yend=Na), linewidth=1.5) +
      scale_y_log10() +
      scale_x_continuous(breaks=c(0, 1000, t)) +
      labs(title="Demographic Models", 
@@ -106,10 +100,6 @@ d <- ggplot(data=demo_models) + theme_bw() +
            legend.position="bottom")
 
 save_plot("demo/demo_models.png", d, base_height=8, base_width=16)
-
-# loads tables from setup_models_1.Rmd
-lookup_tbl <- fread("lookup_tbl.csv.gz")
-setkey(lookup_tbl, lookup_r, lookup_s)
 
 look_s <- setDT(as.data.frame(unique(params$lookup_s)))
 look_r <- setDT(as.data.frame(unique(params$lookup_r)))
@@ -137,7 +127,7 @@ setkey(m_het_demo, N1, lookup_r, lookup_s, Generation)
 
 m_het_demo <- left_join(m_het_demo, dplyr::select(m_pi0,
                         -c(Na, t)), by=c("N1", "Generation", "u"))
-m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1000 # exon has L sites
+m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1000 # exons have L sites
 m_het_demo$scaled_Hr <- m_het_demo$pi0 * m_het_demo$B
   
 hl_gen <- pivot_longer(hl_demo, cols=as.character(sampling_times),
@@ -154,7 +144,7 @@ m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$scaled_Hr
 fwrite(m_het_demo, "stats_demo.csv")
 
 m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
-                      Hl, B, piN_pi0, piN_piS), names_to="statistic")
+                       Hl, B, piN_pi0, piN_piS), names_to="statistic")
 
 svals <- unique(m_demo$lookup_s)
 for(mom in unique(m_demo$statistic)) {
@@ -243,7 +233,7 @@ r <- ggplot(data=filter(m_demo, Generation==50000,
   labs(title=NULL, x="r", y="B") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
-        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        axis.text.x=element_blank(),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
@@ -267,7 +257,7 @@ c <- 1
 plot_list <- list(length=length(unique(m_demo_d$N1)))
 
 for(N in unique(m_demo_d$N1)) {
-  p <- ggplot(data=filter(m_demo_d, N1==N, lookup_r==1e-6,
+  p <- ggplot(data=filter(m_demo_d, N1==N, lookup_r==1e-8,
                           lookup_s %in% c(-1e-3, -1e-4, -1e-5), 
                           statistic %in% c("d_Hl", "d_Hr", "d_pi0")),
               aes(x=Generation, y=value, color=statistic)) + 
@@ -331,8 +321,8 @@ for(mu in unique(Bs_bottleneck$u)) {
     for(gen in unique(Bs_bottleneck$Generation)) {
       tmp <- filter(Bs_bottleneck, lookup_s==s, Generation==gen, u==mu)
       Bs_interp <- cubicspline(tmp$lookup_r, tmp$value,
-                               seq_log(from=1e-8, to=1e-3, length.out=1000))
-      tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-3, length.out=1000),
+                               seq_log(from=1e-8, to=1e-2, length.out=1000))
+      tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-2, length.out=1000),
                               Bs_interp, s, gen, mu)
       names(tmp) <- c("r", "B", "s", "Generation", "u")
       
@@ -354,8 +344,8 @@ for(mu in unique(Bs_expansion$u)) {
     for(gen in unique(Bs_expansion$Generation)) {
       tmp <- filter(Bs_expansion, lookup_s==s, Generation==gen, u==mu)
       Bs_interp <- cubicspline(tmp$lookup_r, tmp$value,
-                               seq_log(from=1e-8, to=1e-3, length.out=1000))
-      tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-3, length.out=1000),
+                               seq_log(from=1e-8, to=1e-2, length.out=1000))
+      tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-2, length.out=1000),
                               Bs_interp, s, gen, mu)
       names(tmp) <- c("r", "B", "s", "Generation", "u")
       
@@ -576,7 +566,7 @@ server <- function(input, output) {
                             Generation==input$Generation),
                 aes(x=Position, y=value)) + 
       list(
-        geom_point(), theme_bw(),
+        geom_point(), geom_line(), theme_bw(),
         scale_y_continuous(breaks=pretty_breaks()),
         if(input$by_demography) aes(color=as.factor(N1)),
         if(input$by_selection) aes(shape=as.factor(s)),
@@ -595,26 +585,31 @@ server <- function(input, output) {
 
 shinyApp(ui, server)
 
-c <- ggplot(data=m_Bmap_demo, aes(x=Position, y=value, color=Generation)) +
-  geom_point() + facet_wrap(~N1) + theme_bw() + #geom_line() +
-  scale_color_continuous(name="Generation") +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title="B-value maps over time", x="Position", y="B") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        legend.position="bottom")
+for(sel in svals) {
+  c <- ggplot(data=filter(m_Bmap_demo, s==sel),
+              aes(x=Position, y=value, color=Generation)) +
+    geom_point() + facet_wrap(~N1) + theme_bw() +
+    scale_color_continuous(name="Generation") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title="B-value maps over time", x="Position", y="B") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.title=element_text(size=16),
+          legend.position="bottom")
+  
+  save_plot(paste("Bmap_time_s_", sel, ".png", sep=""), c, 
+            base_height=10, base_width=16)
+}
 
-save_plot("Bmap_time.png", c)
-
-d <- ggplot(data=filter(m_Bmap_demo, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4), u==1e-9),
+d <- ggplot(data=filter(m_Bmap_demo, u==1e-8,
+                        Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4)),
             aes(x=Generation, y=value, color=as.factor(Position))) +
   geom_point() + theme_bw() + facet_grid(N1~s) + geom_line() +
   scale_color_discrete(name="Position") +
   scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title="B-value maps over time", x="Generation", y="B") +
+  labs(title="B-values over time", x="Generation", y="B") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
         axis.text.x=element_text(size=12),
@@ -622,22 +617,7 @@ d <- ggplot(data=filter(m_Bmap_demo, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4), 
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("Bpos_time_u_1e-9.png", d, base_height=8, base_width=12)
-
-e <- ggplot(data=filter(m_Bmap_demo, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4), u==1e-8),
-            aes(x=Generation, y=value, color=as.factor(Position))) +
-  geom_point() + theme_bw() + facet_grid(N1~s) + geom_line() +
-  scale_color_discrete(name="Position") +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title="B-value maps over time", x="Generation", y="B") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        legend.position="bottom")
-
-save_plot("Bpos_time_u_1e-8.png", e, base_height=8, base_width=12)
+save_plot("Bpos_time_u_1e-8.png", d, base_height=8, base_width=12)
 
 # adds simulation results
 sim_exp_strong <- fread("fwdpy11_Bvalues.expansion.Q4.s_-0.001.txt")
@@ -657,16 +637,15 @@ sim_exp_tbl$Generation <- rep(seq(from=0, to=50000, by=1000), 3)
 sim_exp_tbl$N1 <- 1e+5
 sim_exp_tbl$s <- c(rep(-1e-3, 51), rep(-1e-4, 51), rep(-1e-5, 51))
 sim_exp_tbl$u <- 1e-8
-sim_exp_tbl$method <- "fwdpy11"
 #sim_exp_tbl$Q <- 4
 
 m_sim_exp <- pivot_longer(sim_exp_tbl, cols=1:100, names_to="Position")
 m_sim_exp$Position <- as.numeric(m_sim_exp$Position)
+m_sim_exp$method <- "fwdpy11"
 
 y <- ggplot(data=filter(m_sim_exp, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4)),
             aes(x=Generation, y=value, color=as.factor(Position))) +
   geom_point(size=2) + theme_bw() + facet_wrap(~s) + 
-  #scale_shape_manual(values=c(0, 1, 2), name="s") +
   scale_y_continuous(breaks=pretty_breaks()) +
   labs(title="Simulations w/ expansion, u=1e-8", x="Generation", y="B") +
   theme(axis.title=element_text(size=16), 
@@ -678,9 +657,8 @@ y <- ggplot(data=filter(m_sim_exp, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4)),
 
 save_plot("fwd.png", y, base_height=8, base_width=12)
 
+m_Bmap_demo$method <- "mpp"
 #bmaps_demo <- relocate(bmaps_demo, c(Generation, N1), .after=last_col())
-bmaps_demo$method <- "mpp"
-
 #names(sim_exp_tbl) <- names(bmaps_demo)
 df <- rbind.data.frame(filter(bmaps_demo, N1==1e+5, u==1e-8), sim_exp_tbl)
 
@@ -751,6 +729,18 @@ g <- ggplot(data=filter(m_df, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4)),
 
 save_plot("Bmap_mpp_sims_2.png", g, base_height=10, base_width=16)
 
+x <- filter(m_Bmap_demo, Generation==5e+4)
+ggplot(data=filter(x, s==-1e-3), aes(x=Position, y=value, shape=as.factor(N1))) +
+  geom_point(size=2) + theme_bw() + facet_wrap(~s) + geom_line() +
+  scale_shape_manual(values=c(0, 1)) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x="Pos", y="B") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
 #####################################
 #
 # multiple constrained loci part 2
