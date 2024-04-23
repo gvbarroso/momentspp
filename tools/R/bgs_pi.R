@@ -130,7 +130,7 @@ for(i in 1:num_iter) {
   
   getB <- function(focal_exon, focal_samp) { # arguments are site indices
     total_r <- prd[focal_samp, focal_exon] / (2 * N) 
-    if(total_r > 1e-2) { return(1) } # not in lookup_tbl, too high anyway
+    if(total_r > 1e-2) { return(1) } 
     else {
       exon_pos <- dt_exons$start[focal_exon] + exon_lengths / 2 # midpoint pos
       idx <- pos_dt[.(exon_pos)]$idx # index within pos_dt / samp_pos
