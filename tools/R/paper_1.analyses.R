@@ -310,57 +310,42 @@ m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1
 m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
                        Hl, B, piN_pi0, piN_piS), names_to="statistic")
 
-# assembles lookup tables with continuous recombination from 1e-8 to 1e-2
-Bs_bottleneck <- filter(m_demo, N1==1e+3, statistic=="B")
-interp_bottleneck <- data.frame()
+# interpolates between r values
+Bs_demo <- filter(m_demo, statistic=="B", 
+                  Generation %in% seq(from=0, to=50000, by=1000)) # speed
+interp <- data.frame()
   
-for(mu in unique(Bs_bottleneck$u)) {
-  for(s in unique(Bs_bottleneck$lookup_s)) {
+for(N in unique(Bs_demo$N1)) {
+  for(s in unique(Bs_demo$lookup_s)) {
     print(Sys.time())
     cat(paste(s, "\n"))
-    for(gen in unique(Bs_bottleneck$Generation)) {
-      tmp <- filter(Bs_bottleneck, lookup_s==s, Generation==gen, u==mu)
+    for(gen in unique(Bs_demo$Generation)) {
+      tmp <- filter(Bs_demo, lookup_s==s, Generation==gen, N1==N)
       Bs_interp <- cubicspline(tmp$lookup_r, tmp$value,
                                seq_log(from=1e-8, to=1e-2, length.out=1000))
       tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-2, length.out=1000),
                               Bs_interp, s, gen, mu)
       names(tmp) <- c("r", "B", "s", "Generation", "u")
+      tmp$N1 <- N
       
-      interp_bottleneck <- rbind.data.frame(interp_bottleneck, tmp)
+      interp <- rbind.data.frame(interp, tmp)
     }
   }
 }
 
-dt_bottleneck <- setDT(interp_bottleneck)
-dt_bottleneck$N1 <- 1e+3
-setkey(dt_bottleneck, r, s)
+TODO
+# interpolates between s values
 
-Bs_expansion <- filter(m_demo, N1==1e+5, statistic=="B")
-interp_expansion <- data.frame()
+B_demo_dt <- setDT(interp)
+setkey(B_demo_dt, r, s)
 
-for(mu in unique(Bs_expansion$u)) {
-  for(s in unique(Bs_expansion$lookup_s)) {
-    print(Sys.time())
-    cat(paste(s, "\n"))
-    for(gen in unique(Bs_expansion$Generation)) {
-      tmp <- filter(Bs_expansion, lookup_s==s, Generation==gen, u==mu)
-      Bs_interp <- cubicspline(tmp$lookup_r, tmp$value,
-                               seq_log(from=1e-8, to=1e-2, length.out=1000))
-      tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-2, length.out=1000),
-                              Bs_interp, s, gen, mu)
-      names(tmp) <- c("r", "B", "s", "Generation", "u")
-      
-      interp_expansion <- rbind.data.frame(interp_expansion, tmp)
-    }
-  }
-}
-
-dt_expansion <- setDT(interp_expansion)
-dt_expansion$N1 <- 1e+5
-setkey(dt_expansion, r, s)
-
-b_demo <- rbind.data.frame(dt_bottleneck, dt_expansion)
-b_demo <- filter(b_demo, Generation %in% seq(from=0, to=50000, by=1000)) # speed
+# split for faster lookup
+dt_r <- data.table(unique(B_demo_dt$r))
+dt_s <- data.table(unique(B_demo_dt$s))
+names(dt_r) <- "r"
+names(dt_s) <- "s"
+setkey(dt_r, r)
+setkey(dt_s, s)
 
 # set up chr
 num_exons <- 100
@@ -375,79 +360,70 @@ maps <- suppressMessages(setDT(bind_cols(chr="chr1",
     dplyr::lag(cumsum(maps), n=0, default=0))))
 names(maps) <- c("chr", "start", "end")
 maps$midpoint <- maps$start + (maps$end -  maps$start) / 2
-maps$s <- c(rbind(rep(1, length(ncsl)), 0)) # indicator, whether is selected
+maps$s <- c(rbind(rep(-1e-3, length(ncsl)), 0)) 
 maps$u <- 1e-8
 maps$r <- 1e-8
 setkey(maps, start, end)
 
-dt_exons <- filter(maps, s==1)
+dt_exons <- filter(maps, s!=0)
 
 jump_length <- 25
 neut_pos <- as.numeric(unlist(apply(filter(maps, s==0), 1, 
             function(x) seq(from=x[2], to=x[3], by=jump_length))))
 samp_pos <- sort(c(neut_pos, dt_exons$midpoint)) # sampled sites
 
-focal_mu <- unlist(lapply(samp_pos, function(pos) maps[J(pos), roll=T]$u))
+focal_mu <- unlist(lapply(samp_pos, function(pos) mean(maps[J(pos), roll=T]$u)))
 
 pos_dt <- suppressMessages(setDT(bind_cols(samp_pos, focal_mu)))
 names(pos_dt) <- c("position", "focal_mu")
 pos_dt$idx <- 1:nrow(pos_dt) # indexing
 setkey(pos_dt, position)
 
-# DFE proportions
-#dt_exons$p1 <- runif(nrow(dt_exons), min=0, max=1)
-#p2 <- numeric(length=nrow(dt_exons))
-#for(i in 1:nrow(dt_exons)) {
-#  p2[i] <- runif(1, min=0, max=1-dt_exons$p1[i])
-#}
-#dt_exons$p2 <- p2
-#dt_exons$p3 <- 1 - dt_exons$p2 - dt_exons$p1
-
-#dt_exons$p1 <- 1/3
-#dt_exons$p2 <- 1/3
-#dt_exons$p3 <- 1/3
-#dt_exons$avg_s <- dt_exons$p1 * -1e-3 + dt_exons$p2 * -1e-4 + dt_exons$p3 * -1e-5
-
 getB <- function(exon_id, samp_id, look_tbl) {
-  total_r <- abs(pos_dt[samp_id]$cum_r - pos_dt[exon_id]$cum_r)
-  if(total_r > 1e-2) { return(1) } 
-  else {
-    exon_pos <- dt_exons$start[focal_exon] + exon_lengths / 2 # midpoint
-    idx <- pos_dt[.(exon_pos)]$idx # index within pos_dt / samp_pos
-    focal_s <- dt_exons[focal_exon,]$s * B_values[idx]
-    
-    # fine-grained grid, we don't need further interpolation
-    closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
-    closest_s <- dt_s[dt_s[.(focal_s), roll="nearest", which=T]]
-    
-    # correction for interference on u is applied by scaling exon lengths
-    B <- look_tbl[.(closest_r, closest_s)]$B 
-    return(B ^ (exon_lengths * B_values[idx]))
-  }
+  
+  exon_pos <- dt_exons$midpoint[exon_id]
+  idx <- pos_dt[.(exon_pos)]$idx
+  #focal_s <- dt_exons[exon_id,]$s * B_values[idx]
+  focal_s <- dt_exons[exon_id,]$s
+  total_r <- abs(pos_dt[samp_id]$cumrec - pos_dt[idx]$cumrec)
+
+  # fine-grained grid, we don't need further interpolation
+  closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
+  closest_s <- dt_s[dt_s[.(focal_s), roll="nearest", which=T]]
+  
+  # correction for interference on u is applied by scaling exon lengths
+  B <- look_tbl[.(closest_r, closest_s)]$B 
+  return(B ^ (exon_lengths * B_values[idx]))
 }
 
-bmaps_demo <- data.frame()
-for(N in unique(b_demo$N1)) {
-  
-  B_maps <- as.data.frame(matrix(ncol=nrow(pos_dt),
-      nrow=length(unique(b_demo$Generation))))
+plot_list_demo <- list(length=length(unique(B_demo_dt$N1))) # list of lists of plots
 
+num_iter <- 5
+bmaps_demo <- data.frame()
+for(n in 1:length(unique(B_demo_dt$N1))) {
+  
+  N <- unique(B_demo_dt$N1)[n]
+  B_maps <- as.data.frame(matrix(ncol=nrow(pos_dt),
+      nrow=length(unique(B_demo_dt$Generation))))
+
+  plot_list_gen <- list(length=length(unique(B_demo_dt$Generation)))
   g <- 1
-  for(gen in sort(unique(b_demo$Generation), decreasing=F)) {
+  for(gen in sort(unique(B_demo_dt$Generation), decreasing=F)) {
     
     print(Sys.time())
-    cat(paste(gen, "\n"))
+    cat(paste("Generation", gen, "\n"))
     
-    tmp_lookup <- filter(b_demo, Generation==gen, N1==N)
+    tmp_lookup <- filter(B_demo_dt, Generation==gen, N1==N)
     Ne_bar <- unique(filter(m_het_demo, Generation==gen, N1==N)$pi0) / (2 * mu)
     Ne_ratio <- Ne_bar / 1e+4 # ratio relative to Nanc
     B_values <- rep(1, nrow(pos_dt)) # this generation's B-values 
 
+    gen_g_iters <- as.data.frame(matrix(ncol=nrow(pos_dt), nrow=num_iter))
+    
     for(i in 1:num_iter) {
-      
       # approximates cumulative rec by looking at r at sampled sites only
-      focal_r <- unlist(lapply(samp_pos, function(pos) maps[J(pos), roll=T]$r)) 
-      focal_r <- focal_r * B_values
+      focal_r <- unlist(lapply(samp_pos,
+          function(pos) mean(maps[J(pos), roll=T]$r))) * B_values
       cum_rec <- numeric(length=length(samp_pos))
       cum_rec[1] <- focal_r[1]
       
@@ -463,14 +439,40 @@ for(N in unique(b_demo$N1)) {
       }
       
       B_values <- updated_B_vals
+      gen_g_iters[i,] <- B_values
     }
     
     B_maps[g, ] <- B_values
     g <- g + 1
+    
+    # plots
+    names(gen_g_iters) <- pos_dt$position
+    gen_g_iters$Iter <- 1:num_iter
+    m_iters <- pivot_longer(gen_g_iters, 
+                            cols=as.character(pos_dt$position),
+                            names_to="Pos")
+    m_iters$Pos <- as.numeric(m_iters$Pos)
+    p <- ggplot(data=m_iters,aes(x=Pos, y=value, color=as.factor(Iter))) + 
+      geom_point(aes(alpha=0.5)) + theme_bw() + geom_line() + 
+      scale_color_brewer(palette="YlOrRd", name="Iteration") +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none") + 
+      labs(title=paste("Iterative correction (gen", gen, ")", sep=""),
+           x="Pos", y="B-value") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+    
+    plot_list_gen[[g]] <- p
   }
+  
+  plot_list_demo[[n]] <- plot_list_gen
 
   names(B_maps) <- samp_pos
-  B_maps$Generation <- sort(unique(b_demo$Generation), decreasing=F)
+  B_maps$Generation <- sort(unique(B_demo_dt$Generation), decreasing=F)
   B_maps$N1 <- N
   
   bmaps_demo <- rbind.data.frame(bmaps_demo, B_maps)

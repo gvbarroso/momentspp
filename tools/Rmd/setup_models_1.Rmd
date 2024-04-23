@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/single_neutral")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study")
 ```
 
 # Creating folders and files
@@ -34,9 +34,10 @@ N2 <- c(N1, Na)
 t <- 50000 # in generations
 u <- c(1e-8) # constant among exons as well as "fake" neutral u used to get B-vals
 # rounding is required so that directory names don't diverge due to precision
-lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=25),
-                  seq(from=1e-4, to=1e-2, length.out=25))), digits=10)
-lookup_s <- c(-1e-3, -1e-4, -1e-5)
+lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=20),
+                  seq(from=1e-4, to=1e-2, length.out=20))), digits=10)
+lookup_s <- unique(-round(sort(c(seq_log(from=1e-5, to=1e-4, length.out=5),
+                          seq(from=1e-4, to=1e-3, length.out=21))), digits=10))
 
 # for discretizing Gamma distributions
 dt_r <- data.table(lookup_r)
