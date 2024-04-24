@@ -27,17 +27,17 @@ assembly of whole chromosomes
 
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
-# in practice a two-epoch demographic model, even under equilibrium
 Na <- 1e+4 # ancestral N
 N1 <- c(Na / 10, 10 * Na) # current N
 N2 <- c(N1, Na)
 t <- 50000 # in generations
 u <- c(1e-8) # constant among exons as well as "fake" neutral u used to get B-vals
+
 # rounding is required so that directory names don't diverge due to precision
 lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=20),
                   seq(from=1e-4, to=1e-2, length.out=20))), digits=10)
-lookup_s <- unique(-round(sort(c(seq_log(from=1e-5, to=1e-4, length.out=5),
-                          seq(from=1e-4, to=1e-3, length.out=21))), digits=10))
+lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=10), 
+                    seq_log(from=7.5e-5, to=1e-3, length.out=90))), digits=10)
 
 # for discretizing Gamma distributions
 dt_r <- data.table(lookup_r)

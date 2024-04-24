@@ -17,7 +17,7 @@ suppressMessages({
   library(bslib)
 })
 
-setwd("~/Data/momentspp/paper_1/single_neutral")
+setwd("~/Data/momentspp/paper_1/study")
 
 ###############################
 #
@@ -146,7 +146,7 @@ fwrite(m_het_demo, "stats_demo.csv")
 m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
                        Hl, B, piN_pi0, piN_piS), names_to="statistic")
 
-svals <- unique(m_demo$lookup_s)
+svals <- c(-1e-3, -1e-4, -1e-5)
 for(mom in unique(m_demo$statistic)) {
   
   plot_list <- list(length=length(svals))
@@ -223,7 +223,7 @@ het_plot <- plot_grid(plotlist=het_list, ncol=1, align='v')
 save_plot(paste("het_time_u_", 1e-8, ".png", sep=""),
           het_plot, base_height=10, base_width=12)
 
-r <- ggplot(data=filter(m_demo, Generation==50000,
+r <- ggplot(data=filter(m_demo, Generation==50000, lookup_s %in% svals,
                         u==1e-8, N1==1e+5, statistic=="B"),
        aes(x=lookup_r, y=value)) + 
   geom_point() + theme_bw() + geom_line() + 
@@ -313,30 +313,31 @@ m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr,
 # interpolates between r values
 Bs_demo <- filter(m_demo, statistic=="B", 
                   Generation %in% seq(from=0, to=50000, by=1000)) # speed
-interp <- data.frame()
-  
+interp <- list(length=length(unique(Bs_demo$lookup_s)) * 
+                      length(unique(Bs_demo$N1)) *
+                      length(unique(Bs_demo$Generation)))
+c <- 1
 for(N in unique(Bs_demo$N1)) {
   for(s in unique(Bs_demo$lookup_s)) {
     print(Sys.time())
     cat(paste(s, "\n"))
     for(gen in unique(Bs_demo$Generation)) {
       tmp <- filter(Bs_demo, lookup_s==s, Generation==gen, N1==N)
-      Bs_interp <- cubicspline(tmp$lookup_r, tmp$value,
-                               seq_log(from=1e-8, to=1e-2, length.out=1000))
-      tmp <- cbind.data.frame(seq_log(from=1e-8, to=1e-2, length.out=1000),
-                              Bs_interp, s, gen, mu)
+      rs <- sort(c(seq_log(from=1e-8, to=1e-3, length.out=200),
+                   seq(from=1e-4, to=1e-2, length.out=300)))
+      Bs_interp <- cubicspline(tmp$lookup_r, tmp$value, rs)
+      tmp <- cbind.data.frame(rs, Bs_interp, s, gen, mu)
       names(tmp) <- c("r", "B", "s", "Generation", "u")
       tmp$N1 <- N
       
-      interp <- rbind.data.frame(interp, tmp)
+      interp[[c]] <- tmp
+      c <- c + 1
     }
   }
 }
 
-TODO
-# interpolates between s values
-
-B_demo_dt <- setDT(interp)
+B_demo_dt <- do.call("rbind", interp)
+B_demo_dt <- setDT(B_demo_dt)
 setkey(B_demo_dt, r, s)
 
 # split for faster lookup
@@ -379,13 +380,12 @@ names(pos_dt) <- c("position", "focal_mu")
 pos_dt$idx <- 1:nrow(pos_dt) # indexing
 setkey(pos_dt, position)
 
-getB <- function(exon_id, samp_id, look_tbl) {
-  
+getB <- function(exon_id, samp_id, Nef, look_tbl) {
   exon_pos <- dt_exons$midpoint[exon_id]
   idx <- pos_dt[.(exon_pos)]$idx
-  #focal_s <- dt_exons[exon_id,]$s * B_values[idx]
-  focal_s <- dt_exons[exon_id,]$s
-  total_r <- abs(pos_dt[samp_id]$cumrec - pos_dt[idx]$cumrec)
+  #focal_s <- dt_exons[exon_id,]$s * B_values[idx] * Nef
+  focal_s <- dt_exons[exon_id,]$s * Nef
+  total_r <- abs(pos_dt[samp_id]$cumrec - pos_dt[idx]$cumrec) * Nef
 
   # fine-grained grid, we don't need further interpolation
   closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
@@ -397,9 +397,8 @@ getB <- function(exon_id, samp_id, look_tbl) {
 }
 
 plot_list_demo <- list(length=length(unique(B_demo_dt$N1))) # list of lists of plots
+bmaps_demo <- list(length=length(unique(B_demo_dt$N1)))
 
-num_iter <- 5
-bmaps_demo <- data.frame()
 for(n in 1:length(unique(B_demo_dt$N1))) {
   
   N <- unique(B_demo_dt$N1)[n]
@@ -418,6 +417,7 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
     Ne_ratio <- Ne_bar / 1e+4 # ratio relative to Nanc
     B_values <- rep(1, nrow(pos_dt)) # this generation's B-values 
 
+    num_iter <- 5
     gen_g_iters <- as.data.frame(matrix(ncol=nrow(pos_dt), nrow=num_iter))
     
     for(i in 1:num_iter) {
@@ -434,7 +434,9 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
       
       updated_B_vals <- numeric(length=length(B_values))
       for(j in 1:nrow(pos_dt)) { # for each sampled position
-        Bs <- sapply(1:nrow(dt_exons), getB, samp_id=j, look_tbl=tmp_lookup)
+        Bs <- sapply(1:nrow(dt_exons), getB, samp_id=j,
+                                             Nef=Ne_ratio,
+                                             look_tbl=tmp_lookup)
         updated_B_vals[j] <- cumprod(Bs)[length(Bs)]
       }
       
@@ -474,11 +476,14 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
   names(B_maps) <- samp_pos
   B_maps$Generation <- sort(unique(B_demo_dt$Generation), decreasing=F)
   B_maps$N1 <- N
-  
-  bmaps_demo <- rbind.data.frame(bmaps_demo, B_maps)
+  B_maps$s <- unique(maps$s) # NOTE check
+    
+  bmaps_demo[[n]] <- B_maps
 }
 
-m_Bmap_demo <- pivot_longer(bmaps_demo, cols=as.character(samp_pos$end), 
+bmaps_demo <- do.call("rbind", bmaps_demo)
+m_Bmap_demo <- pivot_longer(bmaps_demo, 
+                            cols=as.character(samp_pos$end), 
                             names_to="Position")
 m_Bmap_demo$Position <- as.numeric(m_Bmap_demo$Position)
 
