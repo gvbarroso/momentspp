@@ -36,8 +36,8 @@ u <- c(1e-8) # constant among exons as well as "fake" neutral u used to get B-va
 # rounding is required so that directory names don't diverge due to precision
 lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=20),
                   seq(from=1e-4, to=1e-2, length.out=20))), digits=10)
-lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=10), 
-                    seq_log(from=7.5e-5, to=1e-3, length.out=90))), digits=10)
+lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=40), 
+                    seq_log(from=7.5e-5, to=1e-3, length.out=80))), digits=10)
 
 # for discretizing Gamma distributions
 dt_r <- data.table(lookup_r)
