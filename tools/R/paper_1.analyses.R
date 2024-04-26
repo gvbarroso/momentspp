@@ -328,6 +328,7 @@ for(N in unique(Bs_demo$N1)) {
 B_demo_dt <- do.call("rbind", interp)
 B_demo_dt <- setDT(B_demo_dt)
 setkey(B_demo_dt, r, s)
+fwrite(B_demo_dt, "B_demo_dt.csv")
 
 p <- ggplot(data=filter(B_demo_dt, N1==1e+5, Generation==5e+4,
                         r %in% c(unique(B_demo_dt$r)[1],
@@ -408,7 +409,6 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
   B_maps <- as.data.frame(matrix(ncol=nrow(pos_dt),
       nrow=length(unique(B_demo_dt$Generation))))
 
-  plot_list_gen <- list(length=length(unique(B_demo_dt$Generation)))
   g <- 1
   for(gen in sort(unique(B_demo_dt$Generation), decreasing=T)) {
     
@@ -492,16 +492,11 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
               legend.position="none")
     }
     
-    save_plot(paste("iter_g_", gen, "_N1_", N, "_s_", sel, ".png", sep=""), cp, 
+    save_plot(paste("iter_g_", gen, "_N1_", N, "_s_", sel, ".png", sep=""), p, 
               base_width=12, base_height=10)
     
-    plot_list_gen[[g]] <- p
     g <- g + 1
   }
-  
-  cp <- plot_grid(plotlist=plot_list_gen, ncol=10, align='v')
-  save_plot(paste("inter_iter_N1_", N, "_s_", sel, ".png", sep=""), cp, 
-            base_width=50, base_height=30)
 
   names(B_maps) <- samp_pos
   B_maps$Generation <- sort(unique(B_demo_dt$Generation), decreasing=T)
