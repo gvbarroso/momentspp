@@ -433,7 +433,7 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
       }
       pos_dt$cumrec <- cum_rec
       
-      updated_B_vals <- numeric(length=length(B_values))
+      updated_B_vals <- rep(1, length(B_values))
       for(j in 1:nrow(pos_dt)) { 
         Bs <- sapply(1:nrow(dt_exons), getB, samp_id=j,
                                              Ne_f=Ne_ratio,
@@ -462,35 +462,14 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
       geom_point(aes(alpha=0.5)) + theme_bw() + geom_line() + 
       scale_color_brewer(palette="YlOrRd", name="Iteration") +
       scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none") 
-    if(g==length(unique(B_demo_dt$Generation))) {
-      p <- p + labs(title=NULL, x="Pos", y=paste("B (gen ", gen, ")", sep="")) +
-           theme(axis.title=element_text(size=16), 
-                 axis.text=element_text(size=12), 
-                 axis.text.x=element_text(size=12),
-                 legend.text=element_text(size=16),
-                 legend.title=element_text(size=16),
-                 legend.position="bottom")
-    } else if(g==1) {
-      p <- p + labs(title=paste("Interf. correction", sep=""),
-                    x=NULL, y=paste("B (gen ", gen, ")", sep="")) +
-        theme(axis.title=element_text(size=16), 
-              axis.text=element_text(size=12), 
-              axis.text.x=element_blank(),
-              legend.text=element_text(size=16),
-              legend.title=element_text(size=16),
-              legend.position="none")
-    } else {
-      p <- p + labs(title=NULL, x=NULL, y=paste("B (gen ", gen, ")", sep="")) +
-        theme(axis.title=element_text(size=16), 
-              axis.text=element_text(size=12), 
-              axis.text.x=element_blank(),
-              strip.background = element_blank(),
-              strip.text.x = element_blank(),
-              legend.text=element_text(size=16),
-              legend.title=element_text(size=16),
-              legend.position="none")
-    }
+      scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none") +
+      labs(title=NULL, x="Pos", y=paste("B (gen ", gen, ")", sep="")) +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
     
     save_plot(paste("iter_g_", gen, "_N1_", N, "_s_", sel, ".png", sep=""), p, 
               base_width=12, base_height=10)
@@ -642,9 +621,9 @@ sampled_gens <- seq(from=50000, to=0, by=-10000) # downsample gens for speed
 plot_list <- list(length=length(sampled_gens))
 c <- 1
 for(gen in sampled_gens) {
-  e <- ggplot(data=filter(m_df, Generation==gen), 
+  e <- ggplot(data=filter(m_df, s==sel, Generation==gen), 
               aes(x=Position/1e+3, y=value, color=method)) +
-    geom_point() + facet_wrap(~s) + theme_bw() + 
+    geom_point() + theme_bw() + 
     scale_y_continuous(breaks=pretty_breaks())
     if(c==length(sampled_gens)) {
       e <- e + labs(title=NULL, x="Position (kb)", 
@@ -687,9 +666,9 @@ f <- plot_grid(plotlist=plot_list, ncol=1, align='v',
 save_plot(paste("Bmap_mpp_sims_1_s_", sel, ".png", sep=""),
           f, base_height=16, base_width=14)
 
-g <- ggplot(data=filter(m_df, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4)),
-            aes(x=Generation, y=value, color=as.factor(Position), shape=method)) +
-  geom_point(size=2) + theme_bw() + facet_wrap(~s) + geom_line() +
+g <- ggplot(data=filter(m_df, s==sel, Position %in% c(1e+3, 1e+4, 2.5e+4, 5e+4)),
+        aes(x=Generation, y=value, color=as.factor(Position), shape=method)) +
+  geom_point(size=2) + theme_bw() + geom_line() +
   scale_color_discrete(name="Position") +
   scale_shape_manual(values=c(0, 1)) +
   scale_y_continuous(breaks=pretty_breaks()) +
