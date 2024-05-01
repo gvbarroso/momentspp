@@ -109,6 +109,8 @@ for i in range(1, 11):
     B_func = interpolate.CubicSpline(xx, B_iter[i - 1], bc_type="natural")
     B_iter[i] = B_interference_iteration(xx, B_func, u, r, s)
 
+with open(f"B_vals_iters.csv", "w+") as fout:
+    fout.write(B_iter)
 
 # plot stuff
 data = (
