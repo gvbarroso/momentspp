@@ -17,6 +17,9 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
+library(reticulate)
+use_python("/usr/bin/python3")
+
 knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study")
 ```
 
@@ -38,28 +41,33 @@ Na <- 1e+4 # ancestral N
 N1 <- c(Na / 10, 10 * Na) # current N
 N2 <- c(N1, Na)
 t <- 100000 # in generations
-u <- c(1e-8) # constant among exons as well as "fake" neutral u used to get B-vals
+
+options(digits=16)
 
 # rounding is required so that directory names don't diverge due to precision
+lookup_u <- round(seq_log(from=4e-9, to=1e-8, length.out=15), digits=10)
 lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=20),
                   seq(from=1e-4, to=1e-2, length.out=20))), digits=10)
-lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=40), 
-                    seq_log(from=7.5e-5, to=1e-3, length.out=80))), digits=10)
+lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=10), 
+                   seq_log(from=7.5e-5, to=1e-3, length.out=60))), digits=10)
 
 # for discretizing Gamma distributions
+dt_u <- data.table(lookup_u)
 dt_r <- data.table(lookup_r)
 dt_s <- data.table(lookup_s)
 
+setkey(dt_u, lookup_u)
 setkey(dt_r, lookup_r)
 setkey(dt_s, lookup_s)
 
-params <- setDT(crossing(Na, N1, t, u, lookup_r, lookup_s))
+params <- setDT(crossing(Na, N1, t, lookup_u, lookup_r, lookup_s))
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
-fwrite(dt_r, "r.csv", quote=F, row.names=F, col.names=F)
-fwrite(dt_s, "s.csv", quote=F, row.names=F, col.names=F)
-fwrite(params, "params.csv", quote=F, row.names=F)
+fwrite(dt_u, "u.csv", col.names=F)
+fwrite(dt_r, "r.csv", col.names=F)
+fwrite(dt_s, "s.csv", col.names=F)
+fwrite(params, "params.csv")
 ```
 
 ```{bash dirs, engine.opts='-i', include=F, eval=T, results=F, warning=F}
@@ -70,14 +78,21 @@ source ~/.bashrc
 cat r.csv | while IFS=, read -r r
 do
   mkdir r_$r
-  
   cat s.csv | while IFS=, read -r s
   do
     mkdir r_$r/s_$s
+    cat u.csv | while IFS=, read -r u
+    do
+      mkdir r_$r/s_$s/u_$u
+    done
   done
 done
 
-find -mindepth 2 -type d -exec cp opt.bpp {} \;
+find -mindepth 3 -type d -exec cp opt.bpp {} \;
+
+# makes directory to store purely neutral models to get pi0 predictions
+mkdir demo
+cp opt.bpp demo
 ```
 
 Creates files that will be used as input for moments++
@@ -95,12 +110,15 @@ for(i in 1:n_models) {
   Na <- as.integer(params[i,]$Na)
   N1 <- as.integer(params[i,]$N1)
   t <- as.integer(params[i,]$t)
-  u <- as.numeric(params[i,]$u)
+  u <- as.numeric(params[i,]$lookup_u)
   r <- as.numeric(params[i,]$lookup_r)
   s <- as.numeric(params[i,]$lookup_s)
   
   name <- paste("model_", i, sep="")
-  sink(paste("r_", r, "/s_", s, "/", name, ".yaml", sep=""))
+  sink(paste("r_", r, 
+             "/s_", s,
+             "/u_", u,
+             "/", name, ".yaml", sep=""))
   
   cat("time_units: generations\n")
   cat("demes:\n")
@@ -135,11 +153,59 @@ for(i in 1:n_models) {
   cat("    epochs:\n")
   cat("      - end_time: 0\n")
   cat("        rates: [")
-  cat(s)
+  cat(format(s, scientific=F))
   cat("]\n")
   
   sink()
 }
+
+# creates (purely neutral) demographic models
+Na <- as.integer(unique(params$Na))
+N1 <- as.integer(unique(params$N1))
+t <- as.integer(unique(params$t))
+u <- as.numeric(unique(params$lookup_u))
+
+c <- 1
+for(N in N1) {
+  for(mu in u) {
+    sink(paste("demo/model_", c, ".yaml", sep=""))
+    cat("time_units: generations\n")
+    cat("demes:\n")
+    cat("  - name: X\n")
+    cat("    epochs:\n")
+    cat("      - end_time: ")
+    cat(t)
+    cat("\n")
+    cat("        start_size: ")
+    cat(Na)
+    cat("\n")
+    cat("      - end_time: 0\n")
+    cat("        start_size: ")
+    cat(N)
+    cat("\n")
+    cat("metadata:\n")
+    cat("  - name: mutation\n")
+    cat("    left_factor: 1\n")
+    cat("    epochs:\n")
+    cat("      - end_time: 0\n")
+    cat("        rates: [")
+    cat(mu)
+    cat("]\n")
+    cat("  - name: recombination\n")
+    cat("    epochs:\n")
+    cat("      - end_time: 0\n")
+    cat("        rates: [0]\n")
+    cat("  - name: selection\n")
+    cat("    start_time: .inf\n")
+    cat("    epochs:\n")
+    cat("      - end_time: 0\n")
+    cat("        rates: [0]\n")
+    sink()
+    
+    c <- c + 1
+  }
+}
+  
 ```
 
 # Running moments++
@@ -156,22 +222,33 @@ do
   for s in s_*
   do
     cd $s
-    for f in model_*.yaml
+    for u in u_*
     do
-      # this is to get the correct Order of (1-2p)
-      # which is a function of 2Ns (maximum = 2N/1000 here)
-      N=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
-      x=$((2*$N/1000))
-      if [[ $x -gt 90 ]]
-      then
-        momentspp params=opt.bpp F=$f O=$x > /dev/null
-      else
-        momentspp params=opt.bpp F=$f O=50
-      fi
+      cd $u
+      for f in model_*.yaml
+      for f in model_*.yaml
+      do
+        # this is to get the correct Order of (1-2p)
+        # which is a function of 2Ns
+        N=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
+	      x=$(sed '23q;d' $f | cut -d : -f 2 | cut -d [ -f 2 | cut -d ] -f 1)
+	      s=$(echo "scale=10; $x" | bc)
+	      a=$(echo "scale=10; 2 * $N * $s - 5" | bc)
+	      b=${a%.*}
+	      z=$(($b * -1))
+        momentspp params=opt.bpp F=$f O=$z > /dev/null
+      done
+      cd ..
     done
     cd ..
   done
   cd ..
+done
+
+cd demo
+for f in model_*
+do 
+  momentspp params=opt.bpp F=$f O=2
 done
 ```
 
@@ -183,6 +260,7 @@ params <- fread("params.csv")
 
 lookup_r <- unique(params$lookup_r)
 lookup_s <- unique(params$lookup_s)
+lookup_u <- unique(params$lookup_u)
 
 n_models <- nrow(params)
 t <- unique(params$t)
@@ -203,20 +281,23 @@ for(i in 1:length(lookup_r)) {
   cat(paste(i, "\n"))
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
-    fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                         pattern="*e_1_expectations.txt", full.names=TRUE)
-    
-    for(k in 1:length(fnames)) {
-      moms <- fread(fnames[k])
-      idx <- as.numeric(strsplit(strsplit(fnames[k], "_e_1")[[1]][1], 
-                                 "model_")[[1]][2])
+    for(k in 1:length(lookup_u)) {
+      fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], 
+                                 "/u_", lookup_u[k], sep=""),
+                           pattern="*e_1_expectations.txt", full.names=TRUE)
       
-      hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
-      hrs[idx,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
-      
-      # expectations at present time
-      hl[idx] <- moms[nrow(moms) - 1, 3]
-      hr[idx] <- moms[nrow(moms), 3]
+      for(l in 1:length(fnames)) {
+        moms <- fread(fnames[l])
+        idx <- as.numeric(strsplit(strsplit(fnames[l], "_e_1")[[1]][1], 
+                                   "model_")[[1]][2])
+        
+        hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
+        hrs[idx,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
+        
+        # expectations at present time
+        hl[idx] <- moms[nrow(moms) - 1, 3]
+        hr[idx] <- moms[nrow(moms), 3]
+      }
     }
   }
 }
