@@ -157,7 +157,8 @@ svals <-  c(unique(m_demo$lookup_s)[1],
 rvals <-  c(unique(m_demo$lookup_r)[1],
             unique(m_demo$lookup_r)[9], 
             unique(m_demo$lookup_r)[13],
-            unique(m_demo$lookup_r)[20])
+            unique(m_demo$lookup_r)[20],
+            unique(m_demo$lookup_r)[30])
 
 for(r in rvals) {
   for(mom in unique(m_demo$statistic)) {
@@ -206,22 +207,26 @@ for(r in rvals) {
     }
     
     mom_plot <- plot_grid(plotlist=plot_list, ncol=1, align='v')
-    save_plot(paste(mom, "_time_u_", 1e-8, "_r_", r, ".png", sep=""),
+    save_plot(paste(mom, "_time_u_1e-8_r_", r, ".png", sep=""),
               mom_plot, base_height=10, base_width=12)
   }
 }
 
-het_list <- list(length=length(svals))
-c <- 1
-
-r <- ggplot(data=filter(m_demo, Generation==1e+5, lookup_s %in% svals,
-                        lookup_u==1e-8, N1==1e+5, statistic=="B"),
+r <- ggplot(data=filter(m_demo, Generation==1e+5, 
+                        lookup_s %in% c(unique(m_demo$lookup_s)[1],
+                                        unique(m_demo$lookup_s)[20],
+                                        unique(m_demo$lookup_s)[54], 
+                                        unique(m_demo$lookup_s)[62],
+                                        unique(m_demo$lookup_s)[70]),
+                        lookup_u %in% c(unique(m_demo$lookup_u)[1],
+                                        unique(m_demo$lookup_u)[15]), 
+                        N1==1e+5, statistic=="B"),
        aes(x=lookup_r, y=value)) + 
   geom_point() + theme_bw() + geom_line() + 
-  facet_wrap(~as.factor(lookup_s), nrow=1) +
+  facet_grid(as.factor(lookup_u)~as.factor(lookup_s)) +
   scale_x_log10(breaks=unique(m_demo$lookup_r)) +
   scale_y_continuous(breaks=pretty_breaks()) + guides(alpha="none") +
-  labs(title="B~r, cols->sel", x="r", y="B") +
+  labs(title="B~r, cols->s, rows->mu", x="r", y="B") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
         axis.text.x=element_blank(),
@@ -229,26 +234,50 @@ r <- ggplot(data=filter(m_demo, Generation==1e+5, lookup_s %in% svals,
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot(paste("B_r_u_", 1e-8, ".png", sep=""), r,
-          base_height=7, base_width=10)
+save_plot("B_r.png", r, base_height=8, base_width=16)
 
-s <- ggplot(data=filter(m_demo, lookup_r %in% rvals, Generation==1e+5,
-                        lookup_u==1e-8, N1==1e+5, statistic=="B"),
-            aes(x=lookup_s, y=value)) + 
+s <- ggplot(data=filter(m_demo, N1==1e+5, Generation==1e+5, statistic=="B",
+                        lookup_u %in% c(unique(m_demo$lookup_u)[1],
+                                        unique(m_demo$lookup_u)[15]),
+                        lookup_r %in% c(unique(m_demo$lookup_r)[1],
+                                        unique(m_demo$lookup_r)[12], 
+                                        unique(m_demo$lookup_r)[15],
+                                        unique(m_demo$lookup_r)[20])),
+            aes(x=-lookup_s, y=value)) + 
+  facet_grid(as.factor(lookup_u)~as.factor(lookup_r)) +
   geom_point() + theme_bw() + geom_line() + 
-  facet_wrap(~as.factor(lookup_r), nrow=1) +
-  scale_x_continuous(breaks=unique(m_demo$lookup_s)) +
-  scale_y_continuous(breaks=pretty_breaks()) + guides(alpha="none") +
-  labs(title="B~s, cols->rec", x="s", y="B") +
+  scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
+  scale_y_log10(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="-s", y="B-value") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
-        axis.text.x=element_blank(),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot(paste("B_s_u_", 1e-8, ".png", sep=""), s,
-          base_height=7, base_width=10)
+save_plot("B_s.png", s, base_height=10, base_width=16)
+
+s2 <- ggplot(data=filter(m_demo, N1==1e+5, Generation==1e+5, 
+                        statistic==c("piN_pi0", "piN_piS"),
+                        lookup_u %in% c(unique(m_demo$lookup_u)[1],
+                                        unique(m_demo$lookup_u)[15]),
+                        lookup_r %in% c(unique(m_demo$lookup_r)[1],
+                                        unique(m_demo$lookup_r)[12], 
+                                        unique(m_demo$lookup_r)[15],
+                                        unique(m_demo$lookup_r)[20])),
+            aes(x=-lookup_s, y=value, color=statistic)) + 
+  facet_grid(as.factor(lookup_u)~as.factor(lookup_r)) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
+  scale_y_log10(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="-s", y="B-value") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("piN_piX_s.png", s2, base_height=10, base_width=16)
 
 d_stats <- filter(m_het_demo, lookup_u==1e-8) %>% 
      group_by(scenario) %>% 
@@ -371,31 +400,17 @@ close(pb)
 
 B_demo_dt <- do.call("rbind", interp)
 B_demo_dt <- setDT(B_demo_dt)
-setkey(B_demo_dt, r, s)
-fwrite(B_demo_dt, "B_demo_dt.csv")
-
-p <- ggplot(data=filter(B_demo_dt, N1==1e+5, Generation==5e+4,
-                        r %in% c(unique(B_demo_dt$r)[1],
-                                 unique(B_demo_dt$r)[150], 
-                                 unique(B_demo_dt$r)[200],
-                                 unique(B_demo_dt$r)[230])),
-            aes(x=-s, y=B)) + facet_wrap(~r) +
-  geom_point() + theme_bw() + geom_line() + 
-  scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
-  scale_y_log10(breaks=pretty_breaks()) + 
-  labs(title=NULL, x="-s", y="B-value") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        legend.position="bottom")
-save_plot("B_s.png", p, base_height=10, base_width=14)
+setkey(B_demo_dt, u, r, s)
+fwrite(B_demo_dt, "B_demo_dt.csv.gz")
 
 # split for faster lookup
+dt_u <- data.table(unique(B_demo_dt$u))
 dt_r <- data.table(unique(B_demo_dt$r))
 dt_s <- data.table(unique(B_demo_dt$s))
+names(dt_u) <- "u"
 names(dt_r) <- "r"
 names(dt_s) <- "s"
+setkey(dt_u, u)
 setkey(dt_r, r)
 setkey(dt_s, s)
 
@@ -422,6 +437,7 @@ dt_exons <- filter(maps, s!=0)
 jump_length <- 25
 neut_pos <- as.numeric(unlist(apply(filter(maps, s==0), 1, 
             function(x) seq(from=x[2], to=x[3], by=jump_length))))
+#neut_pos <- L/2 + 1
 samp_pos <- sort(c(neut_pos, dt_exons$midpoint)) # sampled sites
 
 focal_mu <- unlist(lapply(samp_pos, function(pos) mean(maps[J(pos), roll=T]$u)))
@@ -435,18 +451,45 @@ getB <- function(exon_id, samp_id, Ne_f, look_tbl) {
   exon_pos <- dt_exons$midpoint[exon_id]
   idx <- pos_dt[.(exon_pos)]$idx
   focal_s <- dt_exons[exon_id,]$s * B_values[idx] * Ne_f
+  focal_mu <- dt_exons[exon_id,]$u * B_values[idx] * Ne_f
   total_r <- abs(pos_dt[samp_id]$cumrec - pos_dt[idx]$cumrec) * Ne_f
-
-  # fine-grained grid, we don't need further interpolation
-  closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
-  closest_s <- dt_s[dt_s[.(focal_s), roll="nearest", which=T]]
   
-  # correction for interference on u is applied by scaling exon lengths
-  B <- look_tbl[.(closest_r, closest_s)]$B 
-  return(B ^ (exon_lengths * B_values[idx]))
+  closest_r <- dt_r[dt_r[.(total_r), roll="nearest", which=T]]
+  
+  # finding lower and higher bounds for u (x-axis) and s (y-axis)
+  uL <- dt_u[dt_u[.(focal_mu), roll="nearest", which=T]]
+  if(uL > focal_mu) {
+    uL <- dt_u[dt_u[.(focal_mu), roll="nearest", which=T]-1]
+    uH <- dt_u[dt_u[.(focal_mu), roll="nearest", which=T]]
+  } else {
+    uH <- dt_u[dt_u[.(focal_mu), roll="nearest", which=T] + 1]
+  }
+  
+  sL <- dt_s[dt_s[.(focal_s), roll="nearest", which=T]]
+  if(sL > focal_s) {
+    sL <- dt_s[dt_s[.(focal_s), roll="nearest", which=T]-1]
+    sH <- dt_s[dt_s[.(focal_s), roll="nearest", which=T]]
+  } else {
+    sH <- dt_s[dt_s[.(focal_s), roll="nearest", which=T] + 1]
+  }
+
+  # bilinear interpolation on the square (uL, sL), (uL, sH), (uH, sH), (uL, sL)
+  B_ll <- look_tbl[.(uL, closest_r, sL), .(B)]
+  B_lh <- look_tbl[.(uL, closest_r, sH), .(B)]
+  B_hl <- look_tbl[.(uH, closest_r, sL), .(B)]
+  B_hh <- look_tbl[.(uH, closest_r, sH), .(B)]
+  
+  B <- (B_ll * (uH-focal_mu) * (sH-focal_s) +
+        B_hl * (focal_mu-uL)*(sH-focal_s) + 
+        B_lh * (uH-focal_mu) * (focal_s-sL) +
+        B_hh * (focal_mu-uL) * (focal_s-sL)) / ((uH-uL)*(sH-sL))
+  
+  return(B ^ exon_lengths)
 }
 
+options(datatable.verbose=F)
 bmaps_demo <- list(length=length(unique(B_demo_dt$N1)))
+mu <- unique(maps$u)
 for(n in 1:length(unique(B_demo_dt$N1))) {
   
   N <- unique(B_demo_dt$N1)[n]
@@ -460,7 +503,8 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
     cat(paste("Generation", gen, "\n"))
     
     tmp_lookup <- filter(B_demo_dt, Generation==gen, N1==N)
-    Ne_bar <- unique(filter(m_het_demo, Generation==gen, N1==N)$pi0) / (2 * mu)
+    Ne_bar <- unique(filter(m_het_demo,
+                     Generation==gen, N1==N, lookup_u==mu)$pi0) / (2 * mu)
     Ne_ratio <- Ne_bar / 1e+4 # ratio relative to Nanc
     B_values <- rep(1, nrow(pos_dt)) # this generation's B-values 
     gen_g_iters <- as.data.frame(matrix(ncol=nrow(pos_dt), nrow=num_iter))
@@ -478,12 +522,15 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
       pos_dt$cumrec <- cum_rec
       
       updated_B_vals <- rep(1, length(B_values))
+      pb <- txtProgressBar(min=0, max=nrow(pos_dt), style=3)
       for(j in 1:nrow(pos_dt)) { 
+        setTxtProgressBar(pb, j)
         Bs <- sapply(1:nrow(dt_exons), getB, samp_id=j,
                                              Ne_f=Ne_ratio,
                                              look_tbl=tmp_lookup)
         updated_B_vals[j] <- cumprod(Bs)[length(Bs)]
       }
+      close(pb)
       
       B_values <- updated_B_vals
       gen_g_iters[i,] <- B_values
@@ -496,7 +543,8 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
     gen_g_iters$s <- sel
     gen_g_iters$N1 <- N
     
-    fwrite(gen_g_iters, paste("gen_", gen, "_iterations_s_", sel, ".csv", sep=""))
+    fwrite(gen_g_iters, paste("gen_", gen, 
+                              "_iterations_s_", sel, ".csv", sep=""))
     
     m_iters <- pivot_longer(gen_g_iters, 
                             cols=as.character(pos_dt$position),
@@ -515,8 +563,8 @@ for(n in 1:length(unique(B_demo_dt$N1))) {
             legend.title=element_text(size=16),
             legend.position="bottom")
     
-    save_plot(paste("iter_g_", gen, "_N1_", N, "_s_", sel, ".png", sep=""), p, 
-              base_width=12, base_height=10)
+    save_plot(paste("iter_Nebar_g_", gen, "_N1_", N, "_s_", sel, ".png", sep=""),
+              p, base_width=12, base_height=10)
     
     g <- g + 1
   }
