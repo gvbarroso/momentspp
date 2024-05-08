@@ -35,7 +35,7 @@ params <- fread("params.csv")
 
 Na <- unique(params$Na)
 N1 <- unique(params$N1)
-t <- unique(params$t)
+ <- unique(params$t)
 lookup_u <- unique(params$lookup_u)
 
 demo_models <- crossing(Na, N1, t, lookup_u)
@@ -363,12 +363,12 @@ for(r in rvals) {
 
 # reset
 m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1 
-m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
-                       Hl, B, piN_pi0, piN_piS), names_to="statistic")
+#m_demo <- pivot_longer(m_het_demo, cols=c(
+#                       Hl, B, piN_pi0, piN_piS), names_to="statistic")
 
 # interpolates between r values
-Bs_demo <- filter(m_demo, statistic=="B", 
-                  Generation %in% seq(from=0, to=1e+5, by=1e+3)) # speed?
+Bs_demo <- pivot_longer(m_het_demo, cols=B, names_to="statistic") %>%
+           filter(., Generation %in% seq(from=0, to=t, by=1e+3)) # speed?
 interp <- list(length=length(unique(Bs_demo$lookup_u)) * 
                       length(unique(Bs_demo$lookup_s)) * 
                       length(unique(Bs_demo$N1)) *

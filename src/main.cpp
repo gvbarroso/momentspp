@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      model->printHetMomentsIntermediate(model->getName(), 1000);
+      model->printHetMomentsIntermediate(model->getName(), 250);
 
       fout.close();
       std::cout << "\nCheck output file " << fileName << ".\n\n";
