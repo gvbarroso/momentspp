@@ -35,7 +35,7 @@ params <- fread("params.csv")
 
 Na <- unique(params$Na)
 N1 <- unique(params$N1)
- <- unique(params$t)
+t <- unique(params$t)
 lookup_u <- unique(params$lookup_u)
 
 demo_models <- crossing(Na, N1, t, lookup_u)
