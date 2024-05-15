@@ -20,7 +20,7 @@ library(data.table)
 library(reticulate)
 use_python("/usr/bin/python3")
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/orders/100k")
 ```
 
 This is an empty python chunk.
@@ -37,19 +37,20 @@ assembly of whole chromosomes
 
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
-Na <- 1e+4 # ancestral N
-N1 <- c(Na / 10, 10 * Na) # current N
+Na <- 1e+5 # ancestral N
+N1 <- Na # c(Na / 10, 10 * Na) # current N
 N2 <- c(N1, Na)
 t <- 250000 # in generations
 
 options(digits=16)
 
 # rounding is required so that directory names don't diverge due to precision
-lookup_u <- round(seq_log(from=4e-9, to=1e-8, length.out=20), digits=10)
+lookup_u <- 1e-8 #round(seq_log(from=4e-9, to=1e-8, length.out=10), digits=10)
 lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=20),
                   seq(from=1e-4, to=1e-2, length.out=20))), digits=10)
-lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=20), 
-                   seq_log(from=7.5e-5, to=1e-3, length.out=60))), digits=10)
+lookup_s <- c(-1e-3, -1e-4)
+  #round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=20), 
+                  #seq_log(from=7.5e-5, to=1e-3, length.out=60))), digits=10)
 
 # for discretizing Gamma distributions
 dt_u <- data.table(lookup_u)
@@ -60,7 +61,7 @@ setkey(dt_u, lookup_u)
 setkey(dt_r, lookup_r)
 setkey(dt_s, lookup_s)
 
-params <- setDT(crossing(Na, N1, t, lookup_u, lookup_r, lookup_s))
+params <- setDT(crossing(Na, N1, t, lookup_r, lookup_s, lookup_u))
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
@@ -124,12 +125,14 @@ for(i in 1:n_models) {
   cat("demes:\n")
   cat("  - name: X\n")
   cat("    epochs:\n")
-  cat("      - end_time: ")
-  cat(t)
-  cat("\n")
-  cat("        start_size: ")
-  cat(Na)
-  cat("\n")
+  if(N1 != Na) {
+    cat("      - end_time: ")
+    cat(t)
+    cat("\n")
+    cat("        start_size: ")
+    cat(Na)
+    cat("\n")
+  }
   cat("      - end_time: 0\n")
   cat("        start_size: ")
   cat(N1)
@@ -173,12 +176,14 @@ for(N in N1) {
     cat("demes:\n")
     cat("  - name: X\n")
     cat("    epochs:\n")
-    cat("      - end_time: ")
-    cat(t)
-    cat("\n")
-    cat("        start_size: ")
-    cat(Na)
-    cat("\n")
+    if(N1 != Na) {
+      cat("      - end_time: ")
+      cat(t)
+      cat("\n")
+      cat("        start_size: ")
+      cat(Na)
+      cat("\n")
+    }
     cat("      - end_time: 0\n")
     cat("        start_size: ")
     cat(N)
