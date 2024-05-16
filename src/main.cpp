@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 25/03/2024
+ * Last modified: 15/05/2024
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 22/Apr/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 15/May/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -207,11 +207,11 @@ int main(int argc, char *argv[]) {
       model->getIndependentParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
-      std::string fileName = model->getName() + "_expectations.txt";
+      std::string fileName = model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()) + "_expectations.txt";
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      model->printHetMomentsIntermediate(model->getName(), 250);
+      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()), 250);
 
       fout.close();
       std::cout << "\nCheck output file " << fileName << ".\n\n";

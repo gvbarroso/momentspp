@@ -20,7 +20,7 @@ library(data.table)
 library(reticulate)
 use_python("/usr/bin/python3")
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/orders/100k")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study")
 ```
 
 This is an empty python chunk.
@@ -38,19 +38,18 @@ assembly of whole chromosomes
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
 Na <- 1e+5 # ancestral N
-N1 <- Na # c(Na / 10, 10 * Na) # current N
+N1 <- c(Na / 10) # current N
 N2 <- c(N1, Na)
 t <- 250000 # in generations
 
 options(digits=16)
 
 # rounding is required so that directory names don't diverge due to precision
-lookup_u <- 1e-8 #round(seq_log(from=4e-9, to=1e-8, length.out=10), digits=10)
-lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=20),
-                  seq(from=1e-4, to=1e-2, length.out=20))), digits=10)
-lookup_s <- c(-1e-3, -1e-4)
-  #round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=20), 
-                  #seq_log(from=7.5e-5, to=1e-3, length.out=60))), digits=10)
+lookup_u <- round(seq_log(from=4e-9, to=1e-8, length.out=5), digits=10)
+lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=10),
+                  seq(from=1e-4, to=1e-2, length.out=10))), digits=10)
+lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=10), 
+                  seq_log(from=7.5e-5, to=1e-3, length.out=10))), digits=10)
 
 # for discretizing Gamma distributions
 dt_u <- data.table(lookup_u)
@@ -223,6 +222,7 @@ Computes summary statistics for each parameter combination in lookup_tbl
 
 for r in r_*
 do
+  date
   cd $r
   for s in s_*
   do
@@ -231,22 +231,20 @@ do
     do
       cd $u
       for f in model_*.yaml
-      for f in model_*.yaml
       do
-        # this is to get the correct Order of (1-2p)
-        # which is a function of 2Ns
-        N=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
-	      x=$(sed '23q;d' $f | cut -d : -f 2 | cut -d [ -f 2 | cut -d ] -f 1)
-	      s=$(echo "scale=10; $x" | bc)
-	      a=$(echo "scale=10; 2 * $N * $s - 5" | bc)
-	      b=${a%.*}
-	      z=$(($b * -1))
-	      if [[ $z -gt 25 ]]
+	      N=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
+        x=$(sed '23q;d' $f | cut -d : -f 2 | cut -d [ -f 2 | cut -d ] -f 1)
+        s=$(echo "scale=10; $x" | bc)
+	      a=$(echo "scale=10; $N * $s" | bc)
+	      if [[ $(echo "$a < -1" | bc) == 1 ]]
 	      then
-          momentspp params=opt.bpp F=$f O=$z > /dev/null
+	        b=${a%.*}
+	        z=$(($b * -1))
+	        w=$((8 * $z))
+  	      momentspp params=opt.bpp F=$f O=$w > /dev/null
         else
-          momentspp params=opt.bpp F=$f O=25 > /dev/null
-        fi
+	        momentspp params=opt.bpp F=$f O=10 > /dev/null
+	      fi
       done
       cd ..
     done
@@ -254,6 +252,7 @@ do
   done
   cd ..
 done
+
 
 cd demo
 for f in model_*
