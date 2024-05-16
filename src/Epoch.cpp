@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 05/04/2024
+ * Last modified: 16/05/2024
  *
  */
 
@@ -83,7 +83,7 @@ void Epoch::printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream
     for(size_t j = 0; j < tmp.size(); ++j)
     {
       if(tmp[j]->getName() == "Hr_0_0" || tmp[j]->getName() == "Hl_0_0")
-        stream << std::setprecision(16) << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n";
+        stream << std::setprecision(16) << tmp[j]->getName() << " = " << y[j] << " " << i * interval << "\n";
     }
 
     y = transitionMatrix_.pow(interval) * y;

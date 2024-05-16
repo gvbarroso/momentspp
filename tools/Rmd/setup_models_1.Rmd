@@ -20,7 +20,7 @@ library(data.table)
 library(reticulate)
 use_python("/usr/bin/python3")
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study/")
 ```
 
 This is an empty python chunk.
@@ -37,31 +37,29 @@ assembly of whole chromosomes
 
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
-Na <- 1e+5 # ancestral N
+Na <- 1e+4 # ancestral N
 N1 <- c(Na / 10) # current N
-N2 <- c(N1, Na)
-t <- 250000 # in generations
+t <- 50000 # in generations
 
 options(digits=16)
 
 # rounding is required so that directory names don't diverge due to precision
-lookup_u <- round(seq_log(from=4e-9, to=1e-8, length.out=5), digits=10)
-lookup_r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=10),
-                  seq(from=1e-4, to=1e-2, length.out=10))), digits=10)
-lookup_s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=10), 
-                  seq_log(from=7.5e-5, to=1e-3, length.out=10))), digits=10)
+uL <-1e-8
+r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=10),
+                  seq(from=1e-4, to=1e-2, length.out=10), 0)), digits=12)
+s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=10), 
+                   seq_log(from=7.5e-5, to=1e-3, length.out=10), 0)), digits=12)
 
 # for discretizing Gamma distributions
-dt_u <- data.table(lookup_u)
-dt_r <- data.table(lookup_r)
-dt_s <- data.table(lookup_s)
+dt_u <- data.table(uL)
+dt_r <- data.table(r)
+dt_s <- data.table(s)
 
-setkey(dt_u, lookup_u)
-setkey(dt_r, lookup_r)
-setkey(dt_s, lookup_s)
+setkey(dt_u, uL)
+setkey(dt_r, r)
+setkey(dt_s, s)
 
-params <- setDT(crossing(Na, N1, t, lookup_r, lookup_s, lookup_u))
-params$scenario <- 1:nrow(params)
+params <- setDT(crossing(Na, N1, t, r, s, uL))
 n_models <- nrow(params)
 
 fwrite(dt_u, "u.csv", col.names=F)
@@ -110,9 +108,9 @@ for(i in 1:n_models) {
   Na <- as.integer(params[i,]$Na)
   N1 <- as.integer(params[i,]$N1)
   t <- as.integer(params[i,]$t)
-  u <- as.numeric(params[i,]$lookup_u)
-  r <- as.numeric(params[i,]$lookup_r)
-  s <- as.numeric(params[i,]$lookup_s)
+  u <- as.numeric(params[i,]$uL)
+  r <- as.numeric(params[i,]$r)
+  s <- as.numeric(params[i,]$s)
   
   name <- paste("model_", i, sep="")
   sink(paste("r_", r, 
@@ -165,7 +163,7 @@ for(i in 1:n_models) {
 Na <- as.integer(unique(params$Na))
 N1 <- as.integer(unique(params$N1))
 t <- as.integer(unique(params$t))
-u <- as.numeric(unique(params$lookup_u))
+u <- as.numeric(unique(params$uL))
 
 c <- 1
 for(N in N1) {
@@ -220,9 +218,13 @@ Computes summary statistics for each parameter combination in lookup_tbl
 
 #!/bin/bash
 
+i=1
+nr=$(wc -l r.csv | cut -d ' ' -f 1)
+
 for r in r_*
 do
   date
+  echo "$i of $nr"
   cd $r
   for s in s_*
   do
@@ -232,16 +234,29 @@ do
       cd $u
       for f in model_*.yaml
       do
-	      N=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
+	      Na=$(sed '6q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
+	      N1=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
+	      Ne=$Na
+	      if [[ $N1 -gt $Na ]]
+        then
+	        Ne=$N1
+	      fi
         x=$(sed '23q;d' $f | cut -d : -f 2 | cut -d [ -f 2 | cut -d ] -f 1)
         s=$(echo "scale=10; $x" | bc)
-	      a=$(echo "scale=10; $N * $s" | bc)
-	      if [[ $(echo "$a < -1" | bc) == 1 ]]
+	      a=$(echo "scale=10; $Ne * $s" | bc)
+        if [[ $(echo "$a < -1" | bc) == 1 ]]
 	      then
 	        b=${a%.*}
-	        z=$(($b * -1))
-	        w=$((8 * $z))
-  	      momentspp params=opt.bpp F=$f O=$w > /dev/null
+	        Ns=$(($b * -1))
+	        if [[ $Ns -lt 10 ]]
+	        then
+  	        momentspp params=opt.bpp F=$f O=50 > /dev/null
+  	      elif [[ $Ns -lt 50 ]]
+  	      then 
+  	        momentspp params=opt.bpp F=$f O=200 > /dev/null
+  	      else
+  	        momentspp params=opt.bpp F=$f O=300 > /dev/null
+  	      fi
         else
 	        momentspp params=opt.bpp F=$f O=10 > /dev/null
 	      fi
@@ -251,11 +266,12 @@ do
     cd ..
   done
   cd ..
+  i=$(($i + 1))
 done
 
-
+# get pi0 over time
 cd demo
-for f in model_*
+for f in *yaml
 do 
   momentspp params=opt.bpp F=$f O=2
 done
@@ -267,24 +283,23 @@ Collects lookup table with Hr values on the parameter grid
 
 params <- fread("params.csv")
 
-lookup_r <- unique(params$lookup_r)
-lookup_s <- unique(params$lookup_s)
-lookup_u <- unique(params$lookup_u)
+lookup_r <- unique(params$r)
+lookup_s <- unique(params$s)
+lookup_u <- unique(params$uL)
 
 n_models <- nrow(params)
 t <- unique(params$t)
-sampling_times <- seq(from=t, to=0, by=-250)
+sampling_times <- seq(from=0, to=t, by=250)
 
-# Het stats over time
+# Het stats over time (include steady-state and present-time)
 hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
 hls <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
 
 names(hrs) <- as.character(sampling_times)
 names(hls) <- as.character(sampling_times)
 
-# Het stats at present time
-hr <- numeric(length=n_models)
-hl <- numeric(length=n_models)
+hrs$Order <- 0
+hls$Order <- 0
 
 for(i in 1:length(lookup_r)) {
   cat(paste(i, "\n"))
@@ -297,15 +312,12 @@ for(i in 1:length(lookup_r)) {
       
       for(l in 1:length(fnames)) {
         moms <- fread(fnames[l])
-        idx <- as.numeric(strsplit(strsplit(fnames[l], "_e_1")[[1]][1], 
-                                   "model_")[[1]][2])
+        str_sides <- strsplit(fnames[l], "_O_")[[1]]
+        idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
+        order <- as.numeric(strsplit(str_sides[2], "_e_1")[[1]][1])
         
-        hls[idx,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
-        hrs[idx,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
-        
-        # expectations at present time
-        hl[idx] <- moms[nrow(moms) - 1, 3]
-        hr[idx] <- moms[nrow(moms), 3]
+        hls[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3)), order)
+        hrs[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3)), order)
       }
     }
   }

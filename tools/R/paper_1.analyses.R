@@ -36,18 +36,18 @@ params <- fread("params.csv")
 Na <- unique(params$Na)
 N1 <- unique(params$N1)
 t <- unique(params$t)
-lookup_u <- unique(params$lookup_u)
+uL <- unique(params$uL)
 
-demo_models <- crossing(Na, N1, t, lookup_u)
+demo_models <- crossing(Na, N1, t, uL)
 num_demo_models <- nrow(demo_models)
-sampling_times <- seq(from=t, to=0, by=-1000)
+sampling_times <- seq(from=t, to=0, by=-250)
 pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
 for(i in 1:num_demo_models) {
   
   moms <- read.csv(paste("demo/model_", i, 
-                      "_e_1_expectations.txt", sep=""), sep=" ", header=F)
+                      "_O_2_e_1_expectations.txt", sep=""), sep=" ", header=F)
   
   pi0[i,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
 }
@@ -62,11 +62,11 @@ m_pi0$Generation <- as.numeric(m_pi0$Generation)
 
 N.labs <- paste("Model ", 1:num_demo_models)
 names(N.labs) <- rep(as.character(unique(demo_models$N1)),
-                     length(unique(demo_models$lookup_u)))
+                     length(unique(demo_models$uL)))
 
 c <- 1
-for(mu in lookup_u) {
-  p <- ggplot(data=filter(m_pi0, lookup_u==mu), aes(x=Generation, y=pi0)) + 
+for(mu in uL) {
+  p <- ggplot(data=filter(m_pi0, uL==mu), aes(x=Generation, y=pi0)) + 
     facet_wrap(~N1, labeller=labeller(N1=N.labs[c:(c+1)])) +
     geom_point(size=0.5) + geom_line() + theme_bw() + 
     labs(title=paste("Trajectory of Heterozygosity after size change, u =", mu), 
@@ -85,7 +85,7 @@ for(mu in lookup_u) {
   c <- c + 1
 }
 
-d <- ggplot(data=filter(demo_models, lookup_u==lookup_u[1])) + theme_bw() + 
+d <- ggplot(data=filter(demo_models, uL==uL[1])) + theme_bw() + 
      facet_wrap(~N1, labeller=labeller(N1=N.labs)) +
      geom_segment(aes(x=0, xend=t, y=N1, yend=N1), linewidth=1.5) +
      geom_segment(aes(x=t, xend=t, y=N1, yend=Na), linewidth=1.5) +
@@ -105,14 +105,14 @@ d <- ggplot(data=filter(demo_models, lookup_u==lookup_u[1])) + theme_bw() +
 
 save_plot("demo/demo_models.png", d, base_height=8, base_width=16)
 
-look_s <- setDT(as.data.frame(unique(params$lookup_s)))
-look_r <- setDT(as.data.frame(unique(params$lookup_r)))
+look_s <- setDT(as.data.frame(unique(params$s)))
+look_r <- setDT(as.data.frame(unique(params$r)))
 
-names(look_r) <- "lookup_r"
-names(look_s) <- "lookup_s"
+names(look_r) <- "r"
+names(look_s) <- "s"
 
-setkey(look_r, lookup_r)
-setkey(look_s, lookup_s)
+setkey(look_r, r)
+setkey(look_s, s)
 
 hl_demo <- fread("hl_time.csv.gz")
 hr_demo <- fread("hr_time.csv.gz")
@@ -127,55 +127,77 @@ m_het_demo <- pivot_longer(hr_demo, cols=as.character(sampling_times),
                           names_to="Generation", values_to="Hr")
 m_het_demo$Generation <- as.numeric(m_het_demo$Generation)
 m_het_demo <- setDT(m_het_demo)
-setkey(m_het_demo, N1, lookup_u, lookup_r, lookup_s, Generation)
+setkey(m_het_demo, N1, uL, r, s, Generation)
 
 m_het_demo <- left_join(m_het_demo, dplyr::select(m_pi0,
-                        -c(Na, t)), by=c("N1", "Generation", "lookup_u"))
-m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0) ^ 1000 # exons have L sites
-m_het_demo$scaled_Hr <- m_het_demo$pi0 * m_het_demo$B
+                        -c(Na, t)), by=c("N1", "Generation", "uL"))
+m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0)
+m_het_demo$uR <- m_het_demo$uL
   
 hl_gen <- pivot_longer(hl_demo, cols=as.character(sampling_times),
                        names_to="Generation", values_to="Hl")
 hl_gen$Generation <- as.numeric(hl_gen$Generation)
 hl_gen <- setDT(hl_gen)
-hl_gen <- arrange(hl_gen, scenario, Generation)
-setkey(hl_gen, N1, lookup_u, lookup_r, lookup_s, Generation)
+hl_gen <- arrange(hl_gen, Generation)
+setkey(hl_gen, N1, uL, r, s, Generation)
+hl_gen$uR <- hl_gen$uL
 
 m_het_demo$Hl <- hl_gen$Hl
 m_het_demo$piN_pi0 <- m_het_demo$Hl / m_het_demo$pi0
-m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$scaled_Hr
+m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$Hr
 
-fwrite(m_het_demo, "stats_demo.csv")
+fwrite(m_het_demo, "mpp_stats_demo.csv.gz")
 
-m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, scaled_Hr, 
-                       Hl, B, piN_pi0, piN_piS), names_to="statistic")
+m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, Hl, B, piN_pi0, piN_piS), 
+                       names_to="statistic")
 
-svals <-  c(unique(m_demo$lookup_s)[1],
-            unique(m_demo$lookup_s)[54], 
-            unique(m_demo$lookup_s)[70])
+x <- filter(m_demo, s==-1e-4, r==1e-4, Generation==2.5e+5, statistic=="B")
+p <- ggplot(data=x, aes(x=uL, y=value)) + 
+  geom_point() + theme_bw() + geom_line() +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks())
 
-rvals <-  c(unique(m_demo$lookup_r)[1],
-            unique(m_demo$lookup_r)[9], 
-            unique(m_demo$lookup_r)[13],
-            unique(m_demo$lookup_r)[20],
-            unique(m_demo$lookup_r)[30])
+z <- as.data.frame(matrix(ncol=2, nrow=length(unique(x$uL))))
+L <- 1e+3
+c <- 1
+for(mu in unique(x$uL)) {
+  x1 <- filter(x, uL==mu)$value
+  y1 <- x1 ^ L
+  
+  x2 <- filter(x, uL==1e-8)$value
+  y2 <- x2 ^ ((mu / 1e-8) * L)
+  
+  z[c, 1] <- y1
+  z[c, 2] <- y2
+  
+  c <- c + 1
+}
+plot(z$V1 / z$V2)
 
-for(r in rvals) {
+svals <-  c(unique(m_demo$s)[1],
+            unique(m_demo$s)[2], 
+            unique(m_demo$s)[3])
+
+rvals <-  c(unique(m_demo$r)[1],
+            unique(m_demo$r)[2], 
+            unique(m_demo$r)[3])
+
+for(rec in rvals) {
   for(mom in unique(m_demo$statistic)) {
     
     plot_list <- list(length=length(svals))
     c <- 1
     
-    for(s in svals) {
-      p <- ggplot(data=filter(m_demo, statistic==mom, lookup_u==1e-8,
-                              lookup_s==s, lookup_r==r),
+    for(sel in svals) {
+      p <- ggplot(data=filter(m_demo, statistic==mom, 
+                              uL==1e-8, s==sel, r==rec),
                   aes(x=Generation, y=value)) + 
         geom_point() + theme_bw() + geom_line() + facet_wrap(~as.factor(N1)) +
         scale_x_continuous(breaks=pretty_breaks()) +
         scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none")
       if(c==length(svals)) {
         p <- p + labs(title=NULL, x="Generation", 
-                      y=paste(mom, "(s=", s, ")", sep="")) +
+                      y=paste(mom, "(s=", sel, ")", sep="")) +
           theme(axis.title=element_text(size=16), 
                 axis.text=element_text(size=12), 
                 axis.text.x=element_text(size=12),
@@ -184,8 +206,8 @@ for(r in rvals) {
                 legend.position="none")
       } else if(c==1) {
         p <- p + labs(title=paste("Temporal dynamics after a size change, u=",
-                                  1e-8, "_r=", r, sep=""),
-                      x=NULL, y=paste(mom, "(s=", s, ")", sep="")) +
+                                  1e-8, "_r=", rec, sep=""),
+                      x=NULL, y=paste(mom, "(s=", sel, ")", sep="")) +
           theme(axis.title=element_text(size=16), 
                 axis.text=element_text(size=12), 
                 axis.text.x=element_blank(),
@@ -193,7 +215,7 @@ for(r in rvals) {
                 legend.title=element_text(size=16),
                 legend.position="none")
       } else {
-        p <- p + labs(title=NULL, x=NULL, y=paste(mom, "(s=", s, ")", sep="")) +
+        p <- p + labs(title=NULL, x=NULL, y=paste(mom, "(s=", sel, ")", sep="")) +
           theme(axis.title=element_text(size=16), 
                 axis.text=element_text(size=12), 
                 axis.text.x=element_blank(),
@@ -207,24 +229,24 @@ for(r in rvals) {
     }
     
     mom_plot <- plot_grid(plotlist=plot_list, ncol=1, align='v')
-    save_plot(paste(mom, "_time_u_1e-8_r_", r, ".png", sep=""),
+    save_plot(paste(mom, "_time_u_1e-8_r_", rec, ".png", sep=""),
               mom_plot, base_height=10, base_width=12)
   }
 }
 
-r <- ggplot(data=filter(m_demo, Generation==1e+5, 
-                        lookup_s %in% c(unique(m_demo$lookup_s)[1],
-                                        unique(m_demo$lookup_s)[20],
-                                        unique(m_demo$lookup_s)[54], 
-                                        unique(m_demo$lookup_s)[62],
-                                        unique(m_demo$lookup_s)[70]),
-                        lookup_u %in% c(unique(m_demo$lookup_u)[1],
-                                        unique(m_demo$lookup_u)[15]), 
-                        N1==1e+5, statistic=="B"),
-       aes(x=lookup_r, y=value)) + 
+r <- ggplot(data=filter(m_demo, Generation==2.5e+5, 
+                        s %in% c(unique(m_demo$s)[1],
+                                 unique(m_demo$s)[2],
+                                 unique(m_demo$s)[3]), 
+                                 #unique(m_demo$s)[15],
+                                 #unique(m_demo$s)[20]),
+                        uL %in% c(unique(m_demo$uL)[1],
+                                  unique(m_demo$uL)[5]), 
+                        N1==1e+3, statistic=="B"),
+       aes(x=r, y=value)) + 
   geom_point() + theme_bw() + geom_line() + 
-  facet_grid(as.factor(lookup_u)~as.factor(lookup_s)) +
-  scale_x_log10(breaks=unique(m_demo$lookup_r)) +
+  facet_grid(as.factor(uL)~as.factor(s)) +
+  scale_x_log10(breaks=unique(m_demo$r)) +
   scale_y_continuous(breaks=pretty_breaks()) + guides(alpha="none") +
   labs(title="B~r, cols->s, rows->mu", x="r", y="B") +
   theme(axis.title=element_text(size=16), 
@@ -236,15 +258,15 @@ r <- ggplot(data=filter(m_demo, Generation==1e+5,
 
 save_plot("B_r.png", r, base_height=8, base_width=16)
 
-s <- ggplot(data=filter(m_demo, N1==1e+5, Generation==1e+5, statistic=="B",
-                        lookup_u %in% c(unique(m_demo$lookup_u)[1],
-                                        unique(m_demo$lookup_u)[15]),
-                        lookup_r %in% c(unique(m_demo$lookup_r)[1],
-                                        unique(m_demo$lookup_r)[12], 
-                                        unique(m_demo$lookup_r)[15],
-                                        unique(m_demo$lookup_r)[20])),
-            aes(x=-lookup_s, y=value)) + 
-  facet_grid(as.factor(lookup_u)~as.factor(lookup_r)) +
+s <- ggplot(data=filter(m_demo, N1==1e+3, Generation==2.5e+5, statistic=="B",
+                        uL %in% c(unique(m_demo$uL)[1],
+                                  unique(m_demo$uL)[15]),
+                        r %in% c(unique(m_demo$r)[1],
+                                        unique(m_demo$r)[2], 
+                                        unique(m_demo$r)[3],
+                                        unique(m_demo$r)[15])),
+            aes(x=-s, y=value)) + 
+  facet_grid(as.factor(uL)~as.factor(r)) +
   geom_point() + theme_bw() + geom_line() + 
   scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
   scale_y_log10(breaks=pretty_breaks()) + 
@@ -257,16 +279,16 @@ s <- ggplot(data=filter(m_demo, N1==1e+5, Generation==1e+5, statistic=="B",
 
 save_plot("B_s.png", s, base_height=10, base_width=16)
 
-s2 <- ggplot(data=filter(m_demo, N1==1e+5, Generation==1e+5, 
+s2 <- ggplot(data=filter(m_demo, N1==1e+3, Generation==2.5e+5, 
                         statistic==c("piN_pi0", "piN_piS"),
-                        lookup_u %in% c(unique(m_demo$lookup_u)[1],
-                                        unique(m_demo$lookup_u)[15]),
-                        lookup_r %in% c(unique(m_demo$lookup_r)[1],
-                                        unique(m_demo$lookup_r)[12], 
-                                        unique(m_demo$lookup_r)[15],
-                                        unique(m_demo$lookup_r)[20])),
-            aes(x=-lookup_s, y=value, color=statistic)) + 
-  facet_grid(as.factor(lookup_u)~as.factor(lookup_r)) +
+                        uL %in% c(unique(m_demo$uL)[1],
+                                  unique(m_demo$uL)[15]),
+                        r %in% c(unique(m_demo$r)[1],
+                                 unique(m_demo$r)[5], 
+                                 unique(m_demo$r)[10],
+                                 unique(m_demo$r)[15])),
+            aes(x=-s, y=value, color=statistic)) + 
+  facet_grid(as.factor(uL)~as.factor(r)) +
   geom_point() + theme_bw() + geom_line() + 
   scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
   scale_y_log10(breaks=pretty_breaks()) + 
@@ -279,7 +301,7 @@ s2 <- ggplot(data=filter(m_demo, N1==1e+5, Generation==1e+5,
 
 save_plot("piN_piX_s.png", s2, base_height=10, base_width=16)
 
-d_stats <- filter(m_het_demo, lookup_u==1e-8) %>% 
+d_stats <- filter(m_het_demo, uL==1e-8) %>% 
      group_by(scenario) %>% 
      reframe(N1=N1, lookup_r=lookup_r, lookup_s=lookup_s, Generation=Generation,
              d_pi0=-c(diff(pi0)[1], diff(pi0))/pi0,
