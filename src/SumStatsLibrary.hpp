@@ -158,6 +158,7 @@ public:
 
   void readStatsFromFile(const std::string& fileName);
 
+  // this assumes a maximum population count of 2 (speed constraint imposed by selection) and is used for convenience in the Drift operator
   size_t fetchOtherId(size_t id)
   {
     assert(popIndices_.size() == 2);

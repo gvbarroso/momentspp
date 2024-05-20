@@ -40,7 +40,7 @@ uL <- unique(params$uL)
 
 demo_models <- crossing(Na, N1, t, uL)
 num_demo_models <- nrow(demo_models)
-sampling_times <- seq(from=t, to=0, by=-250)
+sampling_times <- seq(from=0, to=t, by=250)
 pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
@@ -151,36 +151,13 @@ fwrite(m_het_demo, "mpp_stats_demo.csv.gz")
 m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, Hl, B, piN_pi0, piN_piS), 
                        names_to="statistic")
 
-x <- filter(m_demo, s==-1e-4, r==1e-4, Generation==2.5e+5, statistic=="B")
-p <- ggplot(data=x, aes(x=uL, y=value)) + 
-  geom_point() + theme_bw() + geom_line() +
-  scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_continuous(breaks=pretty_breaks())
-
-z <- as.data.frame(matrix(ncol=2, nrow=length(unique(x$uL))))
-L <- 1e+3
-c <- 1
-for(mu in unique(x$uL)) {
-  x1 <- filter(x, uL==mu)$value
-  y1 <- x1 ^ L
-  
-  x2 <- filter(x, uL==1e-8)$value
-  y2 <- x2 ^ ((mu / 1e-8) * L)
-  
-  z[c, 1] <- y1
-  z[c, 2] <- y2
-  
-  c <- c + 1
-}
-plot(z$V1 / z$V2)
-
 svals <-  c(unique(m_demo$s)[1],
-            unique(m_demo$s)[2], 
-            unique(m_demo$s)[3])
+            unique(m_demo$s)[10], 
+            unique(m_demo$s)[20])
 
-rvals <-  c(unique(m_demo$r)[1],
-            unique(m_demo$r)[2], 
-            unique(m_demo$r)[3])
+rvals <-  c(unique(m_demo$r)[2],
+            unique(m_demo$r)[7], 
+            unique(m_demo$r)[12])
 
 for(rec in rvals) {
   for(mom in unique(m_demo$statistic)) {

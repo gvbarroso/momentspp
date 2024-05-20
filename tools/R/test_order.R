@@ -182,3 +182,32 @@ p7 <- ggplot(data=tbl_hl, aes(x=as.factor(Order), y=Hl_diff)) +
 
 save_plot(paste("Hl_diff_s_", s, ".png", sep=""),
           p7, base_height=8, base_width=16)
+
+#################################
+#
+# 
+#
+###############################
+
+setwd("~/Devel/momentspp/debug/model_1/")
+
+O <- 20:100
+
+hrs <- as.data.frame(matrix(nrow=length(O), ncol=2))
+hls <- as.data.frame(matrix(nrow=length(O), ncol=2))
+
+c <- 1
+for(i in O) {
+  name <- paste("model_1_O_", i, "_expectations.txt", sep="")
+  moms <- fread(name)
+
+  hls[c, 1] <- dplyr::select(filter(moms, V1=="Hl_0_0"), V3)
+  hrs[c, 1] <- dplyr::select(filter(moms, V1=="Hr_0_0"), V3)
+  hls[c, 2] <- i
+  hrs[c, 2] <- i
+  
+  c <- c + 1
+}
+
+plot(x=hrs$V2, y=hrs$V1)
+plot(x=hls$V2, y=hls$V1)

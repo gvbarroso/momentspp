@@ -73,10 +73,11 @@ void Epoch::printMoments(std::ostream& stream)
     stream << std::setprecision(16) << m->getName() << " = " << m->getValue() << "\n";
 }
 
+// prints expectations of Hl and Hr over time
 void Epoch::printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream, size_t interval)
 {
   std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
-  size_t numTimeSteps = duration() / interval + 1; // prints intermediate values every interval generations
+  size_t numTimeSteps = duration() / interval + 1; // prints every interval generations
 
   for(size_t i = 0; i < numTimeSteps; ++i)
   {

@@ -38,17 +38,17 @@ assembly of whole chromosomes
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
 Na <- 1e+4 # ancestral N
-N1 <- c(Na / 10) # current N
-t <- 50000 # in generations
+N1 <- c(Na / 10, Na * 10) # current N
+t <- 250000 # in generations
 
 options(digits=16)
 
 # rounding is required so that directory names don't diverge due to precision
-uL <-1e-8
-r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=10),
-                  seq(from=1e-4, to=1e-2, length.out=10), 0)), digits=12)
-s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=10), 
-                   seq_log(from=7.5e-5, to=1e-3, length.out=10), 0)), digits=12)
+uL <- c(1e-9, 3e-8, 6e-9, 1e-8)
+r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=30),
+                  seq(from=1e-4, to=1e-2, length.out=30), 0)), digits=12)
+s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=20), 
+                   seq_log(from=7.5e-5, to=1e-3, length.out=40), 0)), digits=12)
 
 # for discretizing Gamma distributions
 dt_u <- data.table(uL)
@@ -173,14 +173,14 @@ for(N in N1) {
     cat("demes:\n")
     cat("  - name: X\n")
     cat("    epochs:\n")
-    if(N1 != Na) {
+    #if(N1 != Na) {
       cat("      - end_time: ")
       cat(t)
       cat("\n")
       cat("        start_size: ")
       cat(Na)
       cat("\n")
-    }
+    #}
     cat("      - end_time: 0\n")
     cat("        start_size: ")
     cat(N)
