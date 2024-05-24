@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
     epochs.front()->computePseudoSteadyState(); // only need to have steady state in the deep-most epoch
 
   else
-    epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath());
+    epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath()); // NOTE mind Order of (1-2p) factors
 
   //if(options.verbose())
   {

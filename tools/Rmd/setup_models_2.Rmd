@@ -127,7 +127,7 @@ do
   cd $r
   for f in *.yaml
   do
-	  momentspp params=opt.bpp F=$f O=25 > /dev/null
+	  momentspp params=opt.bpp F=$f O=100 > /dev/null
 	done
   cd ..
 done

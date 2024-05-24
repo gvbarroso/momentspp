@@ -148,6 +148,17 @@ m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$Hr
 
 fwrite(m_het_demo, "mpp_stats_demo.csv.gz")
 
+samp_gens <- c(500, 1000, 2500, 5000, 10000, 20000, 100000)
+tbl <- as.data.frame(matrix(ncol=3, nrow=length(samp_gens)))
+c <- 1
+for(g in samp_gens) {
+  tmp <- filter(m_het_demo, Generation==g)
+  tbl[c,] <- c(unique(tmp$Ne_bar), g)
+  c <- c + 1
+}
+names(tbl) <- c("Ne_bottleneck", "Ne_expansion", "Gen")
+fwrite(tbl, "Ne_tbl.csv")
+
 m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, Hl, B, piN_pi0, piN_piS), 
                        names_to="statistic")
 

@@ -20,7 +20,7 @@ library(data.table)
 library(reticulate)
 use_python("/usr/bin/python3")
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study/")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/demo_effect/")
 ```
 
 This is an empty python chunk.
@@ -44,11 +44,9 @@ t <- 250000 # in generations
 options(digits=16)
 
 # rounding is required so that directory names don't diverge due to precision
-uL <- c(1e-9, 3e-8, 6e-9, 1e-8)
-r <- round(sort(c(seq_log(from=1e-8, to=1e-3, length.out=30),
-                  seq(from=1e-4, to=1e-2, length.out=30), 0)), digits=12)
-s <- round(-sort(c(seq_log(from=1e-5, to=1e-4, length.out=20), 
-                   seq_log(from=7.5e-5, to=1e-3, length.out=40), 0)), digits=12)
+uL <- c(1e-8)
+r <- c(1e-8, 1e-6, 1e-4, 1e-2)
+s <- c(-1e-3, -1e-4, -1e-5)
 
 # for discretizing Gamma distributions
 dt_u <- data.table(uL)

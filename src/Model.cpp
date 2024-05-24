@@ -181,7 +181,7 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
 }
 
 // this method defines the relationships among moments from different epochs (w.r.t population indices)
-// when pop has 2 ancestors, pick one of them, then apply Admixture as if it were a pulse
+// when focal pop has 2 (different) ancestors, pick one of them, then apply Admixture as if it were a pulse
 void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
