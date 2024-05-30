@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 09/11/2023
+ * Last modified: 30/05/2024
  *
  */
 
@@ -83,9 +83,9 @@ void SumStatsLibrary::dropFactorIds(std::vector<size_t>& factorIds, size_t focal
   }
 }
 
-Eigen::VectorXd SumStatsLibrary::fetchYvec()
+Eigen::Matrix<long double, Eigen::Dynamic, 1> SumStatsLibrary::fetchYvec()
 {
-  Eigen::VectorXd y(moments_.size());
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> y(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
     y(i) = moments_[i]->getValue();

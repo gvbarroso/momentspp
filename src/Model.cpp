@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 26/03/2024
+ * Last modified: 30/05/2024
  *
  */
 
@@ -86,8 +86,8 @@ void Model::computeCompositeLogLikelihood_()
   double cll = 0.;
   /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
   {
-    Eigen::VectorXd obsMeans = data_->getY();
-    Eigen::MatrixXd obsCovarMat = data_->getCovarMatrix();
+    Eigen::Matrix<long double, Eigen::Dynamic, 1> obsMeans = data_->getY();
+    Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> obsCovarMat = data_->getCovarMatrix();
     cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected_ - means).transpose() * covarMat^(-1)*(expected_ - means);
   }*/
 

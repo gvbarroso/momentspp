@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 09/11/2023
+ * Last modified: 30/05/2024
  */
 
 
@@ -150,7 +150,7 @@ public:
 
   void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
 
-  Eigen::VectorXd fetchYvec();
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> fetchYvec();
 
   void printMoments(std::ostream& stream);
 

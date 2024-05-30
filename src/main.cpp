@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 28/May/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 30/May/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
   }
 
   if(options.getInitStatsFilePath() == "none")
-    epochs.front()->computePseudoSteadyState(); // only need to have steady state in the deep-most epoch
+    epochs.front()->computeEigenSteadyState(); // only need steady state in the deep-most epoch
 
   else
     epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath()); // NOTE mind Order of (1-2p) factors
@@ -211,10 +211,10 @@ int main(int argc, char *argv[]) {
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()), 1);
+      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()), options.getTimeSteps());
 
       fout.close();
-      std::cout << "\nCheck output file " << fileName << ".\n\n";
+      std::cout << "\nCheck output file " << fileName << "\n\n";
     }
 
     else

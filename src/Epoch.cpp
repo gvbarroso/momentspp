@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 16/05/2024
+ * Last modified: 30/05/2024
  *
  */
 
@@ -16,7 +16,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   {
     updateOperators_(params);
 
-    Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init
+    Eigen::SparseMatrix<long double> mat = operators_[0]->getTransitionMatrix(); // init
 
     for(size_t i = 1; i < operators_.size(); ++i)
       mat = mat * operators_[i]->getTransitionMatrix();
@@ -25,7 +25,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   }
 }
 
-void Epoch::computeExpectedSumStats(Eigen::VectorXd& y)
+void Epoch::computeExpectedSumStats(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y)
 {
   // heavy linear algebra, uses Eigen multi-threading
   y = transitionMatrix_.pow(duration()) * y;
@@ -45,9 +45,9 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
   return ret;
 }
 
-void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoch
+void Epoch::transferStatistics(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y) // y comes from previous Epoch
 {
-  Eigen::VectorXd tmp(ssl_.getBasis().size()); // y and tmp have potentially different sizes
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> tmp(ssl_.getBasis().size()); // y and tmp have potentially different sizes
   tmp.setZero();
 
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
@@ -57,7 +57,7 @@ void Epoch::transferStatistics(Eigen::VectorXd& y) // y comes from previous Epoc
   y = tmp;
 }
 
-void Epoch::updateMoments(const Eigen::VectorXd& y)
+void Epoch::updateMoments(const Eigen::Matrix<long double, Eigen::Dynamic, 1>& y)
 {
   assert(y.size() == static_cast<int>(ssl_.getBasis().size()));
 
@@ -74,7 +74,7 @@ void Epoch::printMoments(std::ostream& stream)
 }
 
 // prints expectations of Hl and Hr over time
-void Epoch::printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream, size_t interval)
+void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, std::ostream& stream, size_t interval)
 {
   std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
   size_t numTimeSteps = duration() / interval + 1; // prints every interval generations
@@ -157,7 +157,7 @@ void Epoch::computeEigenSteadyState()
 {
   testSteadyState();
   init_();
-  Eigen::EigenSolver<Eigen::MatrixXd> es(transitionMatrix_);
+  Eigen::EigenSolver<Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>> es(transitionMatrix_);
 
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
@@ -174,12 +174,12 @@ void Epoch::computeEigenSteadyState()
   updateMoments(steadYstate_);
 }
 
-void Epoch::computePseudoSteadyState()
+void Epoch::computePseudoSteadyState() // for speed
 {
   testSteadyState();
   init_();
 
-  Eigen::VectorXd y(transitionMatrix_.rows());
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> y(transitionMatrix_.rows());
 
   // a very rough guess for starting values to help w/ convergence
   size_t p = ssl_.getPopIndices()[0];
@@ -220,7 +220,7 @@ void Epoch::testSteadyState()
 
 void Epoch::init_()
 {
-  Eigen::SparseMatrix<double> mat = operators_[0]->getTransitionMatrix(); // init
+  Eigen::SparseMatrix<long double> mat = operators_[0]->getTransitionMatrix(); // init
 
   for(size_t i = 1; i < operators_.size(); ++i)
     mat = mat * operators_[i]->getTransitionMatrix();

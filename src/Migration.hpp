@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 20/04/2022
+ * Last modified: 30/05/2023
  *
  */
 
@@ -16,7 +16,7 @@ class Migration: public AbstractOperator
 {
 
 private:
-  Eigen::MatrixXd littleMigMat_; // P x P
+  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleMigMat_; // P x P
 
 public:
   Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
@@ -29,7 +29,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Migration(const Eigen::MatrixXd& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Migration(const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   littleMigMat_(migMat)
   {
@@ -56,7 +56,7 @@ public:
     return new Migration(*this);
   }
 
-  const Eigen::MatrixXd& getLittleMigMat()
+  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getLittleMigMat()
   {
     return littleMigMat_;
   }

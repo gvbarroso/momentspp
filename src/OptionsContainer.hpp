@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 06/12/2023
+ * Last modified: 30/05/2024
  *
  */
 
@@ -38,6 +38,7 @@ private:
 
   size_t numThreads_;
   size_t factorOrder_; // how many (1-2p) factors to include
+  size_t timeSteps_; // after how number of generations to print intermediate values for Hl_*_* and Hr_*_* (see interval arg in Epoch::printHetMomentsIntermediate())
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
@@ -53,7 +54,8 @@ public:
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
   verbose_(bpp::ApplicationTools::getParameter<bool>("verbose", options, false, "", true, 4)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),
-  factorOrder_(bpp::ApplicationTools::getParameter<size_t>("factor_order", options, 0, "", true, 0))
+  factorOrder_(bpp::ApplicationTools::getParameter<size_t>("factor_order", options, 0, "", true, 0)),
+  timeSteps_(bpp::ApplicationTools::getParameter<size_t>("time_steps", options, 1000, "", true, 4))
   {
     if(label_ == "moments++")
       label_ = demesFilePath_.substr(0, demesFilePath_.find(".yaml")); // convenience
@@ -123,6 +125,11 @@ public:
   size_t getFactorOrder() const
   {
     return factorOrder_;
+  }
+
+  size_t getTimeSteps() const
+  {
+    return timeSteps_;
   }
 
 };

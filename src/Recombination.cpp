@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 06/10/2023
+ * Last modified: 30/05/2024
  *
  */
 
@@ -18,7 +18,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   for(size_t i = 0; i < numPops; ++i)
   {
     size_t id = popIndices_[i];
-    std::vector<Eigen::Triplet<double>> coeffs(0);
+    std::vector<Eigen::Triplet<long double>> coeffs(0);
     coeffs.reserve(sizeOfBasis);
 
     for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
@@ -28,26 +28,26 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
       if((*it)->getPrefix() == "DD")
       {
         int f = static_cast<int>((*it)->countInstances(id));
-        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -f));
+        coeffs.emplace_back(Eigen::Triplet<long double>(row, row, -f));
       }
 
       else if((*it)->getPrefix() == "Dr")
       {
         int f = (*it)->getPopIndices()[0] == id;
-        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -f));
+        coeffs.emplace_back(Eigen::Triplet<long double>(row, row, -f));
       }
 
       else if((*it)->getPrefix() == "D")
       {
         int f = (*it)->getPopIndices()[0] == id;
-        coeffs.emplace_back(Eigen::Triplet<double>(row, row, -f));
+        coeffs.emplace_back(Eigen::Triplet<long double>(row, row, -f));
       }
 
       else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "Hl" && (*it)->getPrefix() != "Hr" && (*it)->getPrefix() != "pi2")
         throw bpp::Exception("Recombination::mis-specified Moment prefix: " + (*it)->getPrefix());
     }
 
-    Eigen::SparseMatrix<double> mat(sizeOfBasis, sizeOfBasis);
+    Eigen::SparseMatrix<long double> mat(sizeOfBasis, sizeOfBasis);
     mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
     mat.makeCompressed();
     mat *= getParameterValue("r_" + bpp::TextTools::toString(id));

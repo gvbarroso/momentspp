@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 26/03/2024
+ * Last modified: 30/05/2024
  *
  */
 
@@ -44,8 +44,8 @@ private:
   std::vector<std::shared_ptr<Population>> pops_;
   std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-  Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
-  Eigen::VectorXd steadYstate_; // based on the parameters of *this epoch
+  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> transitionMatrix_; // all sparse operators combined into a dense matrix
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> steadYstate_; // based on the parameters of *this epoch
 
 public:
   Epoch():
@@ -123,12 +123,12 @@ public:
     return startGen_ - endGen_;
   }
 
-  const Eigen::VectorXd& getSteadyState()
+  const Eigen::Matrix<long double, Eigen::Dynamic, 1>& getSteadyState()
   {
     return steadYstate_;
   }
 
-  const Eigen::MatrixXd& getTransitionMatrix()
+  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getTransitionMatrix()
   {
     return transitionMatrix_;
   }
@@ -212,15 +212,15 @@ public:
 
   std::vector<size_t> fetchSelectedPopIds(); // for *this epoch
 
-  void computeExpectedSumStats(Eigen::VectorXd& y);
+  void computeExpectedSumStats(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
 
-  void transferStatistics(Eigen::VectorXd& y);
+  void transferStatistics(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
 
-  void updateMoments(const Eigen::VectorXd& y);
+  void updateMoments(const Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
 
   void printMoments(std::ostream& stream);
 
-  void printHetMomentsIntermediate(Eigen::VectorXd& y, std::ostream& stream, size_t interval);
+  void printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, std::ostream& stream, size_t interval);
 
   void printRecursions(std::ostream& stream);
 

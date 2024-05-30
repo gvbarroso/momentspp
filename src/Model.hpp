@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 25/03/2024
+ * Last modified: 30/05/2024
  *
  */
 
@@ -41,7 +41,7 @@ private:
   std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own set of params and operators
   std::shared_ptr<Data> data_;
 
-  Eigen::VectorXd expected_;
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> expected_;
   double compLogLikelihood_;
 
 public:
@@ -98,7 +98,7 @@ public:
     return epochs_;
   }
 
-  const Eigen::VectorXd& getExpectedStats()
+  const Eigen::Matrix<long double, Eigen::Dynamic, 1>& getExpectedStats()
   {
     return expected_;
   }
