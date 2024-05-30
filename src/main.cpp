@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 16/May/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 28/May/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
       if(demes.getPulse(i).isZero(0))
       {
         std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
-        std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 1e-1 + 1e-6, true, true);
+        std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 0.1, true, true);
         std::shared_ptr<bpp::IntervalConstraint> icSel = std::make_shared<bpp::IntervalConstraint>(-1e-2, 0., true, true);
 
         std::vector<double> drift(0);
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()), 250);
+      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()), 1);
 
       fout.close();
       std::cout << "\nCheck output file " << fileName << ".\n\n";

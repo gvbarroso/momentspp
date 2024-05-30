@@ -40,7 +40,7 @@ uL <- unique(params$uL)
 
 demo_models <- crossing(Na, N1, t, uL)
 num_demo_models <- nrow(demo_models)
-sampling_times <- seq(from=0, to=t, by=250)
+sampling_times <- seq(from=0, to=t, by=1)
 pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
@@ -145,19 +145,196 @@ hl_gen$uR <- hl_gen$uL
 m_het_demo$Hl <- hl_gen$Hl
 m_het_demo$piN_pi0 <- m_het_demo$Hl / m_het_demo$pi0
 m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$Hr
+m_het_demo$Ne_bar <- m_het_demo$pi0 / (2 * m_het_demo$uL)
 
 fwrite(m_het_demo, "mpp_stats_demo.csv.gz")
 
-samp_gens <- c(500, 1000, 2500, 5000, 10000, 20000, 100000)
-tbl <- as.data.frame(matrix(ncol=3, nrow=length(samp_gens)))
+samp_gens <- sampling_times
+tbl <- as.data.frame(matrix(ncol=2, nrow=length(samp_gens)))
 c <- 1
 for(g in samp_gens) {
   tmp <- filter(m_het_demo, Generation==g)
   tbl[c,] <- c(unique(tmp$Ne_bar), g)
   c <- c + 1
 }
-names(tbl) <- c("Ne_bottleneck", "Ne_expansion", "Gen")
+names(tbl) <- c("Ne_bar", "Gen")
 fwrite(tbl, "Ne_tbl.csv")
+
+stat_slices <- filter(m_het_demo, Generation %in% samp_gens, N1==1e+3)
+y <- fread("ne_bar_ss/hr_nebar.csv.gz")
+names(y)[9] <- "Eq"
+y$Hr <- m_het_demo$Hr
+z <- pivot_longer(y, cols=c("Hr", "Eq"), names_to="method")
+z$pi0 <- 2 * z$Ne_bar * z$uL
+z$B <- z$value / z$pi0
+
+scaleFUN <- function(x) sprintf("%.4f", x)
+
+w1 <- ggplot(data=z, aes(x=-s, y=B, color=method)) + 
+  facet_grid(as.factor(r)~as.factor(Generation)) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
+  scale_y_continuous(breaks=pretty_breaks(), labels=scaleFUN) + 
+  labs(title=NULL, x="-s", y="B-value") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("B_demo_vs_eq_s.png", w1, base_height=8, base_width=16)
+
+w2 <- ggplot(data=z, aes(x=Generation, y=B, color=method)) + 
+  facet_grid(as.factor(r)~as.factor(s)) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks(), labels=scaleFUN) + 
+  labs(title=NULL, x="Gen", y="B-value") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("B_demo_vs_eq_time.png", w2, base_height=8, base_width=16)
+
+for(g in sampling_times) {
+  wi <- ggplot(data=filter(z, Generation==g), aes(x=-s, y=value, color=method)) + 
+    facet_wrap(~as.factor(r)) +
+    geom_point() + theme_bw() + geom_line() + 
+    scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
+    scale_y_log10(breaks=pretty_breaks()) + 
+    labs(title=NULL, x="-s", y="Hr") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+          legend.text=element_text(size=16),
+          legend.title=element_text(size=16),
+          legend.position="bottom")
+  
+  save_plot(paste("Hr_", g, ".png", sep=""), wi, base_height=8, base_width=16)
+}
+
+
+tbl <- fread("hr.csv.gz")
+tbl <- filter(tbl, Order < 300)
+tbl$B <- tbl$Hr / (2 * tbl$Na * tbl$uL)
+tbl$B_scaled <- tbl$B ^ 1e+5
+
+a1 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=r, y=B)) + 
+  facet_wrap(~as.factor(s)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=round(unique(tbl$r)[17:26], digits=3)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="r", y="B-value") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_r_s.png", sep=""), a1, base_height=12, base_width=16)
+
+a2 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=r, y=B)) + 
+  facet_wrap(~as.factor(s)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_log10(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="r", y="B-value") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_r_s_log.png", sep=""), a2, base_height=12, base_width=16)
+
+b1 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=s, y=B)) + 
+  facet_wrap(~as.factor(r)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="s", y="B-value") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_s_r.png", sep=""), b1, base_height=12, base_width=16)
+
+b2 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=-s, y=B)) + 
+  facet_wrap(~as.factor(r)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_log10(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="-s", y="B-value") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_s_r_log.png", sep=""), b2, base_height=12, base_width=16)
+
+c1 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=r, y=B_scaled)) + 
+  facet_wrap(~as.factor(s)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=round(unique(tbl$r)[17:26], digits=3)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="r", y="B-value ^ 1e+5") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_scaled_r_s.png", sep=""), c1, base_height=12, base_width=16)
+
+c2 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=r, y=B_scaled)) + 
+  facet_wrap(~as.factor(s)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_log10(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="r", y="B-value ^ 1e+5") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_scaled_r_s_log.png", sep=""), c2, base_height=12, base_width=16)
+
+d1 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=s, y=B_scaled)) + 
+  facet_wrap(~as.factor(r)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="s", y="B-value ^ 1e+5") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_scaled_s_r.png", sep=""), d1, base_height=12, base_width=16)
+
+d2 <- ggplot(data=filter(tbl, r > 0, s < -1.3e-5), aes(x=-s, y=B_scaled)) + 
+  facet_wrap(~as.factor(r)) +
+  geom_hline(aes(yintercept=1, color="red")) +
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_log10(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="-s", y="B-value ^ 1e+5") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+save_plot(paste("B_scaled_s_r_log.png", sep=""), d2, base_height=12, base_width=16)
+
 
 m_demo <- pivot_longer(m_het_demo, cols=c(pi0, Hr, Hl, B, piN_pi0, piN_piS), 
                        names_to="statistic")
