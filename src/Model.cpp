@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 30/05/2024
+ * Last modified: 06/06/2024
  *
  */
 
@@ -55,13 +55,7 @@ void Model::printHetMomentsIntermediate(const std::string& modelName, size_t int
   auto steady = epochs_[0]->getSteadyState();
 
   for(size_t i = 1; i < epochs_.size(); ++i)
-  {
-    std::string fileName = modelName + "_" +  epochs_[i]->getName() + "_expectations.txt";
-    std::ofstream fout(fileName);
-
-    epochs_[i]->printHetMomentsIntermediate(steady, fout, interval);
-    fout.close();
-  }
+    epochs_[i]->printHetMomentsIntermediate(steady, modelName, interval);
 }
 
 void Model::printAliasedMoments(std::ostream& stream)

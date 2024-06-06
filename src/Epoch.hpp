@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 30/05/2024
+ * Last modified: 06/06/2024
  *
  */
 
@@ -220,7 +220,7 @@ public:
 
   void printMoments(std::ostream& stream);
 
-  void printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, std::ostream& stream, size_t interval);
+  void printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, const std::string& name, size_t interval);
 
   void printRecursions(std::ostream& stream);
 

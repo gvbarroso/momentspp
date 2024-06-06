@@ -134,7 +134,7 @@ for(i in 1:n_models) {
   }
   cat("      - end_time: 0\n")
   cat("        start_size: ")
-  cat(Na)
+  cat(N1)
   cat("\n")
   cat("metadata:\n")
   cat("  - name: mutation\n")
@@ -291,11 +291,11 @@ lookup_u <- unique(params$uL)
 
 n_models <- nrow(params)
 t <- unique(params$t)
-sampling_times <- seq(from=0, to=t, by=10)
+sampling_times <- seq(from=0, to=t, by=100)
 
 # Het stats over time (include steady-state and present-time)
-hrs <- as.data.frame(matrix(nrow=n_models, ncol=1))#length(sampling_times)))
-hls <- as.data.frame(matrix(nrow=n_models, ncol=1))#length(sampling_times)))
+hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
+hls <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
 
 names(hrs) <- as.character(sampling_times)
 names(hls) <- as.character(sampling_times)
@@ -316,7 +316,7 @@ for(i in 1:length(lookup_r)) {
         moms <- fread(fnames[l])
         str_sides <- strsplit(fnames[l], "_O_")[[1]]
         idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
-        order <- as.numeric(strsplit(str_sides[2], "_expectations.txt")[[1]][1])
+        order <- as.numeric(strsplit(str_sides[2], "_e_1_expectations.txt")[[1]][1])
         
         hls[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3)), order)
         hrs[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3)), order)

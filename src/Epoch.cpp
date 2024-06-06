@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 30/05/2024
+ * Last modified: 06/06/2024
  *
  */
 
@@ -74,8 +74,11 @@ void Epoch::printMoments(std::ostream& stream)
 }
 
 // prints expectations of Hl and Hr over time
-void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, std::ostream& stream, size_t interval)
+void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, const std::string& modelName, size_t interval)
 {
+  std::string fileName = modelName + "_" + name_ + "_hets_time.txt";
+  std::ofstream fout(fileName);
+
   std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
   size_t numTimeSteps = duration() / interval + 1; // prints every interval generations
 
@@ -84,7 +87,7 @@ void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynami
     for(size_t j = 0; j < tmp.size(); ++j)
     {
       if(tmp[j]->getName() == "Hr_0_0" || tmp[j]->getName() == "Hl_0_0")
-        stream << std::setprecision(24) << tmp[j]->getName() << " = " << y[j] << " " << i * interval << "\n";
+        fout << std::setprecision(24) << tmp[j]->getName() << " = " << y[j] << " " << i * interval << "\n";
     }
 
     y = transitionMatrix_.pow(interval) * y;
