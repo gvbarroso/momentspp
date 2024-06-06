@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 15/05/2024
+ * Last modified: 06/06/2024
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 30/May/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 06/Jun/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the (starting) model\n";
     std::cout << "obs_stats_file = # optional, relative path to file listing observed summary statistics from sampled populations\n";
-    std::cout << "tolerance = # optional double, threshold of likelihood improvement for stopping otimization, default = 1e-6\n";
+    std::cout << "tolerance = # optional long double, threshold of likelihood improvement for stopping otimization, default = 1e-6\n";
     std::cout << "num_threads = # optional unsigned int, default = num_cores / 2\n";
 
     std::cout << "\nFor more information, please email gvbarroso@gmail.com " << std::endl;
@@ -129,10 +129,10 @@ int main(int argc, char *argv[]) {
       if(demes.getPulse(i).isZero(0))
       {
         std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1e-2, true, true);
-        std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 0.1, true, true);
+        std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 0.5 + 1e-6, true, true);
         std::shared_ptr<bpp::IntervalConstraint> icSel = std::make_shared<bpp::IntervalConstraint>(-1e-2, 0., true, true);
 
-        std::vector<double> drift(0);
+        std::vector<long double> drift(0);
         drift.reserve(demes.getPopsVec()[i].size());
 
         // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
@@ -180,20 +180,24 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if(options.verbose())
+  {
+    epochs.front()->computePseudoSteadyState();
+    std::ofstream pseudo(options.getLabel() + "_pseudo_steady-state.txt");
+    epochs.front()->printMoments(pseudo);
+    pseudo.close();
+
+    epochs.front()->computeEigenSteadyState();
+    std::ofstream eigen(options.getLabel() + "_eigen_steady-state.txt");
+    epochs.front()->printMoments(eigen);
+    eigen.close();
+  }
+
   if(options.getInitStatsFilePath() == "none")
     epochs.front()->computeEigenSteadyState(); // only need steady state in the deep-most epoch
 
   else
     epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath()); // NOTE mind Order of (1-2p) factors
-
-  //if(options.verbose())
-  {
-    std::string fileName = options.getLabel() + "_steady-state.txt";
-    std::ofstream fout(fileName);
-
-    epochs.front()->printMoments(fout);
-    fout.close();
-  }
 
   std::cout << "done.\n\nBuilding Model now.";
 

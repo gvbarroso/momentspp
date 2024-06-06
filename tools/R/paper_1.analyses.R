@@ -40,7 +40,7 @@ uL <- unique(params$uL)
 
 demo_models <- crossing(Na, N1, t, uL)
 num_demo_models <- nrow(demo_models)
-sampling_times <- seq(from=0, to=t, by=1)
+sampling_times <- seq(from=0, to=t, by=10)
 pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
@@ -53,12 +53,14 @@ for(i in 1:num_demo_models) {
 }
 
 demo_pi0 <- cbind.data.frame(demo_models, pi0)
-fwrite(demo_pi0, "demo/demo_pi0.csv")
+#fwrite(demo_pi0, "demo/demo_pi0.csv")
 
 m_pi0 <- pivot_longer(demo_pi0, 
                       cols=as.character(sampling_times),
                       names_to="Generation", values_to="pi0")
 m_pi0$Generation <- as.numeric(m_pi0$Generation)
+m_pi0$Ne_bar <- m_pi0$pi0 / 2 / m_pi0$uL
+fwrite(m_pi0, "demo/m_pi0.csv")
 
 N.labs <- paste("Model ", 1:num_demo_models)
 names(N.labs) <- rep(as.character(unique(demo_models$N1)),
@@ -127,13 +129,13 @@ m_het_demo <- pivot_longer(hr_demo, cols=as.character(sampling_times),
                           names_to="Generation", values_to="Hr")
 m_het_demo$Generation <- as.numeric(m_het_demo$Generation)
 m_het_demo <- setDT(m_het_demo)
+m_het_demo$uR <- m_het_demo$uL
 setkey(m_het_demo, N1, uL, r, s, Generation)
 
 m_het_demo <- left_join(m_het_demo, dplyr::select(m_pi0,
                         -c(Na, t)), by=c("N1", "Generation", "uL"))
 m_het_demo$B <- (m_het_demo$Hr / m_het_demo$pi0)
-m_het_demo$uR <- m_het_demo$uL
-  
+
 hl_gen <- pivot_longer(hl_demo, cols=as.character(sampling_times),
                        names_to="Generation", values_to="Hl")
 hl_gen$Generation <- as.numeric(hl_gen$Generation)
@@ -145,78 +147,175 @@ hl_gen$uR <- hl_gen$uL
 m_het_demo$Hl <- hl_gen$Hl
 m_het_demo$piN_pi0 <- m_het_demo$Hl / m_het_demo$pi0
 m_het_demo$piN_piS <- m_het_demo$Hl / m_het_demo$Hr
-m_het_demo$Ne_bar <- m_het_demo$pi0 / (2 * m_het_demo$uL)
 
 fwrite(m_het_demo, "mpp_stats_demo.csv.gz")
 
-samp_gens <- sampling_times
-tbl <- as.data.frame(matrix(ncol=2, nrow=length(samp_gens)))
-c <- 1
-for(g in samp_gens) {
-  tmp <- filter(m_het_demo, Generation==g)
-  tbl[c,] <- c(unique(tmp$Ne_bar), g)
-  c <- c + 1
-}
-names(tbl) <- c("Ne_bar", "Gen")
-fwrite(tbl, "Ne_tbl.csv")
+y <- fread("ne_bar_ss/pi0_increments/hr_eq.csv.gz")
+y$Ne_bar <- m_pi0$Ne_bar
+y$pi0 <- m_pi0$pi0
+y$B_eq <- y$Hr_eq / y$pi0
+#a <- left_join(m_het_demo, dplyr::select(y, -c(Na, N1, t, Order, r, s, uL)), by=c("Ne_bar"))
+a <- m_het_demo
+a$Hr_eq <- y$Hr_eq
+a$B_eq <- y$B_eq
+a$pi0_ratio <- a$pi0_bar / a$pi0
 
-stat_slices <- filter(m_het_demo, Generation %in% samp_gens, N1==1e+3)
-y <- fread("ne_bar_ss/hr_nebar.csv.gz")
-names(y)[9] <- "Eq"
-y$Hr <- m_het_demo$Hr
-z <- pivot_longer(y, cols=c("Hr", "Eq"), names_to="method")
-z$pi0 <- 2 * z$Ne_bar * z$uL
-z$B <- z$value / z$pi0
-
-scaleFUN <- function(x) sprintf("%.4f", x)
-
-w1 <- ggplot(data=z, aes(x=-s, y=B, color=method)) + 
-  facet_grid(as.factor(r)~as.factor(Generation)) +
+x0 <- ggplot(data=a, aes(x=Ne_bar, y=B_eq_pi0_bar, alpha=0.25)) + 
   geom_point() + theme_bw() + geom_line() + 
-  scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
-  scale_y_continuous(breaks=pretty_breaks(), labels=scaleFUN) + 
-  labs(title=NULL, x="-s", y="B-value") +
+  scale_x_continuous(breaks=seq(1000, 10000, 1000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="Ne", y="B_eq_pi0_bar") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
         axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
-        legend.position="bottom")
+        legend.position="none")
+save_plot("B_pi0_bar.png", x0, base_height=10, base_width=16)
 
-save_plot("B_demo_vs_eq_s.png", w1, base_height=8, base_width=16)
-
-w2 <- ggplot(data=z, aes(x=Generation, y=B, color=method)) + 
-  facet_grid(as.factor(r)~as.factor(s)) +
+x1 <- ggplot(data=a, aes(y=pi0_ratio, x=Ne_bar, alpha=0.25)) + 
   geom_point() + theme_bw() + geom_line() + 
-  scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_continuous(breaks=pretty_breaks(), labels=scaleFUN) + 
-  labs(title=NULL, x="Gen", y="B-value") +
+  scale_x_continuous(breaks=seq(1000, 10000, 1000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="Ne", y="pi0_bar/pi0") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
         axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
-        legend.position="bottom")
+        legend.position="none")
+save_plot("pi0_ratios.png", x1, base_height=10, base_width=16)
 
-save_plot("B_demo_vs_eq_time.png", w2, base_height=8, base_width=16)
+x1 <- ggplot(data=a, aes(x=Generation, y=Hr_eq, alpha=0.25)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(0, 80000, 10000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="'Generation'", y="Hr_eq") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="none")
+save_plot("Hr_eq_gen.png", x1, base_height=10, base_width=16)
 
-for(g in sampling_times) {
-  wi <- ggplot(data=filter(z, Generation==g), aes(x=-s, y=value, color=method)) + 
-    facet_wrap(~as.factor(r)) +
+x0 <- ggplot(data=a, aes(x=Ne_bar, y=Hr_eq, alpha=0.25)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(1000, 10000, 1000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="Ne", y="Hr_eq") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="none")
+save_plot("Hr_eq_ne.png", x0, base_height=10, base_width=16)
+
+x1 <- ggplot(data=a, aes(x=Generation, y=Hr_eq, alpha=0.25)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(0, 80000, 10000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="'Generation'", y="Hr_eq") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="none")
+save_plot("Hr_eq_gen.png", x1, base_height=10, base_width=16)
+
+w0 <- ggplot(data=a, aes(x=Ne_bar, y=B_eq, alpha=0.25)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(1000, 10000, 1000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="Ne", y="B_eq") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="none")
+save_plot("B_eq_ne.png", w0, base_height=10, base_width=16)
+
+w1 <- ggplot(data=a, aes(x=Generation, y=B_eq, alpha=0.25)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(0, 80000, 10000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="'Generation'", y="B_eq") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="none")
+save_plot("B_eq_gen.png", w1, base_height=10, base_width=16)
+
+for(i in 1:50) {
+  wi <- ggplot(data=filter(a, Generation >= (i-1) * 1e+2, Generation <= i*1e+2),
+               aes(x=Generation, y=B_eq)) + 
     geom_point() + theme_bw() + geom_line() + 
-    scale_x_log10(breaks=c(1e-5, 1e-4, 1e-3)) +
-    scale_y_log10(breaks=pretty_breaks()) + 
-    labs(title=NULL, x="-s", y="Hr") +
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) + 
+    labs(title=NULL, x="Ne_bar", y="B") +
     theme(axis.title=element_text(size=16), 
           axis.text=element_text(size=12), 
           axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
           legend.text=element_text(size=16),
           legend.title=element_text(size=16),
-          legend.position="bottom")
-  
-  save_plot(paste("Hr_", g, ".png", sep=""), wi, base_height=8, base_width=16)
+          legend.position="none")
+
+  save_plot(paste("B_ne_", i, ".png", sep=""), wi, base_height=10, base_width=16)
 }
 
+z <- pivot_longer(a, cols=c("B", "B_eq"), names_to="method")
+z <- filter(z, !is.na(value))
+
+samp_gens <- c(0, 1e+3, 5e+3, 1e+4, 2e+4, 3e+4, 8e+4)
+w2 <- ggplot(data=(filter(z, Generation %in% samp_gens)),
+                   aes(x=Generation, y=value, color=method)) + 
+  geom_point() + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(0, 80000, 10000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="Generation", y="B") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("B_demo_vs_eq_time_1.png", w2, base_height=8, base_width=16)
+
+w3 <- ggplot(data=z, aes(x=Generation, y=value, color=method, alpha=0.1)) + 
+  geom_point(size=0.2) + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(0, 80000, 10000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="Generation", y="B") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("B_demo_vs_eq_time_2.png", w3, base_height=8, base_width=16)
+save_plot("B_demo_vs_eq_time_2_large.png", w3, base_height=16, base_width=32)
+
+w4 <- ggplot(data=z, aes(x=Ne_bar, y=value, color=method, alpha=0.5)) + 
+  geom_point(size=0.2) + theme_bw() + geom_line() + 
+  scale_x_continuous(breaks=seq(1000, 10000, 1000)) +
+  scale_y_continuous(breaks=pretty_breaks()) + 
+  labs(title=NULL, x="Ne", y="B") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("B_demo_vs_eq_ne.png", w4, base_height=8, base_width=16)
+save_plot("B_demo_vs_eq_ne_large.png", w4, base_height=16, base_width=32)
 
 tbl <- fread("hr.csv.gz")
 tbl <- filter(tbl, Order < 300)

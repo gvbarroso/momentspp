@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 30/05/2024
+ * Last modified: 06/06/2024
  *
  */
 
@@ -273,8 +273,8 @@ void Migration::updateMatrices_()
       {
         paramName = "m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd);
 
-        double prevVal = prevParams_.getParameterValue(paramName);
-        double newVal = getParameterValue(paramName);
+        long double prevVal = prevParams_.getParameterValue(paramName);
+        long double newVal = getParameterValue(paramName);
 
         if(newVal != prevVal)
           matrices_[index] *= (newVal / prevVal);
@@ -291,7 +291,7 @@ void Migration::updateMatrices_()
 void Migration::setLittleMat_()
 {
   size_t numPops = popIndices_.size();
-  std::vector<double> row(numPops, 0.);
+  std::vector<long double> row(numPops, 0.);
   Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> mat(numPops, numPops);
   mat.setZero();
 

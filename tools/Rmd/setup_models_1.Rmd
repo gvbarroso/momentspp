@@ -38,15 +38,15 @@ assembly of whole chromosomes
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
 Na <- 1e+4 # ancestral N
-N1 <- Na#c(Na / 10, Na * 10) # current N
-t <- 0 # in generations
+N1 <- c(Na / 10, Na * 10) # current N
+t <- 2 * Na # in generations
 
 options(digits=16)
 
 # rounding is required so that directory names don't diverge due to precision
 uL <- c(1e-8)
-r <- round(sort(c(seq_log(from=1e-8, to=1e-1, length.out=70), 0)), digits=12)
-s <- round(-sort(c(seq_log(from=1e-6, to=4e-3, length.out=70), 0)), digits=12)
+r <- c(1e-8, 2.5e-05, 1e-03)
+s <- c(-1e-3, -1e-4, -1e-5)
 
 # for discretizing Gamma distributions
 dt_u <- data.table(uL)
@@ -95,6 +95,9 @@ Creates files that will be used as input for moments++
 
 ```{r, demes, include=F, eval=T, results=F, message=F, warning=F}
 
+params <- fread("params.csv")
+
+options(digits=16)
 # writes demes files specifying models
 for(i in 1:n_models) {
   
@@ -114,7 +117,8 @@ for(i in 1:n_models) {
   sink(paste("r_", r, 
              "/s_", s,
              "/u_", u,
-             "/", name, ".yaml", sep=""))
+             "/",
+    name, ".yaml", sep=""))
   
   cat("time_units: generations\n")
   cat("demes:\n")
@@ -130,7 +134,7 @@ for(i in 1:n_models) {
   }
   cat("      - end_time: 0\n")
   cat("        start_size: ")
-  cat(N1)
+  cat(Na)
   cat("\n")
   cat("metadata:\n")
   cat("  - name: mutation\n")
@@ -171,14 +175,14 @@ for(N in N1) {
     cat("demes:\n")
     cat("  - name: X\n")
     cat("    epochs:\n")
-    #if(N1 != Na) {
+    if(N != Na) {
       cat("      - end_time: ")
       cat(t)
       cat("\n")
       cat("        start_size: ")
       cat(Na)
       cat("\n")
-    #}
+    }
     cat("      - end_time: 0\n")
     cat("        start_size: ")
     cat(N)
@@ -287,11 +291,11 @@ lookup_u <- unique(params$uL)
 
 n_models <- nrow(params)
 t <- unique(params$t)
-sampling_times <- seq(from=0, to=t, by=1)
+sampling_times <- seq(from=0, to=t, by=10)
 
 # Het stats over time (include steady-state and present-time)
-hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
-hls <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
+hrs <- as.data.frame(matrix(nrow=n_models, ncol=1))#length(sampling_times)))
+hls <- as.data.frame(matrix(nrow=n_models, ncol=1))#length(sampling_times)))
 
 names(hrs) <- as.character(sampling_times)
 names(hls) <- as.character(sampling_times)
@@ -306,13 +310,13 @@ for(i in 1:length(lookup_r)) {
     for(k in 1:length(lookup_u)) {
       fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], 
                                  "/u_", lookup_u[k], sep=""),
-                           pattern="*e_1_expectations.txt", full.names=TRUE)
+                           pattern="*_e_1_expectations.txt", full.names=TRUE)
       
       for(l in 1:length(fnames)) {
         moms <- fread(fnames[l])
         str_sides <- strsplit(fnames[l], "_O_")[[1]]
         idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
-        order <- as.numeric(strsplit(str_sides[2], "_e_1_expectations.txt")[[1]][1])
+        order <- as.numeric(strsplit(str_sides[2], "_expectations.txt")[[1]][1])
         
         hls[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3)), order)
         hrs[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3)), order)

@@ -70,7 +70,7 @@ void Model::printAliasedMoments(std::ostream& stream)
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getBasis();
 
   for(auto& m : tmp)
-    stream << std::setprecision(20) << m->getName() << " = " << m->getValue() << "\n";
+    stream << std::setprecision(24) << m->getName() << " = " << m->getValue() << "\n";
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -83,7 +83,7 @@ void Model::computeCompositeLogLikelihood_()
 {
   assert(data_ != nullptr);
 
-  double cll = 0.;
+  long double cll = 0.;
   /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
   {
     Eigen::Matrix<long double, Eigen::Dynamic, 1> obsMeans = data_->getY();

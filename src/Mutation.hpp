@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 05/12/2023
+ * Last modified: 06/06/2024
  *
  */
 
@@ -15,10 +15,10 @@ class Mutation: public AbstractOperator
 {
 
 private:
-  double leftFactor_; // multiplicative factor in mutation rate of left locus (eg by increased length)
+  long double leftFactor_; // multiplicative factor in mutation rate of left locus (eg by increased length)
 
 public:
-  Mutation(double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
+  Mutation(long double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   leftFactor_(leftFactor)
   {
@@ -27,7 +27,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Mutation(double leftFactor, const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Mutation(long double leftFactor, const std::vector<long double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   leftFactor_(leftFactor)
   {
@@ -44,7 +44,7 @@ public:
     return new Mutation(*this);
   }
 
-  double getLeftFactor()
+  long double getLeftFactor()
   {
     return leftFactor_;
   }

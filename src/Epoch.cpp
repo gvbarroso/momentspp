@@ -70,7 +70,7 @@ void Epoch::printMoments(std::ostream& stream)
   std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
 
   for(auto& m : tmp)
-    stream << std::setprecision(16) << m->getName() << " = " << m->getValue() << "\n";
+    stream << std::setprecision(24) << m->getName() << " = " << m->getValue() << "\n";
 }
 
 // prints expectations of Hl and Hr over time
@@ -84,7 +84,7 @@ void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynami
     for(size_t j = 0; j < tmp.size(); ++j)
     {
       if(tmp[j]->getName() == "Hr_0_0" || tmp[j]->getName() == "Hl_0_0")
-        stream << std::setprecision(16) << tmp[j]->getName() << " = " << y[j] << " " << i * interval << "\n";
+        stream << std::setprecision(24) << tmp[j]->getName() << " = " << y[j] << " " << i * interval << "\n";
     }
 
     y = transitionMatrix_.pow(interval) * y;
@@ -183,7 +183,7 @@ void Epoch::computePseudoSteadyState() // for speed
 
   // a very rough guess for starting values to help w/ convergence
   size_t p = ssl_.getPopIndices()[0];
-  double h = getParameterValue("u_" + bpp::TextTools::toString(p)) / getParameterValue("1/2N_" + bpp::TextTools::toString(p));
+  long double h = getParameterValue("u_" + bpp::TextTools::toString(p)) / getParameterValue("1/2N_" + bpp::TextTools::toString(p));
 
   for(int i = 0; i < y.size(); ++i)
   {

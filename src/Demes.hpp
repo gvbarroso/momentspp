@@ -74,11 +74,11 @@ private:
   std::vector<Eigen::MatrixXd> pulses_;
 
   // following (outer) vectors store one object per epoch per population:
-  std::vector<std::vector<double>> mutRates_;
-  std::vector<std::vector<double>> recRates_;
-  std::vector<std::vector<double>> selCoeffs_;
+  std::vector<std::vector<long double>> mutRates_;
+  std::vector<std::vector<long double>> recRates_;
+  std::vector<std::vector<long double>> selCoeffs_;
 
-  double leftFactor_; // see Mutation.hpp
+  long double leftFactor_; // see Mutation.hpp
 
 public:
   Demes(const std::string& file):
@@ -154,17 +154,17 @@ public:
     return pops_[epoch].size();
   }
 
-  const std::vector<double>& getMus(size_t epoch) const
+  const std::vector<long double>& getMus(size_t epoch) const
   {
     return mutRates_[epoch];
   }
 
-  const std::vector<double>& getRecs(size_t epoch) const
+  const std::vector<long double>& getRecs(size_t epoch) const
   {
     return recRates_[epoch];
   }
 
-  const std::vector<double>& getSelCoeffs(size_t epoch) const
+  const std::vector<long double>& getSelCoeffs(size_t epoch) const
   {
     return selCoeffs_[epoch];
   }
@@ -189,18 +189,18 @@ public:
     return pulses_[epoch];
   }
 
-  double getLeftFactor()
+  long double getLeftFactor()
   {
     return leftFactor_;
   }
 
-  void setMus(size_t epoch, double mu)
+  void setMus(size_t epoch, long double mu)
   {
     for(size_t i = 0; i < pops_[i].size(); ++i)
       mutRates_[epoch][i] = mu;
   }
 
-  void setRecs(size_t epoch, double rec)
+  void setRecs(size_t epoch, long double rec)
   {
     for(size_t i = 0; i < pops_[i].size(); ++i)
       recRates_[epoch][i] = rec;

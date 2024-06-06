@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 05/10/2023
+ * Last modified: 03/06/2024
  *
  */
 
@@ -33,7 +33,7 @@ protected:
   std::vector<size_t> popIndices_; // population indices associated with main statistic
   std::vector<size_t> factorIndices_; // population indices associated with each (1-2p) factor
   size_t position_; // index within the Y vector (see Epoch::computeExpectedSumStats()) and SumStatsLibrary basis_
-  double value_; // expectation
+  long double value_; // expectation
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry
   std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permutations with same expectations)
@@ -50,7 +50,7 @@ public:
   aliases_(0)
   { }
 
-  Moment(const std::string& name, double value):
+  Moment(const std::string& name, long double value):
   name_(name),
   prefix_(""),
   popIndices_(0),
@@ -140,7 +140,7 @@ public:
     return position_;
   }
 
-  double getValue() const
+  long double getValue() const
   {
     return value_;
   }
@@ -194,7 +194,7 @@ public:
     value_ = parent_->getValue();
   }
 
-  void setValue(double value)
+  void setValue(long double value)
   {
     value_ = value;
   }

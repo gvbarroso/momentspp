@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/10/2022
- * Last modified: 05/12/2023
+ * Last modified: 05/06/2024
  *
  */
 
@@ -57,17 +57,17 @@ void Demes::parse_(const std::string& fileName)
         if(popEpochs[j]["end_time"])
           endTime = popEpochs[j]["end_time"].as<int>();
 
-        size_t size = 0;
+        long double popSize = 0;
         if(popEpochs[j]["start_size"])
         {
-          size = popEpochs[j]["start_size"].as<int>();
+          popSize = popEpochs[j]["start_size"].as<long double>();
 
           if(popEpochs[j]["end_size"] && popEpochs[j]["end_size"] != popEpochs[j]["start_size"])
             throw bpp::Exception("Demes::[start_size] and [end_size] must be equal within each epoch!");
         }
 
         // each instance of pop i (one per epoch) is treated as a different Population object in moments++
-        singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, size, true));
+        singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, popSize, true));
       }
 
       if(pops[i]["ancestors"])
@@ -127,8 +127,8 @@ void Demes::parse_(const std::string& fileName)
           std::string ancNameFirst = pops[i]["ancestors"][0].as<std::string>();
           std::string ancNameSecond = pops[i]["ancestors"][1].as<std::string>();
 
-          double f = pops[i]["proportions"][0].as<double>();
-          double g = pops[i]["proportions"][1].as<double>();
+          long double f = pops[i]["proportions"][0].as<long double>();
+          long double g = pops[i]["proportions"][1].as<long double>();
 
           if((f + g) != 1.)
             throw bpp::Exception("Demes::demes::ancestral admixture proportions don't sum to 1.0!");
@@ -317,7 +317,7 @@ void Demes::parse_(const std::string& fileName)
 
     std::string source = "";
     std::string dest = "";
-    double rate = 0.;
+    long double rate = 0.;
     size_t startTime = std::numeric_limits<int>::max();
     size_t endTime = 0;
 
@@ -336,7 +336,7 @@ void Demes::parse_(const std::string& fileName)
         throw bpp::Exception("Demes::'migrations' field must explicitly specify 'dest'!");
 
       if(migs[i]["rate"])
-        rate = migs[i]["rate"].as<double>();
+        rate = migs[i]["rate"].as<long double>();
 
       else
         throw bpp::Exception("Demes::'migrations' field must explicitly specify 'rate'!");
@@ -387,7 +387,7 @@ void Demes::parse_(const std::string& fileName)
       YAML::Node proportions = pulses[i]["proportions"];
 
       std::string source = "";
-      double f = -1.;
+      long double f = -1.;
 
       if(sources.size() == 1)
         source = sources[0].as<std::string>();
@@ -396,7 +396,7 @@ void Demes::parse_(const std::string& fileName)
         throw bpp::Exception("Demes::pulses::only a single 'source' pop. (specified within brackets) per admixture 'pulse' is allowed!");
 
       if(proportions.size() == 1)
-        f = proportions[0].as<double>();
+        f = proportions[0].as<long double>();
 
       else
         throw bpp::Exception("Demes::only a single 'proportion' (specified within brackets) per admixture 'pulse' is allowed!");
@@ -450,7 +450,7 @@ void Demes::parse_(const std::string& fileName)
         startTime = meta[i]["start_time"].as<int>();
 
       if(name == "mutation" && meta[i]["left_factor"]) // gets the scaling of mutation rate in the left (constrained) locus
-        leftFactor_ = meta[i]["left_factor"].as<double>();
+        leftFactor_ = meta[i]["left_factor"].as<long double>();
 
       YAML::Node rateEpochs = meta[i]["epochs"];
 
@@ -480,13 +480,13 @@ void Demes::parse_(const std::string& fileName)
                 for(size_t l = 0; l < pops_[k].size(); ++l)
                 {
                   if(name == "selection")
-                    selCoeffs_[k][l] = rates[0].as<double>();
+                    selCoeffs_[k][l] = rates[0].as<long double>();
 
                   else if(name == "mutation")
-                    mutRates_[k][l] = rates[0].as<double>();
+                    mutRates_[k][l] = rates[0].as<long double>();
 
                   else if(name == "recombination")
-                    recRates_[k][l] = rates[0].as<double>();
+                    recRates_[k][l] = rates[0].as<long double>();
 
                   else
                     throw bpp::Exception("Demes::mis-specified metadata entry!");
@@ -501,13 +501,13 @@ void Demes::parse_(const std::string& fileName)
                 for(size_t l = 0; l < rates.size(); ++l) // one rate specified for each population of epoch k
                 {
                   if(name == "selection")
-                    selCoeffs_[k][l] = rates[l].as<double>();
+                    selCoeffs_[k][l] = rates[l].as<long double>();
 
                   else if(name == "mutation")
-                    mutRates_[k][l] = rates[l].as<double>();
+                    mutRates_[k][l] = rates[l].as<long double>();
 
                   else if(name == "recombination")
-                    recRates_[k][l] = rates[l].as<double>();
+                    recRates_[k][l] = rates[l].as<long double>();
 
                   else
                     throw bpp::Exception("Demes::mis-specified metadata entry!");

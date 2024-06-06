@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 30/05/2024
+ * Last modified: 06/06/2024
  *
  */
 
@@ -81,8 +81,8 @@ void Mutation::updateMatrices_()
     size_t id = popIndices_[i];
     std::string paramName = "u_" + bpp::TextTools::toString(id);
 
-    double prevVal = prevParams_.getParameterValue(paramName);
-    double newVal = getParameterValue(paramName);
+    long double prevVal = prevParams_.getParameterValue(paramName);
+    long double newVal = getParameterValue(paramName);
 
     if(newVal != prevVal)
       matrices_[i] *= (newVal / prevVal);

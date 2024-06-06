@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 30/05/2024
+ * Last modified: 03/06/2024
  *
  */
 
@@ -134,7 +134,7 @@ void SumStatsLibrary::readStatsFromFile(const std::string& fileName)
     boost::split(splitLine, line, [](char c) { return c == ' '; });
 
     std::string name = splitLine[0];
-    double val = std::stod(splitLine[2]);
+    long double val = std::stod(splitLine[2]);
 
     auto mom = getMoment(name);
     mom->setValue(val);

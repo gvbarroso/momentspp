@@ -23,7 +23,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Recombination(const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Recombination(const std::vector<long double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices())
   {
     // for each population modeled in the epoch *this operator belongs to, add r parameter
