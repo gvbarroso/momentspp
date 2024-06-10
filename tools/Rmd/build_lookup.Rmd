@@ -271,14 +271,14 @@ for(i in 1:length(lookup_r)) {
   cat(paste(i, "\n"))
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
-    fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                         pattern="*e_1_hets_time.txt", full.names=TRUE)
+    fnames <- list.files(paste("eq/r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
+                         pattern="*_expectations.txt", full.names=TRUE)
       
     for(l in 1:length(fnames)) {
       moms <- fread(fnames[l])
       str_sides <- strsplit(fnames[l], "_O_")[[1]]
       idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
-      order <- as.numeric(strsplit(str_sides[2], "_e_1_hets_time.txt")[[1]][1])
+      order <- as.numeric(strsplit(str_sides[2], "*_expectations.txt")[[1]][1])
         
       hls[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3)), order)
       hrs[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3)), order)
@@ -301,8 +301,8 @@ names(pi0) <- as.character(sampling_times)
 
 for(i in 1:num_models) {
   
-  moms <- read.csv(paste("demo/model_", i, 
-          "_O_2_e_1_hets_time.txt", sep=""), sep=" ", header=F)
+  moms <- read.csv(paste("demo/eq/model_", i, 
+          "_O_2_expectations.txt", sep=""), sep=" ", header=F)
   
   pi0[i,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
 }
@@ -317,40 +317,44 @@ lookup_tbl <- left_join(lookup_tbl, dplyr::select(m_pi0,
                         -c(Na, t)), by=c("N1", "Generation"))
 lookup_tbl$B <- lookup_tbl$Hr / lookup_tbl$pi0
 
-p1 <- ggplot(data=filter(lookup_tbl, r==1e-8, s==-1e-3), aes(x=Generation, y=B)) + 
-  facet_wrap(~as.factor(N1), ncol=2) +
-  geom_point() + theme_bw() + geom_line() + 
-  scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_continuous(breaks=pretty_breaks()) + 
-  labs(title=NULL, x=NULL, y="B-value") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_blank(), 
-        axis.text.y=element_text(size=12))
+fwrite(lookup_tbl, "lookup_tbl_eq.csv.gz", compress="gzip") 
 
-p2 <- ggplot(data=filter(lookup_tbl, r==1e-8, s==-1e-4), aes(x=Generation, y=B)) + 
-  facet_wrap(~as.factor(N1), ncol=2) +
-  geom_point() + theme_bw() + geom_line() + 
-  scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_continuous(breaks=pretty_breaks()) + 
-  labs(title=NULL, x=NULL, y="B-value") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_blank(), 
-        axis.text.y=element_text(size=12))
+for(rec in unique(lookup_tbl$r)) {
+  p1 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-3), aes(x=Generation, y=B)) + 
+    facet_wrap(~as.factor(N1), ncol=2) +
+    geom_point() + theme_bw() + geom_line() + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) + 
+    labs(title=NULL, x=NULL, y="B (s=-1e-3)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_blank(), 
+          axis.text.y=element_text(size=12))
+  
+  p2 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-4), aes(x=Generation, y=B)) + 
+    facet_wrap(~as.factor(N1), ncol=2) +
+    geom_point() + theme_bw() + geom_line() + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) + 
+    labs(title=NULL, x=NULL, y="B (s=-1e-4)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_blank(), 
+          axis.text.y=element_text(size=12))
+  
+  p3 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-5), aes(x=Generation, y=B)) + 
+    facet_wrap(~as.factor(N1), ncol=2) +
+    geom_point() + theme_bw() + geom_line() + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) + 
+    labs(title=NULL, x="Generation", y="B (s=-1e-5)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12), 
+          axis.text.y=element_text(size=12))
+  
+  cp <- plot_grid(p1, p2, p3, ncol=1, align='v')
+  save_plot(paste("B_time_r_", rec, ".png", sep=""), cp, base_height=10, base_width=16)
+}
 
-p3 <- ggplot(data=filter(lookup_tbl, r==1e-8, s==-1e-5), aes(x=Generation, y=B)) + 
-  facet_wrap(~as.factor(N1), ncol=2) +
-  geom_point() + theme_bw() + geom_line() + 
-  scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_continuous(breaks=pretty_breaks()) + 
-  labs(title=NULL, x="Generation", y="B-value") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12), 
-        axis.text.y=element_text(size=12))
-
-cp <- plot_grid(p1, p2, p3, ncol=1)
-save_plot("B_time.png", cp, base_height=10, base_width=16)
-fwrite(lookup, "lookup_tbl.csv.gz", compress="gzip") 
 ```
