@@ -17,34 +17,34 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/two-locus_time_new/")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study/")
 ```
 
 # Creating folders and files
 
-This builds a look-up table on a dense parameter grid that will allow for fast 
-assembly of whole chromosomes
+Builds a parameter grid that allows for fast assembly of whole chromosomes
 
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
 Na <- 1e+4 # ancestral N
 N1 <- c(Na / 10, 10 * Na) # current N
-t <- 12 * Na # in generations
-Generation <- 0 # sampling times, 0 means equilibrium model (no time dimension)
+t <- 2 * Na # in generations
 
 uL <- 1e-8
 uR <- 1e-8
 # rounding is required so that directory names don't diverge due to precision
-r <- c(1e-8, 2.5e-5, 1e-3)#round(c(0, seq_log(1e-8, 1, 81)[1:77], 0.5), digits=12)
-s <- c(-1e-3, -1e-4, -1e-5)#round(-c(0, seq_log(1e-6, 1, 6*11+1)[1:41], 5e-3), digits=12)
+r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
+s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
 
-params <- setDT(crossing(Na, N1, t, r, s, uL, uR, Generation))
+params <- setDT(crossing(Na, N1, t, r, s, uL, uR))
 n_models <- nrow(params)
 
 fwrite(as.data.frame(r), "r.csv", col.names=F)
 fwrite(as.data.frame(s), "s.csv", col.names=F)
 fwrite(params, "params.csv")
 ```
+
+Creates directories where files will be written to
 
 ```{bash dirs, engine.opts='-i', include=F, eval=T, results=F, warning=F}
 
@@ -184,7 +184,7 @@ for(N in N1) {
 
 # Running moments++
 
-Computes summary statistics for each parameter combination in lookup_tbl
+Computes summary statistics for each parameter combination
 
 ```{bash moments++, engine.opts='-i', include=F, eval=T, results=F, warning=F}
 
@@ -219,10 +219,13 @@ do
 	      Ns=$(($b * -2))
 	      if [[ $Ns -lt 30 ]]
 	      then
-  	      momentspp params=opt.bpp F=$f O=60 > /dev/null
-  	    elif [[ $Ns -lt 80 ]]
+  	      momentspp params=opt.bpp F=$f O=70 > /dev/null
+  	    elif [[ $Ns -lt 70 ]]
   	    then 
   	      momentspp params=opt.bpp F=$f O=150 > /dev/null
+  	    elif [[ $Ns -lt 150 ]]
+  	    then    
+  	      momentspp params=opt.bpp F=$f O=300 > /dev/null
   	    else
   	      momentspp params=opt.bpp F=$f O=400 > /dev/null
   	    fi
@@ -244,9 +247,9 @@ do
 done
 ```
 
-Collects lookup table with Hr values on the parameter grid
+Collects look-up table with Hr values on the parameter grid
 
-```{r, grid, include=F, eval=T, results=F, message=F, warning=F}
+```{r, lookup, include=F, eval=T, results=F, message=F, warning=F}
 
 params <- fread("params.csv")
 
@@ -271,14 +274,14 @@ for(i in 1:length(lookup_r)) {
   cat(paste(i, "\n"))
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
-    fnames <- list.files(paste("eq/r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
+    fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
                          pattern="*_expectations.txt", full.names=TRUE)
       
     for(l in 1:length(fnames)) {
       moms <- fread(fnames[l])
       str_sides <- strsplit(fnames[l], "_O_")[[1]]
       idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
-      order <- as.numeric(strsplit(str_sides[2], "*_expectations.txt")[[1]][1])
+      order <- as.numeric(strsplit(str_sides[2], "_expectations.txt")[[1]][1])
         
       hls[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3)), order)
       hrs[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3)), order)
@@ -289,10 +292,9 @@ for(i in 1:length(lookup_r)) {
 lookup <- cbind.data.frame(params, hrs)
 lookup_tbl <- pivot_longer(lookup, cols=as.character(sampling_times),
                        names_to="Generation", values_to="Hr")
-lookup_tbl$Generation <- as.numeric(lookup_tbl$Generation)
 lookup_tbl$Hr <- as.numeric(lookup_tbl$Hr)
 
- # get pi0 from demography
+# get pi0 from demography
 demo_models <- crossing(unique(params$Na), unique(params$N1), unique(params$t))
 names(demo_models) <- c("Na", "N1", "t")
 num_models <- nrow(demo_models)
@@ -301,8 +303,8 @@ names(pi0) <- as.character(sampling_times)
 
 for(i in 1:num_models) {
   
-  moms <- read.csv(paste("demo/eq/model_", i, 
-          "_O_2_expectations.txt", sep=""), sep=" ", header=F)
+  moms <- read.csv(paste("demo/model_", i, 
+          "_O_2_e_1_hets_time.txt", sep=""), sep=" ", header=F)
   
   pi0[i,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
 }
@@ -317,44 +319,86 @@ lookup_tbl <- left_join(lookup_tbl, dplyr::select(m_pi0,
                         -c(Na, t)), by=c("N1", "Generation"))
 lookup_tbl$B <- lookup_tbl$Hr / lookup_tbl$pi0
 
-fwrite(lookup_tbl, "lookup_tbl_eq.csv.gz", compress="gzip") 
+fwrite(lookup_tbl, "lookup_tbl.csv.gz", compress="gzip") 
 
+# viz
 for(rec in unique(lookup_tbl$r)) {
-  p1 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-3), aes(x=Generation, y=B)) + 
-    facet_wrap(~as.factor(N1), ncol=2) +
-    geom_point() + theme_bw() + geom_line() + 
-    scale_x_continuous(breaks=pretty_breaks()) +
-    scale_y_continuous(breaks=pretty_breaks()) + 
-    labs(title=NULL, x=NULL, y="B (s=-1e-3)") +
-    theme(axis.title=element_text(size=16), 
-          axis.text=element_text(size=12), 
-          axis.text.x=element_blank(), 
-          axis.text.y=element_text(size=12))
+  c <- 1
+  cpn <- list(length=length(unique(lookup_tbl$N1)))
+  for(N in unique(lookup_tbl$N1)) {
+    
+    p1 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-3, N1==N),
+                 aes(x=Generation, y=B)) + 
+      geom_point() + theme_bw() + geom_line() + 
+      geom_hline(aes(yintercept=B_eq, color="red")) + 
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_y_continuous(breaks=pretty_breaks()) 
+      if(c==1) {
+        p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y="B (s=-1e-3)") +
+                   theme(axis.title=element_text(size=16), 
+                         axis.text=element_text(size=12), 
+                         axis.text.x=element_blank(), 
+                         axis.text.y=element_text(size=12),
+                         legend.position="none")
+      } else {
+        p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y=NULL) +
+                   theme(axis.text=element_text(size=12), 
+                         axis.text.x=element_blank(), 
+                         axis.text.y=element_text(size=12),
+                         legend.position="none")
+      }
+    
+    p2 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-4, N1==N),
+                 aes(x=Generation, y=B)) + 
+      geom_point() + theme_bw() + geom_line() + 
+      geom_hline(aes(yintercept=B_eq, color="red")) + 
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_y_continuous(breaks=pretty_breaks())
+      if(c==1) {
+        p2 <- p2 + labs(title=NULL, x=NULL, y="B (s=-1e-4)") +
+                   theme(axis.title=element_text(size=16), 
+                         axis.text=element_text(size=12), 
+                         axis.text.x=element_blank(), 
+                         axis.text.y=element_text(size=12),
+                         legend.position="none")
+      } else {
+        p2 <- p2 + labs(title=NULL, x=NULL, y=NULL) +
+                   theme(axis.text=element_text(size=12), 
+                         axis.text.x=element_blank(), 
+                         axis.text.y=element_text(size=12),
+                         legend.position="none")
+      }
+      
+    p3 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-5, N1==N),
+                 aes(x=Generation, y=B)) + 
+      geom_point() + theme_bw() + geom_line() + 
+      geom_hline(aes(yintercept=B_eq, color="red")) + 
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_y_continuous(breaks=pretty_breaks())
+    
+    if(c==1) {
+        p3 <- p3 + labs(title=NULL, x="Generation", y="B (s=-1e-5)") +
+                   theme(axis.title=element_text(size=16), 
+                         axis.text=element_text(size=12), 
+                         axis.text.x=element_text(size=12), 
+                         axis.text.y=element_text(size=12),
+                         legend.position="none")
+      } else {
+        p3 <- p3 + labs(title=NULL, x="Generation", y=NULL) +
+                   theme(axis.title=element_text(size=16), 
+                         axis.text=element_text(size=12), 
+                         axis.text.x=element_text(size=12), 
+                         axis.text.y=element_text(size=12),
+                         legend.position="none")
+      }
+    
+    cpn[[c]] <- plot_grid(p1, p2, p3, ncol=1, align='v')
+    c <- c + 1
+  }
   
-  p2 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-4), aes(x=Generation, y=B)) + 
-    facet_wrap(~as.factor(N1), ncol=2) +
-    geom_point() + theme_bw() + geom_line() + 
-    scale_x_continuous(breaks=pretty_breaks()) +
-    scale_y_continuous(breaks=pretty_breaks()) + 
-    labs(title=NULL, x=NULL, y="B (s=-1e-4)") +
-    theme(axis.title=element_text(size=16), 
-          axis.text=element_text(size=12), 
-          axis.text.x=element_blank(), 
-          axis.text.y=element_text(size=12))
-  
-  p3 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-5), aes(x=Generation, y=B)) + 
-    facet_wrap(~as.factor(N1), ncol=2) +
-    geom_point() + theme_bw() + geom_line() + 
-    scale_x_continuous(breaks=pretty_breaks()) +
-    scale_y_continuous(breaks=pretty_breaks()) + 
-    labs(title=NULL, x="Generation", y="B (s=-1e-5)") +
-    theme(axis.title=element_text(size=16), 
-          axis.text=element_text(size=12), 
-          axis.text.x=element_text(size=12), 
-          axis.text.y=element_text(size=12))
-  
-  cp <- plot_grid(p1, p2, p3, ncol=1, align='v')
-  save_plot(paste("B_time_r_", rec, ".png", sep=""), cp, base_height=10, base_width=16)
+  cpr <- plot_grid(plotlist=cpn, ncol=2)
+  save_plot(paste("B_time_r_", rec, ".png", sep=""), cpr,
+            base_height=10, base_width=16)
 }
 
 ```
