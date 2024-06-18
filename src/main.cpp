@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 06/06/2024
+ * Last modified: 18/06/2024
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 06/Jun/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 18/Jun/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -87,14 +87,27 @@ int main(int argc, char *argv[]) {
 
   Demes demes(options.getDemesFilePath());
 
-  if(!(options.getFactorOrder() > 0))
-    throw bpp::Exception("Main::Non-positive Factor Order!");
-
   std::cout << "Assembling Operators and Epoch objects..."; std::cout.flush();
 
   size_t numEpochs = demes.getNumEpochs();
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
+
+  std::vector<size_t> factorOrder = options.getFactorOrder();
+  if(factorOrder.size() == 1)
+  {
+    for(size_t i = 1; i < numEpochs; ++i)
+      factorOrder.push_back(factorOrder[0]);
+  }
+  else if(factorOrder.size() != numEpochs)
+    throw bpp::Exception("Main::Number of Factor Orders must be either 1 or equal to the number of Epochs in the model!");
+
+  if(std::any_of(std::begin(factorOrder), std::end(factorOrder), [](size_t x) { return x < 1; }))
+    throw bpp::Exception("Main::Non-positive Factor Order!");
+
+  auto finder = std::adjacent_find(std::begin(factorOrder), std::end(factorOrder), std::less<size_t>());
+  if(finder != std::end(factorOrder))
+    throw bpp::Exception("Main::Factor Orders can not increase over time!");
 
   for(size_t i = 0; i < numEpochs; ++i) // for each epoch, from past to present
   {
@@ -103,7 +116,7 @@ int main(int argc, char *argv[]) {
     size_t start = demes.getPopsVec()[i].front()->getStartTime(); // shared by all pops in epoch i
     size_t end = demes.getPopsVec()[i].front()->getEndTime(); // shared by all pops in epoch i
 
-    SumStatsLibrary sslib(demes.getPopsVec()[i], options.getFactorOrder(), options.compressMoments());
+    SumStatsLibrary sslib(demes.getPopsVec()[i], factorOrder[i], options.compressMoments());
 
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
 
@@ -211,11 +224,11 @@ int main(int argc, char *argv[]) {
       model->getIndependentParameters().printParameters(std::cout);
       model->computeExpectedSumStats();
 
-      std::string fileName = model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()) + "_expectations.txt";
+      std::string fileName = model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_expectations.txt";
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(options.getFactorOrder()), options.getTimeSteps());
+      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]), options.getTimeSteps());
 
       fout.close();
       std::cout << "\nCheck output file " << fileName << "\n\n";

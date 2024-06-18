@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 06/06/2024
+ * Last modified: 18/06/2024
  *
  */
 
@@ -76,6 +76,8 @@ void Epoch::printMoments(std::ostream& stream)
 // prints expectations of Hl and Hr over time
 void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, const std::string& modelName, size_t interval)
 {
+  transferStatistics(y); // since different Epochs may use different Order
+
   std::string fileName = modelName + "_" + name_ + "_hets_time.txt";
   std::ofstream fout(fileName);
 

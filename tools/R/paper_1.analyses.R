@@ -766,7 +766,7 @@ getB <- function(exon_id, samp_id, Ne_f, look_tbl) {
   B_hh <- look_tbl[.(uH, closest_r, sH), .(B)]
   
   B <- (B_ll * (uH-focal_mu) * (sH-focal_s) +
-        B_hl * (focal_mu-uL)*(sH-focal_s) + 
+        B_hl * (focal_mu-uL) * (sH-focal_s) + 
         B_lh * (uH-focal_mu) * (focal_s-sL) +
         B_hh * (focal_mu-uL) * (focal_s-sL)) / ((uH-uL)*(sH-sL))
   

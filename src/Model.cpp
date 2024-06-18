@@ -180,7 +180,7 @@ void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    // for each moment in focal epoch, set "parent" in previous epoch using population ancestry
+    // for each moment in focal epoch, set "parent" moment in previous epoch using population ancestry
     for(auto it = std::begin(epochs_[i]->getBasis()); it != std::end(epochs_[i]->getBasis()); ++it)
     {
       std::vector<size_t> factorIds = (*it)->getFactorIndices();
