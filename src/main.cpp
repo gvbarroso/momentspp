@@ -44,23 +44,8 @@ int main(int argc, char *argv[]) {
 
   /*
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
-   * 2. BGS SFS
-   * 3. BGS in non-equilibrium populations
-   * 4. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
+   * 2. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
    *    https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
-   *
-   * Papers.
-   * Single-population:
-   *   What shapes genome-wide diversity?
-   *   - Model
-   *   - Simulation results under genomic landscapes and demographic histories
-   *
-   * Two-population:
-   *   Fst
-   *   -Genomic islands of differentiation under BGS and rate variation along the genome
-   *
-   *   PRS
-   *
    */
 
   if(argc == 1)
@@ -93,7 +78,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  std::vector<size_t> factorOrder = options.getFactorOrder();
+  std::vector<size_t> factorOrder = options.getFactorOrder(); // one value per epoch to avoid underflow e.g. after a bottleneck
   if(factorOrder.size() == 1)
   {
     for(size_t i = 1; i < numEpochs; ++i)
@@ -103,7 +88,7 @@ int main(int argc, char *argv[]) {
     throw bpp::Exception("Main::Number of Factor Orders must be either 1 or equal to the number of Epochs in the model!");
 
   if(std::any_of(std::begin(factorOrder), std::end(factorOrder), [](size_t x) { return x < 1; }))
-    throw bpp::Exception("Main::Non-positive Factor Order!");
+    throw bpp::Exception("Main::All Factor Orders must be greather than zero!");
 
   auto finder = std::adjacent_find(std::begin(factorOrder), std::end(factorOrder), std::less<size_t>());
   if(finder != std::end(factorOrder))

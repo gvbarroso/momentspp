@@ -38,7 +38,7 @@ private:
 
   size_t numThreads_;
   size_t timeSteps_; // after how number of generations to print intermediate values for Hl_*_* and Hr_*_* (see interval arg in Epoch::printHetMomentsIntermediate())
-  std::vector<size_t> factorOrder_; // how many (1-2p) factors to include (one value per Epoch; if only one value is provided, the same will be used)
+  std::vector<size_t> factorOrder_; // how many (1-2p) factors to include (one value per Epoch; if only one value is provided, it will be used for every Epoch)
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
