@@ -74,6 +74,7 @@ Creates files that will be used as input for moments++
 params <- fread("params.csv")
 n_models <- nrow(params)
 
+options(digits=16)
 # writes demes files specifying models
 for(i in 1:n_models) {
   
@@ -82,9 +83,11 @@ for(i in 1:n_models) {
     cat(paste(i, "\n"))
   }
   
-  Na <- as.integer(params[i,]$Na)
-  N1 <- as.integer(params[i,]$N1)
-  t <- as.integer(params[i,]$t)
+  Na <- as.numeric(params[i,]$Na)
+  N1 <- as.numeric(params[i,]$N1)
+  N2 <- as.numeric(params[i,]$N2)
+  t1 <- as.integer(params[i,]$t1)
+  t2 <- as.integer(params[i,]$t2)
   u <- as.numeric(params[i,]$uL)
   r <- as.numeric(params[i,]$r)
   s <- as.numeric(params[i,]$s)
@@ -96,17 +99,21 @@ for(i in 1:n_models) {
   cat("demes:\n")
   cat("  - name: X\n")
   cat("    epochs:\n")
-  if(N1 != Na) {
-    cat("      - end_time: ")
-    cat(t)
-    cat("\n")
-    cat("        start_size: ")
-    cat(Na)
-    cat("\n")
-  }
-  cat("      - end_time: 0\n")
+  cat("      - end_time: ")
+  cat(t1)
+  cat("\n")
+  cat("        start_size: ")
+  cat(Na)
+  cat("\n")
+  cat("      - end_time: ")
+  cat(t2)
+  cat("\n")
   cat("        start_size: ")
   cat(N1)
+  cat("\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(N2)
   cat("\n")
   cat("metadata:\n")
   cat("  - name: mutation\n")
@@ -275,13 +282,13 @@ for(i in 1:length(lookup_r)) {
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
     fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                         pattern="*_e_1_hets_time.txt", full.names=TRUE)
+                         pattern="*_expectations.txt", full.names=TRUE)
       
     for(l in 1:length(fnames)) {
       moms <- fread(fnames[l])
       str_sides <- strsplit(fnames[l], "_O_")[[1]]
       idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
-      order <- as.numeric(strsplit(str_sides[2], "_e_1_hets_time.txt")[[1]][1])
+      order <- as.numeric(strsplit(str_sides[2], "_expectations.txt")[[1]][1])
         
       hls[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3)), order)
       hrs[idx,] <- c(t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3)), order)
@@ -327,168 +334,173 @@ lookup_tbl$piN_pi0 <- lookup_tbl$Hl / lookup_tbl$pi0
 lookup_tbl$piN_piS <- lookup_tbl$Hl / lookup_tbl$Hr
 
 fwrite(lookup_tbl, "lookup_tbl.csv.gz", compress="gzip") 
+```
+
+```{r, lookup, include=F, eval=T, results=F, message=F, warning=F}
 
 # viz
-for(rec in unique(lookup_tbl$r)) {
-  c <- 1
-  cpn <- list(length=length(unique(lookup_tbl$N1)))
-  for(N in unique(lookup_tbl$N1)) {
-    
-    p1 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-3, N1==N),
-                 aes(x=Generation, y=B)) + 
-      geom_point() + theme_bw() + geom_line() + 
-      #geom_hline(aes(yintercept=B_eq, color="red")) + 
-      scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_continuous(breaks=pretty_breaks()) 
-      if(c==1) {
-        p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y="B (s=-1e-3)") +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      } else {
-        p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y=NULL) +
-                   theme(axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      }
-    
-    p2 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-4, N1==N),
-                 aes(x=Generation, y=B)) + 
-      geom_point() + theme_bw() + geom_line() + 
-      #geom_hline(aes(yintercept=B_eq, color="red")) + 
-      scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_continuous(breaks=pretty_breaks())
-      if(c==1) {
-        p2 <- p2 + labs(title=NULL, x=NULL, y="B (s=-1e-4)") +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      } else {
-        p2 <- p2 + labs(title=NULL, x=NULL, y=NULL) +
-                   theme(axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      }
-      
-    p3 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-5, N1==N),
-                 aes(x=Generation, y=B)) + 
-      geom_point() + theme_bw() + geom_line() + 
-      #geom_hline(aes(yintercept=B_eq, color="red")) + 
-      scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_continuous(breaks=pretty_breaks())
-    
-    if(c==1) {
-        p3 <- p3 + labs(title=NULL, x="Generation", y="B (s=-1e-5)") +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_text(size=12), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      } else {
-        p3 <- p3 + labs(title=NULL, x="Generation", y=NULL) +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_text(size=12), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      }
-    
-    cpn[[c]] <- plot_grid(p1, p2, p3, ncol=1, align='v')
-    c <- c + 1
+c <- 1
+cpn <- list(length=length(unique(lookup_tbl$N1)))
+legend <- NULL
+
+for(N in unique(lookup_tbl$N1)) {
+
+  p1 <- ggplot(data=filter(lookup_tbl, s==-1e-3, N1==N),
+               aes(x=Generation, y=B, color=as.factor(r))) + 
+    theme_bw() + geom_line(linewidth=1.25) + 
+    #geom_hline(aes(yintercept=B_eq, color=as.factor(r), linetype="dashed")) + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) 
+  if(c==1) {
+    p1 <- p1 + labs(title="10X Bottleneck", x=NULL, y="B (s=-1e-3)") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_blank(), 
+            axis.text.y=element_blank(),
+            legend.position="none")
+  } else {
+    p1 <- p1 + labs(title="10X Expansion", x=NULL, y=NULL) +
+      theme(axis.text=element_text(size=12), 
+            axis.text.x=element_blank(), 
+            axis.text.y=element_blank(),
+            legend.position="none")
   }
   
-  cpr <- plot_grid(plotlist=cpn, ncol=2)
-  save_plot(paste("B_time_r_", rec, ".png", sep=""), cpr,
-            base_height=10, base_width=16)
-}
-
-for(rec in unique(lookup_tbl$r)) {
-  c <- 1
-  cpn <- list(length=length(unique(lookup_tbl$N1)))
-  for(N in unique(lookup_tbl$N1)) {
-    
-    p1 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-3, N1==N),
-                 aes(x=Generation, y=Hl)) + 
-      geom_point() + theme_bw() + geom_line() + 
-      scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_continuous(breaks=pretty_breaks()) 
-      if(c==1) {
-        p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y="Hl (s=-1e-3)") +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      } else {
-        p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y=NULL) +
-                   theme(axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      }
-    
-    p2 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-4, N1==N),
-                 aes(x=Generation, y=Hl)) + 
-      geom_point() + theme_bw() + geom_line() + 
-      scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_continuous(breaks=pretty_breaks())
-      if(c==1) {
-        p2 <- p2 + labs(title=NULL, x=NULL, y="Hl (s=-1e-4)") +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      } else {
-        p2 <- p2 + labs(title=NULL, x=NULL, y=NULL) +
-                   theme(axis.text=element_text(size=12), 
-                         axis.text.x=element_blank(), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      }
-      
-    p3 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-5, N1==N),
-                 aes(x=Generation, y=Hl)) + 
-      geom_point() + theme_bw() + geom_line() + 
-      scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_continuous(breaks=pretty_breaks())
-    
-    if(c==1) {
-        p3 <- p3 + labs(title=NULL, x="Generation", y="Hl (s=-1e-5)") +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_text(size=12), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      } else {
-        p3 <- p3 + labs(title=NULL, x="Generation", y=NULL) +
-                   theme(axis.title=element_text(size=16), 
-                         axis.text=element_text(size=12), 
-                         axis.text.x=element_text(size=12), 
-                         axis.text.y=element_text(size=12),
-                         legend.position="none")
-      }
-    
-    cpn[[c]] <- plot_grid(p1, p2, p3, ncol=1, align='v')
-    c <- c + 1
+  p2 <- ggplot(data=filter(lookup_tbl, s==-1e-4, N1==N),
+               aes(x=Generation, y=B, color=as.factor(r))) + 
+    theme_bw() + geom_line(linewidth=1.25) + 
+    #geom_hline(aes(yintercept=B_eq, color=as.factor(r), linetype="dashed")) + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks())
+  if(c==1) {
+    p2 <- p2 + labs(title=NULL, x=NULL, y="B (s=-1e-4)") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_blank(), 
+            axis.text.y=element_blank(),
+            legend.position="none")
+  } else {
+    p2 <- p2 + labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.text=element_text(size=12), 
+            axis.text.x=element_blank(), 
+            axis.text.y=element_blank(),
+            legend.position="none")
   }
   
-  cpr <- plot_grid(plotlist=cpn, ncol=2)
-  save_plot(paste("Hl_time_r_", rec, ".png", sep=""), cpr,
-            base_height=10, base_width=16)
+  p3 <- ggplot(data=filter(lookup_tbl, s==-1e-5, N1==N),
+               aes(x=Generation, y=B, color=as.factor(r))) + 
+    theme_bw() + geom_line(linewidth=1.25) + 
+    #geom_hline(aes(yintercept=B_eq, color=as.factor(r), linetype="dashed")) + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks())
+  
+  if(c==1) {
+    p3 <- p3 + labs(title=NULL, x="Generation", y="B (s=-1e-5)") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12), 
+            axis.text.y=element_blank(),
+            legend.position="bottom")
+    p3 <- p3 + guides(color=guide_legend(title="r"))
+  } else {
+    p3 <- p3 + labs(title=NULL, x="Generation", y=NULL) +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12), 
+            axis.text.y=element_blank(),
+            legend.position="bottom")
+    p3 <- p3 + guides(color=guide_legend(title="r"))
+    #legend <- cowplot::get_legend(p3)
+  }
+  
+  cpn[[c]] <- plot_grid(p1, p2, p3, ncol=1, align='v')
+  c <- c + 1
 }
 
-p <- ggplot(data=filter(lookup_tbl, r==1e-8, Generation <= 2e+4), aes(x=Generation, y=B, color=as.factor(s))) + 
+cpr <- plot_grid(plotlist=cpn, ncol=2)
+cpr
+#x <- plot_grid(cpr, legend, ncol=1)
+#x
+
+c <- 1
+cpn <- list(length=length(unique(lookup_tbl$N1)))
+for(N in unique(lookup_tbl$N1)) {
+  
+  p1 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-3, N1==N),
+               aes(x=Generation, y=Hl)) + 
+    geom_point() + theme_bw() + geom_line() + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) 
+    if(c==1) {
+      p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y="Hl (s=-1e-3)") +
+                 theme(axis.title=element_text(size=16), 
+                       axis.text=element_text(size=12), 
+                       axis.text.x=element_blank(), 
+                       axis.text.y=element_text(size=12),
+                       legend.position="none")
+    } else {
+      p1 <- p1 + labs(title=paste("N1=", N), x=NULL, y=NULL) +
+                 theme(axis.text=element_text(size=12), 
+                       axis.text.x=element_blank(), 
+                       axis.text.y=element_text(size=12),
+                       legend.position="none")
+    }
+  
+  p2 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-4, N1==N),
+               aes(x=Generation, y=Hl)) + 
+    geom_point() + theme_bw() + geom_line() + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks())
+    if(c==1) {
+      p2 <- p2 + labs(title=NULL, x=NULL, y="Hl (s=-1e-4)") +
+                 theme(axis.title=element_text(size=16), 
+                       axis.text=element_text(size=12), 
+                       axis.text.x=element_blank(), 
+                       axis.text.y=element_text(size=12),
+                       legend.position="none")
+    } else {
+      p2 <- p2 + labs(title=NULL, x=NULL, y=NULL) +
+                 theme(axis.text=element_text(size=12), 
+                       axis.text.x=element_blank(), 
+                       axis.text.y=element_text(size=12),
+                       legend.position="none")
+    }
+    
+  p3 <- ggplot(data=filter(lookup_tbl, r==rec, s==-1e-5, N1==N),
+               aes(x=Generation, y=Hl)) + 
+    geom_point() + theme_bw() + geom_line() + 
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks())
+  
+  if(c==1) {
+      p3 <- p3 + labs(title=NULL, x="Generation", y="Hl (s=-1e-5)") +
+                 theme(axis.title=element_text(size=16), 
+                       axis.text=element_text(size=12), 
+                       axis.text.x=element_text(size=12), 
+                       axis.text.y=element_text(size=12),
+                       legend.position="none")
+    } else {
+      p3 <- p3 + labs(title=NULL, x="Generation", y=NULL) +
+                 theme(axis.title=element_text(size=16), 
+                       axis.text=element_text(size=12), 
+                       axis.text.x=element_text(size=12), 
+                       axis.text.y=element_text(size=12),
+                       legend.position="none")
+    }
+  
+  cpn[[c]] <- plot_grid(p1, p2, p3, ncol=1, align='v')
+  c <- c + 1
+}
+
+cpr <- plot_grid(plotlist=cpn, ncol=2)
+save_plot(paste("Hl_time_r_", rec, ".png", sep=""), cpr,
+          base_height=10, base_width=16)
+
+p <- ggplot(data=filter(lookup_tbl, r==1e-8, s == -1e-3), aes(x=Na, y=B)) + 
       geom_point() + theme_bw() + geom_line() + #facet_wrap(~s) +
-      scale_color_brewer(palette="Dark2", name="s") +
+      #scale_color_brewer(palette="Dark2", name="s") +
       scale_x_continuous(breaks=pretty_breaks()) +
-      scale_y_log10(breaks=pretty_breaks()) + guides(alpha="none") +
+      scale_y_continuous(breaks=pretty_breaks()) + guides(alpha="none") +
       labs(title="B-values over time, Bottleneck", x="Generation", y="B") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 

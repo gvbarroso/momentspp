@@ -89,11 +89,14 @@ void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynami
     for(size_t j = 0; j < tmp.size(); ++j)
     {
       if(tmp[j]->getName() == "Hr_0_0" || tmp[j]->getName() == "Hl_0_0")
-        fout << std::setprecision(24) << tmp[j]->getName() << " = " << y[j] << " " << i * interval << "\n";
+        fout << std::setprecision(24) << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n";
     }
 
-    y = transitionMatrix_.pow(interval) * y;
+    if(i < numTimeSteps - 1) // not to advance further than needed, important when there are > 2 Epochs
+      y = transitionMatrix_.pow(interval) * y;
   }
+
+  fout.close();
 }
 
 void Epoch::printRecursions(std::ostream& stream)

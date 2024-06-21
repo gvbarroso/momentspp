@@ -52,10 +52,10 @@ void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
 // prints expectations of Hl and Hr over time (for each epoch)
 void Model::printHetMomentsIntermediate(const std::string& modelName, size_t interval)
 {
-  auto steady = epochs_[0]->getSteadyState();
+  auto y = epochs_[0]->getSteadyState();
 
   for(size_t i = 1; i < epochs_.size(); ++i)
-    epochs_[i]->printHetMomentsIntermediate(steady, modelName, interval);
+    epochs_[i]->printHetMomentsIntermediate(y, modelName, interval);
 }
 
 void Model::printAliasedMoments(std::ostream& stream)
