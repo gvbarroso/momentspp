@@ -1,6 +1,0 @@
-label = $(M)
-stats_file = none
-demes_file = $(F)
-factor_order = ($(OA), $(O1))
-time_steps = $(T)
-verbose = $(V)

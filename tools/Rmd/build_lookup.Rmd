@@ -14,6 +14,7 @@ toc_depth: 1
 knitr::opts_chunk$set(echo=TRUE)
 
 library(tidyverse)
+library(scales)
 library(bigsnpr) # for seq_log
 library(data.table)
 
@@ -26,9 +27,8 @@ Builds a parameter grid that allows for fast assembly of whole chromosomes
 
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
-Na <- 1e+4 # ancestral N
-N1 <- c(Na / 10, 10 * Na) # current N
-t <- 2 * Na # in generations
+Ns <- paste(1e+4, 1e+3, sep=";") # from present to past
+Ts <- paste(0, 20000, sep=";") # from present (0) to past, in generations
 
 uL <- 1e-8
 uR <- 1e-8
@@ -36,7 +36,7 @@ uR <- 1e-8
 r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
 s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
 
-params <- setDT(crossing(Na, N1, t, r, s, uL, uR))
+params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
 n_models <- nrow(params)
 
 fwrite(as.data.frame(r), "r.csv", col.names=F)
@@ -74,8 +74,8 @@ Creates files that will be used as input for moments++
 params <- fread("params.csv")
 n_models <- nrow(params)
 
-options(digits=16)
-# writes demes files specifying models
+# writes demes files specifying models (one demography, r X s)
+options(digits=16) # precision
 for(i in 1:n_models) {
   
   if(i %% 10000 == 0) {
@@ -83,11 +83,8 @@ for(i in 1:n_models) {
     cat(paste(i, "\n"))
   }
   
-  Na <- as.numeric(params[i,]$Na)
-  N1 <- as.numeric(params[i,]$N1)
-  N2 <- as.numeric(params[i,]$N2)
-  t1 <- as.integer(params[i,]$t1)
-  t2 <- as.integer(params[i,]$t2)
+  Ns <- as.numeric(strsplit(params[i,]$Ns, ";")[[1]])
+  Ts <- as.numeric(strsplit(params[i,]$Ts, ";")[[1]])
   u <- as.numeric(params[i,]$uL)
   r <- as.numeric(params[i,]$r)
   s <- as.numeric(params[i,]$s)
@@ -99,22 +96,14 @@ for(i in 1:n_models) {
   cat("demes:\n")
   cat("  - name: X\n")
   cat("    epochs:\n")
-  cat("      - end_time: ")
-  cat(t1)
-  cat("\n")
-  cat("        start_size: ")
-  cat(Na)
-  cat("\n")
-  cat("      - end_time: ")
-  cat(t2)
-  cat("\n")
-  cat("        start_size: ")
-  cat(N1)
-  cat("\n")
-  cat("      - end_time: 0\n")
-  cat("        start_size: ")
-  cat(N2)
-  cat("\n")
+  for(j in length(Ts):1) {
+    cat("      - end_time: ")
+    cat(Ts[j])
+    cat("\n")
+    cat("        start_size: ")
+    cat(Ns[j])
+    cat("\n")
+  }
   cat("metadata:\n")
   cat("  - name: mutation\n")
   cat("    left_factor: 1\n")
@@ -141,57 +130,48 @@ for(i in 1:n_models) {
 }
 
 # creates the (purely neutral) demographic model
-Na <- as.integer(unique(params$Na))
-N1 <- as.integer(unique(params$N1))
-t <- as.integer(unique(params$t))
+# single u* and r because we're only interested in pi0 here (for B-values)
+Ns <- as.numeric(strsplit(params[i,]$Ns, ";")[[1]])
+Ts <- as.numeric(strsplit(params[i,]$Ts, ";")[[1]])
 u <- as.numeric(unique(params$uL))
 
-c <- 1
-for(N in N1) {
-  sink(paste("demo/model_", c, ".yaml", sep=""))
-  cat("time_units: generations\n")
-  cat("demes:\n")
-  cat("  - name: X\n")
-  cat("    epochs:\n")
-  if(N != Na) {
-    cat("      - end_time: ")
-    cat(t)
-    cat("\n")
-    cat("        start_size: ")
-    cat(Na)
-    cat("\n")
-  }
-  cat("      - end_time: 0\n")
-  cat("        start_size: ")
-  cat(N)
+sink(paste("demo/model_neutral.yaml", sep=""))
+cat("time_units: generations\n")
+cat("demes:\n")
+cat("  - name: X\n")
+cat("    epochs:\n")
+for(j in length(Ts):1) {
+  cat("      - end_time: ")
+  cat(Ts[j])
   cat("\n")
-  cat("metadata:\n")
-  cat("  - name: mutation\n")
-  cat("    left_factor: 1\n")
-  cat("    epochs:\n")
-  cat("      - end_time: 0\n")
-  cat("        rates: [")
-  cat(u)
-  cat("]\n")
-  cat("  - name: recombination\n")
-  cat("    epochs:\n")
-  cat("      - end_time: 0\n")
-  cat("        rates: [0]\n")
-  cat("  - name: selection\n")
-  cat("    start_time: .inf\n")
-  cat("    epochs:\n")
-  cat("      - end_time: 0\n")
-  cat("        rates: [0]\n")
-  sink()
-  
-  c <- c + 1
+  cat("        start_size: ")
+  cat(Ns[j])
+  cat("\n")
 }
-  
+cat("metadata:\n")
+cat("  - name: mutation\n")
+cat("    left_factor: 1\n")
+cat("    epochs:\n")
+cat("      - end_time: 0\n")
+cat("        rates: [")
+cat(u)
+cat("]\n")
+cat("  - name: recombination\n")
+cat("    epochs:\n")
+cat("      - end_time: 0\n")
+cat("        rates: [0]\n")
+cat("  - name: selection\n")
+cat("    start_time: .inf\n")
+cat("    epochs:\n")
+cat("      - end_time: 0\n")
+cat("        rates: [0]\n")
+sink()
+
 ```
 
 # Running moments++
 
-Computes summary statistics for each parameter combination
+Computes summary statistics for each model
 
 ```{bash moments++, engine.opts='-i', include=F, eval=T, results=F, warning=F}
 
@@ -254,18 +234,17 @@ do
 done
 ```
 
-Collects look-up table with Hr values on the parameter grid
+Collects lookup table with Hr values on the parameter grid
 
 ```{r, lookup, include=F, eval=T, results=F, message=F, warning=F}
 
 params <- fread("params.csv")
+n_models <- nrow(params)
 
 lookup_r <- unique(params$r)
 lookup_s <- unique(params$s)
-
-n_models <- nrow(params)
-t <- unique(params$t)
-sampling_times <- seq(from=t, to=0, by=-20000)
+t <- max(as.numeric(strsplit(unique(params$Ts), ";")[[1]]))
+sampling_times <- seq(from=t, to=0, by=-1000)
 
 # Het stats over time (include steady-state and present-time)
 hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
@@ -282,21 +261,27 @@ for(i in 1:length(lookup_r)) {
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
     fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                         pattern="exp_extended_*.*_time.txt", full.names=TRUE)
+                         pattern="*_e_*.*_time.txt", full.names=TRUE)
     
     idx <- 0  
     hets <- NULL
     for(l in 1:length(fnames)) {
       moms <- fread(fnames[l])
       str_sides <- strsplit(fnames[l], "_O_")[[1]]
-      idx <- as.numeric(strsplit(str_sides[1], "exp_extended_")[[1]][2])
-      order <- as.numeric(strsplit(str_sides[2], "*_e_*")[[1]][1])
+      idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
+      order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])
       hets <- rbind.data.frame(hets, moms)
     }
     
-    #hets <- hets[!duplicated(hets$V4)]
-    hls[idx,] <- c(t(dplyr::select(filter(hets, V1=="Hl_0_0"), V3)), order)
-    hrs[idx,] <- c(t(dplyr::select(filter(hets, V1=="Hr_0_0"), V3)), order)
+    left <- filter(hets, V1=="Hl_0_0")
+    right <- filter(hets, V1=="Hr_0_0")
+    
+    # multiple epochs may overlap their output in their last/first time-point
+    left <- left[!duplicated(left$V4)]
+    right <- right[!duplicated(right$V4)]
+    
+    hls[idx,] <- c(t(dplyr::select(left, V3)), order)
+    hrs[idx,] <- c(t(dplyr::select(right, V3)), order)
   }
 }
 
@@ -311,49 +296,54 @@ lookup_tbl$Hl <- as.numeric(lookup_tbl_hl$Hl)
 lookup_tbl$Generation <- as.numeric(lookup_tbl$Generation)
 
 # get pi0 from demography
-demo_models <- crossing(unique(params$Na), unique(params$N1), unique(params$t))
-names(demo_models) <- c("Na", "N1", "t")
+demo_models <- crossing(unique(params$Ns), unique(params$Ts))
+names(demo_models) <- c("Ns", "Ts")
 num_models <- nrow(demo_models)
 pi0 <- as.data.frame(matrix(nrow=num_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
-for(i in 1:num_models) {
-  
-  moms <- read.csv(paste("demo/model_", i, 
-          "_O_2_e_1_hets_time.txt", sep=""), sep=" ", header=F)
-  
-  pi0[i,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
+fnames <- list.files("demo", pattern="*_e_*.*_time.txt", full.names=TRUE)
+hets <- NULL
+for(l in 1:length(fnames)) {
+  moms <- fread(fnames[l])
+  str_sides <- strsplit(fnames[l], "_O_")[[1]]
+  order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])
+  hets <- rbind.data.frame(hets, moms)
 }
+
+right <- filter(hets, V1=="Hr_0_0")
+right <- right[!duplicated(right$V4)]
+pi0[1,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
 
 demo_pi0 <- cbind.data.frame(demo_models, pi0)
 m_pi0 <- pivot_longer(demo_pi0, 
                       cols=as.character(sampling_times),
                       names_to="Generation", values_to="pi0")
 m_pi0$Generation <- as.numeric(m_pi0$Generation)
+m_pi0 <- dplyr::select(m_pi0, -c(Ns, Ts))
 
-lookup_tbl <- left_join(lookup_tbl, dplyr::select(m_pi0,
-                        -c(Na, t, N1)), by=c("Generation"))
+lookup_tbl <- left_join(lookup_tbl, m_pi0, by=c("Generation"))
 lookup_tbl$B <- lookup_tbl$Hr / lookup_tbl$pi0
 lookup_tbl$piN_pi0 <- lookup_tbl$Hl / lookup_tbl$pi0
 lookup_tbl$piN_piS <- lookup_tbl$Hl / lookup_tbl$Hr
 
-fwrite(lookup_tbl, "lookup_tbl_extended.csv.gz", compress="gzip") 
+fwrite(lookup_tbl, "lookup_tbl.csv.gz", compress="gzip") 
 ```
 
 ```{r, lookup, include=F, eval=T, results=F, message=F, warning=F}
 
 # viz
-r_vals <- c(1e-8, 2.5e-5, 1e-3)
+r_vals <- c(1e-8, 1e-5, 1e-3)
 p1 <- ggplot(data=filter(lookup_tbl, s==-1e-3, r %in% r_vals),
              aes(x=Generation, y=B, color=as.factor(r))) + 
       theme_bw() + geom_line(linewidth=1.25) + 
       scale_x_continuous(breaks=pretty_breaks()) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      labs(title="10X Expansion", x=NULL, y="B (s=-1e-3)") +
+      labs(title=NULL, x=NULL, y="B (s=-1e-3)") +
         theme(axis.title=element_text(size=16), 
               axis.text=element_text(size=12), 
               axis.text.x=element_blank(), 
-              axis.text.y=element_blank(),
+              axis.text.y=element_text(size=12),
               legend.position="none")
   
 p2 <- ggplot(data=filter(lookup_tbl, s==-1e-4, r %in% r_vals),
@@ -365,7 +355,7 @@ p2 <- ggplot(data=filter(lookup_tbl, s==-1e-4, r %in% r_vals),
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_blank(), 
-            axis.text.y=element_blank(),
+            axis.text.y=element_text(size=12),
             legend.position="none")
 
 p3 <- ggplot(data=filter(lookup_tbl, s==-1e-5, r %in% r_vals),
@@ -377,7 +367,7 @@ p3 <- ggplot(data=filter(lookup_tbl, s==-1e-5, r %in% r_vals),
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12), 
-            axis.text.y=element_blank(),
+            axis.text.y=element_text(size=12),
             legend.position="bottom") +
       guides(color=guide_legend(title="r"))
 
