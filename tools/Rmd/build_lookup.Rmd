@@ -27,14 +27,14 @@ Builds a parameter grid that allows for fast assembly of whole chromosomes
 
 ```{r, params, include=F, eval=T, results=F, message=F, warning=F}
 
-Ns <- paste(1e+4, 1e+3, sep=";") # from present to past
-Ts <- paste(0, 20000, sep=";") # from present (0) to past, in generations
+Ns <- paste(15000, 40000, 20000, 30000, sep=";") # from present to past
+Ts <- paste(0, 4000, 24000, 100000, sep=";") # from present (0) to past, in generations
 
 uL <- 1e-8
 uR <- 1e-8
 # rounding is required so that directory names don't diverge due to precision
-r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
-s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
+r <- c(1e-8, 1e-3, 1e-2, 1e-1)#round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
+s <- (-2e-3)#round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
 
 params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
 n_models <- nrow(params)
@@ -84,7 +84,7 @@ for(i in 1:n_models) {
   }
   
   Ns <- as.numeric(strsplit(params[i,]$Ns, ";")[[1]])
-  Ts <- as.numeric(strsplit(params[i,]$Ts, ";")[[1]])
+  Ts <- as.integer(strsplit(params[i,]$Ts, ";")[[1]])
   u <- as.numeric(params[i,]$uL)
   r <- as.numeric(params[i,]$r)
   s <- as.numeric(params[i,]$s)
@@ -244,7 +244,7 @@ n_models <- nrow(params)
 lookup_r <- unique(params$r)
 lookup_s <- unique(params$s)
 t <- max(as.numeric(strsplit(unique(params$Ts), ";")[[1]]))
-sampling_times <- seq(from=t, to=0, by=-1000)
+sampling_times <- seq(from=t, to=0, by=-500)
 
 # Het stats over time (include steady-state and present-time)
 hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
@@ -275,7 +275,6 @@ for(i in 1:length(lookup_r)) {
     
     left <- filter(hets, V1=="Hl_0_0")
     right <- filter(hets, V1=="Hr_0_0")
-    
     # multiple epochs may overlap their output in their last/first time-point
     left <- left[!duplicated(left$V4)]
     right <- right[!duplicated(right$V4)]
@@ -313,7 +312,7 @@ for(l in 1:length(fnames)) {
 
 right <- filter(hets, V1=="Hr_0_0")
 right <- right[!duplicated(right$V4)]
-pi0[1,] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
+pi0[1,] <- t(dplyr::select(filter(right, V1=="Hr_0_0"), V3))
 
 demo_pi0 <- cbind.data.frame(demo_models, pi0)
 m_pi0 <- pivot_longer(demo_pi0, 
@@ -333,18 +332,18 @@ fwrite(lookup_tbl, "lookup_tbl.csv.gz", compress="gzip")
 ```{r, lookup, include=F, eval=T, results=F, message=F, warning=F}
 
 # viz
-r_vals <- c(1e-8, 1e-5, 1e-3)
+r_vals <- lookup_r
 p1 <- ggplot(data=filter(lookup_tbl, s==-1e-3, r %in% r_vals),
-             aes(x=Generation, y=B, color=as.factor(r))) + 
+             aes(x=Generation, y=B^1000, color=as.factor(r))) + 
       theme_bw() + geom_line(linewidth=1.25) + 
       scale_x_continuous(breaks=pretty_breaks()) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      labs(title=NULL, x=NULL, y="B (s=-1e-3)") +
+      labs(title=NULL, x="Gen", y="B (s=-1e-3)") +
         theme(axis.title=element_text(size=16), 
               axis.text=element_text(size=12), 
               axis.text.x=element_blank(), 
               axis.text.y=element_text(size=12),
-              legend.position="none")
+              legend.position="bottom")
   
 p2 <- ggplot(data=filter(lookup_tbl, s==-1e-4, r %in% r_vals),
              aes(x=Generation, y=B, color=as.factor(r))) + 
@@ -413,7 +412,6 @@ p3 <- ggplot(data=filter(lookup_tbl, s==-1e-5, r==1e-8),
 
 cp <- plot_grid(p1, p2, p3, ncol=1, rel_heights=c(1, 1, 1.35), align='v')
 cp
-
 
 p <- ggplot(data=filter(lookup_tbl, r==1e-8, s == -1e-3), aes(x=Na, y=B)) + 
       geom_point() + theme_bw() + geom_line() + #facet_wrap(~s) +

@@ -2,4 +2,5 @@ label = $(M)
 stats_file = none
 demes_file = $(F)
 factor_order = $(O)
+time_steps = $(T)
 verbose = $(V)
