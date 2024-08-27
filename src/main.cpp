@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 21/Jun/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 20/Aug/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -213,7 +213,8 @@ int main(int argc, char *argv[]) {
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]), options.getTimeSteps());
+      if(numEpochs > 1)
+        model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]), options.getTimeSteps());
 
       fout.close();
       std::cout << "\nCheck output file " << fileName << "\n\n";

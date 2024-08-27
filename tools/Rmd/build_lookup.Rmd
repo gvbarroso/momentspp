@@ -338,7 +338,7 @@ scaleFUN <- function(x) sprintf("%.3f", x)
 r_vals <- unique(lookup_tbl$r)
 p1 <- ggplot(data=filter(lookup_tbl, s==-1e-3, r %in% r_vals),
              aes(x=Generation, y=B^1000, color=as.factor(r))) + 
-      theme_bw() + geom_line(linewidth=1.25) + facet_wrap(~N1) +
+      theme_classic() + geom_line(linewidth=1.25) + facet_wrap(~Model) +
       scale_x_continuous(breaks=pretty_breaks()) +
       scale_y_continuous(breaks=pretty_breaks(), labels=scaleFUN) +
       labs(title=NULL, x=NULL, y="B (s=-1e-3)") +
@@ -350,7 +350,7 @@ p1 <- ggplot(data=filter(lookup_tbl, s==-1e-3, r %in% r_vals),
   
 p2 <- ggplot(data=filter(lookup_tbl, s==-1e-4, r %in% r_vals),
              aes(x=Generation, y=B^1000, color=as.factor(r))) + 
-      theme_bw() + geom_line(linewidth=1.25) + facet_wrap(~N1) +
+      theme_classic() + geom_line(linewidth=1.25) + facet_wrap(~Model) +
       scale_x_continuous(breaks=pretty_breaks()) +
       scale_y_continuous(breaks=pretty_breaks(), labels=scaleFUN) +
       labs(title=NULL, x=NULL, y="B (s=-1e-4)") +
@@ -362,7 +362,7 @@ p2 <- ggplot(data=filter(lookup_tbl, s==-1e-4, r %in% r_vals),
 
 p3 <- ggplot(data=filter(lookup_tbl, s==-1e-5, r %in% r_vals),
              aes(x=Generation, y=B^1000, color=as.factor(r))) + 
-      theme_bw() + geom_line(linewidth=1.25) + facet_wrap(~N1) +
+      theme_classic() + geom_line(linewidth=1.25) + facet_wrap(~Model) +
       scale_x_continuous(breaks=pretty_breaks()) +
       scale_y_continuous(breaks=pretty_breaks(), labels=scaleFUN) +
       labs(title=NULL, x="Generations since size change", y="B (s=-1e-5)") +
@@ -376,7 +376,7 @@ p3 <- ggplot(data=filter(lookup_tbl, s==-1e-5, r %in% r_vals),
   
 cp <- plot_grid(p1, p2, p3, ncol=1, rel_heights=c(1, 1, 1.35), align='v')
 cp
-save_plot("two-locus_time.pdf", cp, base_height=10, base_width=14)
+save_plot("two-locus_time.pdf", cp, base_height=12, base_width=14)
 
 p1 <- ggplot(data=filter(lookup_tbl, s==-1e-3, r==1e-8),
              aes(x=Generation, y=Hl)) + 

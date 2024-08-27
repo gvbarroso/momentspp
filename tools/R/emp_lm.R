@@ -15,10 +15,11 @@ suppressMessages({
   library(car)
   library(data.table)
   library(ppcor)
+  library(scales)
 })
 
 print(Sys.time())
-cat("Fitting linear models pi ~ u + B...\n")
+cat("Fitting linear models...\n")
 
 chr_list <- c(1:22)
 
@@ -78,19 +79,20 @@ x1Mb$std_mu <- (x1Mb$mu-mean(x1Mb$mu)) / sd(x1Mb$mu)
 x1Mb$std_r <- (x1Mb$r-mean(x1Mb$r)) / sd(x1Mb$r)
 
 m_1Mb <- pivot_longer(x1Mb, cols=c("mu", "r", "diversity", "sub"), names_to="var")
-ggplot(data=filter(m_1Mb, var=="diversity"),
-       aes(x=cum_bin, y=value, color=as.factor(chr))) +
-geom_point() + theme_bw() + geom_line() + 
-  scale_x_continuous(breaks=pretty_breaks()) +
-  scale_y_continuous(breaks=pretty_breaks()) + 
-  labs(title="Diversity across human chromosomes (1Mb windows)",
-       x="Cummulative Bin", y=expression(pi)) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        legend.position="none")
+p <- ggplot(data=filter(m_1Mb, var=="diversity", chr %in% 1:6),
+            aes(x=cum_bin, y=value, color=as.factor(chr %% 2))) +
+     geom_point() + geom_line() + theme_bw() + 
+     scale_x_continuous(breaks=pretty_breaks()) +
+     scale_y_continuous(breaks=pretty_breaks()) + 
+     labs(title="Diversity across human chromosomes (1Mb windows)",
+          x="Cummulative Bin", y=expression(pi)) +
+     theme(axis.title=element_text(size=16), 
+           axis.text=element_text(size=12), 
+           axis.text.x=element_text(size=12),
+           legend.text=element_text(size=16),
+           legend.title=element_text(size=16),
+           legend.position="none")
+ggsave("1Mb.pdf", p)
 
 # diversity
 gls.pi.100kb.genome <- gls(std_pi ~ std_mu + std_r, data=x100kb,

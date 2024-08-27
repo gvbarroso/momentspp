@@ -15,7 +15,7 @@ class Mutation: public AbstractOperator
 {
 
 private:
-  long double leftFactor_; // multiplicative factor in mutation rate of left locus (eg by increased length)
+  long double leftFactor_; // ratio uL / uR
 
 public:
   Mutation(long double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
