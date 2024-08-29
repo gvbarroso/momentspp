@@ -147,17 +147,51 @@ maps_1kb <- bind_cols(bins,
                       rec_bins["avg_rec"],
                       mut_bins["avg_mut"])
 
+maps_1kb$start <- maps_1kb$start - 1 # back
 maps_1kb$bin <- 1:nrow(maps_1kb)
 maps_1kb$bin_10kb <- (maps_1kb$bin - 1) %/% 10
 maps_1kb$bin_100kb <- (maps_1kb$bin - 1) %/% 100
+maps_1kb$bin_1Mb <- (maps_1kb$bin - 1) %/% 1000
 maps_10kb <- maps_1kb %>% group_by(bin_10kb) %>% 
              summarise_at(c("avg_mut", "avg_rec"), mean)
 maps_100kb <- maps_1kb %>% group_by(bin_100kb) %>% 
               summarise_at(c("avg_mut", "avg_rec"), mean)
+maps_1Mb <- maps_1kb %>% group_by(bin_1Mb) %>% 
+            summarise_at(c("avg_mut", "avg_rec"), mean)
+
+bins_1kb <- rep(1e+3, floor(L / 1e+3))
+bins_1kb <- suppressMessages(bind_cols(chr="chr1",
+  dplyr::lag(cumsum(bins_1kb), n=1, default=0),
+  dplyr::lag(cumsum(bins_1kb), n=0, default=0)))
+names(bins_1kb) <- c("chr", "start", "end")
+
+bins_10kb <- rep(1e+4, floor(L / 1e+4))
+bins_10kb <- suppressMessages(bind_cols(chr="chr1",
+  dplyr::lag(cumsum(bins_10kb), n=1, default=0),
+  dplyr::lag(cumsum(bins_10kb), n=0, default=0)))
+names(bins_10kb) <- c("chr", "start", "end")
+
+bins_100kb <- rep(1e+5, floor(L / 1e+5))
+bins_100kb <- suppressMessages(bind_cols(chr="chr1",
+  dplyr::lag(cumsum(bins_100kb), n=1, default=0),
+  dplyr::lag(cumsum(bins_100kb), n=0, default=0)))
+names(bins_100kb) <- c("chr", "start", "end")
+
+bins_1Mb <- rep(1e+6, floor(L / 1e+6))
+bins_1Mb <- suppressMessages(bind_cols(chr="chr1",
+  dplyr::lag(cumsum(bins_1Mb), n=1, default=0),
+  dplyr::lag(cumsum(bins_1Mb), n=0, default=0)))
+names(bins_1Mb) <- c("chr", "start", "end")
+
+maps_1kb <- cbind.data.frame(bins_1kb, dplyr::select(maps_1kb, avg_rec, avg_mut))
+maps_10kb <- cbind.data.frame(bins_10kb, dplyr::select(maps_10kb, avg_rec, avg_mut))
+maps_100kb <- cbind.data.frame(bins_100kb, dplyr::select(maps_100kb, avg_rec, avg_mut))
+maps_1Mb <- cbind.data.frame(bins_1Mb, dplyr::select(maps_1Mb, avg_rec, avg_mut))
 
 fwrite(maps_1kb, "maps_1kb.csv.gz")
 fwrite(maps_10kb, "maps_10kb.csv.gz")
 fwrite(maps_100kb, "maps_100kb.csv.gz")
+fwrite(maps_1Mb, "maps_1Mb.csv.gz")
 
 # visualization of shapes of mutation rate distributions
 mut_spans <- rgeom(n=100, prob=1/models$avg_mut_spans[m])
