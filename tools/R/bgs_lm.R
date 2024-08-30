@@ -21,69 +21,96 @@ suppressMessages({
   library(nlme)
   library(car)
   library(data.table)
+  library(interactions)
 })
 
 print(Sys.time())
 cat("Fitting linear models pi ~ u + B...\n")
 
 # loads results of bgs_pi.R
-maps_1kb <- fread("maps_1kb.csv")
-maps_10kb <- fread("maps_10kb.csv")
-maps_100kb <- fread("maps_100kb.csv")
+maps_1kb <- fread("tbl_1kb.csv")
+maps_10kb <- fread("tbl_10kb.csv")
+maps_100kb <- fread("tbl_100kb.csv")
+maps_1Mb <- fread("tbl_1Mb.csv")
 
 # table for storing R^2 values from linear models (rows are bin sizes)
-r2_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
+r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
 names(r2_tbl) <- c("Total", "u", "B")
-r2_tbl$scale <- c(1e+3, 1e+4, 1e+5)
+r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
 
 # NOTE linear models technically cannot be fit when the mutation map is flat 
 # because in this case pi==B (and the residual sum of squares is zero)
 
 # standardizing variables to help interpretation of linear coefficients
-tbl_1kb <- dplyr::select(maps_1kb, c(avg_mut, avg_B, avg_pi))
+tbl_1kb <- dplyr::select(maps_1kb, c(avg_mut, B, avg_pi))
 std_1kb <- as.data.frame(apply(tbl_1kb, 2, function(x) (x-mean(x)) / sd(x)))
+std_1kb$bin <- 1:nrow(std_1kb)
 
-tbl_10kb <- dplyr::select(maps_10kb, c(avg_mut, avg_B, avg_pi))
+tbl_10kb <- dplyr::select(maps_10kb, c(avg_mut, B, avg_pi))
 std_10kb <- as.data.frame(apply(tbl_10kb, 2, function(x) (x-mean(x)) / sd(x)))
+std_10kb$bin <- 1:nrow(std_10kb)
 
-tbl_100kb <- dplyr::select(maps_100kb, c(avg_mut, avg_B, avg_pi))
+tbl_100kb <- dplyr::select(maps_100kb, c(avg_mut, B, avg_pi))
 std_100kb <- as.data.frame(apply(tbl_100kb, 2, function(x) (x-mean(x)) / sd(x)))
+std_100kb$bin <- 1:nrow(std_100kb)
+
+tbl_1Mb <- dplyr::select(maps_1Mb, c(avg_mut, B, avg_pi))
+std_1Mb <- as.data.frame(apply(tbl_1Mb, 2, function(x) (x-mean(x)) / sd(x)))
+std_1Mb$bin <- 1:nrow(std_1Mb)
+
+# NOTE: adding B:u interaction leads to a lm error due to perfect fit
 
 # 1 kb
-m_1kb <- lm(avg_pi ~., std_1kb)
+m_1kb <- lm(avg_pi ~ (B + avg_mut), std_1kb)
 summary(m_1kb)
+vif(m_1kb, type = 'predictor')
 
 anova.pi <- Anova(m_1kb)
 apiss <- anova.pi$"Sum Sq"
 anova.pi$VarExp <- apiss / sum(apiss)
 
 r2_tbl$Total[1] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2]) * 100
-r2_tbl$u[1] <- anova.pi$VarExp[1] * 100
-r2_tbl$B[1] <- anova.pi$VarExp[2] * 100
+r2_tbl$u[1] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
 
 # 10 kb
-m_10kb <- lm(avg_pi ~., std_10kb)
+m_10kb <- lm(avg_pi ~ (B + avg_mut), std_10kb)
 summary(m_10kb)
+vif(m_10kb)
 
 anova.pi <- Anova(m_10kb)
 apiss <- anova.pi$"Sum Sq"
 anova.pi$VarExp <- apiss / sum(apiss)
 
 r2_tbl$Total[2] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2]) * 100
-r2_tbl$u[2] <- anova.pi$VarExp[1] * 100
-r2_tbl$B[2] <- anova.pi$VarExp[2] * 100
+r2_tbl$u[2] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
 
 # 100 kb
-m_100kb <- lm(avg_pi ~., std_100kb)
+m_100kb <- lm(avg_pi ~ (B + avg_mut), std_100kb)
 summary(m_100kb)
+vif(m_100kb)
 
 anova.pi <- Anova(m_100kb)
 apiss <- anova.pi$"Sum Sq"
 anova.pi$VarExp <- apiss / sum(apiss)
 
 r2_tbl$Total[3] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2]) * 100
-r2_tbl$u[3] <- anova.pi$VarExp[1] * 100
-r2_tbl$B[3] <- anova.pi$VarExp[2] * 100
+r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
+
+# 1 Mb
+m_1Mb <- lm(avg_pi ~ (B + avg_mut), data=std_1Mb)
+summary(m_1Mb)
+vif(m_1Mb)
+
+anova.pi <- Anova(m_1Mb)
+apiss <- anova.pi$"Sum Sq"
+anova.pi$VarExp <- apiss / sum(apiss)
+
+r2_tbl$Total[4] <- (anova.pi$VarExp[1] + anova.pi$VarExp[2]) * 100
+r2_tbl$u[4] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
 
 fwrite(r2_tbl, "r2_tbl.csv")
 
