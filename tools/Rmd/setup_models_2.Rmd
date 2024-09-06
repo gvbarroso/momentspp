@@ -17,7 +17,7 @@ library(tidyverse)
 library(bigsnpr) # for seq_log
 library(data.table)
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_2/sim_data/lookup_tables/")
+knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/sim_data/lookup_tables/")
 ```
 
 # Creating folders and files

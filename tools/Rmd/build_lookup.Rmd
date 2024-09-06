@@ -244,7 +244,7 @@ n_models <- nrow(params)
 
 lookup_r <- unique(params$r)
 lookup_s <- unique(params$s)
-t <- max(as.numeric(strsplit(unique(params$Ts), ";")[[1]]))
+t <- max(as.numeric(strsplit(as.character(unique(params$Ts)), ";")[[1]]))
 sampling_times <- seq(from=t, to=0, by=-500)
 
 # Het stats over time (include steady-state and present-time)

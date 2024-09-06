@@ -21,14 +21,9 @@ pdf(NULL) # to suppress creation of Rplots.pdf
 
 # loads the main tables
 models <- fread("models.csv")
-models <- models[1:100,]
+models <- models[1,]
 num_models <- nrow(models)
 num_reps <- 10
-
-# tables with R^2 for each model / scale
-r2_mdl_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
-r2_mdl_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
-r2_mdl_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=5))
 
 scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
 
@@ -39,6 +34,8 @@ for(i in 1:num_models) {
   cat(paste("Visualizing data from model", i, "...\n"))
   
   for(j in 1:num_reps) {
+    
+    cat(paste("Rep. ", j, "\n"))
     
     m1kb <- fread(paste("model_", i, "/rep_", j, "/tbl_1kb.csv", sep=""))
     m10kb <- fread(paste("model_", i, "/rep_", j, "/tbl_10kb.csv", sep=""))
@@ -51,18 +48,20 @@ for(i in 1:num_models) {
     m1Mb$bin <- 1:nrow(m1Mb)
     
     # plots binned maps 
-    pi_1kb <- ggplot(data=m1kb, aes(x=(bin -1) * 1e+3, y=avg_pi)) +
-      geom_line(data=m1kb) + theme_bw() +
+    m1kb_m <- pivot_longer(m1kb, cols=ends_with("pi"), names_to="diversity")
+    pi_1kb <- ggplot(data=m1kb_m, aes(x=(bin -1) * 1e+3, y=value, color=diversity)) +
+      geom_line(data=m1kb_m) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
                          labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="1 kb", x=NULL, y=expression(pi)) +
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
             axis.text.y=element_text(size=12),
             axis.title.y=element_text(size=16),
             plot.title=element_text(size=20),
-            legend.position="none") 
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
     
     u_1kb <- ggplot(data=m1kb, aes(x=(bin -1) * 1e+3, y=avg_mut)) + 
       geom_line(data=m1kb) + theme_bw() +
@@ -105,17 +104,19 @@ for(i in 1:num_models) {
     
     lands_1kb <- plot_grid(pi_1kb, u_1kb, B_1kb, r_1kb, align='v', ncol=1)
 
-    pi_10kb <- ggplot(data=m10kb, aes(x=(bin -1) * 1e+4, y=avg_pi)) +
-      geom_line(data=m10kb) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks(),
-                         #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
+    m10kb_m <- pivot_longer(m10kb, cols=ends_with("pi"), names_to="diversity")
+    pi_10kb <- ggplot(data=m10kb_m, aes(x=(bin -1) * 1e+3, y=value, color=diversity)) +
+      geom_line(data=m10kb_m) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m10kb$avg_pi), max(m10kb$avg_pi)),
                          labels=scale.4d) +
-      labs(title="10 kb", x=NULL, y=NULL) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="10 kb", x=NULL, y=NULL) + 
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
             axis.text.y=element_blank(),
             plot.title=element_text(size=20),
-            legend.position = "none") 
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
     
     u_10kb <- ggplot(data=m10kb, aes(x=(bin -1) * 1e+4, y=avg_mut)) + 
       geom_line(data=m10kb) + theme_bw() +
@@ -154,17 +155,19 @@ for(i in 1:num_models) {
     
     lands_10kb <- plot_grid(pi_10kb, u_10kb, B_10kb, r_10kb, align='v', ncol=1)
 
-    pi_100kb <- ggplot(data=m100kb, aes(x=(bin -1) * 1e+5, y=avg_pi))+
-      geom_line(data=m100kb) + theme_bw() +
+    m100kb_m <- pivot_longer(m100kb, cols=ends_with("pi"), names_to="diversity")
+    pi_100kb <- ggplot(data=m100kb_m, aes(x=(bin -1) * 1e+3, y=value, color=diversity)) +
+      geom_line(data=m100kb_m) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
+                         #limits=c(min(m100kb$avg_pi), max(m100kb$avg_pi)),
                          labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="100 kb", x=NULL, y=NULL) +
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
             axis.text.y=element_blank(),
             plot.title=element_text(size=20),
-            legend.position="none") 
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
     
     u_100kb <- ggplot(data=m100kb, aes(x=(bin -1) * 1e+5, y=avg_mut))+
       geom_line(data=m100kb) + theme_bw() +
@@ -204,17 +207,19 @@ for(i in 1:num_models) {
     
     lands_100kb <- plot_grid(pi_100kb, u_100kb, B_100kb, r_100kb, align='v', ncol=1)
     
-    pi_1Mb <- ggplot(data=m1Mb, aes(x=(bin -1) * 1e+6, y=avg_pi))+
-      geom_line(data=m1Mb) + theme_bw() +
-      scale_y_continuous(breaks=pretty_breaks(),
-                         #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
+    m1Mb_m <- pivot_longer(m1Mb, cols=ends_with("pi"), names_to="diversity")
+    pi_1Mb <- ggplot(data=m1Mb_m, aes(x=(bin -1) * 1e+3, y=value, color=diversity)) +
+      geom_line(data=m1Mb_m) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1Mb$avg_pi), max(m1Mb$avg_pi)),
                          labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="1 Mb", x=NULL, y=NULL) +
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
             axis.text.y=element_blank(),
             plot.title=element_text(size=20),
-            legend.position="none") 
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
     
     u_1Mb <- ggplot(data=m1Mb, aes(x=(bin -1) * 1e+6, y=avg_mut))+
       geom_line(data=m1Mb) + theme_bw() +
@@ -298,7 +303,10 @@ r2s <- r2_tbl %>% group_by(model, scale) %>%
 
 fwrite(r2s, "r2_tbl_models.csv")
 
+pb <- txtProgressBar(min=1, max=num_models, style=3)
 for(i in 1:num_models) {
+  
+  setTxtProgressBar(pb, i)
   
   molten_avgs <- pivot_longer(r2s, cols=ends_with("avg"), names_to="variable")
   p <- ggplot(data=filter(molten_avgs, model==i), 
@@ -335,8 +343,9 @@ for(i in 1:num_models) {
   save_plot(paste("model_", i, "_r2.png", sep=""), plot_grid(p, q, nrow=1), 
             base_height=10, base_width=15)
 }
+close(pb)
 
-# we simplify plots a little
+# we simplify plots 
 r2s_f <- dplyr::select(r2s, -starts_with("Total")) %>%
          dplyr::select(., -ends_with("sd"))
 models_f <- dplyr::select(models, c(num_exons,
@@ -366,12 +375,11 @@ p1 <- ggplot(data=filter(m_r2_models, num_exons==600, shapes_rate_r==1, avg_rec_
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-p2 <- ggplot(data=filter(m_r2_models, num_exons==1500),
-             aes(x=scale/1e+3, y=value, color=as.factor(shapes_rate_r), shape=var)) +
+p2 <- ggplot(data=filter(m_r2_models, num_exons==1500, shapes_rate_r==1, avg_rec_spans==1e+3),
+       aes(x=scale/1e+3, y=value, shape=var)) +
   geom_line() + geom_point(size=4) + theme_bw() + 
   facet_grid(+avg_mut_spans~shapes_rate_u) +
   scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
-  scale_color_discrete(name="shape rec. dist.", type=c("plum3", "seagreen3")) +
   scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
   scale_y_continuous(breaks=pretty_breaks()) +
   labs(title=paste("Mean", expression(R^2),
@@ -384,12 +392,11 @@ p2 <- ggplot(data=filter(m_r2_models, num_exons==1500),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-p3 <- ggplot(data=filter(m_r2_models, num_exons==3000),
-             aes(x=scale/1e+3, y=value, color=as.factor(shapes_rate_r), shape=var)) +
+p3 <- ggplot(data=filter(m_r2_models, num_exons==3000, shapes_rate_r==1, avg_rec_spans==1e+3),
+       aes(x=scale/1e+3, y=value, shape=var)) +
   geom_line() + geom_point(size=4) + theme_bw() + 
   facet_grid(+avg_mut_spans~shapes_rate_u) +
-  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
-  scale_color_discrete(name="shape rec. dist.", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u")) +
   scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
   scale_y_continuous(breaks=pretty_breaks()) +
   labs(title=paste("Mean", expression(R^2),
@@ -402,21 +409,20 @@ p3 <- ggplot(data=filter(m_r2_models, num_exons==3000),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-cp <- plot_grid(p1, p2, p3, align='v', ncol=1)
-save_plot("r2_plot_clean.png", cp, dpi=500)
+save_plot("exonic_0.02.png", p1, base_width=20, base_height=12)
+save_plot("exonic_0.05.png", p2, base_width=20, base_height=12)
+save_plot("exonic_0.1.png", p3, base_width=20, base_height=12)
 
-q <- ggplot(data=filter(m_r2_models, var=="u_avg"),
-            aes(x=shapes_rate_u, y=value, color=as.factor(shapes_rate_r),
-                shape=as.factor(avg_mut_spans/1e+3))) +
-  geom_line() + geom_point(size=4) + theme_bw() + facet_wrap(~scale/1e+3) +
-  scale_shape_manual(values=c(0, 1, 2), name="Avg. Mut. Span (kb)") +
-  scale_color_discrete(name=expression(alpha), type=c("plum3", "seagreen3")) +
-  scale_x_continuous(breaks=unique(m_r2_models$shapes_rate_u)) +
+q1 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==3000, shapes_rate_r==1),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
   scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title=paste("Mean", expression(R^2),
-                   "over replicates, cols->genomic scale (kb)"),
-       x="Shape of mutation rate distribution",
-       y="Variance Explained by Mutation (%)") +
+  labs(title=paste("10% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
         axis.text.x=element_text(size=12),
@@ -424,29 +430,175 @@ q <- ggplot(data=filter(m_r2_models, var=="u_avg"),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("r2_u_only.png", q, base_height=8, base_width=16)
+q2 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==3000, shapes_rate_r==3),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+q3 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==3000, shapes_rate_r==10),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_u_exons_0.1_shape_r_1.png", q1, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.1_shape_r_3.png", q2, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.1_shape_r_10.png", q3, base_height=8, base_width=16)
+
+r1 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==1500, shapes_rate_r==1),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+r2 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==1500, shapes_rate_r==3),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+r3 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==1500, shapes_rate_r==10),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_u_exons_0.05_shape_r_1.png", r1, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.05_shape_r_3.png", r2, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.05_shape_r_10.png", r3, base_height=8, base_width=16)
+
+s1 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==600, shapes_rate_r==1),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+s2 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==600, shapes_rate_r==3),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+s3 <- ggplot(data=filter(m_r2_models, var=="u_avg", num_exons==600, shapes_rate_r==10),
+             aes(x=scale/1e+3, y=value, shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_u_exons_0.02_shape_r_1.png", s1, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.02_shape_r_3.png", s2, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.02_shape_r_10.png", s3, base_height=8, base_width=16)
 
 # meta linear models
 ## 1 kb
 std_r2_1kb <- as.data.frame(r2_models %>% filter(., scale==1e+3) %>% 
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_1kb <- lm(u_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-              data=std_r2_1kb)
-m_B_1kb <- lm(B_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-              data=std_r2_1kb)
+m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
+m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
 
 summary(m_u_1kb)
 summary(m_B_1kb)
 
 ## 10 kb
 std_r2_10kb <- as.data.frame(r2_models %>% filter(., scale==1e+4) %>% 
-                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
+                              apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_10kb <- lm(u_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-               data=std_r2_10kb)
-m_B_10kb <- lm(B_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-               data=std_r2_10kb)
+m_u_10kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
+m_B_10kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
 
 summary(m_u_10kb)
 summary(m_B_10kb)
@@ -455,66 +607,80 @@ summary(m_B_10kb)
 std_r2_100kb <- as.data.frame(r2_models %>% filter(., scale==1e+5) %>% 
                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_100kb <- lm(u_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-                data=std_r2_100kb)
-m_B_100kb <- lm(B_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-                data=std_r2_100kb)
+m_u_100kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
+m_B_100kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
 
 summary(m_u_100kb)
 summary(m_B_100kb)
 
-
-meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
-                              m_u_10kb$coefficients,
-                              m_u_100kb$coefficients)
-names(meta_lm_u) <- names(m_u_1kb$coefficients)
-
-meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
-                              m_B_10kb$coefficients,
-                              m_B_100kb$coefficients)
-names(meta_lm_B) <- names(m_B_1kb$coefficients)
-
 ## 1 Mb
-std_r2_1Mb <- as.data.frame(r2_models %>% filter(., scale==1e+5) %>% 
+std_r2_1Mb <- as.data.frame(r2_models %>% filter(., scale==1e+6) %>% 
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_1Mb <- lm(u_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-              data=std_r2_1Mb)
-m_B_1Mb <- lm(B_avg ~ (shapes_rate_u + shapes_rate_r + avg_mut_spans)^2,
-              data=std_r2_1Mb)
+m_u_1Mb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
+m_B_1Mb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
 
 summary(m_u_1Mb)
 summary(m_B_1Mb)
 
-
+# mut
 meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
                               m_u_10kb$coefficients,
+                              m_u_100kb$coefficients,
                               m_u_1Mb$coefficients)
 names(meta_lm_u) <- names(m_u_1kb$coefficients)
 
+meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
+                                       "avg_mut_spans",
+                                       "num_exons",
+                                       "shapes_rate_r",
+                                       "avg_rec_spans"))
+
+meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$response <- "Mu"
+
+mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
+                        names_to="var", values_to="coeff")
+
+# B-val
 meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
                               m_B_10kb$coefficients,
+                              m_B_100kb$coefficients,
                               m_B_1Mb$coefficients)
 names(meta_lm_B) <- names(m_B_1kb$coefficients)
 
-meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5)
-meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5)
+meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
+                                        "avg_mut_spans",
+                                        "num_exons",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans"))
 
-fwrite(select(meta_lm_u, c(scale_sel, 
-                           shapes_rate_u,
-                           shapes_rate_r,
-                           `scale_sel:shapes_rate_u`,
-                           `scale_sel:shapes_rate_r`,
-                           `shapes_rate_u:shapes_rate_r`)), "meta_lm_u.csv")
-fwrite(select(meta_lm_B, c(scale_sel, 
-                           shapes_rate_u,
-                           shapes_rate_r,
-                           `scale_sel:shapes_rate_u`,
-                           `scale_sel:shapes_rate_r`,
-                           `shapes_rate_u:shapes_rate_r`)), "meta_lm_B.csv")
+meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$response <- "B"
 
-#interact_plot(m_u_1kb, pred=scale_sel, modx=shapes_rate_r)
-#interact_plot(m_u_1kb, pred=shapes_rate_u, modx=shapes_rate_r)
-#interact_plot(m_u_1kb, pred=scale_sel, modx=shapes_rate_u)
+mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
+                       names_to="var", values_to="coeff")
+
+mmlm_tbl <- rbind.data.frame(mmlm_mu, mmlm_B)
+
+meta_lm <- ggplot(data=mmlm_tbl, aes(x=var, y=coeff, shape=as.factor(bin_size), color=response)) +
+  geom_point(size=4) + theme_bw() +
+  geom_hline(yintercept=0, linetype="dashed") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
+  labs(title="Meta Linear Model for Variance Explained in 'Response'",
+       x="Variable", y="Coefficient") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("meta_lm.png", meta_lm, base_height=8, base_width=10)
 
 cat("bgs_viz.R is done!\n")
