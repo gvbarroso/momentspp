@@ -305,6 +305,11 @@ exon_lengths <- 1000
 num_exons <- c(600, 1500, 3000)
 L <- 3e+7
 
+models <- setDT(crossing(shape_rate_u_small, shape_rate_u_large, 
+                         avg_mut_spans_small, avg_mut_spans_large,
+                         mean_u))
+
+
 models <- setDT(crossing(L, num_exons, exon_lengths,
                          mean_r, mean_u, shapes_rate_u, shapes_rate_r,
                          avg_rec_spans, avg_mut_spans))
