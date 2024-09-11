@@ -62,6 +62,9 @@ x10kb$std_pi <- (x10kb$diversity-mean(x10kb$diversity)) / sd(x10kb$diversity)
 x10kb$std_mu <- (x10kb$mu-mean(x10kb$mu)) / sd(x10kb$mu)
 x10kb$std_r <- (x10kb$r-mean(x10kb$r)) / sd(x10kb$r)
 
+y10kb <- x10kb$mu / mean(x10kb$mu)
+MASS::fitdistr(y10kb, "gamma")
+
 ## 100 kb
 x100kb <- na.omit(tbl_100kb)
 x100kb$cum_bin <- 1:nrow(x100kb)
@@ -69,6 +72,9 @@ x100kb$std_sub <- (x100kb$sub-mean(x100kb$sub)) / sd(x100kb$sub)
 x100kb$std_pi <- (x100kb$diversity-mean(x100kb$diversity)) / sd(x100kb$diversity)
 x100kb$std_mu <- (x100kb$mu-mean(x100kb$mu)) / sd(x100kb$mu)
 x100kb$std_r <- (x100kb$r-mean(x100kb$r)) / sd(x100kb$r)
+
+y100kb <- x100kb$mu / mean(x100kb$mu)
+MASS::fitdistr(y100kb, "gamma")
 
 ## 1 Mb
 x1Mb <- na.omit(tbl_1Mb)

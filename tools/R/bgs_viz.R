@@ -671,6 +671,7 @@ meta_lm <- ggplot(data=mmlm_tbl, aes(x=var, y=coeff, shape=as.factor(bin_size), 
   geom_point(size=4) + theme_bw() +
   geom_hline(yintercept=0, linetype="dashed") +
   scale_y_continuous(breaks=pretty_breaks()) +
+  scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
   scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
   labs(title="Meta Linear Model for Variance Explained in 'Response'",
        x="Variable", y="Coefficient") +

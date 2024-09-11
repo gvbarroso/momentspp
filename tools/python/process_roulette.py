@@ -57,7 +57,7 @@ def ave_rates(rates, spacing, tol=0.95):
             end = True
     return np.array(rates_ave)
 
-
+rates_10kb = ave_rates(rates, 1000)
 rates_10kb = ave_rates(rates, 10000)
 rates_100kb = ave_rates(rates, 100000)
 rates_1Mb = ave_rates(rates, 1000000)
