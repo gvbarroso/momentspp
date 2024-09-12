@@ -123,14 +123,18 @@ fwrite(bins_10kb, "maps_10kb.csv.gz")
 fwrite(bins_100kb, "maps_100kb.csv.gz")
 fwrite(bins_1Mb, "maps_1Mb.csv.gz")
 
-#y1kb <- mmap_1kb$avg_mut / mean(mmap_1kb$avg_mut)
-#MASS::fitdistr(y1kb, "gamma")
+y <- mmap$u / mean(mmap$u)
+MASS::fitdistr(y, "gamma")
+MASS::fitdistr(mmap_small$uf, "gamma")
 
-#y10kb <- mmap_10kb$avg_mut / mean(mmap_10kb$avg_mut)
-#MASS::fitdistr(y10kb, "gamma")
+y1kb <- mmap_1kb$avg_mut / mean(mmap_1kb$avg_mut)
+MASS::fitdistr(y1kb, "gamma")
 
-#y100kb <- mmap_100kb$avg_mut / mean(mmap_100kb$avg_mut)
-#MASS::fitdistr(y100kb, "gamma")
+y10kb <- mmap_10kb$avg_mut / mean(mmap_10kb$avg_mut)
+MASS::fitdistr(y10kb, "gamma")
 
-#y1Mb <- mmap_1Mb$avg_mut / mean(mmap_1Mb$avg_mut)
-#MASS::fitdistr(y1Mb, "gamma")
+y100kb <- mmap_100kb$avg_mut / mean(mmap_100kb$avg_mut)
+MASS::fitdistr(y100kb, "gamma")
+
+y1Mb <- mmap_1Mb$avg_mut / mean(mmap_1Mb$avg_mut)
+MASS::fitdistr(y1Mb, "gamma")
