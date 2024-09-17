@@ -31,7 +31,7 @@ Ns <- paste(10000, sep=";") # from present to past
 Ts <- paste(0, sep=";") # from present (0) to past, in generations
 uR <- 1e-8 # B-values are independent of uR from the mut map, let's assume flat
 # rounding is required so that directory names don't diverge due to precision
-uL <- round(seq_log(5e-11, 5e-8, 3*11+1), digits=15)
+uL <- uR
 r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
 s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
 
