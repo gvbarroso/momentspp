@@ -18,196 +18,91 @@ suppressMessages({
   library(bslib)
 })
 
-setwd("~/Data/momentspp/paper_1/orders/10k/")
+setwd("~/Data/momentspp/paper_1/orders/")
 
-params <- fread("params.csv")
+r <- 1e-8
+u <- 1e-8
+s <- c(-1e-4, -1e-3)
+N <- c(1e+4, 1e+5)
 
-r <- unique(params$lookup_r)
-u <- unique(params$lookup_u)
-o <- 1:no
+params <- crossing(r, u, N, s)
+params$model <- 1:nrow(params)
+n_models <- nrow(params)
 
-n_models <- nrow(crossing(s, r, u, o))
-hrs <- as.data.frame(matrix(nrow=nrow(params), ncol=6))
-hls <- as.data.frame(matrix(nrow=nrow(params), ncol=6))
+tbl_hrs <- data.table()
+tbl_hls <- data.table()
 
-c <- 1
 # loops are nested as in setup_models_1.Rmd and the directory structure
-for(i in 1:length(r)) {
-  for(j in 1:length(s)) {
-    for(k in 1:length(u)) {  
-      fnames <- list.files(paste("r_", r[i], "/s_", s[j], "/u_", u[k], sep=""),
-                           pattern="*expectations.txt", full.names=TRUE)
-      for(l in 1:length(fnames)) {
-        order <- as.numeric(strsplit(strsplit(fnames[l], "/")[[1]][4], 
-                                 "_")[[1]][1])
-        idx <- (c - 1) * length(o) + l
-
-        moms <- fread(fnames[l])
-        hls[idx, 1] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
-        hls[idx, 2] <- order
-        hls[idx, 3] <- c
-        hls[idx, 4] <- r[i]
-        hls[idx, 5] <- s[j]
-        hls[idx, 6] <- u[k]
-    
-        hrs[idx, 1] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
-        hrs[idx, 2] <- order
-        hrs[idx, 3] <- c
-        hrs[idx, 4] <- r[i]
-        hrs[idx, 5] <- s[j]
-        hrs[idx, 6] <- u[k]
-      }
-      
-      c <- c + 1
-    }
-  }
-}
-
-names(hrs) <-  c("Hr", "Order", "scenario", "r", "s", "u")
-names(hls) <-  c("Hl", "Order", "scenario", "r", "s", "u")
-        
-hrs$N <- 1e+4
-hls$N <- 1e+4
-hrs$alpha <- 2 * hrs$N * hrs$s
-hls$alpha <- 2 * hls$N * hls$s
-
-hls <- hls %>% group_by(scenario) %>% 
-  mutate(., Hl_norm=Hl/Hl[length(o)])
-hls <- hls %>% group_by(scenario) %>%
-  mutate(., Hl_diff=abs(Hl-Hl[length(o)]))
-
-hrs$B <- hrs$Hr / (2 * hrs$N * hrs$u)
-hrs <- hrs %>% group_by(scenario) %>% 
-  mutate(., Hr_norm=Hr/Hr[length(o)])
-hrs <- hrs %>% group_by(scenario) %>%
-  mutate(., Hr_diff=abs(Hr-Hr[length(o)]))
-
-hrs <- arrange(hrs, scenario, Order)
-hls <- arrange(hls, scenario, Order)
-
-fwrite(hrs, "order_N_1e+4_s_1e-4.csv")
-
-# Hr
-rvals <- c(unique(hrs$r)[1], unique(hrs$r)[17])
-tbl_hr <- filter(hrs, r %in% c(rvals), u==1e-8)
-
-p1 <- ggplot(data=tbl_hr, aes(x=as.factor(Order), y=Hr)) + 
-  geom_point() + theme_bw() + facet_wrap(~r) + scale_y_log10() +
-  labs(title="Hr vs Order (1-2p), cols->r", 
-       x="Order (1-2p)", y=paste("Hr(s=", s, ")", sep="")) +
-  scale_x_discrete(breaks=pretty_breaks()) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        strip.text=element_text(size=14))
-
-save_plot(paste("Hr_s_", s, ".png", sep=""),
-          p1, base_height=8, base_width=16)
-
-p2 <- ggplot(data=tbl_hr, aes(x=as.factor(Order), y=Hr_norm)) + 
-  geom_point() + theme_bw() + facet_wrap(~r) + scale_y_log10() +
-  labs(title="Hr_norm vs Order (1-2p), cols->r", 
-       x="Order (1-2p)", y=paste("Hr_norm(s=", s, ")", sep="")) +
-  scale_x_discrete(breaks=pretty_breaks()) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        strip.text=element_text(size=14))
-
-save_plot(paste("Hr_norm_s_", s, ".png", sep=""),
-          p2, base_height=8, base_width=16)
-
-tbl_hr <- filter(tbl_hr, Hr_diff != 0)
-
-p3 <- ggplot(data=tbl_hr, aes(x=as.factor(Order), y=Hr_diff)) + 
-  geom_point() + theme_bw() + facet_wrap(~r) + scale_y_log10() +
-  labs(title="Hr(O[x]) - Hr(O[max]) vs Order (1-2p), cols->r", 
-       x="Order (1-2p)", y=paste("Hr_diff(s=", s, ")", sep="")) +
-  scale_x_discrete(breaks=pretty_breaks()) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        strip.text=element_text(size=14))
-
-save_plot(paste("Hr_diff_s_", s, ".png", sep=""),
-          p3, base_height=8, base_width=16)
-
-p4 <- ggplot(data=tbl_hr, aes(x=as.factor(Order), y=B)) + 
-  geom_point() + theme_bw() + facet_wrap(~r) + scale_y_log10() +
-  labs(title="B vs Order (1-2p), cols->r", 
-       x="Order (1-2p)", y=paste("B(s=", s, ")", sep="")) +
-  scale_x_discrete(breaks=pretty_breaks()) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        strip.text=element_text(size=14))
-
-save_plot(paste("B_s_", s, ".png", sep=""),
-          p4, base_height=8, base_width=16)
-
-# Hl
-rvals <- c(unique(hls$r)[1], unique(hls$r)[17])
-tbl_hl <- filter(hls, r %in% c(rvals), u==1e-8)
-
-p5 <- ggplot(data=tbl_hl, aes(x=as.factor(Order), y=Hl)) + 
-  geom_point() + theme_bw() + facet_wrap(~r) + scale_y_log10() +
-  labs(title="Hl_norm vs Order (1-2p), cols->r", 
-       x="Order (1-2p)", y=paste("Hl(s=", s, ")", sep="")) +
-  scale_x_discrete(breaks=pretty_breaks()) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        strip.text=element_text(size=14))
-
-save_plot(paste("Hl_s_", s, ".png", sep=""),
-          p5, base_height=8, base_width=16)
-
-p6 <- ggplot(data=tbl_hl, aes(x=as.factor(Order), y=Hl_norm)) + 
-  geom_point() + theme_bw() + facet_wrap(~r) + scale_y_log10() +
-  labs(title="Hl_norm vs Order (1-2p), cols->r", 
-       x="Order (1-2p)", y=paste("Hl_norm(s=", s, ")", sep="")) +
-  scale_x_discrete(breaks=pretty_breaks()) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        strip.text=element_text(size=14))
-
-save_plot(paste("Hl_norm_s_", s, ".png", sep=""), 
-          p6, base_height=8, base_width=16)
-
-tbl_hl <- filter(tbl_hl, Hl_diff != 0)
-
-p7 <- ggplot(data=tbl_hl, aes(x=as.factor(Order), y=Hl_diff)) + 
-  geom_point() + theme_bw() + facet_wrap(~r) + scale_y_log10() +
-  labs(title="Hl(O[x]) - Hl(O[max]) vs Order (1-2p), cols->r", 
-       x="Order (1-2p)", y=paste("Hl_diff(s=", s, ")", sep="")) +
-  scale_x_discrete(breaks=pretty_breaks()) +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        strip.text=element_text(size=14))
-
-save_plot(paste("Hl_diff_s_", s, ".png", sep=""),
-          p7, base_height=8, base_width=16)
-
-#################################
-#
-# 
-#
-###############################
-
-setwd("~/Devel/momentspp/debug/model_1/")
-
-O <- 20:100
-
-hrs <- as.data.frame(matrix(nrow=length(O), ncol=2))
-hls <- as.data.frame(matrix(nrow=length(O), ncol=2))
-
-c <- 1
-for(i in O) {
-  name <- paste("model_1_O_", i, "_expectations.txt", sep="")
-  moms <- fread(name)
-
-  hls[c, 1] <- dplyr::select(filter(moms, V1=="Hl_0_0"), V3)
-  hrs[c, 1] <- dplyr::select(filter(moms, V1=="Hr_0_0"), V3)
-  hls[c, 2] <- i
-  hrs[c, 2] <- i
+for(i in 1:n_models) {
+  fnames <- list.files(pattern=paste("model_", i, "_*.*_expectations.txt", sep=""), full.names=TRUE)
   
-  c <- c + 1
+  hls <- as.data.frame(matrix(nrow=length(fnames), ncol=3))
+  hrs <- as.data.frame(matrix(nrow=length(fnames), ncol=3))
+  
+  for(l in 1:length(fnames)) {
+    order <- as.numeric(strsplit(strsplit(strsplit(fnames[l], "/")[[1]][2], "_O_")[[1]][2], "_")[[1]][1])
+    moms <- fread(fnames[l])
+    hls[l, 1] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
+    hls[l, 2] <- order
+    hls[l, 3] <- i
+    
+    hrs[l, 1] <- t(dplyr::select(filter(moms, V1=="Hr_0_0"), V3))
+    hrs[l, 2] <- order
+    hrs[l, 3] <- i
+  }
+  
+  tbl_hrs <- rbind.data.frame(tbl_hrs, hrs)
+  tbl_hls <- rbind.data.frame(tbl_hls, hls)
 }
 
-plot(x=hrs$V2, y=hrs$V1)
-plot(x=hls$V2, y=hls$V1)
+names(tbl_hrs) <-  c("Hr", "Order", "model")
+names(tbl_hls) <-  c("Hl", "Order", "model")
+        
+tbl_hrs <- arrange(tbl_hrs, model, Order)
+tbl_hls <- arrange(tbl_hrs, model, Order)
+
+df <- merge(tbl_hrs, params, by="model")
+df$alpha <- 2 * df$N * df$s
+
+df$Hr <- df$Hr * 1e+3
+df$B <- df$Hr / (2 * df$N * df$u) 
+df <- df %>% group_by(model) %>% mutate(., diff=abs(Hr-Hr[length(.)]) / Hr[length(.)])
+df$diff
+
+fwrite(df, "tbl_order.csv")
+
+p1 <- ggplot(data=filter(df, N==1e+4, s==-1e-4), aes(x=as.factor(Order), y=diff)) + 
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title=NULL, x="Order (1-2p)", y="Rel. Diff.", sep="") +
+  scale_x_discrete(breaks=seq(0, 30, 5)) +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        strip.text=element_text(size=14))
+
+p2 <- ggplot(data=filter(df, N==1e+4, s==-1e-3), aes(x=as.factor(Order), y=diff)) + 
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title=NULL, x="Order (1-2p)", y=NULL, sep="") +
+  scale_x_discrete(breaks=seq(10, 100, 10)) +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        strip.text=element_text(size=14))
+
+p3 <- ggplot(data=filter(df, N==1e+5, s==-1e-4), aes(x=as.factor(Order), y=diff)) + 
+  geom_point() + theme_bw() + scale_y_log10() +
+  labs(title=NULL, x="Order (1-2p)", y="Rel. Diff.", sep="") +
+  scale_x_discrete(breaks=seq(10, 100, 10)) +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        strip.text=element_text(size=14))
+
+p4 <- ggplot(data=filter(df, N==1e+5, s==-1e-3), aes(x=as.factor(Order), y=diff)) + 
+  geom_point() + theme_bw() + 
+  labs(title=NULL, x="Order (1-2p)", y=NULL, sep="") +
+  scale_y_log10(breaks=c(1e-5, 1e-6, 1e-7, 1e-8)) +
+  scale_x_discrete(breaks=seq(100, 500, 50)) +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        strip.text=element_text(size=14))
+
+p_order <- plot_grid(p1, p2, p3, p4, labels="AUTO", nrow=2)
+save_plot("Hr_diff_.png", p_order,base_height=8, base_width=16)

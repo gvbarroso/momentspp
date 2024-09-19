@@ -52,10 +52,10 @@ to assess accuracy of moments++ under strong selection (adding (1-2p)^k factors)
 
 ```{r, demes-selected, include=F, eval=T, results=F, message=F, warning=F}
 
-N <- c(10000, 30000, 50000)
+N <- c(20000)
 u <- 1e-8
 r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9)
-s <- c(-1e-5, -2.5e-5, -1e-04, -2.5e-4, -1e-3, -2e-3)
+s <- c(-1e-5, -2.5e-5, -1e-04, -2.5e-4, -1e-3, -2e-3, -5e-3)
 
 params <- crossing(N, u, r, s)
 params$scenario <- 1:nrow(params)
@@ -121,6 +121,7 @@ do
   momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_100 O=100;
   momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_150 O=150;
   momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_200 O=200;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_300 O=300;
 done
 ```
 
@@ -213,7 +214,7 @@ commom_stats <- c("DD_0_0",
                   "pi2_0_0_0_0")
 
 # from moments++
-orders <- c(25, 50, 75, 100, 150, 200)
+orders <- c(25, 50, 75, 100, 150, 200, 300)
 tbl <- data.frame()
 for(j in 1:length(orders)) {
   expectation <- numeric()
@@ -291,8 +292,7 @@ p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1],
                          sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
-  labs(title="Ratios mpp / m2l, rows->alpha, cols->order", 
-       x="r", y=expression(D^2)) +
+  labs(title=NULL, x="r", y=expression(D^2)) +
   geom_hline(yintercept=1, linetype="dashed", color="red") +
   theme(axis.title=element_text(size=12),
         axis.text=element_text(size=10),
@@ -304,7 +304,7 @@ p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2],
                          sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
-  labs(title="Ratios mpp / m2l, rows->alpha, cols->order", x="r", y="Dz") +
+  labs(title=NULL, x="r", y="Dz") +
   geom_hline(yintercept=1, linetype="dashed", color="red") +
   theme(axis.title=element_text(size=12),
         axis.text=element_text(size=10),
@@ -316,7 +316,7 @@ p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3],
                          sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
-  labs(title="Ratios mpp / m2l, rows->alpha, cols->order",
+  labs(title=NULL,
        x="r", y=expression(H[l])) +
   geom_hline(yintercept=1, linetype="dashed", color="red") +
   theme(axis.title=element_text(size=12),
@@ -329,7 +329,7 @@ p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
                          sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
-  labs(title="Ratios mpp / m2l, rows->alpha, cols->order",
+  labs(title=NULL,
        x="r", y=expression(H[r])) +
   geom_hline(yintercept=1, linetype="dashed", color="red") +
   theme(axis.title=element_text(size=12),

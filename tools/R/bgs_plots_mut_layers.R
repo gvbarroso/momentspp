@@ -635,9 +635,9 @@ t3 <- ggplot(data=filter(m_r2_models, source_pi=="exp", mut_spans_small==1000),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("r2_spans_small=10_pi_exp.png", t1, base_width=16, base_height=10)
-save_plot("r2_spans_small=100_pi_exp.png", t2, base_width=16, base_height=10)
-save_plot("r2_spans_small=1000_pi_exp.png", t3, base_width=16, base_height=10)
+save_plot("r2_spans_small_10_pi_exp.png", t1, base_width=16, base_height=10)
+save_plot("r2_spans_small_100_pi_exp.png", t2, base_width=16, base_height=10)
+save_plot("r2_spans_small_1000_pi_exp.png", t3, base_width=16, base_height=10)
 
 ## simulated pi
 p1 <- ggplot(data=filter(m_r2_models, source_pi=="sim", mut_spans_small==10),
@@ -695,9 +695,9 @@ p3 <- ggplot(data=filter(m_r2_models, source_pi=="sim", mut_spans_small==1000),
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("r2_spans_small=10_pi_sim.png", p1, base_width=16, base_height=10)
-save_plot("r2_spans_small=100_pi_sim.png", p2, base_width=16, base_height=10)
-save_plot("r2_spans_small=1000_pi_sim.png", p3, base_width=16, base_height=10)
+save_plot("r2_spans_small_10_pi_sim.png", p1, base_width=16, base_height=10)
+save_plot("r2_spans_small_100_pi_sim.png", p2, base_width=16, base_height=10)
+save_plot("r2_spans_small_1000_pi_sim.png", p3, base_width=16, base_height=10)
 
 u1 <- ggplot(data=filter(m_r2_models, source_pi=="exp", var=="u_avg"),
              aes(x=scale/1e+3, y=value, shape=as.factor(mut_spans_small), 
