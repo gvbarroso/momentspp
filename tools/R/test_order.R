@@ -1,9 +1,3 @@
-#!/usr/bin/env Rscript
-args=commandArgs(trailingOnly=T)
-
-# space-separated positional arguments in Rscript --vanilla bgs_pi.R s no
-s <- -1e-4#as.numeric(args[1]) 
-no <- 30#as.numeric(args[2]) # number of orders tested
 
 suppressMessages({
   library(R.utils)

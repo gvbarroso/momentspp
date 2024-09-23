@@ -54,8 +54,8 @@ to assess accuracy of moments++ under strong selection (adding (1-2p)^k factors)
 
 N <- c(20000)
 u <- 1e-8
-r  <- c(1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9)
-s <- c(-1e-5, -2.5e-5, -1e-04, -2.5e-4, -1e-3, -2e-3, -5e-3)
+r  <- c(1e-3, 1e-4, 1e-5, 1e-6)
+s <- c(-1e-5, -1e-04, -1e-3, -2e-3, -5e-3)
 
 params <- crossing(N, u, r, s)
 params$scenario <- 1:nrow(params)
@@ -115,13 +115,13 @@ source ~/.bashrc
 
 for((i=1;i<=$num_models;i++))
 do
-  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_25 O=25;
-  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_50 O=50;
-  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_75 O=75;
-  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_100 O=100;
-  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_150 O=150;
-  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_200 O=200;
-  momentspp params=opt.bpp F=model_$i.yaml L=model_$i\_300 O=300;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=25;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=50;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=75;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=100;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=150;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=200;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=300;
 done
 ```
 
@@ -219,7 +219,7 @@ tbl <- data.frame()
 for(j in 1:length(orders)) {
   expectation <- numeric()
   for(i in 1:n_models) {
-    vals <- read.table(paste("model_",  i, "_", orders[j], 
+    vals <- read.table(paste("model_",  i, "_O_", orders[j], 
                              "_expectations.txt", sep=""))
     vals <- subset(vals, V1 %in% commom_stats)$V3
     expectation <- c(expectation, vals)
@@ -289,7 +289,7 @@ tbl_pp <- tbl_pp %>% mutate(ratio=mpp/m2l)
 
 # plots
 p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1],
-                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
+                         sample_size==80), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
   labs(title=NULL, x="r", y=expression(D^2)) +
@@ -301,7 +301,7 @@ p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1],
 save_plot("dd_ratios.png", p1, base_height=24, base_width=12)
 
 p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2], 
-                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
+                         sample_size==80), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
   labs(title=NULL, x="r", y="Dz") +
@@ -313,7 +313,7 @@ p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2],
 save_plot("dz_ratios.png", p2, base_height=24, base_width=12)
 
 p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3], 
-                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
+                         sample_size==80), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
   labs(title=NULL,
@@ -326,7 +326,7 @@ p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3],
 save_plot("hl_ratios.png", p3, base_height=24, base_width=12)
 
 p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
-                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
+                         sample_size==80), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
   labs(title=NULL,
@@ -339,7 +339,7 @@ p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
 save_plot("hr_ratios.png", p4, base_height=24, base_width=12)
 
 p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5], 
-                         sample_size==80, alpha>-200), aes(x=r, y=ratio)) +
+                         sample_size==80), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() +  
   facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
   labs(title="Ratios mpp / m2l, rows->alpha, cols->order",
@@ -349,8 +349,7 @@ p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5],
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("pi2_ratios.png",
-          p5, base_height=24, base_width=12)
+save_plot("pi2_ratios.png", p5, base_height=24, base_width=12)
 
 # compare to HK95 pred
 tbl_hr <- filter(tbl_pp, stats=="Hr_0_0", sample_size==80)
@@ -359,7 +358,7 @@ tbl_hr$hk95 <- 2 * tbl_hr$N * tbl_hr$u *
 molten_hr <- pivot_longer(tbl_hr, cols=c(mpp, hk95), names_to="method")
 
 for(n in unique(molten_hr$N)) {
-  q <- ggplot(data=filter(molten_hr, N==n, r==1e-8), 
+  q <- ggplot(data=filter(molten_hr, N==n, r==1e-6), 
               aes(x=alpha, y=value, color=method)) +
         geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~order) +
     scale_x_continuous(breaks=pretty_breaks()) +
@@ -371,7 +370,7 @@ for(n in unique(molten_hr$N)) {
           axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
           legend.position="bottom")
   q
-  save_plot(paste("Hr, N=", n, ", r=1e-8.png", sep=""), q,
+  save_plot(paste("Hr, N=", n, ", r=1e-6.png", sep=""), q,
             base_height=10, base_width=12)
 }
 

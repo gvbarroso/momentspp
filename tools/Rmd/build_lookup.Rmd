@@ -19,7 +19,7 @@ library(bigsnpr) # for seq_log
 library(data.table)
 library(cowplot)
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/study/")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/test_s/")
 ```
 
 # Creating folders and files

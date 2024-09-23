@@ -30,8 +30,10 @@ names(estimates) <- c("cor_u", "cor_B",
                       "coeff_u_m3", "coeff_B_m3")
 estimates$model <- 1:nrow(estimates)
 
+pb <- txtProgressBar(min=0, max=n_models, style=3)
 for(i in 1:n_models) {
 
+  setTxtProgressBar(pb, i)
   # build toy model
   u <- rnorm(s, params$means_u[i], params$sds_u[i])
   B <- rnorm(s, params$means_B[i], params$sds_B[i])
@@ -89,45 +91,13 @@ for(i in 1:n_models) {
   estimates$coeff_u_m3[i] <- m3$coefficients[2]
   estimates$coeff_B_m3[i] <- m3$coefficients[3]
 }
+close(pb)
 
 tbl <- merge(estimates, params, by="model")
 
-tbl_cor <- pivot_longer(tbl, cols=c("cor_u", "cor_B"))
-
-p1 <- ggplot(data=tbl_cor, aes(x=means_B, y=value, shape=name)) +
-  geom_point(size=3) + theme_bw() + geom_line() +
-  facet_grid(+sds_u~sds_B) +
-  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  labs(title="rows->SD(u), cols->SD(B)", x="Mean (B)", y="Cor (p, x)") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        legend.position="bottom")
-p1
-
-tbl_cor_p <- pivot_longer(tbl, cols=c("cor_u_partial", "cor_B_partial"))
-
-p2 <- ggplot(data=tbl_cor_p, aes(x=means_B, y=value, shape=name)) +
-  geom_point(size=3) + theme_bw() + geom_line() +
-  facet_grid(+sds_u~sds_B) +
-  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
-  scale_y_log10(breaks=pretty_breaks()) +
-  labs(title="rows->SD(u), cols->SD(B)", x="Mean (B)", y="P. Cor (p, x, z)") +
-  theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
-        legend.text=element_text(size=16),
-        legend.title=element_text(size=16),
-        legend.position="bottom")
-p2
-
-
 tbl_cm1 <- pivot_longer(tbl, cols=c("coeff_u_m1", "coeff_B_m1"))
 
-p3 <- ggplot(data=tbl_cm1, aes(x=means_B, y=value, shape=name)) +
+p1 <- ggplot(data=tbl_cm1, aes(x=means_B, y=value, shape=name)) +
   geom_point(size=3) + theme_bw() + geom_line() +
   facet_grid(+sds_u~sds_B) +
   scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
@@ -139,11 +109,11 @@ p3 <- ggplot(data=tbl_cm1, aes(x=means_B, y=value, shape=name)) +
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-p3
+p1
 
 tbl_r2m1 <- pivot_longer(tbl, cols=c("r2_u_m1", "r2_B_m1"))
 
-p4 <- ggplot(data=tbl_r2m1, aes(x=means_B, y=value, shape=name)) +
+p2 <- ggplot(data=tbl_r2m1, aes(x=means_B, y=value, shape=name)) +
   geom_point(size=3) + theme_bw() + geom_line() +
   facet_grid(+sds_u~sds_B) +
   scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
@@ -155,11 +125,11 @@ p4 <- ggplot(data=tbl_r2m1, aes(x=means_B, y=value, shape=name)) +
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-p4
+p2
 
 tbl_cm2 <- pivot_longer(tbl, cols=c("coeff_u_m2", "coeff_B_m2"))
 
-p5 <- ggplot(data=tbl_cm2, aes(x=means_B, y=value, shape=name)) +
+p3 <- ggplot(data=tbl_cm2, aes(x=means_B, y=value, shape=name)) +
   geom_point(size=3) + theme_bw() + geom_line() +
   facet_grid(+sds_u~sds_B) +
   scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
@@ -171,11 +141,11 @@ p5 <- ggplot(data=tbl_cm2, aes(x=means_B, y=value, shape=name)) +
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-p5
+p3
 
 tbl_r2m2 <- pivot_longer(tbl, cols=c("r2_u_m2", "r2_B_m2"))
 
-p6 <- ggplot(data=tbl_r2m2, aes(x=means_B, y=value, shape=name)) +
+p4 <- ggplot(data=tbl_r2m2, aes(x=means_B, y=value, shape=name)) +
   geom_point(size=3) + theme_bw() + geom_line() +
   facet_grid(+sds_u~sds_B) +
   scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
@@ -187,11 +157,11 @@ p6 <- ggplot(data=tbl_r2m2, aes(x=means_B, y=value, shape=name)) +
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-p6
+p4
 
 tbl_cm3 <- pivot_longer(tbl, cols=c("coeff_u_m3", "coeff_B_m3"))
 
-p7 <- ggplot(data=tbl_cm3, aes(x=means_B, y=value, shape=name)) +
+p5 <- ggplot(data=tbl_cm3, aes(x=means_B, y=value, shape=name)) +
   geom_point(size=3) + theme_bw() + geom_line() +
   facet_grid(+sds_u~sds_B) +
   scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
@@ -203,5 +173,36 @@ p7 <- ggplot(data=tbl_cm3, aes(x=means_B, y=value, shape=name)) +
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-p7
+p5
 
+tbl_cor <- pivot_longer(tbl, cols=c("cor_u", "cor_B"))
+
+p6 <- ggplot(data=tbl_cor, aes(x=means_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  facet_grid(+sds_u~sds_B) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="rows->SD(u), cols->SD(B)", x="Mean (B)", y="Cor (p, x)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+p6
+
+tbl_cor_p <- pivot_longer(tbl, cols=c("cor_u_partial", "cor_B_partial"))
+
+p7 <- ggplot(data=tbl_cor_p, aes(x=means_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  facet_grid(+sds_u~sds_B) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_log10(breaks=pretty_breaks()) +
+  labs(title="rows->SD(u), cols->SD(B)", x="Mean (B)", y="P. Cor (p, x, z)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+p7

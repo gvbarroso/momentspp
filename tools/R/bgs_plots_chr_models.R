@@ -22,11 +22,20 @@ pdf(NULL) # to suppress creation of Rplots.pdf
 setwd("~/Data/bgs_lmr/sim_data/chr_models/")
 
 # loads the main tables
-models <- fread("models.csv")
+models <- fread("models.csv.gz")
 num_models <- nrow(models)
 num_reps <- 10
 
 scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
+
+pcor_tbl_1kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_1kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pcor_tbl_10kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_10kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pcor_tbl_100kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_100kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pcor_tbl_1Mb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_1Mb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
 
 # NOTE: uses output from bgs_maps.R, bgs_lm.R & chr_models.py
 for(i in 1:num_models) {
@@ -38,11 +47,26 @@ for(i in 1:num_models) {
     
     cat(paste("Rep. ", j, "\n"))
     
-    m1kb <- fread(paste("model_", i, "/rep_", j, "/tbl_1kb.csv", sep=""))
-    m10kb <- fread(paste("model_", i, "/rep_", j, "/tbl_10kb.csv", sep=""))
-    m100kb <- fread(paste("model_", i, "/rep_", j, "/tbl_100kb.csv",sep=""))
-    m1Mb <- fread(paste("model_", i, "/rep_", j, "/tbl_1Mb.csv",sep=""))
+    m1kb <- fread(paste("model_", i, "/rep_", j, "/tbl_1kb.csv.gz", sep=""))
+    m10kb <- fread(paste("model_", i, "/rep_", j, "/tbl_10kb.csv.gz", sep=""))
+    m100kb <- fread(paste("model_", i, "/rep_", j, "/tbl_100kb.csv.gz", sep=""))
+    m1Mb <- fread(paste("model_", i, "/rep_", j, "/tbl_1Mb.csv.gz", sep=""))
   
+    pc1k <- pcor.test(m1kb$B, m1kb$avg_mut, m1kb$avg_rec, method="spearman")
+    pc10k <- pcor.test(m10kb$B, m10kb$avg_mut, m10kb$avg_rec, method="spearman")
+    pc100k <- pcor.test(m100kb$B, m100kb$avg_mut, m100kb$avg_rec, method="spearman")
+    pc1M <- pcor.test(m1Mb$B, m1Mb$avg_mut, m1Mb$avg_rec, method="spearman")
+    
+    pcor_tbl_1kb[i, j] <- pc1k$estimate
+    pval_tbl_1kb[i, j] <- pc1k$p.value
+    pcor_tbl_10kb[i, j] <- pc10k$estimate
+    pval_tbl_10kb[i, j] <- pc10k$p.value
+    pcor_tbl_100kb[i, j] <- pc100k$estimate
+    pval_tbl_100kb[i, j] <- pc100k$p.value
+    pcor_tbl_1Mb[i, j] <- pc1M$estimate
+    pval_tbl_1Mb[i, j] <- pc1M$p.value
+  }
+}
     m1kb$bin <- 1:nrow(m1kb)
     m10kb$bin <- 1:nrow(m10kb)
     m100kb$bin <- 1:nrow(m100kb)
