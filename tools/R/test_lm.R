@@ -19,6 +19,10 @@ params <- crossing(means_u, means_B, sds_u, sds_B)
 n_models <- nrow(params)
 params$model <- 1:nrow(params)
 
+params$cv_u <- params$sds_u / params$means_u 
+params$cv_B <- params$sds_B / params$means_B 
+params$cv_u_cv_B <- params$cv_u / params$cv_B
+
 # table to store estimates
 estimates <- as.data.frame(matrix(nrow=n_models, ncol=14))
 names(estimates) <- c("cor_u", "cor_B", 
@@ -111,6 +115,19 @@ p1 <- ggplot(data=tbl_cm1, aes(x=means_B, y=value, shape=name)) +
         legend.position="bottom")
 p1
 
+q1 <- ggplot(data=tbl_cm1, aes(x=cv_u_cv_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x="CV(u) / CV(B)", y="Coeff. M1 (linear)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q1
+
 tbl_r2m1 <- pivot_longer(tbl, cols=c("r2_u_m1", "r2_B_m1"))
 
 p2 <- ggplot(data=tbl_r2m1, aes(x=means_B, y=value, shape=name)) +
@@ -126,6 +143,20 @@ p2 <- ggplot(data=tbl_r2m1, aes(x=means_B, y=value, shape=name)) +
         legend.title=element_text(size=16),
         legend.position="bottom")
 p2
+
+q2 <- ggplot(data=tbl_r2m1, aes(x=cv_u_cv_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  geom_vline(xintercept=1, linetype="dashed", color="brown1") + 
+  labs(title=NULL, x="CV(u) / CV(B)", y="Var. Explained M1 (linear)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q2
 
 tbl_cm2 <- pivot_longer(tbl, cols=c("coeff_u_m2", "coeff_B_m2"))
 
@@ -143,6 +174,20 @@ p3 <- ggplot(data=tbl_cm2, aes(x=means_B, y=value, shape=name)) +
         legend.position="bottom")
 p3
 
+q3 <- ggplot(data=tbl_cm2, aes(x=cv_u_cv_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  geom_vline(xintercept=1, linetype="dashed", color="brown1") + 
+  labs(title=NULL, x="CV(u) / CV(B)", y="Coeff. M2 (log)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q3
+
 tbl_r2m2 <- pivot_longer(tbl, cols=c("r2_u_m2", "r2_B_m2"))
 
 p4 <- ggplot(data=tbl_r2m2, aes(x=means_B, y=value, shape=name)) +
@@ -158,6 +203,20 @@ p4 <- ggplot(data=tbl_r2m2, aes(x=means_B, y=value, shape=name)) +
         legend.title=element_text(size=16),
         legend.position="bottom")
 p4
+
+q4 <- ggplot(data=tbl_r2m2, aes(x=cv_u_cv_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  geom_vline(xintercept=1, linetype="dashed", color="brown1") + 
+  labs(title=NULL, x="CV(u) / CV(B)", y="Var. Explained M2 (log)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q4
 
 tbl_cm3 <- pivot_longer(tbl, cols=c("coeff_u_m3", "coeff_B_m3"))
 
@@ -175,6 +234,20 @@ p5 <- ggplot(data=tbl_cm3, aes(x=means_B, y=value, shape=name)) +
         legend.position="bottom")
 p5
 
+q5 <- ggplot(data=tbl_cm3, aes(x=cv_u_cv_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  geom_vline(xintercept=1, linetype="dashed", color="brown1") + 
+  labs(title=NULL, x="CV(u) / CV(B)", y="Coeff. M3 (z-scores)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q5
+
 tbl_cor <- pivot_longer(tbl, cols=c("cor_u", "cor_B"))
 
 p6 <- ggplot(data=tbl_cor, aes(x=means_B, y=value, shape=name)) +
@@ -191,6 +264,20 @@ p6 <- ggplot(data=tbl_cor, aes(x=means_B, y=value, shape=name)) +
         legend.position="bottom")
 p6
 
+q6 <- ggplot(data=tbl_cor, aes(x=cv_u_cv_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  geom_vline(xintercept=1, linetype="dashed", color="brown1") + 
+  labs(title=NULL, x="CV(u) / CV(B)", y="Cor (p, x)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q6
+
 tbl_cor_p <- pivot_longer(tbl, cols=c("cor_u_partial", "cor_B_partial"))
 
 p7 <- ggplot(data=tbl_cor_p, aes(x=means_B, y=value, shape=name)) +
@@ -206,3 +293,17 @@ p7 <- ggplot(data=tbl_cor_p, aes(x=means_B, y=value, shape=name)) +
         legend.title=element_text(size=16),
         legend.position="bottom")
 p7
+
+q7 <- ggplot(data=tbl_cor_p, aes(x=cv_u_cv_B, y=value, shape=name)) +
+  geom_point(size=3) + theme_bw() + geom_line() +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u")) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  geom_vline(xintercept=1, linetype="dashed", color="brown1") + 
+  labs(title=NULL, x="CV(u) / CV(B)", y="P. Cor (p, x, z)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q7

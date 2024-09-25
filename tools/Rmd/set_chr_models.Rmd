@@ -341,5 +341,3 @@ do
 done
 ```
 
-# TODO 
-Add Python chunk with fwdpy11 simulations

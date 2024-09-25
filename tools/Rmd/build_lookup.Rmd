@@ -262,26 +262,27 @@ for(i in 1:length(lookup_r)) {
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
     fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                         pattern="*_e_*.*_time.txt", full.names=TRUE)
+                         #pattern="*_e_*.*_time.txt", full.names=TRUE)
+                         pattern="*_expectations.txt", full.names=TRUE)
     
     idx <- 0  
-    hets <- NULL
+    #hets <- NULL
     for(l in 1:length(fnames)) {
       moms <- fread(fnames[l])
       str_sides <- strsplit(fnames[l], "_O_")[[1]]
       idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
       order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])
-      hets <- rbind.data.frame(hets, moms)
+      #hets <- rbind.data.frame(hets, moms)
+      
+      left <- filter(moms, V1=="Hl_0_0")
+      right <- filter(moms, V1=="Hr_0_0")
+      # multiple epochs may overlap their output in their last/first time-point
+      #left <- left[!duplicated(left$V4)]
+      #right <- right[!duplicated(right$V4)]
+      
+      hls[idx,] <- c(t(dplyr::select(left, V3)), order)
+      hrs[idx,] <- c(t(dplyr::select(right, V3)), order)
     }
-    
-    left <- filter(hets, V1=="Hl_0_0")
-    right <- filter(hets, V1=="Hr_0_0")
-    # multiple epochs may overlap their output in their last/first time-point
-    left <- left[!duplicated(left$V4)]
-    right <- right[!duplicated(right$V4)]
-    
-    hls[idx,] <- c(t(dplyr::select(left, V3)), order)
-    hrs[idx,] <- c(t(dplyr::select(right, V3)), order)
   }
 }
 
