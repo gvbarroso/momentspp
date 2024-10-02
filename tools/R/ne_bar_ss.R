@@ -5,8 +5,6 @@
 #!/usr/bin/env Rscript
 args=commandArgs(trailingOnly=T)
 
-sel <- as.numeric(args[1])
-num_iter <- as.numeric(args[2]) # for updating B-vals due to interference
 
 pdf(NULL) # to suppress creation of Rplots.pdf
 
@@ -14,15 +12,13 @@ suppressMessages({
   library(R.utils)
   library(tidyverse)
   library(data.table)
-  library(bigsnpr) # for seq_log
   library(cowplot)
   library(scales)
-  library(RColorBrewer)
   library(shiny)
   library(bslib)
 })
 
-setwd("~/Data/momentspp/paper_1/2_epoch_model/")
+setwd("~/Data/momentspp/paper_1/2_epoch_expansion/")
 
 params <- fread("params.csv")
 
@@ -31,7 +27,8 @@ Ts <- unique(params$Ts)
 uL <- unique(params$uL)
 uR <- unique(params$uR)
 
-t <- as.integer(strsplit(Ts, ";")[[1]][2])
+ts <- strsplit(Ts, ";")[[1]]
+t <- as.integer(strsplit(Ts, ";")[[1]][length(ts)])
   
 demo_models <- crossing(Ns, Ts, uL, uR)
 num_demo_models <- nrow(demo_models)
@@ -39,11 +36,18 @@ sampling_times <- seq(from=t, to=0, by=-500)
 pi0 <- as.data.frame(matrix(nrow=num_demo_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
-for(i in 1:num_demo_models) {
-  
-  moms <- fread("demo/model_neutral_O_2_e_1_hets_time.txt")
-  pi0[i,] <- t(dplyr::select(filter(moms, V1=="Hl_0_0"), V3))
+fnames <- list.files("demo", pattern="*_e_*.*_time.txt", full.names=TRUE)
+hets <- NULL
+for(l in 1:length(fnames)) {
+  moms <- fread(fnames[l])
+  str_sides <- strsplit(fnames[l], "_O_")[[1]]
+  order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])
+  hets <- rbind.data.frame(hets, moms)
 }
+
+right <- filter(hets, V1=="Hr_0_0")
+right <- right[!duplicated(right$V4)]
+pi0[1,] <- t(dplyr::select(filter(right, V1=="Hr_0_0"), V3))
 
 demo_pi0 <- cbind.data.frame(demo_models, pi0)
 
@@ -54,7 +58,7 @@ m_pi0$Generation <- as.numeric(m_pi0$Generation)
 m_pi0$Ne_bar <- m_pi0$pi0 / 2 / m_pi0$uR
 fwrite(m_pi0, "demo/m_pi0.csv")
 
-p <- ggplot(data=m_pi0, aes(x=Generation, y=pi0)) + 
+p <- ggplot(data=m_pi0, aes(x=Generation, y=pi0*1e+3)) + 
   geom_point() + geom_line() + theme_bw() + 
   labs(title=paste("Trajectory of Heterozygosity after size change"), 
        x="Generations ago", y=expression(pi[0])) +

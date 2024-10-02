@@ -1317,7 +1317,7 @@ save_plot("coeff_ratios_10kb.png", z10kb, base_height=8, base_width=16)
 save_plot("coeff_ratios_100kb.png", z100kb, base_height=8, base_width=16)
 save_plot("coeff_ratios_1Mb.png", z1Mb, base_height=8, base_width=16)
 
-w <- ggplot(data=filter(m_coeff_models, var=="ratio", avg_rec_spans==1e+5, shapes_rate_r==1),
+w1 <- ggplot(data=filter(m_coeff_models, var=="ratio", avg_rec_spans==1e+5, shapes_rate_r==1),
             aes(x=cv_u_cv_B, y=value, shape=as.factor(num_exons), color=source_pi)) +
   geom_line() + geom_point(size=4) + theme_bw() +
   facet_wrap(~scale) +
@@ -1333,7 +1333,28 @@ w <- ggplot(data=filter(m_coeff_models, var=="ratio", avg_rec_spans==1e+5, shape
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-save_plot("coeff_ratios_scale.png", w, base_height=8, base_width=16)
+save_plot("coeff_ratios_scale.png", w1, base_height=8, base_width=16)
+
+w2 <- ggplot(data=filter(m_coeff_models,
+                         var=="ratio",
+                         num_exons==1500,
+                         avg_rec_spans==1e+5,
+                         shapes_rate_r==1),
+             aes(x=cv_u_cv_B, y=value, shape=as.factor(scale), color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Scale") +
+  scale_x_continuous(breaks=c(0.1, 1, 10), trans="log10") +
+  scale_y_continuous(breaks=c(0.1, 1, 10), trans="log10") +
+  labs(title=NULL, x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_scale_2.png", w2, base_height=8, base_width=16)
 
 
 # meta linear models (pi exp)
