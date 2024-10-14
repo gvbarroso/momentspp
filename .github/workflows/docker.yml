@@ -38,6 +38,10 @@ jobs:
       - name: Build and push momentspp
         uses: docker/build-push-action@v4
         with:
+          # 2 cores for private linux.. 4 for public
+          # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
+          build-args:
+            NCORES=2
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
