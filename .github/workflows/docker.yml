@@ -28,6 +28,12 @@ jobs:
           tags: |
             # set latest tag for default branch
             type=raw,value=latest,enable={{is_default_branch}}
+            # branch event
+            type=ref,event=branch
+            # tag event
+            type=ref,event=tag
+            # pull request event
+            type=ref,event=pr
 
       - name: Build and push momentspp
         uses: docker/build-push-action@v4
