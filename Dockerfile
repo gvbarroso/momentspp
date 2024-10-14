@@ -17,7 +17,7 @@ ARG BPP_MPP_CMAKE_ARGS="\
 RUN \
     set -ex; \
     apt-get update; \
-    apt-get install -y build-essential cmake git libboost-iostreams-dev; \
+    apt-get install -y build-essential cmake git libboost-iostreams-dev libgsl-dev; \
     rm -rf /var/lib/apt/lists/*
 
 RUN set -ex; \
@@ -79,7 +79,7 @@ COPY --from=build /usr/local/bin /usr/local/bin
 RUN \
     set -ex; \
     apt-get update; \
-    apt-get install -y --no-install-recommends libboost-iostreams1.74.0 libgomp1; \
+    apt-get install -y --no-install-recommends libboost-iostreams1.74.0 libgomp1 libgsl27; \
     rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["momentspp"]
