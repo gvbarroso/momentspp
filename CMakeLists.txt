@@ -6,12 +6,19 @@
 cmake_minimum_required (VERSION 3.5.0)
 project (momentspp CXX)
 
+option(NativeBuild "Enable -march=native build flag" OFF)
+
 # Telling the compiler to optimize based on CPU architecture leads to considerable speed-up.
 # On Linux, add "-march=native" after -O3 flag
 # On MacOS, clang may not support this option (depending on the version); add instead e.g. "-mcpu=apple-M1" after -O3 flag.
 # clang --print-supported-cpus may give additional insight
-
-SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3 -fopenmp -march=native")
+IF(NativeBuild)
+  MESSAGE("Running native build, including -march=native")
+  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3 -fopenmp -march=native")
+ELSE()
+  MESSAGE("NOT Running native build")
+  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3 -fopenmp")
+ENDIF()
 
 # Find dependencies (add install directory to search)
 IF(CMAKE_INSTALL_PREFIX)
