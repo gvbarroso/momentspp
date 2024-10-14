@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 23/05/2023
+ * Last modified: 06/06/2024
  *
  */
 
@@ -42,11 +42,10 @@ private:
   size_t endGen_;
 
   std::vector<std::shared_ptr<Population>> pops_;
-  // each operator contains Eigen matrices and a subset of the parameters
-  std::vector<std::shared_ptr<AbstractOperator>> operators_;
+  std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-  Eigen::MatrixXd transitionMatrix_; // all sparse operators combined into a dense matrix
-  Eigen::VectorXd steadYstate_; // based on the parameters of *this epoch
+  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> transitionMatrix_; // all sparse operators combined into a dense matrix
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> steadYstate_; // based on the parameters of *this epoch
 
 public:
   Epoch():
@@ -61,7 +60,7 @@ public:
   steadYstate_()
   { }
 
-  Epoch(const std::string& name, SumStatsLibrary& ssl, size_t start, size_t end,
+  Epoch(const std::string& name, const SumStatsLibrary& ssl, size_t start, size_t end,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
         const std::vector<std::shared_ptr<Population>>& pops):
   bpp::AbstractParameterAliasable(""),
@@ -124,12 +123,12 @@ public:
     return startGen_ - endGen_;
   }
 
-  const Eigen::VectorXd& getSteadyState()
+  const Eigen::Matrix<long double, Eigen::Dynamic, 1>& getSteadyState()
   {
     return steadYstate_;
   }
 
-  const Eigen::MatrixXd& getTransitionMatrix()
+  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getTransitionMatrix()
   {
     return transitionMatrix_;
   }
@@ -213,17 +212,23 @@ public:
 
   std::vector<size_t> fetchSelectedPopIds(); // for *this epoch
 
-  void computeExpectedSumStats(Eigen::VectorXd& y);
+  void computeExpectedSumStats(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
 
-  void transferStatistics(Eigen::VectorXd& y);
+  void transferStatistics(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
 
-  void updateMoments(const Eigen::VectorXd& y);
+  void updateMoments(const Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
+
+  void printMoments(std::ostream& stream);
+
+  void printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, const std::string& name, size_t interval);
 
   void printRecursions(std::ostream& stream);
 
-  void pseudoSteadyState();
+  void printTransitionMat(const std::string& fileName) const;
 
-  void computeSteadyState();
+  void computePseudoSteadyState();
+
+  void computeEigenSteadyState();
 
   void testSteadyState();
 

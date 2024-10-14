@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/04/2023
- * Last modified: 22/05/2023
+ * Last modified: 03/06/2024
  *
  */
 
@@ -16,7 +16,7 @@ class Admixture: public AbstractOperator
 {
 
 private:
-  Eigen::MatrixXd littleAdmixMat_; // P x P
+  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleAdmixMat_; // P x P
 
 public:
   Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib):
@@ -28,7 +28,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Admixture(const Eigen::MatrixXd& admixMat, const SumStatsLibrary& sslib):
+  Admixture(const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& admixMat, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   littleAdmixMat_(admixMat)
   {
@@ -60,7 +60,7 @@ public:
     return new Admixture(*this);
   }
 
-  const Eigen::MatrixXd& getLittleAdmixMat()
+  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getLittleAdmixMat()
   {
     return littleAdmixMat_;
   }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 05/05/2023
+ * Last modified: 05/06/2024
  *
  */
 
@@ -17,7 +17,6 @@
 #include <memory>
 #include <utility>
 #include <algorithm>
-#include <map>
 
 
 class Population
@@ -31,12 +30,12 @@ private:
   std::shared_ptr<Population> leftParent_;
   std::shared_ptr<Population> rightParent_;
 
-  std::pair<double, double> proportions_; // parental f and 1-f, only relevant if leftParent_ != rightParent_
+  std::pair<long double, long double> proportions_; // parental f and 1-f, only relevant if leftParent_ != rightParent_
 
   size_t id_; // "i" as it appears in N_i parameters (Drift) and m_ij parameters (Migration)
   size_t startTime_; // in units of generations (decreasing from past to present)
   size_t endTime_; // in units of generations
-  size_t size_; // N_i in 1/N_i Drift parameters (constant within each epoch)
+  long double size_; // N_i in 1/2*N_i Drift parameters (constant within each epoch)
 
   bool isDerivedLeftSelected_; // ... in this population
 
@@ -50,19 +49,19 @@ public:
   id_(0),
   startTime_(0),
   endTime_(0),
-  size_(0),
+  size_(0.),
   isDerivedLeftSelected_(0)
   { }
 
-  Population(const std::string& name, const std::string& description, size_t id, size_t startTime, size_t endTime, size_t size, bool hasSelection):
+  Population(const std::string& name, const std::string& desc, size_t id, size_t start, size_t end, long double size, bool hasSelection):
   name_(name),
-  description_(description),
+  description_(desc),
   leftParent_(nullptr),
   rightParent_(nullptr),
   proportions_(std::make_pair(0.5, 0.5)),
   id_(id),
-  startTime_(startTime),
-  endTime_(endTime),
+  startTime_(start),
+  endTime_(end),
   size_(size),
   isDerivedLeftSelected_(hasSelection)
   { }
@@ -102,7 +101,7 @@ public:
     return rightParent_;
   }
 
-  const std::pair<double, double>& getProportions() const
+  const std::pair<long double, long double>& getProportions() const
   {
     return proportions_;
   }
@@ -122,7 +121,7 @@ public:
     return endTime_;
   }
 
-  size_t getSize()
+  long double getSize()
   {
     return size_;
   }
@@ -152,7 +151,7 @@ public:
     endTime_ = time;
   }
 
-  void setSize(size_t size)
+  void setSize(long double size)
   {
     size_ = size;
   }
@@ -167,7 +166,7 @@ public:
     rightParent_ = parent;
   }
 
-  void setProportions(const std::pair<double, double>& prop)
+  void setProportions(const std::pair<long double, long double>& prop)
   {
     proportions_ = prop;
   }

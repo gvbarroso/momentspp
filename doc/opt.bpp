@@ -1,14 +1,6 @@
-demes_file = demes.yaml
-data_file = data.vcf
-
-optimizer = Powell
-tolerance = 1e-6
-ci = false
-order = 2
-num_epochs = 1
-num_pops = 1
-total_gen = 10000
-number_threads = 4
-
-# additional file with initial parameter values
-params=init_parameters.bpp
+label = 
+stats_file = none
+demes_file = $(F)
+factor_order = $(O)
+time_steps = $(T)
+verbose = 

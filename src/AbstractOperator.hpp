@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 25/05/2022
+ * Last modified: 30/05/2024
  *
  */
 
@@ -38,13 +38,13 @@ class AbstractOperator: public bpp::AbstractParameterAliasable
 {
 
 protected:
-  // flexible vector: one matrix per population (Drift) or pair thereof (Migration), single matrices for Mutation and Recombination (?) etc
+  // flexible vector: one matrix per population (Drift, Mutation, Recombination and Selection) or pair thereof (Migration, Admixture)
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into transition_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)
-  std::vector<Eigen::SparseMatrix<double>> matrices_; // "delta" matrix(ces)
-  Eigen::SparseMatrix<double> identity_; // helper matrix to convert from "delta" to "transition" matrix
-  Eigen::SparseMatrix<double> transition_; // "transition" matrix
+  std::vector<Eigen::SparseMatrix<long double>> matrices_; // "delta" matrix(ces)
+  Eigen::SparseMatrix<long double> identity_; // helper matrix to convert from "delta" to "transition" matrix
+  Eigen::SparseMatrix<long double> transition_; // "transition" matrix
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
   std::vector<size_t> popIndices_;
 
@@ -90,29 +90,29 @@ public:
       updateMatrices_();
   }
 
-  const std::vector<Eigen::SparseMatrix<double>>& getMatrices()
+  const std::vector<Eigen::SparseMatrix<long double>>& getMatrices()
   {
     return matrices_; // delta matrices
   }
 
-  const Eigen::SparseMatrix<double>& getMatrix(size_t index)
+  const Eigen::SparseMatrix<long double>& getMatrix(size_t index)
   {
     return matrices_[index]; // delta matrix; population index for Drift, population-pair index for Migration etc
   }
 
-  const Eigen::SparseMatrix<double>& getTransitionMatrix()
+  const Eigen::SparseMatrix<long double>& getTransitionMatrix()
   {
     return transition_;
   }
 
-  const Eigen::SparseMatrix<double>& getIdentity()
+  const Eigen::SparseMatrix<long double>& getIdentity()
   {
     return identity_;
   }
 
-  virtual void printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
+  virtual void printDeltaLDMat(const std::string& fileName);
 
-  virtual void printTransitionLDMat(const std::string& fileName, const SumStatsLibrary& sslib);
+  virtual void printTransitionLDMat(const std::string& fileName);
 
 protected:
   // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator

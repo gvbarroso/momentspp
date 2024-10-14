@@ -1,0 +1,391 @@
+---
+title: "Benchmarking Moments++ in the 1-population case"
+author: "Gustavo V. Barroso"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+  toc: true
+number_sections: true
+toc_depth: 3
+---
+  
+```{r setup, include=F, message=F, warning=F}
+
+knitr::opts_chunk$set(echo=TRUE)
+
+library(tidyverse)
+library(data.table)
+library(cowplot)
+library(stringr)
+library(RColorBrewer)
+library(scales)
+library(plotly)
+library(MASS)
+library(lmtest)
+library(nlme)
+library(car)
+library(bigsnpr)
+library(data.table)
+library(GenomicRanges)
+library(pracma)
+
+library(reticulate)
+use_python("/usr/bin/python3")
+
+scale.4d <- function(x) sprintf("%.4f", x)
+
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/bench")
+```
+
+This is an empty python chunk.
+Apparently this must exist in order for reticulate to be able to read
+R data frames in future python chunks.
+
+```{python}
+
+```
+
+Here we benchmark against moments.TwoLocus using equilibrium demography
+to assess accuracy of moments++ under strong selection (adding (1-2p)^k factors)
+
+### Building Demes files
+
+```{r, demes-selected, include=F, eval=T, results=F, message=F, warning=F}
+
+N <- c(20000)
+u <- 1e-8
+r  <- c(1e-3, 1e-4, 1e-5, 1e-6)
+s <- c(-1e-5, -1e-04, -1e-3, -2e-3, -5e-3)
+
+params <- crossing(N, u, r, s)
+params$scenario <- 1:nrow(params)
+n_models <- nrow(params)
+
+fwrite(params, "params.csv")
+
+Sys.setenv(num_models=n_models)
+
+py$params <- params # stores df to be used in python sections
+py$n_models <- as.integer(n_models + 1) # because python is indexed from zero
+
+for(i in 1:n_models) {
+  
+  name <- paste("model_", i, sep="")
+  sink(paste(name, ".yaml", sep=""))
+  
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        start_size: ")
+  cat(params$N[i])
+  cat("\n")
+  cat("metadata:\n")
+  cat("  - name: mutation\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$u[i])
+  cat("]\n")
+  cat("  - name: recombination\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$r[i])
+  cat("]\n")
+  cat("  - name: selection\n")
+  cat("    start_time: .inf\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(params$s[i])
+  cat("]\n")
+  
+  sink()
+}
+
+```
+
+### Running moments++
+
+```{bash run-moments++-, engine.opts='-i', include=F, eval=T}
+
+source ~/.bashrc
+
+for((i=1;i<=$num_models;i++))
+do
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=25;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=50;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=75;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=100;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=150;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=200;
+  momentspp params=opt.bpp F=model_$i.yaml L=model_$i O=300;
+done
+```
+
+### Running moments.TwoLocus
+
+For benchmarking the single population case, we use equilibrium demography:
+  
+```{python run-momentsTwoLocus, include=F, eval=T, results=F}
+
+import moments.TwoLocus
+import sys, os
+import numpy as np
+
+for i in range(1, n_models):
+  with open(f"moments_twoLocus_n40_model_{i}.csv", "w+") as fout:
+      n_samples = 40
+      
+      # i - 1 because python is indexed from zero
+      Ne = params["N"][i - 1] 
+      u = params["u"][i - 1] 
+      r = params["r"][i - 1] 
+      s = params["s"][i - 1]
+      
+      gammas = [2 * Ne * s, 2 * Ne * s, 0] # sel on [AB, Ab, aB] haplotypes, resp
+      rho = 4 * Ne * r
+      theta = 4 * Ne * u
+      
+      F = moments.TwoLocus.Demographics.equilibrium(n_samples, 
+                                                    rho=rho, 
+                                                    theta=theta, 
+                                                    sel_params=gammas)
+      
+      fs = moments.Spectrum(moments.LinearSystem_1D.steady_state_1D(n_samples,
+                           gamma=2 * Ne * s) * theta)    
+      fs_left = moments.Spectrum(F[0, :, 0])
+      fs_right = moments.Spectrum(F[0, 0, :])
+      
+      fout.write(f"D^2 = {F.D2():}\n")
+      fout.write(f"Dz = {F.Dz():}\n")
+      fout.write(f"Hl = {fs_left.pi()}\n")
+      fout.write(f"Hr = {fs_right.pi()}\n")
+      fout.write(f"pi2 = {F.pi2():}\n")
+      
+      assert np.allclose(fs_left, fs)
+
+for i in range(1, n_models):
+  with open(f"moments_twoLocus_n80_model_{i}.csv", "w+") as fout:
+    n_samples = 80
+    
+    # i - 1 because python is indexed from zero
+    Ne = params["N"][i - 1] 
+    u = params["u"][i - 1] 
+    r = params["r"][i - 1] 
+    s = params["s"][i - 1]
+    
+    gammas = [2 * Ne * s, 2 * Ne * s, 0] # sel on [AB, Ab, aB] haplotypes, resp
+    rho = 4 * Ne * r
+    theta = 4 * Ne * u
+    
+    F = moments.TwoLocus.Demographics.equilibrium(n_samples, 
+                                                  rho=rho, 
+                                                  theta=theta, 
+                                                  sel_params=gammas)
+    
+    fs = moments.Spectrum(moments.LinearSystem_1D.steady_state_1D(n_samples, 
+                          gamma=2 * Ne * s) * theta)    
+    fs_left = moments.Spectrum(F[0, :, 0])
+    fs_right = moments.Spectrum(F[0, 0, :])
+    
+    fout.write(f"D^2 = {F.D2():}\n")
+    fout.write(f"Dz = {F.Dz():}\n")
+    fout.write(f"Hl = {fs_left.pi()}\n")
+    fout.write(f"Hr = {fs_right.pi()}\n")
+    fout.write(f"pi2 = {F.pi2():}\n")
+    
+    assert np.allclose(fs_left, fs)
+```
+
+### Plots
+
+```{r, plots-selected-1-pop, include=T, eval=T, results=F, message=F, warning=F}
+
+params <- fread("params.csv")
+n_models <- nrow(params)
+
+commom_stats <- c("DD_0_0",
+                  "Dr_0_0_(1-2p0)^1",
+                  "Hl_0_0", 
+                  "Hr_0_0",
+                  "pi2_0_0_0_0")
+
+# from moments++
+orders <- c(25, 50, 75, 100, 150, 200, 300)
+tbl <- data.frame()
+for(j in 1:length(orders)) {
+  expectation <- numeric()
+  for(i in 1:n_models) {
+    vals <- read.table(paste("model_",  i, "_O_", orders[j], 
+                             "_expectations.txt", sep=""))
+    vals <- subset(vals, V1 %in% commom_stats)$V3
+    expectation <- c(expectation, vals)
+  }
+  
+  tmp <- as.data.frame(expectation)
+  tmp$stats <- commom_stats
+  scenario <- NULL
+  
+  for(i in 1:n_models) { 
+    scenario <- c(scenario, rep(i, length(commom_stats)))
+  }
+  tmp$scenario <- scenario
+  tmp$order <- orders[j]
+  
+  tbl <- rbind.data.frame(tmp, tbl)
+}
+
+mpp <- full_join(tbl, params, by="scenario")
+mpp$alpha <- 2 * mpp$s * mpp$N
+
+# moments.TwoLocus was fitted with 2 sample sizes, n==40 and n==80
+# n==40
+expectation <- numeric()
+for(i in 1:n_models) {
+  vals <- read.table(paste ("moments_twoLocus_n40_model_", i,".csv", sep=""))$V3
+  expectation <- c(expectation, vals)
+}
+
+tbl_py_n40 <- as.data.frame(expectation)
+tbl_py_n40$stats <- commom_stats
+tbl_py_n40$scenario <- scenario
+tbl_py_n40$sample_size <- 40
+tbl_py_n40 <- full_join(tbl_py_n40, params, by="scenario")
+
+# from 2p(1-p) to p(1-p)
+tbl_py_n40[tbl_py_n40$stats=="Hl_0_0", 1] <-
+  tbl_py_n40[tbl_py_n40$stats=="Hl_0_0", 1] / 2
+tbl_py_n40[tbl_py_n40$stats=="Hr_0_0", 1] <-
+  tbl_py_n40[tbl_py_n40$stats=="Hr_0_0", 1] / 2
+
+# n==80
+expectation <- numeric()
+for(i in 1:n_models) {
+  vals <- read.table(paste("moments_twoLocus_n80_model_", i, ".csv", sep=""))$V3
+  expectation <- c(expectation, vals)
+}
+
+tbl_py_n80 <- as.data.frame(expectation)
+tbl_py_n80$stats <- commom_stats
+tbl_py_n80$scenario <- scenario
+tbl_py_n80$sample_size <- 80
+tbl_py_n80 <- full_join(tbl_py_n80, params, by="scenario")
+
+# from 2p(1-p) to p(1-p)
+tbl_py_n80[tbl_py_n80$stats=="Hl_0_0", 1] <-
+  tbl_py_n80[tbl_py_n80$stats=="Hl_0_0", 1] / 2
+tbl_py_n80[tbl_py_n80$stats=="Hr_0_0", 1] <-
+  tbl_py_n80[tbl_py_n80$stats=="Hr_0_0", 1] / 2
+
+tbl_py_ns <- bind_rows(tbl_py_n40, tbl_py_n80)
+
+tbl_pp <- full_join(mpp, tbl_py_ns, by=c("stats", colnames(params)))
+names(tbl_pp)[1] <- "mpp"
+names(tbl_pp)[10] <- "m2l"
+tbl_pp <- tbl_pp %>% mutate(ratio=mpp/m2l)
+
+# plots
+p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1],
+                         sample_size==80), aes(x=r, y=ratio)) +
+      geom_point(size=3) + geom_line() + theme_bw() + 
+  facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
+  labs(title=NULL, x="r", y=expression(D^2)) +
+  geom_hline(yintercept=1, linetype="dashed", color="red") +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+save_plot("dd_ratios.png", p1, base_height=24, base_width=12)
+
+p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2], 
+                         sample_size==80), aes(x=r, y=ratio)) +
+      geom_point(size=3) + geom_line() + theme_bw() + 
+  facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
+  labs(title=NULL, x="r", y="Dz") +
+  geom_hline(yintercept=1, linetype="dashed", color="red") +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+save_plot("dz_ratios.png", p2, base_height=24, base_width=12)
+
+p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3], 
+                         sample_size==80), aes(x=r, y=ratio)) +
+      geom_point(size=3) + geom_line() + theme_bw() + 
+  facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
+  labs(title=NULL,
+       x="r", y=expression(H[l])) +
+  geom_hline(yintercept=1, linetype="dashed", color="red") +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+save_plot("hl_ratios.png", p3, base_height=24, base_width=12)
+
+p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
+                         sample_size==80), aes(x=r, y=ratio)) +
+      geom_point(size=3) + geom_line() + theme_bw() + 
+  facet_grid(+alpha~order) + scale_x_log10(breaks=r) +
+  labs(title=NULL,
+       x="r", y=expression(H[r])) +
+  geom_hline(yintercept=1, linetype="dashed", color="red") +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+save_plot("hr_ratios.png", p4, base_height=24, base_width=12)
+
+p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5], 
+                         sample_size==80), aes(x=r, y=ratio)) +
+      geom_point(size=3) + geom_line() + theme_bw() +  
+  facet_grid(+alpha~order) + scale_x_log10(breaks=r) + 
+  labs(title="Ratios mpp / m2l, rows->alpha, cols->order",
+       x="r", y=expression(pi[2])) +
+  geom_hline(yintercept=1, linetype="dashed", color="red") +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+save_plot("pi2_ratios.png", p5, base_height=24, base_width=12)
+
+# compare to HK95 pred
+tbl_hr <- filter(tbl_pp, stats=="Hr_0_0", sample_size==80)
+tbl_hr$hk95 <- 2 * tbl_hr$N * tbl_hr$u * 
+    (1 - (tbl_hr$u * -1 * tbl_hr$s) /  (2 * (-tbl_hr$s + tbl_hr$r)^2))
+molten_hr <- pivot_longer(tbl_hr, cols=c(mpp, hk95), names_to="method")
+
+for(n in unique(molten_hr$N)) {
+  q <- ggplot(data=filter(molten_hr, N==n, r==1e-6), 
+              aes(x=alpha, y=value, color=method)) +
+        geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~order) +
+    scale_x_continuous(breaks=pretty_breaks()) +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Hr, N=", n, ", r=1e-8", sep=""),
+         x=expression(alpha), y=expression(H[r])) +
+    theme(axis.title=element_text(size=12),
+          axis.text=element_text(size=10),
+          axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+          legend.position="bottom")
+  q
+  save_plot(paste("Hr, N=", n, ", r=1e-6.png", sep=""), q,
+            base_height=10, base_width=12)
+}
+
+for(a in unique(molten_hr$alpha)) {
+ r <- ggplot(data=filter(molten_hr, alpha==a), aes(x=r, y=value, color=method)) +
+      geom_point(size=3) + geom_line() + theme_bw() + facet_wrap(~order) +
+  scale_x_log10() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Hr, alpha=", a, sep=""), x="r", y=expression(H[r])) +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+  r
+  save_plot(paste("Hr, alpha=", a, ".png", sep=""), r,
+            base_height=10, base_width=12)
+}
+```

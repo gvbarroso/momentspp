@@ -12,12 +12,13 @@ option(NativeBuild "Enable -march=native build flag" OFF)
 # On Linux, add "-march=native" after -O3 flag
 # On MacOS, clang may not support this option (depending on the version); add instead e.g. "-mcpu=apple-M1" after -O3 flag.
 # clang --print-supported-cpus may give additional insight
+
 IF(NativeBuild)
   MESSAGE("Running native build, including -march=native")
-  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3 -fopenmp -march=native")
+  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -g -lgsl -O3 -fopenmp -march=native")
 ELSE()
   MESSAGE("NOT Running native build")
-  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -O3 -fopenmp")
+  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -g -lgsl -O3 -fopenmp")
 ENDIF()
 
 # Find dependencies (add install directory to search)
@@ -34,8 +35,9 @@ ENDIF()
 
 INCLUDE(GNUInstallDirs)
 FIND_PACKAGE(bpp-core3 1.0.0 REQUIRED)
-#FIND_PACKAGE(bpp-seq3 1.0.0 REQUIRED)
-#FIND_PACKAGE(bpp-phyl3 1.0.0 REQUIRED)
+
+FIND_PACKAGE(GSL REQUIRED)  
+
 
 SET(Boost_USE_MULTITHREADED OFF)
 FIND_PACKAGE(Boost 1.67.0 REQUIRED COMPONENTS "iostreams")
@@ -61,6 +63,10 @@ IF(yaml-cpp_FOUND)
   MESSAGE("-- yaml-cpp libraries found.")
   MESSAGE("   includes: ${YAML_CPP_INCLUDE_DIR}")
   MESSAGE("   dynamic libraries: ${YAML_CPP_LIBRARIES}")
+ENDIF()
+
+IF(NAKED_D)
+  ADD_DEFINITIONS(-DNAKED_D)
 ENDIF()
 
 # Set the CMAKE_PREFIX_PATH for the find_library function when using non

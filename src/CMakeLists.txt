@@ -11,9 +11,10 @@ SET(momentspp_CPP
   SumStatsLibrary.cpp
   AbstractOperator.cpp
   Drift.cpp
-  Migration.cpp
+  #Migration.cpp
   Mutation.cpp
-  Admixture.cpp
+  #Admixture.cpp
+  Selection.cpp
   Recombination.cpp
   Epoch.cpp
   Model.cpp
@@ -21,13 +22,19 @@ SET(momentspp_CPP
   main.cpp
 )
 
-ADD_EXECUTABLE (momentspp ${momentspp_CPP})
+SET(twoLocusSim_CPP
+  twoLocusSim.cpp
+)
 
-SET(momentspp-targets momentspp)
+ADD_EXECUTABLE (momentspp ${momentspp_CPP})
+ADD_EXECUTABLE (twoLocusSim ${twoLocusSim_CPP})
+
+SET(momentspp-targets momentspp twoLocusSim)
 
 FOREACH (target ${momentspp-targets})
 	TARGET_LINK_LIBRARIES(${target} ${BPP_LIBS_SHARED})
 	TARGET_LINK_LIBRARIES(${target} ${YAML_CPP_LIBRARIES})
+	TARGET_LINK_LIBRARIES(${target} GSL::gsl GSL::gslcblas)
         #TARGET_LINK_LIBRARIES (${target} Threads::Threads)
 ENDFOREACH (target)
 

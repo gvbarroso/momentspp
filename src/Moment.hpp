@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 17/05/2023
+ * Last modified: 03/06/2024
  *
  */
 
@@ -28,30 +28,33 @@ class Moment
 {
 
 protected:
-  std::string name_; // e.g. "Dz_110"
-  std::string prefix_; // e.g. "Dz"
-  std::vector<size_t> popIndices_;
-  size_t position_; // within the Y vector and SumStatsLibrary basis_
-  double value_;
+  std::string name_; // e.g. "pi2_1100_(1-2p0)^2", name is unique to *this Moment
+  std::string prefix_; // e.g. "pi2"
+  std::vector<size_t> popIndices_; // population indices associated with main statistic
+  std::vector<size_t> factorIndices_; // population indices associated with each (1-2p) factor
+  size_t position_; // index within the Y vector (see Epoch::computeExpectedSumStats()) and SumStatsLibrary basis_
+  long double value_; // expectation
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry
-  std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permuations with same expectations)
+  std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permutations with same expectations)
 
 public:
   Moment():
   name_(""),
   prefix_(""),
   popIndices_(0),
+  factorIndices_(0),
   position_(0),
   value_(0.),
   parent_(nullptr),
   aliases_(0)
   { }
 
-  Moment(const std::string& name, double value):
+  Moment(const std::string& name, long double value):
   name_(name),
   prefix_(""),
   popIndices_(0),
+  factorIndices_(0),
   position_(0),
   value_(value),
   parent_(nullptr),
@@ -65,7 +68,8 @@ public:
 
   virtual void printAttributes(std::ostream& stream)
   {
-    stream << std::scientific << name_ << " = " << value_;
+    stream << "(" << position_ << ") " << name_;
+    stream << " = " << std::scientific << value_;
 
     if(parent_ != nullptr)
       stream << "; parent = " << parent_->getName() << "\n";
@@ -76,10 +80,16 @@ public:
     if(aliases_.size() > 0)
     {
       auto tmp = getAliases();
-      stream << "\taliases: ";
+      stream << "\talias(es): ";
 
       for(auto it = std::begin(tmp); it != std::end(tmp); ++it)
-        stream << (*it)->getName() << ",";
+      {
+        stream << (*it)->getName();
+        auto test = it;
+
+        if(++test != std::end(tmp))
+          stream << ",";
+      }
 
       stream << "\n";
     }
@@ -87,7 +97,7 @@ public:
 
   virtual bool hasSamePopIds(std::shared_ptr<Moment> mom)
   {
-    return mom->getPopIndices() == popIndices_; // default, needed for DummyMoment "I" (Base)
+    return mom->getPopIndices() == popIndices_;
   }
 
   const std::string& getName() const
@@ -105,12 +115,32 @@ public:
     return popIndices_;
   }
 
+  const std::vector<size_t>& getFactorIndices() const
+  {
+    return factorIndices_;
+  }
+
+  size_t getFactorPower()
+  {
+    return factorIndices_.size();
+  }
+
+  int getPopFactorPower(size_t index)
+  {
+    return std::count(std::begin(factorIndices_), std::end(factorIndices_), index);
+  }
+
+  int getPopFactorPower(size_t index) const
+  {
+    return std::count(std::begin(factorIndices_), std::end(factorIndices_), index);
+  }
+
   size_t getPosition() const
   {
     return position_;
   }
 
-  double getValue() const
+  long double getValue() const
   {
     return value_;
   }
@@ -138,7 +168,25 @@ public:
 
   bool isCrossPop() // tells if moment involves samples from more than 1 population
   {
-    return std::adjacent_find(std::begin(popIndices_), std::end(popIndices_), std::not_equal_to<size_t>()) != std::end(popIndices_);
+    if(popIndices_.size() == 1) // naked signed D
+      return false;
+
+    else
+    {
+      auto tmp = popIndices_;
+      std::sort(std::begin(tmp), std::end(tmp));
+
+      return std::adjacent_find(std::begin(popIndices_), std::end(popIndices_), std::not_equal_to<size_t>()) != std::end(popIndices_);
+    }
+  }
+
+  bool hasCrossPopFactors()
+  {
+    if(factorIndices_.size() > 0)
+      return std::adjacent_find(std::begin(factorIndices_), std::end(factorIndices_), std::not_equal_to<size_t>()) != std::end(factorIndices_);
+
+    else
+      return false;
   }
 
   void setValueFromParent()
@@ -146,7 +194,7 @@ public:
     value_ = parent_->getValue();
   }
 
-  void setValue(double value)
+  void setValue(long double value)
   {
     value_ = value;
   }
@@ -178,6 +226,28 @@ public:
     return !(std::find(std::begin(popIndices_), std::end(popIndices_), index) == std::end(popIndices_));
   }
 
+  bool hasAnyOfPopIndices(const std::vector<size_t>& ids) const
+  {
+    for(size_t i = 0; i < ids.size(); ++i)
+    {
+      if(!(std::find(std::begin(popIndices_), std::end(popIndices_), ids[i]) == std::end(popIndices_)))
+        return true;
+    }
+
+    return false;
+  }
+
+  bool hasAllOfPopIndices(const std::vector<size_t>& ids) const
+  {
+    for(size_t i = 0; i < ids.size(); ++i)
+    {
+      if((std::find(std::begin(popIndices_), std::end(popIndices_), ids[i]) == std::end(popIndices_)))
+        return false;
+    }
+
+    return true;
+  }
+
   size_t countInstances(size_t index) const
   {
     return std::count(std::begin(popIndices_), std::end(popIndices_), index);
@@ -193,7 +263,7 @@ public:
     std::weak_ptr<Moment> tmp = mom;
 
     auto pos = std::find_if(std::begin(aliases_), std::end(aliases_), [&tmp](const auto& obj)
-                            { return tmp.lock() == obj.lock(); }); // WARNING
+                            { return tmp.lock()->getName() == obj.lock()->getName(); });
 
     return pos != std::end(aliases_);
   }
@@ -211,23 +281,9 @@ public:
     return ret;
   }
 
-  size_t popIndexDistance(const std::shared_ptr<Moment> other) const
-  {
-    assert(typeid(*this) == typeid(*other.get()));
-
-    size_t dist = 0;
-    for(size_t i = 0; i < popIndices_.size(); ++i)
-    {
-      if(popIndices_[i] != other->getPopIndices()[i])
-        ++dist;
-    }
-
-    return dist;
-  }
-
   size_t popIndexDistance(const std::shared_ptr<Moment> other)
   {
-    assert(typeid(*this) == typeid(*other.get()));
+    static_assert(std::is_same_v<decltype(*this), decltype(*other.get())>);
 
     size_t dist = 0;
     for(size_t i = 0; i < popIndices_.size(); ++i)
@@ -247,7 +303,7 @@ public:
   // directional, tells if *this can be reached by other* via Admixture
   bool isAdmixAdjacent(const std::shared_ptr<Moment> other, size_t fromId, size_t toId)
   {
-    if(typeid(*this) != typeid(*other.get()))
+    if(!std::is_same_v<decltype(*this), decltype(*other.get())>)
       return 0;
 
     bool eval = 1;
@@ -276,10 +332,41 @@ public:
     if(splitName.size() > 1)
     {
       for(size_t i = 1; i < splitName.size(); ++i)
-        popIndices_.push_back(std::stoul(splitName[i]));
-    }
-  }
+      {
+        if(splitName[i] != "l")
+          popIndices_.push_back(std::stoul(splitName[i]));
 
+        else
+        {
+          for(size_t j = i + 1; j < splitName.size(); ++j)
+            factorIndices_.push_back(std::stoul(splitName[j]));
+
+          break;
+        }
+      }
+    }
+
+    // sorts to compare *this and other moments more easily NOTE popIndices_ should not be sorted!
+    std::sort(std::begin(factorIndices_), std::end(factorIndices_));
+
+    // aesthetics
+    std::string nome = prefix_;
+    for(size_t i = 0; i < popIndices_.size(); ++i)
+      nome = nome + "_" + bpp::TextTools::toString(popIndices_[i]);
+
+    std::vector<size_t> indices = factorIndices_;
+    indices.erase(std::unique(std::begin(indices), std::end(indices)), std::end(indices));
+
+    for(size_t i = 0; i < indices.size(); ++i)
+    {
+      size_t count = std::count(std::begin(factorIndices_), std::end(factorIndices_), indices[i]);
+
+      if(count > 0)
+        nome = nome + "_(1-2p" + bpp::TextTools::toString(indices[i]) + ")^" + bpp::TextTools::toString(count);
+    }
+
+    name_ = nome;
+  }
 };
 
 #endif

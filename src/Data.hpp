@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 19/04/2023
+ * Last modified: 30/05/2024
  *
  */
 
@@ -38,7 +38,7 @@ class Data // observed data
 
 private:
   SumStatsLibrary ssl_; // the moments in Data naturally refer to Population indices among sampled individuals
-  Eigen::MatrixXd covar_; // covariance matrix of observed sum stats (from sampled populations); ssl_.fetchYvec() will get the expectations
+  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> covar_; // covariance matrix of observed sum stats (from sampled populations); ssl_.fetchYvec() will get the expectations
   std::map<std::string, double> variances_; // bootstrapped, moment name -> moment var
 
 public:
@@ -56,12 +56,12 @@ public:
     return ssl_;
   }
 
-  const Eigen::MatrixXd& getCovarMatrix()
+  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getCovarMatrix()
   {
     return covar_;
   }
 
-  Eigen::VectorXd getY()
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> getY()
   {
     return ssl_.fetchYvec();
   }

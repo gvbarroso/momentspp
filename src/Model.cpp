@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 30/05/2023
+ * Last modified: 06/06/2024
  *
  */
 
@@ -26,23 +26,45 @@ void Model::computeExpectedSumStats()
   {
     epochs_[i]->transferStatistics(expected_); // copying values from epoch i-1 into epoch i according to population ancestry
     epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
+    epochs_[i]->updateMoments(expected_); // updates inside sslib
   }
 
-  if(epochs_.size() > 1)
+  if(epochs_.size() > 1) // final epoch
   {
-    // final epoch
     epochs_.back()->transferStatistics(expected_);
     epochs_.back()->computeExpectedSumStats(expected_);
     epochs_.back()->updateMoments(expected_); // updates inside sslib
   }
 }
 
+void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
+{
+  for(size_t i = 1; i < epochs_.size(); ++i) // epochs are sorted from past to present
+  {
+    std::string fileName = modelName + "_" +  epochs_[i]->getName() + "_expectations.txt";
+    std::ofstream fout(fileName);
+
+    epochs_[i]->printMoments(fout);
+    fout.close();
+  }
+}
+
+// prints expectations of Hl and Hr over time (for each epoch)
+void Model::printHetMomentsIntermediate(const std::string& modelName, size_t interval)
+{
+  auto y = epochs_[0]->getSteadyState();
+
+  for(size_t i = 1; i < epochs_.size(); ++i)
+    epochs_[i]->printHetMomentsIntermediate(y, modelName, interval);
+}
+
 void Model::printAliasedMoments(std::ostream& stream)
 {
+  // prints expectations for the last (most recent) epoch
   std::vector<std::shared_ptr<Moment>> tmp = epochs_.back()->getSslib().getBasis();
 
   for(auto& m : tmp)
-    stream << m->getName() << " = " << m->getValue() << "\n";
+    stream << std::setprecision(24) << m->getName() << " = " << m->getValue() << "\n";
 }
 
 void Model::updateEpochs_(const bpp::ParameterList& params)
@@ -53,27 +75,132 @@ void Model::updateEpochs_(const bpp::ParameterList& params)
 
 void Model::computeCompositeLogLikelihood_()
 {
-  double cll = 0.;
+  assert(data_ != nullptr);
+
+  long double cll = 0.;
   /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
   {
-    Eigen::VectorXd obsMeans = data_->getY();
-    Eigen::MatrixXd obsCovarMat = data_->getCovarMatrix();
+    Eigen::Matrix<long double, Eigen::Dynamic, 1> obsMeans = data_->getY();
+    Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> obsCovarMat = data_->getCovarMatrix();
     cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected_ - means).transpose() * covarMat^(-1)*(expected_ - means);
   }*/
 
   compLogLikelihood_ = cll;
 }
 
+void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
+{
+  // epoch[0] should never be 1-generation only (ie, an "Admixture epoch")
+  // hence it should always have a full set of parameters, ie, including 'u_*', 'r_*', and 's_*'
+
+  // the order of the following two aliasing dimensions (over populations and over epochs) matters!
+  // as implemented, we should first go over populations
+
+  // alias u, r and s among populations from the same epoch IFF they have identical (starting) values
+  if(aliasOverPops)
+  {
+    std::cout << "Aliasing parameters over populations.\n";
+
+    for(size_t i = 0; i < epochs_.size(); ++i)
+    {
+      for(size_t j = 0; j < epochs_[i]->getNumPops(); ++j)
+      {
+        size_t jd = epochs_[i]->getPops()[j]->getId();
+        std::string rj = "r_" + bpp::TextTools::toString(jd);
+        std::string uj = "u_" + bpp::TextTools::toString(jd);
+        std::string sj = "s_" + bpp::TextTools::toString(jd);
+
+        for(size_t k = j + 1; k < epochs_[i]->getNumPops(); ++k)
+        {
+          size_t kd = epochs_[i]->getPops()[k]->getId();
+          std::string rk = "r_" + bpp::TextTools::toString(kd);
+          std::string uk = "u_" + bpp::TextTools::toString(kd);
+          std::string sk = "s_" + bpp::TextTools::toString(kd);
+
+          if(epochs_[i]->getParameter(rj).getValue() == epochs_[i]->getParameter(rk).getValue())
+          {
+            epochs_[i]->aliasParameters(rj, rk);
+            aliasParameters(epochs_[i]->getName() + "." + rj, epochs_[i]->getName() + "." + rk);
+          }
+
+          if(epochs_[i]->getParameter(uj).getValue() == epochs_[i]->getParameter(uk).getValue())
+          {
+            epochs_[i]->aliasParameters(uj, uk);
+            aliasParameters(epochs_[i]->getName() + "." + uj, epochs_[i]->getName() + "." + uk);
+          }
+
+          if(epochs_[i]->getParameter(sj).getValue() == epochs_[i]->getParameter(sk).getValue())
+          {
+            epochs_[i]->aliasParameters(sj, sk);
+            aliasParameters(epochs_[i]->getName() + "." + sj, epochs_[i]->getName() + "." + sk);
+          }
+        }
+      }
+    }
+  }
+
+  if(aliasOverEpochs)
+  {
+    std::cout << "Aliasing parameters over epochs.\n";
+
+    for(size_t i = 1; i < epochs_.size(); ++i)
+    {
+      for(size_t j = 0; j < epochs_[i]->getNumPops(); ++j)
+      {
+        size_t jd = epochs_[i]->getPops()[j]->getId();
+        size_t pd = epochs_[i]->getPops()[j]->getLeftParent()->getId(); // WARNING getLeftParent() [dangerous when there is admixture]
+
+        // rates from population jd
+        std::string rj = "r_" + bpp::TextTools::toString(jd);
+        std::string uj = "u_" + bpp::TextTools::toString(jd);
+        std::string sj = "s_" + bpp::TextTools::toString(jd);
+
+        // rates based on its parental pop id
+        std::string rp = "r_" + bpp::TextTools::toString(pd);
+        std::string up = "u_" + bpp::TextTools::toString(pd);
+        std::string sp = "s_" + bpp::TextTools::toString(pd);
+
+        // only alias if populations share NAME
+        if(epochs_[i]->hasIndependentParameter(rj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+          aliasParameters(epochs_[i - 1]->getName() + "." + rp, epochs_[i]->getName() + "." + rj);
+
+        if(epochs_[i]->hasIndependentParameter(uj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+          aliasParameters(epochs_[i - 1]->getName() + "." + up, epochs_[i]->getName() + "." + uj);
+
+        if(epochs_[i]->hasIndependentParameter(sj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+          aliasParameters(epochs_[i - 1]->getName() + "." + sp, epochs_[i]->getName() + "." + sj);
+      }
+    }
+  }
+}
+
 // this method defines the relationships among moments from different epochs (w.r.t population indices)
-// when pop has 2 ancestors, pick one of them, then apply Admixture as if it were a pulse
+// when focal pop has 2 (different) ancestors, pick one of them, then apply Admixture as if it were a pulse
 void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    //std::cout << "\nepoch " << epochs_[i]->getName() << "\n";
-    // for each moment in focal epoch, set "parent" in previous epoch using population ancestry
+    // for each moment in focal epoch, set "parent" moment in previous epoch using population ancestry
     for(auto it = std::begin(epochs_[i]->getBasis()); it != std::end(epochs_[i]->getBasis()); ++it)
     {
+      std::vector<size_t> factorIds = (*it)->getFactorIndices();
+
+      for(size_t j = 0; j < factorIds.size(); ++j)
+      {
+        size_t prevFactorPop = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+        size_t focalFactorPop = factorIds[j];
+        size_t factorPopLeftParentId = epochs_[i]->fetchPop(focalFactorPop)->getLeftParent()->getId();
+        size_t factorPopRightParentId = epochs_[i]->fetchPop(focalFactorPop)->getRightParent()->getId();
+
+        if(factorPopLeftParentId == factorPopRightParentId) // population [carry-forward / split] between epochs
+          prevFactorPop = factorPopLeftParentId;
+
+        else
+          prevFactorPop = factorPopRightParentId;
+
+        factorIds[j] = prevFactorPop; // replaces
+      }
+
       if((*it)->getPrefix() == "DD")
       {
         // indices of populations in parental DD_** moment, inits to out-of-bounds
@@ -100,16 +227,38 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDdIndex(prevP1, prevP2));
+        std::vector<size_t> popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("DD", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
-      else if((*it)->getPrefix() == "Dz")
+      #ifdef NAKED_D
+      else if((*it)->getPrefix() == "D")
       {
-        // indices of populations in parental Dz*** moment, inits to out-of-bounds
+        // indices of populations in parental D_* moment, inits to out-of-bounds
+        size_t prevP = epochs_[i - 1]->getSslib().getNumPops();
+
+        size_t focalP = (*it)->getPopIndices()[0];
+        size_t pLeftParentId = epochs_[i]->fetchPop(focalP)->getLeftParent()->getId();
+        size_t pRightParentId = epochs_[i]->fetchPop(focalP)->getRightParent()->getId();
+
+        if(pLeftParentId == pRightParentId) // population [carry-forward / split] between epochs
+          prevP = pLeftParentId;
+
+        else
+          prevP = pRightParentId;
+
+        std::vector<size_t>  popIds = { prevP };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("D", popIds, factorIds));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
+      }
+      #endif
+
+      else if((*it)->getPrefix() == "Dr")
+      {
+        // indices of populations in parental Dr*** moment, inits to out-of-bounds
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops();
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops();
-        size_t prevP3 = epochs_[i - 1]->getSslib().getNumPops();
 
         size_t focalP1 = (*it)->getPopIndices()[0];
         size_t p1LeftParentId = epochs_[i]->fetchPop(focalP1)->getLeftParent()->getId();
@@ -131,23 +280,14 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t focalP3 = (*it)->getPopIndices()[2];
-        size_t p3LeftParentId = epochs_[i]->fetchPop(focalP3)->getLeftParent()->getId();
-        size_t p3RightParentId = epochs_[i]->fetchPop(focalP3)->getRightParent()->getId();
-
-        if(p3LeftParentId == p3RightParentId) // population [carry-forward / split] between epochs
-          prevP3 = p3LeftParentId;
-
-        else
-          prevP3 = p3RightParentId;
-
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findDzIndex(prevP1, prevP2, prevP3));
+        std::vector<size_t> popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Dr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
-      else if((*it)->getPrefix() == "H")
+      else if((*it)->getPrefix() == "Hl")
       {
-        // indices of populations in parental H_** moment
+        // indices of populations in parental Hl_** moment
         size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
 
@@ -171,7 +311,39 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findHetIndex(prevP1, prevP2));
+        std::vector<size_t> popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hl", popIds, factorIds));
+        (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
+      }
+
+      else if((*it)->getPrefix() == "Hr")
+      {
+        // indices of populations in parental Hr_** moment
+        size_t prevP1 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+        size_t prevP2 = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
+
+        size_t focalP1 = (*it)->getPopIndices()[0];
+        size_t p1LeftParentId = epochs_[i]->fetchPop(focalP1)->getLeftParent()->getId();
+        size_t p1RightParentId = epochs_[i]->fetchPop(focalP1)->getRightParent()->getId();
+
+        if(p1LeftParentId == p1RightParentId) // population [carry-forward / split] between epochs
+          prevP1 = p1LeftParentId;
+
+        else // focalP1 is formed by admixture of two populations in previous epoch
+          prevP1 = p1RightParentId;
+
+        size_t focalP2 = (*it)->getPopIndices()[1];
+        size_t p2LeftParentId = epochs_[i]->fetchPop(focalP2)->getLeftParent()->getId();
+        size_t p2RightParentId = epochs_[i]->fetchPop(focalP2)->getRightParent()->getId();
+
+        if(p2LeftParentId == p2RightParentId) // population [carry-forward / split] between epochs
+          prevP2 = p2LeftParentId;
+
+        else
+          prevP2 = p2RightParentId;
+
+        std::vector<size_t> popIds = { prevP1, prevP2 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -223,14 +395,14 @@ void Model::linkMoments_()
         else
           prevP4 = p4RightParentId;
 
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().findPi2Index(prevP1, prevP2, prevP3, prevP4));
+        std::vector<size_t> popIds = { prevP1, prevP2, prevP3, prevP4 };
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("pi2", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
       else if((*it)->getPrefix() == "I")
-        (*it)->setParent(epochs_[i - 1]->getSslib().getDummyMomentCompressed());
+        (*it)->setParent(epochs_[i - 1]->getSslib().getMoment("I"));
 
-      //(*it)->printAttributes(std::cout);
     } // ends loop over moments
   } // ends loop over epochs
 }

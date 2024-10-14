@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 05/05/2023
+ * Last modified: 30/05/2024
  */
 
 
@@ -18,6 +18,14 @@
 #include <ostream>
 #include <cassert>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+
 #include <eigen3/Eigen/Core>
 
 #include <Bpp/Text/TextTools.h>
@@ -25,7 +33,7 @@
 #include "Population.hpp"
 #include "Moment.hpp"
 #include "DdMoment.hpp"
-#include "DzMoment.hpp"
+#include "DrMoment.hpp"
 #include "HetMoment.hpp"
 #include "Pi2Moment.hpp"
 
@@ -36,33 +44,24 @@ class SumStatsLibrary
 
 private:
   size_t numPops_;
-  size_t numDDStats_;
-  size_t numDzStats_;
-  size_t numHetStats_;
-  size_t numPi2Stats_;
+  size_t factorOrder_; // maximum number of 1-2p_x factors attached to a Moment
 
-  std::vector<size_t> popIndices_; // among all Moments, stored for bookkeeping
+  std::vector<size_t> popIndices_; // among all Moments in the Epoch to which *this belongs, stored for bookkeeping
   std::vector<std::shared_ptr<Moment>> moments_; // sorted alphabetically based on prefix_ and numerically based on popIndices_
-  std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, based on symmetries
+  std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, compressed based on population genetic symmetries
 
 public:
   SumStatsLibrary():
   numPops_(0),
-  numDDStats_(0),
-  numDzStats_(0),
-  numHetStats_(0),
-  numPi2Stats_(0),
+  factorOrder_(0),
   popIndices_(0),
   moments_(0),
   basis_(0)
   { }
 
-  SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments):
+  SumStatsLibrary(const std::vector<std::shared_ptr<Population>>& pops, size_t factorOrder, bool compress):
   numPops_(pops.size()),
-  numDDStats_(numPops_ * numPops_),
-  numDzStats_(numPops_ * numPops_ * numPops_),
-  numHetStats_(numPops_ * numPops_),
-  numPi2Stats_(numPops_ * numPops_ * numPops_ * numPops_),
+  factorOrder_(factorOrder),
   popIndices_(0),
   moments_(0),
   basis_(0)
@@ -80,7 +79,7 @@ public:
       throw bpp::Exception("SumStatsLibrary::non-unique population indices!");
 
     std::sort(std::begin(popIndices_), std::end(popIndices_));
-    initMoments_(pops, compressMoments);
+    initMoments_(compress);
   }
 
 public:
@@ -124,87 +123,66 @@ public:
     return basis_;
   }
 
-  size_t getNumDDStats() const
-  {
-    return numDDStats_;
-  }
-
-  size_t getNumDzStats() const
-  {
-    return numDzStats_;
-  }
-
-  size_t getNumHetStats() const
-  {
-    return numHetStats_;
-  }
-
-  size_t getNumPi2Stats() const
-  {
-    return numPi2Stats_;
-  }
-
-  size_t getNumStats() const
-  {
-    return 1 + numDDStats_ + numDzStats_ + numHetStats_ + numPi2Stats_;
-  }
-
   size_t getSizeOfBasis() const
   {
     return basis_.size();
   }
 
+  size_t getNumStats() const
+  {
+    return moments_.size();
+  }
+
+  size_t getFactorOrder() const
+  {
+    return factorOrder_;
+  }
+
   std::shared_ptr<Moment> getMoment(const std::string& name) const;
 
+  std::shared_ptr<Moment> getMoment(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const;
+
   std::shared_ptr<Moment> getMoment(size_t pos) const;
-
-  std::shared_ptr<DdMoment> getDdMoment(size_t id1, size_t id2) const;
-
-  std::shared_ptr<DzMoment> getDzMoment(size_t id1, size_t id2, size_t id3) const;
-
-  std::shared_ptr<HetMoment> getHetMoment(size_t id1, size_t id2) const;
-
-  std::shared_ptr<Pi2Moment> getPi2Moment(size_t id1, size_t id2, size_t id3, size_t id4) const;
-
-  std::shared_ptr<Pi2Moment> getPi2Moment(std::shared_ptr<HetMoment> left, std::shared_ptr<HetMoment> right) const;
-
-  std::shared_ptr<Moment> getDummyMoment() const
-  {
-    return moments_[getDummyIndexUncompressed()];
-  }
-
-  std::shared_ptr<Moment> getDummyMomentCompressed() const
-  {
-    return basis_[findCompressedIndex(getDummyIndexUncompressed())];
-  }
-
-  size_t findPopIndexRank(size_t index) const;
-
-  size_t findDdIndex(size_t id1, size_t id2) const;
-
-  size_t findDzIndex(size_t id1, size_t id2, size_t id3) const;
-
-  size_t findHetIndex(size_t id1, size_t id2) const;
-
-  size_t getDummyIndexUncompressed() const
-  {
-    return numDDStats_ + numDzStats_ + numHetStats_;
-  }
-
-  size_t findPi2Index(size_t id1, size_t id2, size_t id3, size_t id4) const;
 
   size_t findCompressedIndex(std::shared_ptr<Moment> mom) const;
 
   size_t findCompressedIndex(size_t uncompressedIndex) const;
 
-  Eigen::VectorXd fetchYvec();
+  void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
+
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> fetchYvec();
 
   void printMoments(std::ostream& stream);
 
   void printBasis(std::ostream& stream);
 
+  void readStatsFromFile(const std::string& fileName);
+
+  // this assumes a maximum population count of 2 (speed constraint imposed by selection) and is used for convenience in the Drift operator
+  size_t fetchOtherId(size_t id)
+  {
+    assert(popIndices_.size() == 2);
+
+    if(popIndices_[0] == id)
+      return popIndices_[1];
+
+    else
+      return popIndices_[0];
+  }
+
+  size_t fetchOtherId(size_t id) const
+  {
+    assert(popIndices_.size() == 2);
+
+    if(popIndices_[0] == id)
+      return popIndices_[1];
+
+    else
+      return popIndices_[0];
+  }
+
 private:
-  void initMoments_(const std::vector<std::shared_ptr<Population>>& pops, bool compressMoments);
+  void initMoments_(bool compress);
 
   static bool compareMoments_(std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
   {
@@ -215,16 +193,47 @@ private:
 
     else
     {
-      auto x = a->getPopIndices();
-      auto y = b->getPopIndices();
-      assert(x.size() == y.size());
+      auto aPops = a->getPopIndices();
+      auto bPops = b->getPopIndices();
 
-      for(size_t i = 0; i < x.size(); ++i)
+      assert(aPops.size() == bPops.size());
+
+      if(aPops != bPops)
       {
-        if(x[i] != y[i])
+        for(size_t i = 0; i < aPops.size(); ++i)
         {
-          lessThan = x[i] < y[i];
-          break;
+          if(aPops[i] != bPops[i])
+          {
+            lessThan = aPops[i] < bPops[i];
+            break;
+          }
+        }
+      }
+
+      else
+      {
+        if(a->getFactorPower() != b->getFactorPower())
+          lessThan = a->getFactorPower() < b->getFactorPower();
+
+        else
+        {
+          // these are sorted by design inside each Moment object
+          auto aFactors = a->getFactorIndices();
+          auto bFactors = b->getFactorIndices();
+
+          assert(aFactors.size() == bFactors.size());
+
+          if(aFactors != bFactors)
+          {
+            for(size_t i = 0; i < aFactors.size(); ++i)
+            {
+              if(aFactors[i] != bFactors[i])
+              {
+                lessThan = aFactors[i] < bFactors[i];
+                break;
+              }
+            }
+          }
         }
       }
     }
@@ -232,11 +241,16 @@ private:
     return lessThan;
   }
 
-  // assign two HetMoment pointers to each Pi2Moment (left and right loci)
+  // for searching / comparing
+  std::string assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const;
+
+  void cleanBasis_();
+
+  // assigns two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();
 
-  // the next two method exploit symmetry among statistics to reduce dimension of stats_, given constraints imposed by Selection:
-  void aliasMoments_(const std::vector<size_t>& selectedPopIds);
+  // exploits symmetry among statistics to reduce size of basis, given constraints imposed by selection
+  void aliasMoments_();
 
   void compressBasis_();
 

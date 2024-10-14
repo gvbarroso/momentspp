@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 02/02/2023
- * Last modified: 27/02/2023
+ * Last modified: 12/10/2023
  *
  */
 
@@ -54,9 +54,44 @@ public:
     right_ = mom;
   }
 
+  void printAttributes(std::ostream& stream) override
+  {
+    stream << "(" << position_ << ") " << name_;
+    stream << " = " << std::scientific << value_;
+
+    if(parent_ != nullptr)
+      stream << "; parent = " << parent_->getName() << "\n";
+
+    else
+      stream << "\n";
+
+    if(aliases_.size() > 0)
+    {
+      auto tmp = getAliases();
+      stream << "\talias(es): ";
+
+      for(auto it = std::begin(tmp); it != std::end(tmp); ++it)
+      {
+        stream << (*it)->getName();
+        auto test = it;
+
+        if(++test != std::end(tmp))
+          stream << ",";
+      }
+
+      stream << "\n";
+    }
+
+    stream << "L = " << left_ << " ";
+    left_->printAttributes(stream);
+
+    stream << "R = " << right_ << " ";
+    right_->printAttributes(stream);
+  }
+
   bool hasSamePopIds(std::shared_ptr<Moment> other) override
   {
-    assert(std::dynamic_pointer_cast<DzMoment>(other) != nullptr);
+    assert(std::dynamic_pointer_cast<Pi2Moment>(other) != nullptr);
 
     bool test = 0;
 

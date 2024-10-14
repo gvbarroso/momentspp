@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 04/04/2023
- * Last modified: 25/05/2023
+ * Last modified: 30/05/2024
  *
  */
 
@@ -9,7 +9,7 @@
 #include "AbstractOperator.hpp"
 
 
-void AbstractOperator::printDeltaLDMat(const std::string& fileName, const SumStatsLibrary& sslib)
+void AbstractOperator::printDeltaLDMat(const std::string& fileName)
 {
   std::ofstream matFile;
   matFile.open(fileName);
@@ -24,48 +24,37 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName, const SumSta
 
   for(int i = 0; i < mat.rows(); ++i)
   {
-    if(sslib.getMoment(i)->getPrefix() != "I" && sslib.getMoment(i)->getPrefix() != "H")
+    for(int j = 0; j < mat.cols(); ++j)
     {
-      for(int j = 0; j < mat.cols(); ++j)
-      {
-        if(sslib.getMoment(j)->getPrefix() != "I" && sslib.getMoment(j)->getPrefix() != "H")
-        {
-          matFile << mat.coeffRef(i, j);
+      matFile << mat.coeffRef(i, j);
 
-          if(j < mat.cols() - 1)
-            matFile << ",";
-        }
-      }
-
-      matFile  << "\n";
+      if(j < mat.cols() - 1)
+        matFile << ",";
     }
+
+    matFile  << "\n";
   }
 
   matFile.close();
 }
 
-void AbstractOperator::printTransitionLDMat(const std::string& fileName, const SumStatsLibrary& sslib)
+void AbstractOperator::printTransitionLDMat(const std::string& fileName)
 {
   std::ofstream matFile;
   matFile.open(fileName);
 
   for(int i = 0; i < transition_.rows(); ++i)
   {
-    if(sslib.getMoment(i)->getPrefix() != "I" && sslib.getMoment(i)->getPrefix() != "H")
+    for(int j = 0; j < transition_.cols(); ++j)
     {
-      for(int j = 0; j < transition_.cols(); ++j)
-      {
-        if(sslib.getMoment(j)->getPrefix() != "I" && sslib.getMoment(j)->getPrefix() != "H")
-        {
-          matFile << transition_.coeffRef(i, j);
+      matFile << transition_.coeffRef(i, j);
 
-          if(j < transition_.cols() - 1)
-            matFile << ",";
-        }
-      }
+      if(j < transition_.cols() - 1)
+        matFile << ",";
 
-      matFile  << "\n";
     }
+
+    matFile  << "\n";
   }
 
   matFile.close();
@@ -87,13 +76,13 @@ void AbstractOperator::assembleTransitionMatrix_()
 
 void AbstractOperator::setIdentity_(size_t numStats)
 {
-  Eigen::SparseMatrix<double> id(numStats, numStats);
+  Eigen::SparseMatrix<long double> id(numStats, numStats);
 
-  std::vector<Eigen::Triplet<double>> md(0);
+  std::vector<Eigen::Triplet<long double>> md(0);
   md.reserve(numStats);
 
   for(size_t i = 0; i < numStats; ++i)
-    md.emplace_back(Eigen::Triplet<double>(i, i, 1.));
+    md.emplace_back(Eigen::Triplet<long double>(i, i, 1.));
 
   id.setFromTriplets(std::begin(md), std::end(md));
   id.makeCompressed();
