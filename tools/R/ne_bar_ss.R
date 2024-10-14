@@ -58,7 +58,7 @@ m_pi0$Generation <- as.numeric(m_pi0$Generation)
 m_pi0$Ne_bar <- m_pi0$pi0 / 2 / m_pi0$uR
 fwrite(m_pi0, "demo/m_pi0.csv")
 
-p <- ggplot(data=m_pi0, aes(x=Generation, y=pi0*1e+3)) + 
+p <- ggplot(data=m_pi0, aes(x=Generation, y=pi0)) + 
   geom_point() + geom_line() + theme_bw() + 
   labs(title=paste("Trajectory of Heterozygosity after size change"), 
        x="Generations ago", y=expression(pi[0])) +

@@ -19,7 +19,7 @@ library(bigsnpr) # for seq_log
 library(data.table)
 library(cowplot)
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/2_epoch_expansion/")
+knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/strong_selection/")
 ```
 
 # Creating folders and files
@@ -31,8 +31,8 @@ Builds a parameter grid that allows for fast assembly of whole chromosomes
 Ns <- paste(1e+5, 1e+4, sep=";") # from present to past
 Ts <- paste(0, 25000, sep=";") # from present (0) to past, in generations
 
-uL <- 1e-6
-uR <- 1e-6
+uL <- 1e-8
+uR <- 1e-8
 # rounding is required so that directory names don't diverge due to precision
 r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
 s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
@@ -262,8 +262,8 @@ for(i in 1:length(lookup_r)) {
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
     fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                         pattern="*_e_*.*_time.txt", full.names=TRUE)
-                         #pattern="*_expectations.txt", full.names=TRUE)
+                         #pattern="*_e_*.*_time.txt", full.names=TRUE)
+                         pattern="*_expectations.txt", full.names=TRUE)
     
     idx <- 0  
     hets <- NULL
@@ -277,8 +277,8 @@ for(i in 1:length(lookup_r)) {
       left <- filter(moms, V1=="Hl_0_0")
       right <- filter(moms, V1=="Hr_0_0")
       # multiple epochs may overlap their output in their last/first time-point
-      left <- left[!duplicated(left$V4)]
-      right <- right[!duplicated(right$V4)]
+      #left <- left[!duplicated(left$V4)]
+      #right <- right[!duplicated(right$V4)]
       
       hls[idx,] <- c(t(dplyr::select(left, V3)), order)
       hrs[idx,] <- c(t(dplyr::select(right, V3)), order)
@@ -303,7 +303,7 @@ num_models <- nrow(demo_models)
 pi0 <- as.data.frame(matrix(nrow=num_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
-fnames <- list.files("demo/", pattern="*_e_*.*_time.txt", full.names=TRUE)
+fnames <- list.files("demo", pattern="*_e_*.*_time.txt", full.names=TRUE)
 hets <- NULL
 for(l in 1:length(fnames)) {
   moms <- fread(fnames[l])

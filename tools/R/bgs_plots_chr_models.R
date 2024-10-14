@@ -42,7 +42,6 @@ pval_tbl_1Mb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
 cv_u_cv_B <- as.data.frame(matrix(ncol=4, nrow=num_models))
 names(cv_u_cv_B) <- c(1e+3, 1e+4, 1e+5, 1e+6)
 
-# NOTE: uses output from bgs_maps.R, bgs_lm.R & chr_models.py
 for(i in 1:num_models) {
   
   print(Sys.time())
