@@ -1,0 +1,47 @@
+name: Build and Publish Docker Image
+
+on: push
+
+jobs:
+  build-containers:
+    runs-on: ubuntu-latest
+    permissions:  # Sets the permissions granted to the `GITHUB_TOKEN`
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: metadata  # store tags/labels in this workflow id
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}/momentspp
+          tags: |
+            # set latest tag for default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # branch event
+            type=ref,event=branch
+            # tag event
+            type=ref,event=tag
+            # pull request event
+            type=ref,event=pr
+
+      - name: Build and push momentspp
+        uses: docker/build-push-action@v4
+        with:
+          # 2 cores for private linux.. 4 for public
+          # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
+          build-args:
+            NCORES=2
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
