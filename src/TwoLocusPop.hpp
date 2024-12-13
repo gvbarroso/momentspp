@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 24/10/2023
- * Last modified: 24/10/2024
+ * Last modified: 28/10/2024
  */
 
 
@@ -115,10 +115,10 @@ public:
   {
     for(size_t i = 0; i < x_.size(); ++i)
     {
-      stream << "\tfAB = " << x_[i][0] << ", ";
-      stream << "fAb = " << x_[i][1] << ", ";
-      stream << "faB = " << x_[i][2] << ", ";
-      stream << "fab = " << x_[i][3];
+      stream << x_[i][0] << "\t";
+      stream << x_[i][1] << "\t";
+      stream << x_[i][2] << "\t";
+      stream << x_[i][3];
     }
 
     stream << "\n";
@@ -475,6 +475,40 @@ public:
     mutate(u, gen);
   }
 
+  void cleanup()
+  {
+    // remove fixed or lost in xl_ and xr_
+    for(auto it = std::begin(xl_); it != std::end(xl_);)
+    {
+      if((*it) == 0. || (*it) == 1.)
+        it = xl_.erase(it);
+
+      else
+        ++it;
+    }
+
+    for(auto it = std::begin(xr_); it != std::end(xr_);)
+    {
+      if((*it) == 0. || (*it) == 1.)
+        it = xr_.erase(it);
+
+      else
+        ++it;
+    }
+
+    // remove any pair with p or q at 0 or 1
+    for(auto it = std::begin(x_); it != std::end(x_);)
+    {
+      double p = (*it)[0] + (*it)[1];
+      double q = (*it)[0] + (*it)[2];
+
+      if(p == 0. || p == 1. || q == 0. || q == 1.)
+        it = x_.erase(it);
+      else
+        ++it;
+    }
+  }
+
   void cleanup(std::ostream& log)
   {
     // remove fixed or lost in xl_ and xr_
@@ -505,7 +539,7 @@ public:
       if(p == 0. || p == 1. || q == 0. || q == 1.)
       {
         it = x_.erase(it);
-        log << "removed, two-locus, system, num. pairs = " << x_.size() << "\n";
+        log << "removed\ttwo-locus\tsystem\tnum. pairs = " << x_.size() << "\n";
       }
       else
         ++it;
