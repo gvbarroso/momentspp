@@ -127,7 +127,8 @@ int main(int argc, char *argv[]) {
   std::cout << "done.\n";
   std::cout << "Evolving population(s) (" << G << " generations)..."; std::cout.flush();
 
-  boost::iostreams::filtering_ostream stream_D;
+  /*boost::iostreams::filtering_ostream stream_D;
+
 
   std::string tbl_file = "tbl_D_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
   std::ofstream file_D;
@@ -136,6 +137,7 @@ int main(int argc, char *argv[]) {
   stream_D.push(boost::iostreams::gzip_compressor());
   stream_D.push(file_D);
   stream_D << "D\tp\tq\n";
+  */
 
   double sum_Hl = 0.;
   double sum_Hr = 0.;
@@ -146,6 +148,7 @@ int main(int argc, char *argv[]) {
   double sum_Dz = 0.;
   double sum_Dsqr = 0.;
 
+  /*
   boost::iostreams::filtering_ostream stream_hap;
 
   std::string hap_file = "hap_trajectories_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
@@ -155,14 +158,15 @@ int main(int argc, char *argv[]) {
   stream_hap.push(boost::iostreams::gzip_compressor());
   stream_hap.push(file_hap);
   stream_hap << "fAB\tfAb\tfaB\tfab\n";
+  */
 
   for(size_t i = 0; i < G; ++i)
   {
     p1.evolve(u, r, s, gen);
-    p1.cleanup(stream_hap);
+    p1.cleanup();
 
-    if(p1.getX().size() > 0)
-      p1.printX(stream_hap);
+    //if(p1.getX().size() > 0)
+      //p1.printX(stream_hap);
 
     p1.computeStats();
 
@@ -175,12 +179,12 @@ int main(int argc, char *argv[]) {
     sum_Dsqr += p1.getSumDsqr();
     sum_pi2 += p1.getSumPi2();
 
-    if(i % Ne == 0)
-      p1.tabulate_Ds(stream_D);
+    //if(i % Ne == 0)
+      //p1.tabulate_Ds(stream_D);
   }
 
-  boost::iostreams::close(stream_D);
-  boost::iostreams::close(stream_hap);
+  //boost::iostreams::close(stream_D);
+  //boost::iostreams::close(stream_hap);
 
   std::string file = "stats_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
   std::ofstream fout(file);

@@ -1,4 +1,8 @@
 library(RColorBrewer)
+library(tidyverse)
+library(data.table)
+library(scales)
+library(cowplot)
 
 setwd("~/Data/mpp_figures/figures/")
 
@@ -11,7 +15,7 @@ m_B_iters$Pos <- as.numeric(m_B_iters$Pos)
 
 p <- ggplot(data=m_B_iters, aes(x=Pos, y=value, color=as.factor(iteration))) +
   geom_line() + geom_point() + theme_bw() + 
-  scale_color_discrete(name="Iteration") +
+  scale_color_discrete(name="Iteration", type=brewer.pal(10, "Spectral")) +
   scale_y_continuous(breaks=pretty_breaks()) +
   labs(title=NULL, x="Position (kb)", y="B") +
   theme(axis.title=element_text(size=16), 
@@ -20,3 +24,4 @@ p <- ggplot(data=m_B_iters, aes(x=Pos, y=value, color=as.factor(iteration))) +
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
+ggsave("B_iters.pdf", width=10, height=8)

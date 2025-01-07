@@ -22,7 +22,7 @@ pdf(NULL) # to suppress creation of Rplots.pdf
 setwd("~/Data/bgs_lmr/sim_data/chr_models/")
 
 # loads the main tables
-models <- fread("models.csv.gz")
+models <- fread("models.csv")
 #models$cv_u_cv_B <- NA
 
 num_models <- nrow(models)
@@ -317,6 +317,7 @@ models$scale <- as.numeric(models$scale)
 # visualization of R^2 and linear coefficients across models
 r2_tbl_exp <- data.table()
 r2_tbl_sim <- data.table()
+r2_tbl_raw <- data.table()
 
 coeff_tbl_exp <- data.table()
 coeff_tbl_sim <- data.table()
@@ -337,6 +338,11 @@ for(i in 1:num_models) {
   coeff_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   coeff_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   coeff_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  
+  r2_raw_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  r2_raw_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  r2_raw_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  r2_raw_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
   
   # on expectation
   for(j in 1:num_reps) {
@@ -397,6 +403,23 @@ for(i in 1:num_models) {
   
   coeff_tbl_sim <- rbind.data.frame(coeff_tbl_sim, tbl_coeff)
   r2_tbl_sim <- rbind.data.frame(r2_tbl_sim, tbl_r2)
+  
+  # raw R^2 (from lm() or type I ANOVA)
+  for(j in 1:num_reps) {
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_raw_tbl.csv.gz", sep=""))
+    
+    r2_raw_1kb[j,] <- tmp[1,]
+    r2_raw_10kb[j,] <- tmp[2,]
+    r2_raw_100kb[j,] <- tmp[3,]
+    r2_raw_1Mb[j,] <- tmp[4,]
+  }
+  
+  tbl_r2_raw <- rbind.data.frame(r2_raw_1kb, r2_raw_10kb, r2_raw_100kb, r2_raw_1Mb)
+  names(tbl_r2_raw) <- c("Exp_Pi", "Sim_Pi", "scale")
+  tbl_r2_raw$model <- i
+  tbl_r2_raw$rep <- rep(1:10, 4)
+  
+  r2_tbl_raw <- rbind.data.frame(r2_tbl_raw, tbl_r2_raw)
 }
 close(pb)
 
@@ -408,6 +431,12 @@ r2s_sim <- r2_tbl_sim %>% group_by(model, scale) %>%
                           summarize_at(vars(u, B, `B:u`), 
                                        list(avg=mean, sd=sd))
 
+r2_tbl_raw$Exp_Pi <- r2_tbl_raw$Exp_Pi * 100
+r2_tbl_raw$Sim_Pi <- r2_tbl_raw$Sim_Pi * 100
+r2s_raw <- r2_tbl_raw %>% group_by(model, scale) %>% 
+  summarize_at(vars(Exp_Pi, Sim_Pi), 
+               list(avg=mean, sd=sd))
+
 cs_exp <- coeff_tbl_exp %>% group_by(model, scale) %>% 
   summarize_at(vars(u, B, `B:u`), 
                list(avg=mean, sd=sd))
@@ -416,11 +445,37 @@ cs_sim <- coeff_tbl_sim %>% group_by(model, scale) %>%
   summarize_at(vars(u, B, `B:u`), 
                list(avg=mean, sd=sd))
 
+fwrite(r2s_raw, "r2_raw_tbl_models.csv")
 fwrite(r2s_exp, "r2_exp_tbl_models.csv")
 fwrite(r2s_sim, "r2_sim_tbl_models.csv")
 
 fwrite(cs_exp, "coeff_exp_tbl_models.csv")
 fwrite(cs_sim, "coeff_sim_tbl_models.csv")
+
+# plots raw r2
+r2s_raw_f <- dplyr::select(r2s_raw, -starts_with("B:u")) %>%
+  dplyr::select(., -ends_with("sd")) 
+
+r2_raw_models <- merge(models, r2s_raw_f, by=c("model"))
+m_r2_raw_models <- pivot_longer(r2_raw_models, cols=ends_with("Pi_avg"), names_to="var")
+
+b1 <- ggplot(data=filter(m_r2_raw_models, shapes_rate_r==1, avg_rec_spans==1e+3),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(num_exons))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("Exp", "Sim"))+
+  scale_color_discrete(name="num exons", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_raw_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Total R^2 (type I ANOVA), cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Total Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+save_plot("r2_total_models.pdf", b1, base_height=9, base_width=12)
 
 # plots of R^2 per variable per model
 pb <- txtProgressBar(min=1, max=num_models, style=3)
