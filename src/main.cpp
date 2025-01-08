@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 20/Aug/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 7/Jan/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -52,8 +52,8 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "To use moments++, fill in a text file with the following options and execute from the command line:\nmomentspp params=file_name\n\n";
 
-    std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the (starting) model\n";
-    std::cout << "obs_stats_file = # optional, relative path to file listing observed summary statistics from sampled populations\n";
+    std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the model\n";
+    std::cout << "obs_stats_file = # optional, relative path to file listing observed (real data) summary statistics\n";
     std::cout << "tolerance = # optional long double, threshold of likelihood improvement for stopping otimization, default = 1e-6\n";
     std::cout << "num_threads = # optional unsigned int, default = num_cores / 2\n";
 
@@ -174,19 +174,19 @@ int main(int argc, char *argv[]) {
     if(options.verbose())
     {
       epochs.back()->printRecursions(std::cout);
-      epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_transitions.csv");
+      epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) +"_transitions.csv");
     }
   }
 
   if(options.verbose())
   {
     epochs.front()->computePseudoSteadyState();
-    std::ofstream pseudo(options.getLabel() + "_pseudo_steady-state.txt");
+    std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
     epochs.front()->printMoments(pseudo);
     pseudo.close();
 
     epochs.front()->computeEigenSteadyState();
-    std::ofstream eigen(options.getLabel() + "_eigen_steady-state.txt");
+    std::ofstream eigen(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
     epochs.front()->printMoments(eigen);
     eigen.close();
   }

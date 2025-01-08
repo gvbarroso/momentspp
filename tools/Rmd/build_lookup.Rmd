@@ -269,7 +269,7 @@ for(i in 1:length(lookup_r)) {
     idx <- 0  
     hets <- NULL
     for(l in 1:length(fnames)) {
-      moms <- fread(fnames[l])
+      moms <- fread(fnames[l], header=F)
       str_sides <- strsplit(fnames[l], "_O_")[[1]]
       idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
       order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])

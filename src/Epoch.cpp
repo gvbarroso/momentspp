@@ -208,7 +208,7 @@ void Epoch::computePseudoSteadyState() // for speed
       y(i) = h * 1e-4;
   }
 
-  steadYstate_ = transitionMatrix_.pow(1e+6) * y; // in practice 1e+6 gens. is good enough
+  steadYstate_ = transitionMatrix_.pow(1e+6) * y; // in practice 1e+6 gens. is good enough?
   updateMoments(steadYstate_);
 }
 
@@ -228,7 +228,7 @@ void Epoch::testSteadyState()
 
 void Epoch::init_()
 {
-  Eigen::SparseMatrix<long double> mat = operators_[0]->getTransitionMatrix(); // init
+  Eigen::SparseMatrix<long double> mat = operators_[0]->getTransitionMatrix();
 
   for(size_t i = 1; i < operators_.size(); ++i)
     mat = mat * operators_[i]->getTransitionMatrix();
