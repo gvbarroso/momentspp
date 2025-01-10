@@ -232,6 +232,18 @@ public:
 
   void testSteadyState();
 
+  void printConditionNumber()
+  {
+    double cond = fectchConditionNumber();
+    std::cout << "Condition Number for Transition Matrix, epoch " << name_ << " = " << cond << "\n";
+  }
+
+  double fectchConditionNumber()
+  {
+    Eigen::JacobiSVD<Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>> svd(transitionMatrix_);
+    return svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
+  }
+
 private:
   void init_();
 
