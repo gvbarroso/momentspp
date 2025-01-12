@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 20/10/2023
- * Last modified: 24/10/2024
+ * Last modified: 28/10/2024
  * Source code for twoLocusSim
  *
  */
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            This is not a haiku                                 *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 23/Oct/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 28/Oct/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
   gsl_rng_set(gen, seed);
 
-  /*TwoLocusPop root(0, L, Ne);
+  TwoLocusPop root(0, L, Ne);
 
   std::cout << "\nBurn-in (" << B << " generations)...";
   std::cout.flush();
@@ -121,13 +121,14 @@ int main(int argc, char *argv[]) {
     root.cleanup();
   }
 
-  TwoLocusPop p1 = root;
-  //TwoLocusPop p2 = root;
+  TwoLocusPop p1 = root; // population 1
+  //TwoLocusPop p2 = root; // population 2
 
   std::cout << "done.\n";
   std::cout << "Evolving population(s) (" << G << " generations)..."; std::cout.flush();
 
-  boost::iostreams::filtering_ostream stream_D;
+  /*boost::iostreams::filtering_ostream stream_D;
+
 
   std::string tbl_file = "tbl_D_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
   std::ofstream file_D;
@@ -136,7 +137,7 @@ int main(int argc, char *argv[]) {
   stream_D.push(boost::iostreams::gzip_compressor());
   stream_D.push(file_D);
   stream_D << "D\tp\tq\n";
-
+  */
 
   double sum_Hl = 0.;
   double sum_Hr = 0.;
@@ -145,8 +146,9 @@ int main(int argc, char *argv[]) {
   double sum_Dr = 0.;
   double sum_Dl = 0.;
   double sum_Dz = 0.;
-  double sum_Dsqr = 0.;*/
+  double sum_Dsqr = 0.;
 
+  /*
   boost::iostreams::filtering_ostream stream_hap;
 
   std::string hap_file = "hap_trajectories_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
@@ -155,18 +157,18 @@ int main(int argc, char *argv[]) {
 
   stream_hap.push(boost::iostreams::gzip_compressor());
   stream_hap.push(file_hap);
-
-  TwoLocusPop p1(0, L, Ne);
+  stream_hap << "fAB\tfAb\tfaB\tfab\n";
+  */
 
   for(size_t i = 0; i < G; ++i)
   {
     p1.evolve(u, r, s, gen);
-    p1.cleanup(stream_hap);
+    p1.cleanup();
 
-    if(p1.getX().size() > 0)
-      p1.printX(stream_hap);
+    //if(p1.getX().size() > 0)
+      //p1.printX(stream_hap);
 
-    /*p1.computeStats();
+    p1.computeStats();
 
     sum_Hl += p1.getSumHl();
     sum_Hr += p1.getSumHr();
@@ -177,15 +179,14 @@ int main(int argc, char *argv[]) {
     sum_Dsqr += p1.getSumDsqr();
     sum_pi2 += p1.getSumPi2();
 
-    if(i % Ne == 0)
-      p1.tabulate_Ds(stream_D);*/
-
+    //if(i % Ne == 0)
+      //p1.tabulate_Ds(stream_D);
   }
 
   //boost::iostreams::close(stream_D);
-  boost::iostreams::close(stream_hap);
+  //boost::iostreams::close(stream_hap);
 
-  /*std::string file = "stats_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
+  std::string file = "stats_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
   std::ofstream fout(file);
 
   fout << "Hl = " << sum_Hl / L / G << "\n";
@@ -198,9 +199,9 @@ int main(int argc, char *argv[]) {
   fout << "pi2 = " << sum_pi2 / L / L / G << "\n";
   fout << "random_seed = " << seed << "\n";
 
-  fout.close();*/
+  fout.close();
 
-  //std::cout << "done.\nCheck output file " << file << ".\n\n";
+  std::cout << "done.\nCheck output file " << file << ".\n\n";
 
   gsl_rng_free(gen);
 

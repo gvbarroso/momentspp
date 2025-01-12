@@ -52,12 +52,13 @@ to assess accuracy of moments++ under strong selection (adding (1-2p)^k factors)
 
 ```{r, demes-selected, include=F, eval=T, results=F, message=F, warning=F}
 
-N <- c(20000)
+Ns <- 20000
+Ts <- 0
 u <- 1e-8
 r  <- c(1e-3, 1e-4, 1e-5, 1e-6)
 s <- c(-1e-5, -1e-04, -1e-3, -2e-3, -5e-3)
 
-params <- crossing(N, u, r, s)
+params <- crossing(Ns, u, r, s)
 params$scenario <- 1:nrow(params)
 n_models <- nrow(params)
 
@@ -79,7 +80,7 @@ for(i in 1:n_models) {
   cat("    epochs:\n")
   cat("      - end_time: 0\n")
   cat("        start_size: ")
-  cat(params$N[i])
+  cat(params$Ns[i])
   cat("\n")
   cat("metadata:\n")
   cat("  - name: mutation\n")
@@ -140,7 +141,7 @@ for i in range(1, n_models):
       n_samples = 40
       
       # i - 1 because python is indexed from zero
-      Ne = params["N"][i - 1] 
+      Ne = params["Ns"][i - 1] 
       u = params["u"][i - 1] 
       r = params["r"][i - 1] 
       s = params["s"][i - 1]
@@ -172,7 +173,7 @@ for i in range(1, n_models):
     n_samples = 80
     
     # i - 1 because python is indexed from zero
-    Ne = params["N"][i - 1] 
+    Ne = params["Ns"][i - 1] 
     u = params["u"][i - 1] 
     r = params["r"][i - 1] 
     s = params["s"][i - 1]
@@ -298,7 +299,7 @@ p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1],
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("dd_ratios.png", p1, base_height=24, base_width=12)
+save_plot("dd_ratios.pdf", p1, base_height=24, base_width=12)
 
 p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2], 
                          sample_size==80), aes(x=r, y=ratio)) +
@@ -310,7 +311,7 @@ p2 <- ggplot(data=filter(tbl_pp, stats==commom_stats[2],
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("dz_ratios.png", p2, base_height=24, base_width=12)
+save_plot("dz_ratios.pdf", p2, base_height=24, base_width=12)
 
 p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3], 
                          sample_size==80), aes(x=r, y=ratio)) +
@@ -323,7 +324,7 @@ p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3],
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("hl_ratios.png", p3, base_height=24, base_width=12)
+save_plot("hl_ratios.pdf", p3, base_height=24, base_width=12)
 
 p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
                          sample_size==80), aes(x=r, y=ratio)) +
@@ -336,7 +337,7 @@ p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("hr_ratios.png", p4, base_height=24, base_width=12)
+save_plot("hr_ratios.pdf", p4, base_height=24, base_width=12)
 
 p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5], 
                          sample_size==80), aes(x=r, y=ratio)) +
@@ -349,7 +350,7 @@ p5 <- ggplot(data=filter(tbl_pp, stats==commom_stats[5],
         axis.text=element_text(size=10),
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
-save_plot("pi2_ratios.png", p5, base_height=24, base_width=12)
+save_plot("pi2_ratios.pdf", p5, base_height=24, base_width=12)
 
 # compare to HK95 pred
 tbl_hr <- filter(tbl_pp, stats=="Hr_0_0", sample_size==80)
@@ -370,7 +371,7 @@ for(n in unique(molten_hr$N)) {
           axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
           legend.position="bottom")
   q
-  save_plot(paste("Hr, N=", n, ", r=1e-6.png", sep=""), q,
+  save_plot(paste("Hr, N=", n, ", r=1e-6.pdf", sep=""), q,
             base_height=10, base_width=12)
 }
 
@@ -385,7 +386,7 @@ for(a in unique(molten_hr$alpha)) {
         axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
         legend.position="bottom")
   r
-  save_plot(paste("Hr, alpha=", a, ".png", sep=""), r,
+  save_plot(paste("Hr, alpha=", a, ".pdf", sep=""), r,
             base_height=10, base_width=12)
 }
 ```

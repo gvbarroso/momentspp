@@ -18,7 +18,7 @@ suppressMessages({
   library(bslib)
 })
 
-setwd("~/Data/momentspp/paper_1/2_epoch_expansion/")
+setwd("~/Data/momentspp/paper_1/4_epoch_model/")
 
 params <- fread("params.csv")
 
@@ -74,9 +74,9 @@ save_plot("demo/pi0_demo.png", p, base_height=8, base_width=16)
 
 fwrite(dplyr::select(m_pi0, Ne_bar), "demo/ne_bar_pi0.csv")
 
-params_ss <- crossing(params, dplyr::select(m_pi0, Ne_bar))
-params_ss$Ts <- "0;"
-params_ss$Ns <- paste(as.character(params_ss$Ne_bar), ";", sep="")
+params_ss <- crossing(params, dplyr::select(m_pi0, c(Generation, Ne_bar, pi0)))
+params_ss$Ts <- "0"
+#params_ss$Ns <- paste(as.character(params_ss$Ne_bar), ";", sep="")
 n_models <- nrow(params_ss)
 
 fwrite(params_ss, "ne_bar_eq/params.csv")
@@ -89,8 +89,8 @@ for(i in 1:n_models) {
     cat(paste(i, "\n"))
   }
   
-  Ns <- as.numeric(strsplit(params_ss[i,]$Ns, ";")[[1]])
-  Ts <- as.integer(strsplit(params_ss[i,]$Ts, ";")[[1]])
+  Ns <- as.numeric(params_ss[i,]$Ne_bar)
+  Ts <- as.integer(params_ss[i,]$Ts)
   u <- as.numeric(params_ss[i,]$uL)
   r <- as.numeric(params_ss[i,]$r)
   s <- as.numeric(params_ss[i,]$s)
