@@ -175,6 +175,11 @@ void Epoch::computeEigenSteadyState()
       idx = i;
   }
 
+  if(es.eigenvalues().real()(idx) > 1. + 1e-6)
+  {
+    throw bpp::Exception("Epoch:Leading Eigenvalue > 1!");
+  }
+
   // I moment embodies scaling constant used by Eigen
   steadYstate_ = es.eigenvectors().col(idx).real();
   steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getMoment("I")));

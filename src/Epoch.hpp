@@ -22,6 +22,7 @@
 #include <eigen3/Eigen/Eigenvalues>
 #include <eigen3/unsupported/Eigen/MatrixFunctions>
 
+#include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
 #include "AbstractOperator.hpp"
