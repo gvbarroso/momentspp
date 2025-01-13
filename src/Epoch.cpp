@@ -166,6 +166,7 @@ void Epoch::computeEigenSteadyState()
   testSteadyState();
   init_();
   Eigen::EigenSolver<Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>> es(transitionMatrix_);
+  // NOTE Eigen::GeneralizedEigenSolver may help with numerical instability in some cases?
 
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
@@ -175,9 +176,11 @@ void Epoch::computeEigenSteadyState()
       idx = i;
   }
 
-  if(es.eigenvalues().real()(idx) > 1. + 1e-6)
+  if(es.eigenvalues().real()(idx) > 1. + 1e-5)
   {
-    throw bpp::Exception("Epoch:Leading Eigenvalue > 1!");
+    double cond = fetchConditionNumber();
+    std::cout << "\nCondition Number of transition matrix = " << cond << "\n";
+    throw bpp::Exception("Epoch::Leading Eigenvalue > 1! Consider using a smaller order of 1-2p factors.\n");
   }
 
   // I moment embodies scaling constant used by Eigen

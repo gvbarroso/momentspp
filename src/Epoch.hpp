@@ -235,14 +235,14 @@ public:
 
   void printConditionNumber()
   {
-    double cond = fectchConditionNumber();
+    double cond = fetchConditionNumber();
     std::cout << "Condition Number for Transition Matrix, epoch " << name_ << " = " << cond << "\n";
   }
 
-  double fectchConditionNumber()
+  double fetchConditionNumber()
   {
     Eigen::JacobiSVD<Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>> svd(transitionMatrix_);
-    return svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
+    return svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
   }
 
 private:
