@@ -5,7 +5,7 @@
 #!/usr/bin/env Rscript
 args=commandArgs(trailingOnly=T)
 
-p = "tbl"
+prefix = "table"
 if(length(args==1)) {
   prefix = args[1]
 }
@@ -22,6 +22,8 @@ suppressMessages({
   library(data.table)
   library(interactions)
   library(ppcor)
+  library(Hmisc)
+  
 })
 
 print(Sys.time())
@@ -31,6 +33,30 @@ maps_1kb <- fread(paste(prefix, "_1kb.csv.gz", sep=""))
 maps_10kb <- fread(paste(prefix, "_10kb.csv.gz", sep=""))
 maps_100kb <- fread(paste(prefix, "_100kb.csv.gz", sep=""))
 maps_1Mb <- fread(paste(prefix, "_1Mb.csv.gz", sep=""))
+
+t1kb=dplyr::select(maps_1kb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t1kb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, "pval_upper_pearson_lower_1kb.csv"))
+
+t10kb=dplyr::select(maps_10kb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t10kb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, "pval_upper_pearson_lower_10kb.csv"))
+
+t100kb=dplyr::select(maps_100kb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t100kb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, "pval_upper_pearson_lower_100kb.csv"))
+
+t1Mb=dplyr::select(maps_1Mb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t1Mb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, "pval_upper_pearson_lower_1Mb.csv"))
 
 # table for storing partitioned R^2 values from type II ANOVA (rows are bin sizes)
 r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
