@@ -23,7 +23,6 @@ suppressMessages({
   library(interactions)
   library(ppcor)
   library(Hmisc)
-  
 })
 
 print(Sys.time())
@@ -113,6 +112,14 @@ corr_tbl$u[4] <- cor.test(maps_1Mb$avg_mut,
                           method="pearson")$estimate 
 
 fwrite(corr_tbl, paste(prefix, "_pearson_tbl.csv.gz", sep=""))
+
+if(sd(maps_1kb$avg_mut)==0) {
+  stop("Flat mutation map! Stopping execution, check Pearson cor. table.")  
+}
+
+if(sd(maps_1kb$B)==0) {
+  stop("Flat B-map! Stopping execution, check Pearson cor. table.")  
+}
 
 # tables for storing estimates from linear models (rows are bin sizes)
 coeff_tbl <- as.data.frame(matrix(ncol=3, nrow=4))

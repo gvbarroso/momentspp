@@ -326,6 +326,19 @@ p3 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3],
         legend.position="bottom")
 save_plot("hl_ratios.pdf", p3, base_height=24, base_width=12)
 
+y <- ggplot(data=filter(tbl_pp, stats==commom_stats[3], sample_size==80, alpha < -1),
+            aes(x=order, y=ratio)) + 
+  geom_point(size=3) + geom_line() + theme_bw() + 
+  facet_wrap(~alpha, ncol=1) + 
+  scale_x_continuous(breaks=unique(tbl_pp$order)) +
+  labs(title=NULL, x="Order (1-2p)", y=expression(H[l])) +
+  geom_hline(yintercept=1, linetype="dashed", color="red") +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+save_plot("~/Data/mpp_figures/figures/hl_ratios.pdf", y, base_height=15, base_width=9)
+
 p4 <- ggplot(data=filter(tbl_pp, stats==commom_stats[4],
                          sample_size==80), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 

@@ -19,9 +19,11 @@ p <- ggplot(data=m_B_iters, aes(x=Pos, y=value, color=as.factor(iteration))) +
   scale_y_continuous(breaks=pretty_breaks()) +
   labs(title=NULL, x="Position (kb)", y="B") +
   theme(axis.title=element_text(size=16), 
-        axis.text=element_text(size=12), 
-        axis.text.x=element_text(size=12),
+        axis.text=element_text(size=14), 
+        axis.text.x=element_text(size=14),
+        axis.text.y=element_text(size=14),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
+p
 ggsave("B_iters.pdf", width=10, height=8)

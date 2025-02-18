@@ -10,7 +10,7 @@ suppressMessages({
   library(purrr)
 })
 
-setwd("~/Data/momentspp/D_iagnostics/selected/")
+setwd("~/../../media/gvbarroso/extradrive1/D_iagnostics/selected/")
 
 sim_params <- "Ne=1e+4_s=-1e-4_u=1e-8_r=1e-4_L=1_G=1e+9"
 type <- "Sel" # Neu || Sel
@@ -253,6 +253,8 @@ ggsave(paste("../D_q_dist_", type, ".pdf", sep=""), D_q, dpi=500, width=10, heig
 #
 ##########################
 
+setwd("/media/gvbarroso/extradrive1/D_iagnostics/selected_hap_time_series")
+
 c_files <- list.files(pattern="hap_trajectories*", full.names=TRUE)
 c_files <- c_files[1:5e+3]
 cs <- list(length=length(c_files))
@@ -339,10 +341,10 @@ p2 <- ggplot(data=hap_df_avg, aes(x=Generation, y=Dr_avg)) +
         legend.position="bottom")
 save_plot("../Dr_time.pdf", p2, base_height=8, base_width=10)
 
-m_D_time <- pivot_longer(hap_df_avg, cols=starts_with("D"), names_to="Stat")
-q0 <- ggplot(data=m_D_time, aes(x=Generation, y=value, color=Stat)) + 
+m_D_time <- pivot_longer(hap_df_avg, cols=starts_with("D"), names_to="Statistic")
+q0 <- ggplot(data=m_D_time, aes(x=Generation, y=value, color=Statistic)) + 
   theme_bw() + geom_line() +
-  scale_color_discrete(name="Stat", type=c("plum3", "seagreen3")) +
+  scale_color_discrete(name="Statistic", type=c("plum3", "seagreen3")) +
   geom_hline(yintercept=0, color="black", linetype="dashed") + 
   labs(title=NULL, x="Generations after 2nd mutation", y="Value") +
   scale_x_continuous(breaks=pretty_breaks()) +
@@ -351,8 +353,8 @@ q0 <- ggplot(data=m_D_time, aes(x=Generation, y=value, color=Stat)) +
         axis.text=element_text(size=12), 
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
-        legend.position="none")
-save_plot("../D_stats_time.pdf", q0, base_height=10, base_width=12)
+        legend.position="bottom")
+save_plot("../D_stats_time.pdf", q0, base_height=8, base_width=10)
 
 p3 <- ggplot(data=hap_df_avg, aes(x=Generation, y=p_avg)) + 
   theme_bw() + geom_line() +

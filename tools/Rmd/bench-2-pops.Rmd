@@ -278,6 +278,8 @@ core_stats <- c("DD_1_1",
                 "Hl_1_2",
                 "Hl_2_2")
 
+core_stats <- c("DD_1_1", "Dr_1_1_(1-2p1)^1", "pi2_1_1_1_1", "Hl_1_1")
+
 # constant Ne
 mpp <- numeric()
 for(i in 1:n_models) {

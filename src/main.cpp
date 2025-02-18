@@ -137,10 +137,10 @@ int main(int argc, char *argv[]) {
         for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
           drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
 
-        std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
+        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeffs(i), icSel, sslib);
         std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRecs(i), icRec, sslib);
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getLeftFactor(), demes.getMus(i), ic, sslib);
-        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeffs(i), icSel, sslib);
+        std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
 
         /*// only *allow* model to include mig params in epochs where the demes model has non-zero mig
         if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
