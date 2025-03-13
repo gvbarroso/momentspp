@@ -1,3 +1,0 @@
-demes_file = $(F)
-factor_order = $(O)
-label = $(L)

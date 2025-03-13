@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "*                  moments++  version 0.0.1                      *" << std::endl;
+  std::cout << "*                  moments++  version 0.1                      *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*            Two-site recursions                                 *" << std::endl;
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 7/Jan/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 13/Mar/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -52,10 +52,13 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "To use moments++, fill in a text file with the following options and execute from the command line:\nmomentspp params=file_name\n\n";
 
-    std::cout << "demes_file = # mandatory, relative path to file in Demes format that specifies the model\n";
-    std::cout << "obs_stats_file = # optional, relative path to file listing observed (real data) summary statistics\n";
-    std::cout << "tolerance = # optional long double, threshold of likelihood improvement for stopping otimization, default = 1e-6\n";
-    std::cout << "num_threads = # optional unsigned int, default = num_cores / 2\n";
+    //std::cout << "\tlabel = # optional, string to be appended to output files\n";
+    std::cout << "\tdemes_file = # mandatory, relative path to file in Demes format that specifies the model\n";
+    std::cout << "\tfactor_order = # optional, how many (1-2p) factors to include. Default = 10, choosing ~ 4Ns is a rough guideline but see Barroso & Ragsdale 2025 for details.\n";
+    std::cout << "\ttime_steps = # optional, in non-equilibrium models, the time interval (in generations) at which to output Heterozigosity statistics.\n";
+    //std::cout << "obs_stats_file = # optional, relative path to file listing observed (real data) summary statistics\n";
+    //std::cout << "tolerance = # optional long double, threshold of likelihood improvement for stopping otimization, default = 1e-6\n";
+    std::cout << "\tnum_threads = # optional unsigned int, default = num_cores / 2\n";
 
     std::cout << "\nFor more information, please email gvbarroso@gmail.com " << std::endl;
     return(0);

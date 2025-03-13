@@ -55,7 +55,7 @@ public:
   verbose_(bpp::ApplicationTools::getParameter<bool>("verbose", options, false, "", true, 4)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),
   timeSteps_(bpp::ApplicationTools::getParameter<size_t>("time_steps", options, 1000, "", true, 4)),
-  factorOrder_(bpp::ApplicationTools::getVectorParameter<size_t>("factor_order", options, ',', "0", "", true, 0))
+  factorOrder_(bpp::ApplicationTools::getVectorParameter<size_t>("factor_order", options, ',', "10", "", true, 0))
   {
     if(label_ == "moments++")
       label_ = demesFilePath_.substr(0, demesFilePath_.find(".yaml")); // convenience

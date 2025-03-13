@@ -1,8 +1,0 @@
-Ne = $(N)
-L = 100
-G = 10000000
-u = $(u)
-r = $(r)
-s = $(s)
-label = $(label)
-tag = $(tag)

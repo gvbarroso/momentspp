@@ -1,5 +1,5 @@
 # moments++
-Fast and accurate population genetic inference using two-locus statistics
+Fast and accurate prediction of two-locus statistics
 
 Building:
 To build with native architecture settings (`-march=native`)

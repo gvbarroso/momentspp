@@ -1,6 +1,5 @@
 label = 
-stats_file = none
+num_threads
 demes_file = $(F)
 factor_order = $(O)
 time_steps = $(T)
-verbose = 
