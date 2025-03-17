@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 18/06/2024
+ * Last modified: 14/03/2025
  * Source code for moments++
  *
  */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 13/Mar/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 14/Mar/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      if(numEpochs > 1)
+      if(numEpochs > 1 && options.getTimeSteps() > 0)
         model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]), options.getTimeSteps());
 
       fout.close();

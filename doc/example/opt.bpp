@@ -1,4 +1,0 @@
-num_threads = 8
-demes_file = $(F)
-factor_order = $(O)
-time_steps = $(T)
