@@ -9,19 +9,16 @@ number_sections: true
 toc_depth: 1
 ---
 
-This example run assumes that moments++ package has been installed.
-Our goal is to predict B-values over time after a 10-fold bottleneck.
+The goal of this example is to predict B-values over time,
+following a 10-fold bottleneck.
   
 ```{r setup, include=F, message=F, warning=F}
-
 knitr::opts_chunk$set(echo=TRUE)
 
 library(tidyverse)
 library(scales)
 library(data.table)
 library(cowplot)
-
-#knitr::opts_knit$set(root.dir="output/")
 ```
 
 # Creating folders and files for running moments++
@@ -51,7 +48,6 @@ r <- c(1e-8, 2.5e-5, 1e-3)
 s <- -c(1e-5, 1e-4, 1e-3)
 
 params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
-n_models <- nrow(params)
 
 fwrite(as.data.frame(r), "output/r.csv", col.names=F)
 fwrite(as.data.frame(s), "output/s.csv", col.names=F)
@@ -168,14 +164,13 @@ cat("]\n")
 cat("  - name: recombination\n")
 cat("    epochs:\n")
 cat("      - end_time: 0\n")
-cat("        rates: [0]\n") #  we're only interested in pi0 here
+cat("        rates: [0]\n") #  irrelevant, we're only interested in pi0 here
 cat("  - name: selection\n")
 cat("    start_time: .inf\n")
 cat("    epochs:\n")
 cat("      - end_time: 0\n")
 cat("        rates: [0]\n")
 sink()
-
 ```
 
 # Running moments++
@@ -187,8 +182,6 @@ For each model, get expected summary statistics over time (T=500 generations)
 #!/bin/bash
 
 cd output 
-
-i=1
 nr=$(wc -l r.csv | cut -d ' ' -f 1)
 
 for r in r_*
@@ -199,54 +192,61 @@ do
     cd $s
     for f in model_*.yaml
     do
-	    Na=$(sed '6q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2) 
-	    N1=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
-	    Ne=$Na
-	    if [[ $N1 -gt $Na ]]
+      # this exploits knowledge of the .yaml files specifying the models
+      Na=$(sed '6q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2) 
+      N1=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
+      Ne=$Na
+
+      # this shows how to be a bit more general, and choose the order of
+      # (1-2p) factors based on the largest of the two population sizes
+      if [[ $N1 -gt $Na ]]
       then
-	      Ne=$N1
-	    fi
+        Ne=$N1
+      fi
+
+      # an example of how to handle arbitrary values of Ne*s 
       x=$(sed '23q;d' $f | cut -d : -f 2 | cut -d [ -f 2 | cut -d ] -f 1)
       s=$(echo "scale=10; $x" | bc)
-	    a=$(echo "scale=10; $Ne * $s" | bc)
+      a=$(echo "scale=10; $Ne * $s" | bc)
+
       if [[ $(echo "$a < -1" | bc) == 1 ]]
-	    then
-	      b=${a%.*}
-	      Ns=$(($b * -2))
-	      # choosing an appropriate order of (1-2p) factors based on Ns
-	      if [[ $Ns -lt 30 ]]
-	      then
-  	      momentspp params=opt.bpp F=$f O=70 > /dev/null
-  	    elif [[ $Ns -lt 70 ]]
-  	    then 
-  	      momentspp params=opt.bpp F=$f O=150 > /dev/null
-  	    elif [[ $Ns -lt 150 ]]
-  	    then    
-  	      momentspp params=opt.bpp F=$f O=300 > /dev/null
-  	    else
-  	      momentspp params=opt.bpp F=$f O=400 > /dev/null
-  	    fi
-      else
-	      momentspp params=opt.bpp F=$f O=10 > /dev/null
-	    fi
+      then
+        b=${a%.*}
+        Ns=$(($b * -2))
+	    
+  	    # choosing an appropriate order of (1-2p) factors based on Ne*s
+    	  if [[ $Ns -lt 30 ]]
+    	  then
+       	    momentspp params=opt.bpp F=$f O=70 > /dev/null
+      	elif [[ $Ns -lt 70 ]]
+      	then 
+      	  momentspp params=opt.bpp F=$f O=150 > /dev/null
+      	elif [[ $Ns -lt 150 ]]
+      	then    
+      	  momentspp params=opt.bpp F=$f O=300 > /dev/null
+      	else
+      	  momentspp params=opt.bpp F=$f O=400 > /dev/null
+      	fi
+        else
+          momentspp params=opt.bpp F=$f O=10 > /dev/null
+      fi
     done
     cd ..
   done
   cd ..
-  i=$(($i + 1))
 done
 
-# get pi0
+# get pi0 from neutral model following the same demography
 cd demo
 for f in *yaml
 do 
-  momentspp params=opt.bpp F=$f O=2
+  momentspp params=opt.bpp F=$f O=2 
 done
 ```
 
 # Assembling lookup table 
 
-```{r, lookup, include=T, eval=T, results=F, message=F, warning=F}
+```{r, lookup, include=T, eval=T, results=T, message=F, warning=F}
 
 params <- fread("output/params.csv")
 n_models <- nrow(params)
@@ -254,7 +254,7 @@ n_models <- nrow(params)
 lookup_r <- unique(params$r)
 lookup_s <- unique(params$s)
 t <- max(as.numeric(strsplit(as.character(unique(params$Ts)), ";")[[1]]))
-sampling_times <- seq(from=t, to=0, by=-500)
+sampling_times <- seq(from=t, to=0, by=-500) # time_steps = 500 in opt.bpp
 
 # Het stats over time (include steady-state and present-time)
 hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
@@ -267,8 +267,6 @@ hrs$Order <- 0
 hls$Order <- 0
 
 for(i in 1:length(lookup_r)) {
-  cat(paste(i, "\n"))
-  print(Sys.time())
   for(j in 1:length(lookup_s)) {
     fnames <- list.files(paste("output/r_", lookup_r[i], 
                                "/s_", lookup_s[j], sep=""),
@@ -285,6 +283,7 @@ for(i in 1:length(lookup_r)) {
     }  
     left <- filter(hets, V1=="Hl_0_0")
     right <- filter(hets, V1=="Hr_0_0")
+    
     # multiple epochs may overlap their output in their last/first time-point
     left <- left[!duplicated(left$V4)]
     right <- right[!duplicated(right$V4)]
@@ -340,17 +339,18 @@ lookup_tbl$Generation <- rep(sampling_times, nrow(lookup_tbl) /
                              length(sampling_times)) 
 
 fwrite(lookup_tbl, "lookup_tbl.csv.gz", compress="gzip") 
+head(lookup_tbl, n=5)
 ```
 
 # Plotting
 
 ```{r, plots, include=T, eval=T, results=T, message=F, warning=F}
 
-#lookup_tbl <- fread("lookup_tbl.csv.gz")
+lookup_tbl <- fread("lookup_tbl.csv.gz")
 
 scaleFUN <- function(x) sprintf("%.5f", x)
 
-# plot raising B-values to 1000th power
+# raising B-values to 1000th power
 p1 <- ggplot(data=dplyr::filter(lookup_tbl, s==-1e-5),
              aes(x=Generation, y=B^1000, color=as.factor(r))) + 
   theme_bw() + geom_line(linewidth=1.25) + facet_wrap(~s) +
@@ -393,8 +393,6 @@ p3 <- ggplot(data=dplyr::filter(lookup_tbl, s==-1e-3),
         strip.text.y=element_text(size=13),
         legend.position="bottom")
 
-
 cp1 <- plot_grid(p1, p2, p3, ncol=1, rel_heights=c(1, 1, 1.35), align='v')
-cp1
 save_plot("two-locus_time_bottleneck.pdf", cp1, base_height=15, base_width=12)
 ```
