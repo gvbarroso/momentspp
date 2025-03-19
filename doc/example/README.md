@@ -1,11 +1,11 @@
-This directory contains three examples of using moments++, with increasing degrees of complexity:
+This directory contains examples of using moments++, with increasing degrees of complexity:
 
-## test\_run
-Predictions under a pure two-locus model of a four-epoch demography and linked selection.
-Parameters are specified in the augmented demes file 'test\model.yaml'
+## test_run
+Pure two-locus predictions under a four-epoch demography and linked selection.
+Parameters are specified in the augmented demes file 'test_model.yaml'
 
-## two-locus time
+## two-locus_time
 Contains an Rmd script detailing the creation of augmented demes files, running moments++, assembling the predictions into a tiny lookup table and plotting the results.
 
-## fake\_chromosome
-TODO
+## mpp_figures
+More complex examples involving the bgshr python package. Jupyter notebooks in 'figures/' directory re-create figures in the original moments++ publication (Barroso & Ragsdale 2025).
