@@ -1,7 +1,7 @@
 # A starter guide for creating the input files for moments++
 
 moments++ basic functionally is built around the bio++ libraries (https://github.com/BioPP)
-As such, input parameters are specified in an 'options file'. Let's call this options file opt.bpp (although we can name your options file whathever we want). To run moments++ from the command-line,
+As such, input parameters are specified in an 'options file'. Let's call this options file opt.bpp. To run moments++ from the command-line:
 
 ```
 momentspp params=opt.bpp
@@ -11,7 +11,7 @@ The options file for moments++ v0.1 is quite simple. Although under the hood the
 
 ## number of threads
 
-The number of threads that moments++ is allowed to use. This allows the Eigen3 libraries to paralellize the linear algebra computations. By default, moments++ will use all threads available in the machine. Therefore, technically we don't have to specify it, but we can do so with the following string:
+The number of threads that moments++ is allowed to use. This allows the Eigen3 libraries to paralellize the linear algebra computations. By default, moments++ will use all threads available in the machine. Therefore, technically we don't have to specify it, but we can do so with the following string, e.g.:
 
 ```
 number_threads = 4
@@ -27,7 +27,7 @@ time_steps = 1000
 
 ## the order of 1-2p factors
 
-The maximum count of 1-2p factors to be included in the basis v. As discussed in the original publication of moments++ (see Barroso & Ragsdale 2025), the appropriate count is mainly a function of the strength of selection, but it also depends on the demography (N[t]) and the mutation rate. It is therefore tricky to suggest a rule of thumb, but a good starting value is something around between 2 and 3 times Ne x s. (The example given in two_locus_time.Rmd suggests how to satisfactorily accomplish that, for different values of s). Specify this option in opt.bpp with the string, e.g.:
+The maximum count of 1-2p factors to be included in the basis **v**. As discussed in the original publication of moments++ (see Barroso & Ragsdale 2025), the appropriate count is mainly a function of the strength of selection, but it also depends on the demography (N[t]) and the mutation rate. It is therefore tricky to suggest a rule of thumb, but a good starting value is something between 2 and 3 times Ne x s. (The example given in two_locus_time.Rmd suggests how to accomplish this, for different values of s, and that demographic model). Specify this option in opt.bpp with the string, e.g.:
 
 ```
 factor_order = 50
@@ -42,3 +42,20 @@ demes_file = model.yaml
 ```
 
 The example given in two_locus_time.Rmd shows how to automatize the writing of augmented demes files.
+
+Finally, note that the options file supports passing bash-style variables as input. For example, if opt.bpp looks like the following
+
+```
+number_threads = 8
+time_steps = $(T)
+factor_order = $(O)
+demes_file = $(F)
+```
+
+then we can execute moments++ like so, e.g.:
+
+```
+momentspp params=opt.bpp T=2000 O=75 F=model_pop1.yaml
+```
+
+Once again, an example of this functionality is given in two_locus_time.Rmd
