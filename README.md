@@ -3,6 +3,8 @@
 
 Original publication: https://www.biorxiv.org/content/10.1101/2025.02.19.639084v1
 
+### Building
+
 INSTALL.txt contains instructions about dependencies.
 Once these are properly installed, moments++ can be built with the following:
 
@@ -33,6 +35,14 @@ To build a local apptainer (or singularity) image:
 apptainer build momentspp.sif docker://ghcr.io/gvbarroso/momentspp/momentspp:v0.1
 ```
 
+### Usage
+
+After a successful build
+
+```
+momentspp params=opt.bpp
+```
+
 The apptainer can be run with 
 ```
 ./momentspp.sif params=opt.bpp
@@ -43,4 +53,4 @@ And docker can be run with
 docker run ghcr.io/gvbarroso/momentspp/momentspp:latest params=opt.bpp
 ```
 
-doc/example contains instructions on how to fill opt.bpp and the associated model file (.yaml)
+doc/example contains instructions on how to write the options file (opt.bpp) and the associated model file (.yaml) that must be referred to within opt.bpp

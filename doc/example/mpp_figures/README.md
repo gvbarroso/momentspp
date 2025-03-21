@@ -9,6 +9,3 @@ Running the scripts in the 'figures' directory requires the following data:
 'simulation_outputs' were generated with fwdpy11.
 
 For using the two-locus moments++ predictions (contained in the lookup tables) to compute B-value maps, we will need the bgshr python package (https://github.com/apragsdale/bgshr/tree/main/bgshr).
-
-Installation:
-
