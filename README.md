@@ -53,4 +53,4 @@ And docker can be run with
 docker run ghcr.io/gvbarroso/momentspp/momentspp:latest params=opt.bpp
 ```
 
-doc/example contains instructions on how to write the options file (opt.bpp) and the associated model file (.yaml) that must be referred to within opt.bpp
+The 'doc' directory (and examples therein) contains instructions on how to write the options file and the associated yaml file which specifies the evolutionary model of interest.

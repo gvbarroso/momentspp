@@ -41,9 +41,9 @@ This is the file that contains all the parameters describing the model for which
 demes_file = model.yaml
 ```
 
-The example given in two_locus_time.Rmd shows how to automatize the writing of augmented demes files.
+The test_run directory contains an example file (test_model.yaml), whereas two_locus_time.Rmd shows how to automatize the writing of augmented demes files.
 
-Finally, note that the options file supports passing bash-style variables as input. For example, if opt.bpp looks like the following
+Finally, the options file supports passing bash-style variables as input. For example, if opt.bpp looks like the following
 
 ```
 number_threads = 8
@@ -52,7 +52,7 @@ factor_order = $(O)
 demes_file = $(F)
 ```
 
-then we can execute moments++ like so, e.g.:
+we can execute e.g.:
 
 ```
 momentspp params=opt.bpp T=2000 O=75 F=model_pop1.yaml
