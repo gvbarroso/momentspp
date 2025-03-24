@@ -1,0 +1,5 @@
+numpy
+tskit
+demes
+fwdpy11
+moments-popgen

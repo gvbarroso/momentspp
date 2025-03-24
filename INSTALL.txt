@@ -22,7 +22,7 @@ cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DVERBOSE=true ..
 
 For compiling in 'Verbose' mode, where diagnostic .txt files will be output to the same directory.
 
-On a standard linux workstation, Moments++ takes < 2 minutes to compile and install once all dependencies are met. Note that static linkage is not supported, meaning that Moments++ should only be executed on the same machine where it was built.
+On a standard linux workstation, Moments++ takes < 2 minutes to compile and install once all dependencies are met. Note that static linkage is not supported at the moment.
 
 NOTE ABOUT COMPUTING CLUSTERS:
 

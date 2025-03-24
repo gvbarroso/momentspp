@@ -6,6 +6,7 @@
  */
 
 
+// The Admixture operator on the selection basis (restricted to 2 populations)
 #ifndef _ADMIXTURE_H_
 #define _ADMIXTURE_H_
 
@@ -16,7 +17,7 @@ class Admixture: public AbstractOperator
 {
 
 private:
-  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleAdmixMat_; // P x P
+  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleAdmixMat_; // 2 x 2
 
 public:
   Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib):

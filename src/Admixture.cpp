@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 21/04/2023
- * Last modified: 06/06/2023
+ * Last modified: 24/05/2025
  *
  */
 
@@ -14,6 +14,9 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
   size_t numPops = popIndices_.size();
   size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(getParameters().size()); // max. one matrix per population
+
+  if(numPops > 2)
+    throw bpp::Exception("Admixture operator cannot model more than 2 populations in the general case! Try NeutralAdmixture instead.");
 
   for(size_t i = 0; i < numPops; ++i)
   {

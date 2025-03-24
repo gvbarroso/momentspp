@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 18/06/2024
+ * Last modified: 24/03/2025
  * Source code for moments++
  *
  */
@@ -13,6 +13,8 @@
 #include "Recombination.hpp"
 #include "Drift.hpp"
 #include "Selection.hpp"
+//#include "NeutralMigration.hpp"
+//#include "NeutralAdmixture.hpp"
 //#include "Migration.hpp"
 //#include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
@@ -34,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 13/Mar/2024 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 14/Mar/2024 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -50,17 +52,12 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "To use moments++, fill in a text file with the following options and execute from the command line:\nmomentspp params=file_name\n\n";
+    std::cout << "Usage:\n\n";
+    std::cout << "momentspp params=opt.bpp\n";
 
-    //std::cout << "\tlabel = # optional, string to be appended to output files\n";
-    std::cout << "\tdemes_file = # mandatory, relative path to file in Demes format that specifies the model\n";
-    std::cout << "\tfactor_order = # optional, how many (1-2p) factors to include. Default = 10, choosing ~ 4Ns is a rough guideline but see Barroso & Ragsdale 2025 for details.\n";
-    std::cout << "\ttime_steps = # optional, in non-equilibrium models, the time interval (in generations) at which to output Heterozigosity statistics.\n";
-    //std::cout << "obs_stats_file = # optional, relative path to file listing observed (real data) summary statistics\n";
-    //std::cout << "tolerance = # optional long double, threshold of likelihood improvement for stopping otimization, default = 1e-6\n";
-    std::cout << "\tnum_threads = # optional unsigned int, default = num_cores / 2\n";
-
-    std::cout << "\nFor more information, please email gvbarroso@gmail.com " << std::endl;
+    std::cout << "\nThe github repository contains instructions on how to write the options file:\n";
+    std::cout << "https://github.com/gvbarroso/momentspp/tree/main/doc" << std::endl << std::endl;
+    std::cout << "\nIf you have any doubts, please email gvbarroso@gmail.com " << std::endl;
     return(0);
   }
 
@@ -216,7 +213,7 @@ int main(int argc, char *argv[]) {
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
-      if(numEpochs > 1)
+      if(numEpochs > 1 && options.getTimeSteps() > 0)
         model->printHetMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]), options.getTimeSteps());
 
       fout.close();
