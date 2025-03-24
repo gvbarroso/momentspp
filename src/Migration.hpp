@@ -6,6 +6,7 @@
  */
 
 
+// The Migration operator on the selection basis (restricted to 2 populations)
 #ifndef _MIGRATION_H_
 #define _MIGRATION_H_
 
@@ -16,7 +17,7 @@ class Migration: public AbstractOperator
 {
 
 private:
-  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleMigMat_; // P x P
+  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleMigMat_; // 2 x 2
 
 public:
   Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):

@@ -1,14 +1,14 @@
 /*
  * Authors: Gustavo V. Barroso
- * Created: 10/08/2022
- * Last modified: 08/06/2023
+ * Created: 21/03/2025
+ * Last modified: 25/03/2025
  *
  */
 
 
-#include "Migration.hpp"
+#include "NeutralMigration.hpp"
 
-void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
+void NeutralMigration::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   // m_ij is the forward migration rate from pop i to pop j (backwards, the prob that lineage in j has parent in i)
   size_t numPops = littleMigMat_.innerSize();
@@ -203,7 +203,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
           }
 
           else if((*it)->getPrefix() != "I")
-            throw bpp::Exception("Migration::mis-specified Moment prefix: " + (*it)->getPrefix());
+            throw bpp::Exception("NeutralMigration::mis-specified Moment prefix: " + (*it)->getPrefix());
         }
 
         Eigen::SparseMatrix<long double> mat(sizeOfBasis, sizeOfBasis);
@@ -219,7 +219,7 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
   assembleTransitionMatrix_();
 }
 
-void Migration::testFlow()
+void NeutralMigration::testFlow()
 {
   assert(littleMigMat_.innerSize() > 0);
   int numPops = littleMigMat_.innerSize();
@@ -243,13 +243,13 @@ void Migration::testFlow()
       if(!flow)
       {
         std::cout << "ERROR: Demes " << i << " & " << j << " not connected by migration!\n";
-        throw bpp::Exception("Migration::no steady-state solution!");
+        throw bpp::Exception("NeutralMigration::no steady-state solution!");
       }
     }
   }
 }
 
-void Migration::updateMatrices_()
+void NeutralMigration::updateMatrices_()
 {
   size_t numPops = littleMigMat_.innerSize();
   size_t index = 0;
@@ -282,7 +282,7 @@ void Migration::updateMatrices_()
   prevParams_.matchParametersValues(getParameters());
 }
 
-void Migration::setLittleMat_()
+void NeutralMigration::setLittleMat_()
 {
   size_t numPops = popIndices_.size();
   std::vector<long double> row(numPops, 0.);
@@ -314,7 +314,7 @@ void Migration::setLittleMat_()
   littleMigMat_ = mat;
 }
 
-size_t Migration::fetchNumPops_() // cute way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
+size_t NeutralMigration::fetchNumPops_() // cute way to get the number of populations P from the raw value of P^2 - P ( == matrices_.size())
 {
   int numPops = 2; // we want the positive solution of the quadratic equation P^2 - P - matrices_.size() = 0
   int n = static_cast<int>(getParameters().size()); // raw value of P^2 - P

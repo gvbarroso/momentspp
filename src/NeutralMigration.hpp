@@ -1,25 +1,25 @@
 /*
  * Authors: Gustavo V. Barroso
- * Created: 10/08/2022
- * Last modified: 20/04/2022
+ * Created: 21/03/2025
+ * Last modified: 24/04/2025
  *
  */
 
 
-#ifndef _MIGRATION_H_
-#define _MIGRATION_H_
+#ifndef _NEUTRAL_MIGRATION_H_
+#define _NEUTRAL_MIGRATION_H_
 
 #include "AbstractOperator.hpp"
 #include "Graph.hpp"
 
-class Migration: public AbstractOperator
+class NeutralMigration: public AbstractOperator
 {
 
 private:
   Eigen::MatrixXd littleMigMat_; // P x P
 
 public:
-  Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
+  NeutralMigration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   littleMigMat_()
   {
@@ -29,7 +29,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Migration(const Eigen::MatrixXd& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  NeutralMigration(const Eigen::MatrixXd& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   littleMigMat_(migMat)
   {

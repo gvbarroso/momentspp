@@ -1,4 +1,0 @@
-num_threads = # default = use all available cores in computer
-demes_file = $(F)
-factor_order = $(O)
-time_steps = 500

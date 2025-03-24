@@ -1,25 +1,25 @@
 /*
  * Authors: Gustavo V. Barroso
- * Created: 10/04/2023
- * Last modified: 22/05/2023
+ * Created: 21/03/2025
+ * Last modified: 25/03/2025
  *
  */
 
 
-#ifndef _ADMIXTURE_H_
-#define _ADMIXTURE_H_
+#ifndef _NEUTRAL_ADMIXTURE_H_
+#define _NEUTRAL_ADMIXTURE_H_
 
 #include "AbstractOperator.hpp"
 #include "SumStatsLibrary.hpp"
 
-class Admixture: public AbstractOperator
+class NeutralAdmixture: public AbstractOperator
 {
 
 private:
   Eigen::MatrixXd littleAdmixMat_; // P x P
 
 public:
-  Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib):
+  NeutralAdmixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   littleAdmixMat_()
   {
@@ -28,7 +28,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Admixture(const Eigen::MatrixXd& admixMat, const SumStatsLibrary& sslib):
+  NeutralAdmixture(const Eigen::MatrixXd& admixMat, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   littleAdmixMat_(admixMat)
   {
@@ -55,9 +55,9 @@ public:
     setUpMatrices_(sslib);
   }
 
-  virtual Admixture* clone() const override
+  virtual NeutralAdmixture* clone() const override
   {
-    return new Admixture(*this);
+    return new NeutralAdmixture(*this);
   }
 
   const Eigen::MatrixXd& getLittleAdmixMat()

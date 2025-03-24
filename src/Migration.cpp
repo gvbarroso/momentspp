@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 06/06/2024
+ * Last modified: 24/03/2025
  *
  */
 
@@ -14,6 +14,9 @@ void Migration::setUpMatrices_(const SumStatsLibrary& sslib)
   size_t numPops = littleMigMat_.innerSize();
   size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(numPops * (numPops - 1));
+
+  if(numPops > 2)
+    throw bpp::Exception("Migration operator cannot model more than 2 populations in the general case! Try NeutralMigration instead.");
 
   for(size_t i = 0; i < numPops; ++i)
   {

@@ -1,15 +1,15 @@
 /*
  * Authors: Gustavo V. Barroso
- * Created: 21/04/2023
- * Last modified: 08/06/2023
+ * Created: 21/03/2025
+ * Last modified: 25/03/2025
  *
  */
 
 #include <typeinfo>
 
-#include "Admixture.hpp"
+#include "NeutralAdmixture.hpp"
 
-void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
+void NeutralAdmixture::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   size_t numPops = popIndices_.size();
   size_t sizeOfBasis = sslib.getSizeOfBasis();
@@ -268,7 +268,7 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
   assembleTransitionMatrix_();
 }
 
-void Admixture::updateMatrices_()
+void NeutralAdmixture::updateMatrices_()
 {
   size_t numPops = littleAdmixMat_.innerSize();
   std::string paramName = "";
@@ -309,8 +309,8 @@ void Admixture::updateMatrices_()
   prevParams_.matchParametersValues(getParameters());
 }
 
-// overrides AbstractOperator because Admixture works differently
-void Admixture::assembleTransitionMatrix_()
+// overrides AbstractOperator because NeutralAdmixture works differently
+void NeutralAdmixture::assembleTransitionMatrix_()
 {
   transition_ = matrices_[0]; // inits to "delta" matrix
 
