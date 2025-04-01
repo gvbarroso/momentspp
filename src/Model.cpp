@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 06/06/2024
+ * Last modified: 01/04/2025
  *
  */
 
@@ -117,19 +117,19 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
           std::string uk = "u_" + bpp::TextTools::toString(kd);
           std::string sk = "s_" + bpp::TextTools::toString(kd);
 
-          if(epochs_[i]->getParameter(rj).getValue() == epochs_[i]->getParameter(rk).getValue())
+          if(epochs_[i]->getParameter(rj)->getValue() == epochs_[i]->getParameter(rk)->getValue())
           {
             epochs_[i]->aliasParameters(rj, rk);
             aliasParameters(epochs_[i]->getName() + "." + rj, epochs_[i]->getName() + "." + rk);
           }
 
-          if(epochs_[i]->getParameter(uj).getValue() == epochs_[i]->getParameter(uk).getValue())
+          if(epochs_[i]->getParameter(uj)->getValue() == epochs_[i]->getParameter(uk)->getValue())
           {
             epochs_[i]->aliasParameters(uj, uk);
             aliasParameters(epochs_[i]->getName() + "." + uj, epochs_[i]->getName() + "." + uk);
           }
 
-          if(epochs_[i]->getParameter(sj).getValue() == epochs_[i]->getParameter(sk).getValue())
+          if(epochs_[i]->getParameter(sj)->getValue() == epochs_[i]->getParameter(sk)->getValue())
           {
             epochs_[i]->aliasParameters(sj, sk);
             aliasParameters(epochs_[i]->getName() + "." + sj, epochs_[i]->getName() + "." + sk);

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/03/2023
+ * Last modified: 01/04/2025
  *
  */
 
@@ -22,7 +22,6 @@
 #include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/App/BppApplication.h>
 #include <Bpp/App/ApplicationTools.h>
-#include <Bpp/Phyl/PseudoNewtonOptimizer.h>
 
 #include "Population.hpp"
 #include "Data.hpp"
@@ -43,10 +42,10 @@ public:
   { }
   
 public:
-  void fitModel(Model* model);
+  void fitModel(std::shared_ptr<Model> model);
 
 private:
-  void writeEstimatesToFile_(Model* model);
+  void writeEstimatesToFile_(std::shared_ptr<Model> model);
   
 };
 

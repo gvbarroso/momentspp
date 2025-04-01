@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
       model->getIndependentParameters().printParameters(std::cout);
 
       OptimizationWrapper optimizer(options);
-      optimizer.fitModel(model.get());
+      optimizer.fitModel(model);
     }
   }
 

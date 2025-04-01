@@ -1,5 +1,5 @@
 ---
-title: "Example run of moments++, pure two-locus modeol, 10-fold bottleneck"
+title: "Example run of moments++"
 author: "Gustavo V. Barroso & Aaron P. Ragsdale"
 date: "`r Sys.Date()`"
 output:
@@ -10,7 +10,7 @@ toc_depth: 1
 ---
 
 The goal of this example is to predict B-values over time,
-following a 10-fold bottleneck.
+under a pure two-locus model, following a 10-fold bottleneck.
   
 ```{r setup, include=F, message=F, warning=F}
 knitr::opts_chunk$set(echo=TRUE)
@@ -216,18 +216,18 @@ do
   	    # choosing an appropriate order of (1-2p) factors based on Ne*s
     	  if [[ $Ns -lt 30 ]]
     	  then
-       	    momentspp params=opt.bpp F=$f O=70 > /dev/null
+       	    momentspp param=opt.bpp F=$f O=70 > /dev/null
       	elif [[ $Ns -lt 70 ]]
       	then 
-      	  momentspp params=opt.bpp F=$f O=150 > /dev/null
+      	  momentspp param=opt.bpp F=$f O=150 > /dev/null
       	elif [[ $Ns -lt 150 ]]
       	then    
-      	  momentspp params=opt.bpp F=$f O=300 > /dev/null
+      	  momentspp param=opt.bpp F=$f O=300 > /dev/null
       	else
-      	  momentspp params=opt.bpp F=$f O=400 > /dev/null
+      	  momentspp param=opt.bpp F=$f O=400 > /dev/null
       	fi
         else
-          momentspp params=opt.bpp F=$f O=10 > /dev/null
+          momentspp param=opt.bpp F=$f O=10 > /dev/null
       fi
     done
     cd ..
@@ -239,7 +239,7 @@ done
 cd demo
 for f in *yaml
 do 
-  momentspp params=opt.bpp F=$f O=2 
+  momentspp param=opt.bpp F=$f O=2 
 done
 ```
 
