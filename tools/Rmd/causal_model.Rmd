@@ -1,0 +1,4385 @@
+---
+title: "Causal models of diversity"
+author: "Gustavo V. Barroso"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+  toc: true
+number_sections: true
+toc_depth: 1
+---
+
+```{r setup, include=F, message=F, warning=F}
+
+knitr::opts_chunk$set(echo=TRUE)
+
+library(data.table)
+library(tidyverse)
+library(cowplot)
+library(scales)
+library(GenomicRanges)
+
+library(MASS)
+library(lmtest)
+library(nlme)
+library(car)
+library(interactions)
+library(ppcor)
+library(Hmisc)
+
+library(piecewiseSEM)
+library(DiagrammeR)
+library(graph)
+library(ggm)
+library(lavaan)
+library(DiagrammeR)
+library(DiagrammeRsvg)
+library(magrittr)
+library(rsvg)
+library(xml2)
+
+library(reticulate)
+use_python("/usr/bin/python3")
+
+scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
+
+knitr::opts_knit$set(root.dir="~/Desktop/sim_data")
+```
+
+# Building chr models
+
+We write a table with parameters shaping genomic landscapes
+(mutation, recombination, functional elements)
+
+Later, we will assume a single DFE for all elements.
+Thus |s| can be seen as "constant" (see DAGs below).
+
+```{r, build-chr-models, include=F, message=F, warning=F}
+
+# Gamma dist params
+shapes_rate_u <- c(5, 10, 30, 100)
+shapes_rate_r <- c(1, 3, 10)
+mean_r <- 1e-8
+mean_u <- 1e-8
+
+# Geom dist params
+avg_rec_spans <- c(1e+3, 1e+4, 1e+5)
+avg_mut_spans <- c(1e+3, 1e+4, 1e+5)
+exon_lengths <- 1000
+num_exons <- c(600, 3000, 7500)
+L <- 3e+7
+mult_r_u <- c(0, 0.05, 0.1, 0.25) # no mutagenic recombination is a special case
+
+models <- setDT(crossing(L, num_exons, exon_lengths, mult_r_u,
+                         mean_r, mean_u, shapes_rate_u, shapes_rate_r,
+                         avg_rec_spans, avg_mut_spans))
+models$model <- 1:nrow(models)
+
+Sys.setenv(num_models = nrow(models))
+Sys.setenv(num_reps = 10)
+
+fwrite(models, "models.csv")
+
+```
+
+```{bash, mk-dirs, engine.opts='-i', include=T, eval=T, results=F, warning=F}
+
+source ~/.bashrc
+
+for ((m=1; m <= $num_models; m++))
+do
+  mkdir model_$m
+  cd model_$m
+  for ((r=1; r <= $num_reps; r++))
+  do
+    mkdir rep_$r
+  done
+  cd ..
+done
+
+```
+
+We use the models to assemble the genomic maps
+
+```{r, build-chr-maps, include=F, message=F, warning=F}
+
+for(m in 1:num_models) {
+  
+  bin_size <- 1e+3 # "basal" scale, larger windows are built after
+  L <- models$L[m]
+  V <- L - models$num_exons[m] * models$exon_lengths[m]
+  mult <- models$mult_r_u[m]
+    
+  for(r in 1:num_reps) {
+    
+    # constrained elements, call them genes or exons 
+    intergenic_lengths <- rgeom(n=models$num_exons[m], prob=models$num_exons[m]/V) 
+    
+    while(sum(intergenic_lengths) < V) {
+      intergenic_lengths <- c(intergenic_lengths, 
+                              rgeom(n=1, prob=models$num_exons[m]/V))
+    }
+    if(sum(intergenic_lengths) > V) {
+      intergenic_lengths <- intergenic_lengths[cumsum(intergenic_lengths) < V]
+      intergenic_lengths <- c(intergenic_lengths, V - sum(intergenic_lengths))
+    }
+    
+    elements <- c(rbind(intergenic_lengths, 
+                        rep(models$exon_lengths[m],
+                            models$num_exons[m])))
+    elements <- setDT(bind_cols(chr="chr1",
+    		                    dplyr::lag(cumsum(elements), n=1, default=0),
+    		                    dplyr::lag(cumsum(elements), n=0, default=0)))
+    names(elements) <- c("chr", "start", "end")
+    elements <- filter(elements, start < L)
+    elements$end[nrow(elements)] <- L
+    elements$selected <- as.integer(elements$end - 
+elements$start == models$exon_lengths[m])
+    
+    # recombination map
+    rec_spans <- rgeom(n=ceiling(L/models$avg_rec_spans[m]), 
+                       prob=1/models$avg_rec_spans[m])
+    while(sum(rec_spans) < L) {
+      rec_spans <- c(rec_spans, rgeom(n=1, prob=1/models$avg_rec_spans[m]))
+    }
+    if(sum(rec_spans) > L) {
+      rec_spans <- rec_spans[cumsum(rec_spans) < L]
+      rec_spans <- c(rec_spans, L - sum(rec_spans))
+    }
+    rec_spans <- rec_spans[rec_spans>0]
+    
+    rmap <- suppressMessages(setDT(bind_cols(chr="chr1",
+            		  dplyr::lag(cumsum(rec_spans), n=1, default=0),
+    		          dplyr::lag(cumsum(rec_spans), n=0, default=0))))  
+    names(rmap) <- c("chr", "start", "end")
+    rs <- rgamma(n=nrow(rmap),
+                 shape=models$shapes_rate_r[m],
+                 rate=models$shapes_rate_r[m])
+    rmap$r <- rs * models$mean_r[m]
+    fwrite(rmap, paste("model_", m, "/rep_", r, "/rec_map.csv.gz", sep=""))
+    
+    # mutation map
+    mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[m]), 
+                       prob=1/models$avg_mut_spans[m])
+    while(sum(mut_spans) < L) {
+      mut_spans <- c(mut_spans, rgeom(n=1, prob=1/models$avg_mut_spans[m]))
+    }
+    if(sum(mut_spans) > L) {
+      mut_spans <- mut_spans[cumsum(mut_spans) < L]
+      mut_spans <- c(mut_spans, L - sum(mut_spans))
+    }
+    mut_spans <- mut_spans[mut_spans>0]
+    
+    mmap <- suppressMessages(setDT(bind_cols(chr="chr1",
+             		  dplyr::lag(cumsum(mut_spans), n=1, default=0),
+    		          dplyr::lag(cumsum(mut_spans), n=0, default=0))))
+    names(mmap) <- c("chr", "start", "end")
+    mus <- rgamma(n=nrow(mmap),
+                	shape=models$shapes_rate_u[m],
+                	rate=models$shapes_rate_u[m])
+    mmap$u <- mus * models$mean_u[m]
+    
+    # binning
+    bins <- rep(bin_size, floor(L / bin_size))
+    bins <- suppressMessages(bind_cols(chr="chr1",
+                      dplyr::lag(cumsum(bins), n=1, default=0),
+                      dplyr::lag(cumsum(bins), n=0, default=0)))
+    names(bins) <- c("chr", "start", "end")
+    bins$start <- bins$start + 1 # so that GRanges understands the intervals
+    gr_bins <- makeGRangesFromDataFrame(bins)
+    
+    rmap2 <- rmap
+    rmap2$start <- rmap2$start + 1 # so that GRanges understands the intervals
+    rec_gr <- makeGRangesFromDataFrame(rmap2, keep.extra.columns=T)
+    hits <- findOverlaps(query=gr_bins, subject=rec_gr) 
+    hit_list <- as.data.frame(hits)
+    names(hit_list) <- c("bins", "rec_bins")
+    rmap2$rec_bins <- 1:nrow(rmap2)
+    rec_bins <- merge(rmap2, hit_list) %>%
+                group_by(bins) %>%
+                mutate(avg_rec=weighted.mean(r, end-start))
+    rec_bins <- rec_bins %>% distinct(bins, .keep_all=T) 
+    
+    mmap2 <- mmap 
+    mmap2$start <- mmap2$start + 1 # so that GRanges understands the intervals
+    mut_gr <- makeGRangesFromDataFrame(mmap2, keep.extra.columns=T)
+    
+    # transform mut map with rec map
+    mmap2$mut_bins <- 1:nrow(mmap2)
+    hits <- findOverlaps(query=rec_gr, subject=mut_gr) 
+    hit_list <- as.data.frame(hits)
+    names(hit_list) <- c("rec_bins", "mut_bins")
+    mmap3 <- merge(mmap2, hit_list) 
+    mmap3 <- dplyr::select(rmap2, -c("chr", "start", "end")) %>% 
+             merge(., mmap3, by="rec_bins")
+    mmap3$u <- mmap3$u + mmap3$r * mult
+    mmap3 <- mmap3 %>% 
+      distinct(mut_bins, .keep_all=T) %>% 
+      dplyr::select(names(mmap))
+    mmap3$u <- unique(models$mean_u) * (mmap3$u / mean(mmap3$u)) # re-center
+    mmap2 <- mmap3
+    mmap2$start <- mmap2$start - 1
+    fwrite(mmap2, paste("model_", m, "/rep_", r, "/mut_map.csv.gz", sep=""))
+    
+    # binning mut
+    mut_gr <- makeGRangesFromDataFrame(mmap3, keep.extra.columns=T) # over-write
+    hits <- findOverlaps(query=gr_bins, subject=mut_gr) 
+    hit_list <- as.data.frame(hits)
+    names(hit_list) <- c("bins", "mut_bins")
+    mmap3$mut_bins <- 1:nrow(mmap3)
+    mut_bins <- merge(mmap3, hit_list, by="mut_bins") %>%
+                group_by(bins) %>%
+                mutate(avg_mut=weighted.mean(u, end-start))
+    mut_bins <- mut_bins %>% distinct(bins, .keep_all=T) 
+    
+    # avg mut rate within each element
+    elements2 <- elements 
+    elements2$start <- elements2$start + 1 # so GRanges understands intervals
+    elem_gr <- makeGRangesFromDataFrame(elements2, keep.extra.columns=T)
+    hits <- findOverlaps(query=elem_gr, subject=mut_gr) 
+    hit_list <- as.data.frame(hits)
+    names(hit_list) <- c("elems", "mut_bins")
+    x <- merge(hit_list, mmap3) 
+    y <- x %>% group_by(elems) %>% mutate(avg_mut=weighted.mean(u, end-start)) 
+    x <- distinct(y, elems, .keep_all=T)
+    elements$u <- x$avg_mut
+    
+    fwrite(elements, paste("model_", m, "/rep_", r, "/elements.csv.gz", sep=""))
+    
+    # binning exons (number of exonic sites per 1kb window)
+    bins$bins_1kb <- 1:nrow(bins)
+    elem_gr <- makeGRangesFromDataFrame(dplyr::select(elements, -u), 
+                                        keep.extra.columns=T) 
+    hits <- findOverlaps(query=elem_gr, subject=gr_bins) 
+    hit_list <- as.data.frame(hits)
+    names(hit_list) <- c("elem_bins", "bins_1kb")
+    elements2$elem_bins <- 1:nrow(elements2)
+    elem_bins <- merge(elements2, hit_list, by="elem_bins")
+    elem_bins <- merge(dplyr::select(elem_bins, -chr), bins, by="bins_1kb") 
+    names(elem_bins) <- c("bins_1kb", "elem_bins", "start_elem", "end_elem",
+                          "selected", "chr", "start_1kb", "end_1kb")
+    # finds first and second occurrences of elements within 1 kb windows
+    elem_bins <- elem_bins %>% mutate(isFirst=as.integer(selected==1 &
+(is.na(lag(selected)) | lag(selected)!=1)))
+    elem_bins$isSecond <- lag(elem_bins$isFirst, 1)
+    elem_bins$isSecond[1] <- 0
+    # assigns exonic counts to each 1kb bin
+    elem_bins$leftCount <- elem_bins$isFirst * 
+(elem_bins$end_1kb - elem_bins$start_elem + 1)
+    elem_bins$rightCount <- elem_bins$isSecond * 
+(elem_bins$end_elem - elem_bins$start_1kb + 1)
+    elem_bins$elemCount <- elem_bins$leftCount + elem_bins$rightCount
+    
+    elem_bins_2 <- elem_bins %>%
+                   group_by(bins_1kb) %>% 
+                   mutate(exonic_sites=sum(elemCount)) %>% 
+                   distinct(bins_1kb, .keep_all=T) %>%
+                   dplyr::select(chr, start_1kb, end_1kb, exonic_sites)
+
+    maps_1kb <- bind_cols(bins,
+                          rec_bins["avg_rec"],
+                          mut_bins["avg_mut"],
+                          elem_bins_2["exonic_sites"])
+    
+    maps_1kb$start <- maps_1kb$start - 1 # back
+    maps_1kb$bin_10kb <- (maps_1kb$bins_1kb - 1) %/% 10
+    maps_1kb$bin_100kb <- (maps_1kb$bins_1kb - 1) %/% 100
+    maps_1kb$bin_1Mb <- (maps_1kb$bins_1kb - 1) %/% 1000
+    maps_10kb <- maps_1kb %>% group_by(bin_10kb) %>% 
+                 summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+    maps_100kb <- maps_1kb %>% group_by(bin_100kb) %>% 
+                  summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+    maps_1Mb <- maps_1kb %>% group_by(bin_1Mb) %>% 
+                summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+    
+    # for number of exonic sites we want their sum in each bin
+    maps_10kb$exonic_sites <- maps_10kb$exonic_sites * 10
+    maps_100kb$exonic_sites <- maps_100kb$exonic_sites * 100
+    maps_1Mb$exonic_sites <- maps_1Mb$exonic_sites * 1000
+    
+    bins_1kb <- rep(1e+3, floor(L / 1e+3))
+    bins_1kb <- suppressMessages(bind_cols(chr="chr1",
+      dplyr::lag(cumsum(bins_1kb), n=1, default=0),
+      dplyr::lag(cumsum(bins_1kb), n=0, default=0)))
+    names(bins_1kb) <- c("chr", "start", "end")
+    
+    bins_10kb <- rep(1e+4, floor(L / 1e+4))
+    bins_10kb <- suppressMessages(bind_cols(chr="chr1",
+      dplyr::lag(cumsum(bins_10kb), n=1, default=0),
+      dplyr::lag(cumsum(bins_10kb), n=0, default=0)))
+    names(bins_10kb) <- c("chr", "start", "end")
+    
+    bins_100kb <- rep(1e+5, floor(L / 1e+5))
+    bins_100kb <- suppressMessages(bind_cols(chr="chr1",
+      dplyr::lag(cumsum(bins_100kb), n=1, default=0),
+      dplyr::lag(cumsum(bins_100kb), n=0, default=0)))
+    names(bins_100kb) <- c("chr", "start", "end")
+    
+    bins_1Mb <- rep(1e+6, floor(L / 1e+6))
+    bins_1Mb <- suppressMessages(bind_cols(chr="chr1",
+      dplyr::lag(cumsum(bins_1Mb), n=1, default=0),
+      dplyr::lag(cumsum(bins_1Mb), n=0, default=0)))
+    names(bins_1Mb) <- c("chr", "start", "end")
+    
+    maps_1kb <- cbind.data.frame(bins_1kb, dplyr::select(maps_1kb,
+                                                         avg_rec, 
+                                                         avg_mut,
+                                                         exonic_sites))
+    maps_10kb <- cbind.data.frame(bins_10kb, dplyr::select(maps_10kb,
+                                                           avg_rec, 
+                                                           avg_mut,
+                                                           exonic_sites))
+    maps_100kb <- cbind.data.frame(bins_100kb, dplyr::select(maps_100kb,
+                                                             avg_rec, 
+                                                             avg_mut,
+                                                             exonic_sites))
+    maps_1Mb <- cbind.data.frame(bins_1Mb, dplyr::select(maps_1Mb,
+                                                         avg_rec,
+                                                         avg_mut,
+                                                         exonic_sites))
+    
+    fwrite(maps_1kb, paste("model_", m,
+                           "/rep_", r,
+                           "/maps_1kb.csv.gz", sep=""))
+    fwrite(maps_10kb, paste("model_", m,
+                            "/rep_", r,
+                            "/maps_10kb.csv.gz", sep=""))
+    fwrite(maps_100kb, paste("model_", m,
+                             "/rep_", r,
+                             "/maps_100kb.csv.gz", sep=""))
+    fwrite(maps_1Mb, paste("model_", m,
+                           "/rep_", r,
+                           "/maps_1Mb.csv.gz", sep=""))
+  }
+}
+
+```
+
+This chunk has the python code use to predict B and pi
+
+```{python}
+#!/usr/bin/env python
+# coding: utf-8
+
+import sys
+import bgshr
+import scipy.stats
+import numpy as np
+import pandas
+
+models_file = "models.csv"
+chr_models = pandas.read_csv(models_file, sep=",")
+
+# load the lookup table
+table_file = "lookup_tbl_equilibrium.csv.gz"
+df = bgshr.Util.load_lookup_table(table_file)
+df_sub = bgshr.Util.subset_lookup_table(df)
+df_sub = df_sub[df_sub["s"] > -0.005]
+
+# extend the lookup table with classic BGS predictions
+smin = np.min(np.sort(list(set(df_sub["s"]))))
+s_extend = -np.concatenate(([0], np.logspace(-6, 0, 46))) 
+s_extend = s_extend[s_extend < smin]
+df_sub = bgshr.ClassicBGS.extend_lookup_table(df_sub, s_extend)
+
+# interpolate between recombination values in the lookup table
+u_vals, s_vals, splines = bgshr.Util.generate_cubic_splines(df_sub)
+max_r = max(df_sub["r"])
+
+ss = np.sort(list(set(df_sub["s"])))
+
+L = 30000000
+rec_file = "rec_map.csv.gz"
+rmap = bgshr.Util.load_bedgraph(rec_file, L=L)
+
+efile = "elements.csv.gz"
+regions = pandas.read_csv(efile, sep=",")
+
+mus = regions[regions["selected"] == 1]["u"] # avg u per exon
+elements = bgshr.Util.get_elements(regions, L=L)
+
+u = float(np.unique(chr_models["mean_u"])[0])
+u_nonsyn = (2.31) / (2.31 + 1) * u
+u_fac = u_nonsyn / u
+
+# DFE, from Kim et al (2017)
+shape = 0.215
+Ne = int(df_sub["Ns"][0]) # equilibrium model
+scale = 562.1 / 2 / Ne
+
+weights = bgshr.Util.weights_gamma_dfe(s_vals, shape, scale)
+weights[len(weights)-1] = 1 - sum(weights[0:len(weights)-2])
+
+spacing = 1000 # evaluate B's every 1 kb
+xs = np.arange(500, L, spacing) # xs may not contemplate fine-scale LMR variation
+Bs = bgshr.Predict.Bvals(xs, s_vals[:-1], splines, L=L, u=mus, rmap=rmap, 
+                         elements=elements, max_r=0.5)
+
+B = bgshr.Util.integrate_with_weights(Bs, weights[:-1], u_fac=u_fac)
+# NOTE: no interference correction here
+# we want a DAG without feedback loops
+bmap = scipy.interpolate.CubicSpline(xs, B, bc_type="natural")
+
+ns_fac = u_fac * mus / u
+syn_fac = (1 - u_fac) * mus / u
+
+hls = []
+for s in s_vals:
+    hls.append(bgshr.ClassicBGS._get_Hl(s, Ne, u))
+
+pi0_ns = np.sum([h * w * ns_fac for h, w in zip(hls, weights)], axis=0)
+pi0_syn = 2 * Ne * u * syn_fac
+
+pi0_exons = np.array(pi0_ns + pi0_syn)
+pi0_exons[0:24]
+
+# 1kb
+file_1kb = "maps_1kb.csv.gz"
+maps_1kb = pandas.read_csv(file_1kb, sep=",")
+bins_1kb = np.array(maps_1kb["end"])
+
+jumps = 250
+# a finer grid than the xs, to capture exonic vs intergenic pi0's
+ys = np.arange(0, L, jumps) 
+pi0z = np.asarray(maps_1kb["avg_mut"])[np.digitize(ys, bins_1kb)] * 2 * Ne # init
+
+for i in range(0, len(ys)):
+    for j in range(0, len(elements)):
+        if ys[i] >= elements[j][0] and ys[i] < elements[j][1]:
+            pi0z[i] = pi0_exons[j] # replace
+            
+pi0_1kb = np.mean(pi0z.reshape(-1, int(1000/jumps)), axis=1) 
+pi_1kb = B * pi0_1kb # B is evaluated every 'spacing' bp (1 kb)
+
+# with mutational variance
+# later on we can incorporate genealogical noise (directly on the "final" table)
+pi_mu_1kb = np.zeros(len(pi_1kb))
+S = 100 # diploid sample size
+for i in range(0, S): 
+    pi_mu_1kb += np.random.binomial(n=1000, size=len(pi_1kb), p=pi_1kb) / 1000
+
+pi_mu_1kb = pi_mu_1kb / S
+
+maps_1kb.insert(len(maps_1kb.columns), "B", B)
+maps_1kb.insert(len(maps_1kb.columns), "avg_pi", pi_1kb)
+maps_1kb.insert(len(maps_1kb.columns), "sim_pi", pi_mu_1kb)
+
+fout = "tbl_1kb.csv.gz"
+maps_1kb.to_csv(fout, index=False)
+
+# 10 kb
+file_10kb = "maps_10kb.csv.gz"
+maps_10kb = pandas.read_csv(file_10kb, sep=",")
+
+B_10kb = np.mean(B.reshape(-1, 10), axis=1) # B is evaluated 'spacing' bp
+pi0_10kb = np.mean(pi0_1kb.reshape(-1, 10), axis=1) 
+pi_10kb = B_10kb * pi0_10kb
+
+# with mutational variance
+# later on we can incorporate genealogical noise (directly on the "final" table)
+pi_mu_10kb = np.zeros(len(pi_10kb))
+S = 100 # diploid sample size
+for i in range(0, S): 
+    pi_mu_10kb += np.random.binomial(n=10000, size=len(pi_10kb), p=pi_10kb) / 10000
+
+pi_mu_10kb = pi_mu_10kb / S
+
+maps_10kb.insert(len(maps_10kb.columns), "B", B_10kb)
+maps_10kb.insert(len(maps_10kb.columns), "avg_pi", pi_10kb)
+maps_10kb.insert(len(maps_10kb.columns), "sim_pi", pi_mu_10kb)
+
+fout = "tbl_10kb.csv.gz"
+maps_10kb.to_csv(fout, index=False)
+
+# 100kb
+file_100kb = "maps_100kb.csv.gz"
+maps_100kb = pandas.read_csv(file_100kb, sep=",")
+
+B_100kb = np.mean(B.reshape(-1, 100), axis=1) # B is evaluated 'spacing' bp
+pi0_100kb = np.mean(pi0_1kb.reshape(-1, 100), axis=1)
+pi_100kb = B_100kb * pi0_100kb
+
+# with mutational variance
+# later on we can incorporate genealogical noise (directly on the "final" table)
+pi_mu_100kb = np.zeros(len(pi_100kb))
+S = 100 # diploid sample size
+for i in range(0, S): 
+    pi_mu_100kb += np.random.binomial(n=100000, size=len(pi_100kb), p=pi_100kb) / 100000
+
+pi_mu_100kb = pi_mu_100kb / S
+
+
+maps_100kb.insert(len(maps_100kb.columns), "B", B_100kb)
+maps_100kb.insert(len(maps_100kb.columns), "avg_pi", pi_100kb)
+maps_100kb.insert(len(maps_100kb.columns), "sim_pi", pi_mu_100kb)
+
+fout = "tbl_100kb.csv.gz"
+maps_100kb.to_csv(fout, index=False)
+
+# 1Mb
+file_1Mb = "maps_1Mb.csv.gz"
+maps_1Mb = pandas.read_csv(file_1Mb, sep=",")
+
+B_1Mb = np.mean(B.reshape(-1, 1000), axis=1) # B is evaluated 'spacing' bp
+pi0_1Mb = np.mean(pi0_1kb.reshape(-1, 1000), axis=1)
+pi_1Mb = B_1Mb * pi0_1Mb
+
+# with mutational variance 
+# later on we can incorporate genealogical noise (directly on the "final" table)
+pi_mu_1Mb = np.zeros(len(pi_1Mb))
+S = 100 # diploid sample size
+for i in range(0, S): 
+    pi_mu_1Mb += np.random.binomial(n=1000000, size=len(pi_1Mb), p=pi_1Mb) / 1000000
+
+pi_mu_1Mb = pi_mu_1Mb / S
+
+maps_1Mb.insert(len(maps_1Mb.columns), "B", B_1Mb)
+maps_1Mb.insert(len(maps_1Mb.columns), "avg_pi", pi_1Mb)
+maps_1Mb.insert(len(maps_1Mb.columns), "sim_pi", pi_mu_1Mb)
+
+fout = "tbl_1Mb.csv.gz"
+maps_1Mb.to_csv(fout, index=False)
+
+```
+
+```{bash, mk-dirs, engine.opts='-i', include=T, eval=T, results=F, warning=F}
+
+source ~/.bashrc
+
+```
+
+# Causal models
+
+Visualization
+
+https://www.erikigelstrom.com/articles/causal-graphs-in-r-with-diagrammer/
+
+```{r dags-viz, include=F, message=F, warning=F}
+
+D1p <- DiagrammeR::grViz("
+digraph {
+  rankdir=LR; // Left to Right, instead of Top to Bottom
+  graph []
+  node [shape = box]
+    A [label = 'u']
+    B [label = 'r']
+    C [label = 'selection'] // sensu lato
+    X [label = 'B']
+    W [label = 'Drift']
+    Y [label = 'pi']
+  edge [minlen = 2]
+    A->X
+    B->X
+    C->X
+    B->A
+    A->Y
+    W->Y
+    X->Y
+  { rank = same; A; C }
+}
+")
+
+D2p <- DiagrammeR::grViz("
+digraph {
+  rankdir=LR; // Left to Right, instead of Top to Bottom
+  graph []
+  node [shape = box]
+    A [label = 'u']
+    B [label = 'r']
+    C [label = 'selection'] // sensu lato
+    E [label = 'pi_del']
+    X [label = 'B']
+    Y [label = 'pi_neu']
+  edge [minlen = 2]
+    A->E
+    B->X
+    B->A
+    C->E
+    C->X
+    E->X
+    A->Y
+    X->Y
+}
+")
+
+# without interference
+D3p <- DiagrammeR::grViz("
+digraph {
+  rankdir=LR; // Left to Right, instead of Top to Bottom
+  graph []
+  node [shape = box]
+    A [label = 'u']
+    B [label = 'r']
+    D [label = 'pi_del']
+    E [label = 'selection'] // sensu lato
+    F [label = 'LD'] // D(1-2q)?
+    X [label = 'B']
+    Y [label = 'pi_neu']
+    W [label = '?']
+  edge [minlen = 2]
+    A->D
+    B->A
+    D->X
+    X->Y
+    F->W
+    W->X
+    B->F
+    E->F
+    E->D
+    A->Y
+  { rank = same; A; E }
+}
+")
+
+# with interference
+D4p <- DiagrammeR::grViz("
+digraph {
+  rankdir=LR; // Left to Right, instead of Top to Bottom
+  graph []
+  node [shape = box]
+    A [label = 'u']
+    B [label = 'r']
+    D [label = 'pi_del']
+    E [label = 'selection'] // sensu lato
+    F [label = 'LD'] // D(1-2q)?
+    X [label = 'B']
+    Y [label = 'pi_neu']
+    W [label = '?']
+    Z [label = 'Ne']
+  edge [minlen = 2]
+    A->D
+    B->A
+    D->X
+    X->Z
+    X->Y
+    Z->Y
+    F->W
+    W->X
+    B->F
+    E->F
+    E->D
+    Z->D
+    A->Y
+    Z->E
+    Z->B
+  { rank = same; A; E }
+}
+")
+
+# if the strength of selection is constant across functional elements
+D5p <- DiagrammeR::grViz("
+digraph {
+  rankdir=LR; // Left to Right, instead of Top to Bottom
+  graph []
+  node [shape = box]
+    A [label = 'u']
+    B [label = 'r']
+    C [label = '#del_sites'] 
+    E [label = 'pi_del']
+    X [label = 'B']
+    Y [label = 'pi_neu']
+    Z [label = 'pi']
+  edge [minlen = 2]
+    A->E
+    B->X
+    B->A
+    C->E
+    E->X
+    A->Y
+    X->Y
+    Y->Z
+    E->Z
+}
+")
+
+#grViz(D1p) %>% export_svg() %>% read_xml() %>% write_xml("causal_model_1.svg")
+#export_graph(D1p, file_name="causal_model_1.pdf", file_type="pdf")
+D1p
+D2p
+D3p
+D4p
+D5p
+```
+
+The DAGs that we will test with the data
+
+```{r dags-models, include=F, message=F, warning=F}
+
+D1g <- DAG(
+  r~u,
+  r~B,
+  u~B,
+  s~B,
+  u~pi
+)
+
+D2g <- DAG(
+  r~u,
+  r~B,
+  u~pi_del,
+  u~pi_neu,
+  s~pi_del,
+  s~B,
+  pi_del~B,
+  B~pi_neu
+)
+
+D3g <- DAG(
+  r~u,
+  r~LD,
+  u~pi_del,
+  u~pi_neu,
+  pi_del~B,
+  s~pi_del,
+  s~LD,
+  LD~B,
+  B~pi_neu
+)
+
+bs1 <- basiSet(D1g)
+bs2 <- basiSet(D2g)
+bs3 <- basiSet(D3g)
+```
+
+# Simulated data
+
+These simulations are based purely on moments++ predictions using 
+artificially constructed maps.
+
+Therefore, there is no interference in these data.
+
+The good old linear models
+
+```{r lms, include=F, message=F, warning=F}
+
+maps_1kb <- fread("tbl_1kb.csv.gz")
+maps_10kb <- fread("tbl_10kb.csv.gz")
+maps_100kb <- fread("tbl_100kb.csv.gz")
+maps_1Mb <- fread("tbl_1Mb.csv.gz")
+
+t1kb=dplyr::select(maps_1kb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t1kb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_1kb.csv", sep="")))
+
+t10kb=dplyr::select(maps_10kb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t10kb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_10kb.csv", sep="")))
+
+t100kb=dplyr::select(maps_100kb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t100kb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_100kb.csv", sep="")))
+
+t1Mb=dplyr::select(maps_1Mb, c(avg_mut, B, exp_pi0, exp_pi))
+mat=rcorr(as.matrix(t1Mb))
+x <- mat$r
+x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
+suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_1Mb.csv", sep="")))
+
+# table for storing partitioned R^2 values from type II ANOVA (rows are bin sizes)
+r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+names(r2_tbl) <- c("u", "B", "B:u")
+r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+# table for storing total R^2 values straight from the lm function (rows are bin sizes)
+r2_raw <- as.data.frame(matrix(ncol=1, nrow=4))
+names(r2_raw) <- "r2_typeI"
+r2_raw$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+# tables for storing Pearson correlations with observed pi (rows are bin sizes)
+corr_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+names(corr_tbl) <- c("u", "B", "Predicted")
+corr_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+corr_tbl$Predicted[1] <- cor.test(maps_1kb$exp_pi, 
+                                  maps_1kb$avg_pi, 
+                                  method="pearson")$estimate 
+corr_tbl$Predicted[2] <- cor.test(maps_10kb$exp_pi, 
+                                  maps_10kb$avg_pi, 
+                                  method="pearson")$estimate 
+corr_tbl$Predicted[3] <- cor.test(maps_100kb$exp_pi, 
+                                  maps_100kb$avg_pi,
+                                  method="pearson")$estimate  
+corr_tbl$Predicted[4] <- cor.test(maps_1Mb$exp_pi,
+                                  maps_1Mb$avg_pi, 
+                                  method="pearson")$estimate 
+
+corr_tbl$B[1] <- cor.test(maps_1kb$B, 
+                          maps_1kb$avg_pi,
+                          method="pearson")$estimate 
+corr_tbl$B[2] <- cor.test(maps_10kb$B, 
+                          maps_10kb$avg_pi, 
+                          method="pearson")$estimate 
+corr_tbl$B[3] <- cor.test(maps_100kb$B,
+                          maps_100kb$avg_pi,
+                          method="pearson")$estimate  
+corr_tbl$B[4] <- cor.test(maps_1Mb$B,
+                          maps_1Mb$avg_pi, 
+                          method="pearson")$estimate 
+
+corr_tbl$u[1] <- cor.test(maps_1kb$avg_mut, 
+                          maps_1kb$avg_pi, 
+                          method="pearson")$estimate 
+corr_tbl$u[2] <- cor.test(maps_10kb$avg_mut, 
+                          maps_10kb$avg_pi,
+                          method="pearson")$estimate 
+corr_tbl$u[3] <- cor.test(maps_100kb$avg_mut,
+                          maps_100kb$avg_pi, 
+                          method="pearson")$estimate  
+corr_tbl$u[4] <- cor.test(maps_1Mb$avg_mut,
+                          maps_1Mb$avg_pi,
+                          method="pearson")$estimate 
+
+fwrite(corr_tbl, paste(prefix, "_pearson_avg_pi_tbl.csv", sep=""))
+
+if(sd(maps_1kb$avg_mut)==0) {
+  stop("Flat mutation map! Stopping execution, check Pearson cor. table.")  
+}
+
+if(sd(maps_1kb$B)==0) {
+  stop("Flat B-map! Stopping execution, check Pearson cor. table.")  
+}
+
+# tables for storing estimates from linear models (rows are bin sizes)
+coeff_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+pval_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+names(coeff_tbl) <- c("u", "B", "B:u")
+names(pval_tbl) <- c("u", "B", "B:u")
+coeff_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+pval_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+# VIFs
+vif_tbl <- as.data.frame(matrix(ncol=2, nrow=4))
+names(vif_tbl) <- c("u", "B")
+vif_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+# standardizing variables to help interpretation of linear coefficients
+tbl_1kb <- dplyr::select(maps_1kb, c(avg_mut, B, avg_pi))
+std_1kb <- as.data.frame(apply(tbl_1kb, 2, function(x) (x-mean(x)) / sd(x)))
+std_1kb$bin <- 1:nrow(std_1kb)
+
+tbl_10kb <- dplyr::select(maps_10kb, c(avg_mut, B, avg_pi))
+std_10kb <- as.data.frame(apply(tbl_10kb, 2, function(x) (x-mean(x)) / sd(x)))
+std_10kb$bin <- 1:nrow(std_10kb)
+
+tbl_100kb <- dplyr::select(maps_100kb, c(avg_mut, B, avg_pi))
+std_100kb <- as.data.frame(apply(tbl_100kb, 2, function(x) (x-mean(x)) / sd(x)))
+std_100kb$bin <- 1:nrow(std_100kb)
+
+tbl_1Mb <- dplyr::select(maps_1Mb, c(avg_mut, B, avg_pi))
+std_1Mb <- as.data.frame(apply(tbl_1Mb, 2, function(x) (x-mean(x)) / sd(x)))
+std_1Mb$bin <- 1:nrow(std_1Mb)
+
+# 1 kb
+m_1kb <- lm(avg_pi ~ (B + avg_mut) ^ 2, std_1kb)
+summary(m_1kb)
+r2_raw$r2_typeI[1] <- summary(m_1kb)$r.squared * 100
+v1kb <- vif(m_1kb, type = 'predictor')
+
+vif_tbl$B[1] <- v1kb$GVIF[1]
+vif_tbl$u[1] <- v1kb$GVIF[2]
+
+coeff_tbl$u[1] <- m_1kb$coefficients[3]
+coeff_tbl$B[1] <- m_1kb$coefficients[2]
+coeff_tbl$`B:u`[1] <- m_1kb$coefficients[4]
+
+pval_tbl$u[1] <- summary(m_1kb)$coefficients[3,4]
+pval_tbl$B[1] <- summary(m_1kb)$coefficients[2,4]
+pval_tbl$`B:u`[1] <- summary(m_1kb)$coefficients[4,4]
+
+anova.pi <- Anova(m_1kb)
+apiss <- anova.pi$"Sum Sq"
+anova.pi$VarExp <- apiss / sum(apiss)
+
+r2_tbl$`B:u`[1] <- anova.pi$VarExp[3] * 100
+r2_tbl$u[1] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
+
+# 10 kb
+m_10kb <- lm(avg_pi ~ (B + avg_mut) ^ 2, std_10kb)
+summary(m_10kb)
+r2_raw$r2_typeI[2] <- summary(m_10kb)$r.squared * 100
+v10kb <- vif(m_10kb, type = 'predictor')
+
+vif_tbl$B[2] <- v10kb$GVIF[1]
+vif_tbl$u[2] <- v10kb$GVIF[2]
+
+coeff_tbl$u[2] <- m_10kb$coefficients[3]
+coeff_tbl$B[2] <- m_10kb$coefficients[2]
+coeff_tbl$`B:u`[2] <- m_10kb$coefficients[4]
+
+pval_tbl$u[2] <- summary(m_10kb)$coefficients[3,4]
+pval_tbl$B[2] <- summary(m_10kb)$coefficients[2,4]
+pval_tbl$`B:u`[2] <- summary(m_10kb)$coefficients[4,4]
+
+anova.pi <- Anova(m_10kb)
+apiss <- anova.pi$"Sum Sq"
+anova.pi$VarExp <- apiss / sum(apiss)
+
+r2_tbl$`B:u`[2] <- anova.pi$VarExp[3] * 100
+r2_tbl$u[2] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
+
+# 100 kb
+m_100kb <- lm(avg_pi ~ (B + avg_mut) ^ 2, std_100kb)
+summary(m_100kb)
+r2_raw$r2_typeI[3] <- summary(m_100kb)$r.squared * 100
+v100kb <- vif(m_100kb, type = 'predictor')
+
+vif_tbl$B[3] <- v100kb$GVIF[1]
+vif_tbl$u[3] <- v100kb$GVIF[2]
+
+coeff_tbl$u[3] <- m_100kb$coefficients[3]
+coeff_tbl$B[3] <- m_100kb$coefficients[2]
+coeff_tbl$`B:u`[3] <- m_100kb$coefficients[4]
+
+pval_tbl$u[3] <- summary(m_100kb)$coefficients[3,4]
+pval_tbl$B[3] <- summary(m_100kb)$coefficients[2,4]
+pval_tbl$`B:u`[3] <- summary(m_100kb)$coefficients[4,4]
+
+anova.pi <- Anova(m_100kb)
+apiss <- anova.pi$"Sum Sq"
+anova.pi$VarExp <- apiss / sum(apiss)
+
+r2_tbl$`B:u`[3] <- anova.pi$VarExp[3] * 100
+r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
+
+# 1 Mb
+m_1Mb <- lm(avg_pi ~ (B + avg_mut) ^ 2, data=std_1Mb)
+summary(m_1Mb)
+r2_raw$r2_typeI[4] <- summary(m_1Mb)$r.squared * 100
+v1Mb <- vif(m_1Mb, type = 'predictor')
+
+vif_tbl$B[4] <- v1Mb$GVIF[1]
+vif_tbl$u[4] <- v1Mb$GVIF[2]
+
+coeff_tbl$u[4] <- m_1Mb$coefficients[3]
+coeff_tbl$B[4] <- m_1Mb$coefficients[2]
+coeff_tbl$`B:u`[4] <- m_1Mb$coefficients[4]
+
+pval_tbl$u[4] <- summary(m_1Mb)$coefficients[3,4]
+pval_tbl$B[4] <- summary(m_1Mb)$coefficients[2,4]
+pval_tbl$`B:u`[4] <- summary(m_1Mb)$coefficients[4,4]
+
+anova.pi <- Anova(m_1Mb)
+apiss <- anova.pi$"Sum Sq"
+anova.pi$VarExp <- apiss / sum(apiss)
+
+r2_tbl$`B:u`[4] <- anova.pi$VarExp[3] * 100
+r2_tbl$u[4] <- anova.pi$VarExp[2] * 100
+r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
+
+fwrite(r2_raw, paste(prefix, "_r2_raw_tbl.csv", sep=""))
+fwrite(coeff_tbl, paste(prefix, "_coeff_tbl.csv", sep=""))
+fwrite(pval_tbl, paste(prefix, "_pval_tbl.csv", sep=""))
+fwrite(r2_tbl, paste(prefix, "_r2_typeII_tbl.csv", sep=""))
+fwrite(vif_tbl, paste(prefix, "_vif_tbl.csv", sep=""))
+```
+
+```{r plots-exons-models, include=F, message=F, warning=F}
+
+pcor_tbl_1kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_1kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pcor_tbl_10kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_10kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pcor_tbl_100kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_100kb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pcor_tbl_1Mb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+pval_tbl_1Mb <- as.data.frame(matrix(ncol=num_reps, nrow=num_models))
+
+cv_u_cv_B <- as.data.frame(matrix(ncol=4, nrow=num_models))
+names(cv_u_cv_B) <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+for(i in 1:num_models) {
+  
+  print(Sys.time())
+  cat(paste("Visualizing data from model", i, "...\n"))
+  
+  cv_u_cv_B_1kb <- 0
+  cv_u_cv_B_10kb <- 0
+  cv_u_cv_B_100kb <- 0
+  cv_u_cv_B_1Mb <- 0
+  
+  for(j in 1:num_reps) {
+    
+    cat(paste("Rep. ", j, "\n"))
+    
+    m1kb <- fread(paste("model_", i, "/rep_", j, "/tbl_1kb.csv.gz", sep=""))
+    m10kb <- fread(paste("model_", i, "/rep_", j, "/tbl_10kb.csv.gz", sep=""))
+    m100kb <- fread(paste("model_", i, "/rep_", j, "/tbl_100kb.csv.gz", sep=""))
+    m1Mb <- fread(paste("model_", i, "/rep_", j, "/tbl_1Mb.csv.gz", sep=""))
+    
+    cv_u_cv_B_1kb <- cv_u_cv_B_1kb + sd(m1kb$avg_mut) / 
+      mean(m1kb$avg_mut) / sd(m1kb$B) / mean(m1kb$B)
+    cv_u_cv_B_10kb <- cv_u_cv_B_10kb + sd(m10kb$avg_mut) /
+      mean(m10kb$avg_mut) / sd(m10kb$B) / mean(m10kb$B)
+    cv_u_cv_B_100kb <- cv_u_cv_B_100kb + sd(m100kb$avg_mut) / 
+      mean(m100kb$avg_mut) / sd(m100kb$B) / mean(m100kb$B)
+    cv_u_cv_B_1Mb <- cv_u_cv_B_1Mb + sd(m1Mb$avg_mut) /
+      mean(m1Mb$avg_mut) / sd(m1Mb$B) / mean(m1Mb$B)
+    
+    pc1k <- ppcor::pcor.test(m1kb$B, 
+                             m1kb$avg_mut,
+                             m1kb$avg_rec, 
+                             method="spearman")
+    pc10k <- ppcor::pcor.test(m10kb$B, 
+                              m10kb$avg_mut, 
+                              m10kb$avg_rec, 
+                              method="spearman")
+    pc100k <- ppcor::pcor.test(m100kb$B, 
+                               m100kb$avg_mut, 
+                               m100kb$avg_rec, 
+                               method="spearman")
+    pc1M <- ppcor::pcor.test(m1Mb$B, 
+                             m1Mb$avg_mut, 
+                             m1Mb$avg_rec, 
+                             method="spearman")
+    
+    pcor_tbl_1kb[i, j] <- pc1k$estimate
+    pval_tbl_1kb[i, j] <- pc1k$p.value
+    pcor_tbl_10kb[i, j] <- pc10k$estimate
+    pval_tbl_10kb[i, j] <- pc10k$p.value
+    pcor_tbl_100kb[i, j] <- pc100k$estimate
+    pval_tbl_100kb[i, j] <- pc100k$p.value
+    pcor_tbl_1Mb[i, j] <- pc1M$estimate
+    pval_tbl_1Mb[i, j] <- pc1M$p.value
+    
+    m1kb$bin <- 1:nrow(m1kb)
+    m10kb$bin <- 1:nrow(m10kb)
+    m100kb$bin <- 1:nrow(m100kb)
+    m1Mb$bin <- 1:nrow(m1Mb)
+    
+    # plots binned maps 
+    m1kb_m <- pivot_longer(m1kb, cols=ends_with("pi"), names_to="diversity")
+    pi_1kb <- ggplot(data=m1kb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
+      geom_point(data=m1kb_m, shape=1) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="1 kb", x=NULL, y=expression(pi)) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_1kb <- ggplot(data=m1kb, aes(x=start / 1e+6, y=avg_mut)) + 
+      geom_line(data=m1kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=expression(mu)) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20), 
+            legend.position="none")
+    
+    B_1kb <- ggplot(data=m1kb, aes(x=start / 1e+6, y=B)) + 
+      geom_line(data=m1kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y="B") +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20), 
+            legend.position="none")
+    
+    r_1kb <- ggplot(data=m1kb, aes(x=start / 1e+6, y=avg_rec)) + 
+      geom_line(data=m1kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position (Mb)", y="r") +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    lands_1kb <- plot_grid(pi_1kb, u_1kb, B_1kb, r_1kb, align='v', ncol=1)
+
+    m10kb_m <- pivot_longer(m10kb, cols=ends_with("pi"), names_to="diversity")
+    pi_10kb <- ggplot(data=m10kb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
+      geom_point(data=m10kb_m, shape=1) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m10kb$avg_pi), max(m10kb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="10 kb", x=NULL, y=NULL) + 
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_mut)) + 
+      geom_line(data=m10kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    B_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=B)) + 
+      geom_line(data=m10kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    r_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_rec)) +
+      geom_line(data=m10kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(),
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position (Mb)", y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20), legend.position="none")
+    
+    lands_10kb <- plot_grid(pi_10kb, u_10kb, B_10kb, r_10kb, align='v', ncol=1)
+
+    m100kb_m <- pivot_longer(m100kb, cols=ends_with("pi"), names_to="diversity")
+    pi_100kb <- ggplot(data=m100kb_m, 
+                       aes(x=start / 1e+6, 
+                           y=value,
+                           color=diversity)) +
+      geom_line(data=m100kb_m) + geom_point() + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m100kb$avg_pi), max(m100kb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="100 kb", x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=avg_mut))+
+      geom_line(data=m100kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    B_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=B))+
+      geom_line(data=m100kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(),
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    r_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=avg_rec)) +
+      geom_line(data=m100kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position (Mb)", y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    lands_100kb <- plot_grid(pi_100kb,
+                             u_100kb, 
+                             B_100kb, 
+                             r_100kb, align='v', ncol=1)
+    
+    m1Mb_m <- pivot_longer(m1Mb, cols=ends_with("pi"), names_to="diversity")
+    pi_1Mb <- ggplot(data=m1Mb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
+      geom_line(data=m1Mb_m) + geom_point() + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1Mb$avg_pi), max(m1Mb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="1 Mb", x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=avg_mut))+
+      geom_line(data=m1Mb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         ##limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    B_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=B))+
+      geom_line(data=m1Mb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(),
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    r_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=avg_rec)) +
+      geom_line(data=m1Mb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position (Mb)", y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    lands_1Mb <- plot_grid(pi_1Mb, u_1Mb, B_1Mb, r_1Mb, align='v', ncol=1)
+
+    lands_scales <- plot_grid(lands_1kb, 
+                              lands_10kb, 
+                              lands_100kb, 
+                              lands_1Mb, nrow=1)
+    save_plot(paste("model_", i, "/rep_", j, "/maps.png", sep=""),
+              lands_scales, base_height=12, base_width=24)
+  }
+  
+  cv_u_cv_B[i, 1] <- cv_u_cv_B_1kb / num_reps
+  cv_u_cv_B[i, 2] <- cv_u_cv_B_10kb / num_reps
+  cv_u_cv_B[i, 3] <- cv_u_cv_B_100kb / num_reps
+  cv_u_cv_B[i, 4] <- cv_u_cv_B_1Mb / num_reps
+}
+
+cv_u_cv_B$model <- 1:nrow(cv_u_cv_B)
+models <- merge(cv_u_cv_B, models, by="model")
+models <- pivot_longer(models, cols=as.character(c(1e+3, 1e+4, 1e+5, 1e+6)),
+                       names_to="scale", values_to="cv_u_cv_B")
+models$scale <- as.numeric(models$scale)
+
+# visualization of R^2 and linear coefficients across models
+r2_tbl_exp <- data.table()
+r2_tbl_sim <- data.table()
+r2_tbl_raw <- data.table()
+
+coeff_tbl_exp <- data.table()
+coeff_tbl_sim <- data.table()
+
+pb <- txtProgressBar(min=1, max=num_models, style=3)
+for(i in 1:num_models) {
+  
+  setTxtProgressBar(pb, i)
+  
+  # converts num_rep tables of dim (3 x 4: 1kb, 10kb, 100kb, 1Mb x u, B, B:u)
+  # into 4 tables of dimension num_reps x 3 (u, B, B:u)
+  r2_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  
+  coeff_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  coeff_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  coeff_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  coeff_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  
+  r2_raw_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  r2_raw_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  r2_raw_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  r2_raw_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=3))
+  
+  # in expectation
+  for(j in 1:num_reps) {
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_tbl_exp.csv.gz", sep=""))
+    
+    r2_1kb[j,] <- tmp[1,]
+    r2_10kb[j,] <- tmp[2,]
+    r2_100kb[j,] <- tmp[3,]
+    r2_1Mb[j,] <- tmp[4,]
+    
+    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl_exp.csv.gz", sep=""))
+    
+    coeff_1kb[j,] <- tmp[1,]
+    coeff_10kb[j,] <- tmp[2,]
+    coeff_100kb[j,] <- tmp[3,]
+    coeff_1Mb[j,] <- tmp[4,]
+  }
+  
+  tbl_r2 <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb, r2_1Mb)
+  names(tbl_r2) <- c("u", "B", "B:u", "scale")
+  tbl_r2$model <- i
+  tbl_r2$rep <- rep(1:10, 4)
+  
+  tbl_coeff <- rbind.data.frame(coeff_1kb, coeff_10kb, coeff_100kb, coeff_1Mb)
+  names(tbl_coeff) <- c("u", "B", "B:u", "scale")
+  tbl_coeff$model <- i
+  tbl_coeff$rep <- rep(1:10, 4)
+
+  r2_tbl_exp <- rbind.data.frame(r2_tbl_exp, tbl_r2)
+  coeff_tbl_exp <- rbind.data.frame(coeff_tbl_exp, tbl_coeff)
+  
+  # with mutational variance
+  for(j in 1:num_reps) {
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_tbl_sim.csv.gz", sep=""))
+    
+    r2_1kb[j,] <- tmp[1,]
+    r2_10kb[j,] <- tmp[2,]
+    r2_100kb[j,] <- tmp[3,]
+    r2_1Mb[j,] <- tmp[4,]
+    
+    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl_sim.csv.gz", sep=""))
+    
+    coeff_1kb[j,] <- tmp[1,]
+    coeff_10kb[j,] <- tmp[2,]
+    coeff_100kb[j,] <- tmp[3,]
+    coeff_1Mb[j,] <- tmp[4,]
+  }
+  
+  tbl_r2 <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb, r2_1Mb)
+  names(tbl_r2) <- c("u", "B", "B:u", "scale")
+  tbl_r2$model <- i
+  tbl_r2$rep <- rep(1:10, 4)
+  
+  tbl_coeff <- rbind.data.frame(coeff_1kb, coeff_10kb, coeff_100kb, coeff_1Mb)
+  names(tbl_coeff) <- c("u", "B", "B:u", "scale")
+  tbl_coeff$model <- i
+  tbl_coeff$rep <- rep(1:10, 4)
+  
+  coeff_tbl_sim <- rbind.data.frame(coeff_tbl_sim, tbl_coeff)
+  r2_tbl_sim <- rbind.data.frame(r2_tbl_sim, tbl_r2)
+  
+  # raw R^2 (from lm() or type I ANOVA)
+  for(j in 1:num_reps) {
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_raw_tbl.csv.gz", sep=""))
+    
+    r2_raw_1kb[j,] <- tmp[1,]
+    r2_raw_10kb[j,] <- tmp[2,]
+    r2_raw_100kb[j,] <- tmp[3,]
+    r2_raw_1Mb[j,] <- tmp[4,]
+  }
+  
+  tbl_r2_raw <- rbind.data.frame(r2_raw_1kb, r2_raw_10kb, r2_raw_100kb, r2_raw_1Mb)
+  names(tbl_r2_raw) <- c("Exp_Pi", "Sim_Pi", "scale")
+  tbl_r2_raw$model <- i
+  tbl_r2_raw$rep <- rep(1:10, 4)
+  
+  r2_tbl_raw <- rbind.data.frame(r2_tbl_raw, tbl_r2_raw)
+}
+close(pb)
+
+r2s_exp <- r2_tbl_exp %>% group_by(model, scale) %>% 
+                          summarize_at(vars(u, B, `B:u`), 
+                                       list(avg=mean, sd=sd))
+
+r2s_sim <- r2_tbl_sim %>% group_by(model, scale) %>% 
+                          summarize_at(vars(u, B, `B:u`), 
+                                       list(avg=mean, sd=sd))
+
+r2_tbl_raw$Exp_Pi <- r2_tbl_raw$Exp_Pi * 100
+r2_tbl_raw$Sim_Pi <- r2_tbl_raw$Sim_Pi * 100
+r2s_raw <- r2_tbl_raw %>% group_by(model, scale) %>% 
+  summarize_at(vars(Exp_Pi, Sim_Pi), 
+               list(avg=mean, sd=sd))
+
+cs_exp <- coeff_tbl_exp %>% group_by(model, scale) %>% 
+  summarize_at(vars(u, B, `B:u`), 
+               list(avg=mean, sd=sd))
+
+cs_sim <- coeff_tbl_sim %>% group_by(model, scale) %>% 
+  summarize_at(vars(u, B, `B:u`), 
+               list(avg=mean, sd=sd))
+
+fwrite(r2s_raw, "r2_raw_tbl_models.csv")
+fwrite(r2s_exp, "r2_exp_tbl_models.csv")
+fwrite(r2s_sim, "r2_sim_tbl_models.csv")
+
+fwrite(cs_exp, "coeff_exp_tbl_models.csv")
+fwrite(cs_sim, "coeff_sim_tbl_models.csv")
+
+# plots raw r2
+r2s_raw_f <- dplyr::select(r2s_raw, -starts_with("B:u")) %>%
+  dplyr::select(., -ends_with("sd")) 
+
+r2_raw_models <- merge(models, r2s_raw_f, by=c("model"))
+m_r2_raw_models <- pivot_longer(r2_raw_models,
+                                cols=ends_with("Pi_avg"), 
+                                names_to="var")
+
+b1 <- ggplot(data=filter(m_r2_raw_models, 
+                         shapes_rate_r==shapes_rate_r[1], 
+                         avg_rec_spans==avg_rec_spans[1]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=var,
+                 color=as.factor(num_exons))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("Exp", "Sim"))+
+  scale_color_discrete(name="num exons", 
+                       type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_raw_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Total R^2, cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Total Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+save_plot("r2_total_models.pdf", b1, base_height=9, base_width=12)
+
+# plots of R^2 per variable per model
+pb <- txtProgressBar(min=1, max=num_models, style=3)
+for(i in 1:num_models) {
+  
+  setTxtProgressBar(pb, i)
+  
+  molten_avgs <- pivot_longer(r2s_exp,
+                              cols=ends_with("avg"),
+                              names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Variance Explained (%)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(r2s_exp, cols=ends_with("sd"), names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_exp_r2.png", sep=""), plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+  
+  molten_avgs <- pivot_longer(r2s_sim, 
+                              cols=ends_with("avg"), 
+                              names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Variance explained (%)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(r2s_sim, 
+                             cols=ends_with("sd"),
+                             names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_sim_r2.png", sep=""), plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+}
+close(pb)
+
+# plots of coeffs per variable per model
+pb <- txtProgressBar(min=1, max=num_models, style=3)
+for(i in 1:num_models) {
+  
+  setTxtProgressBar(pb, i)
+  
+  molten_avgs <- pivot_longer(cs_exp, 
+                              cols=ends_with("avg"), 
+                              names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Linear Coefficient") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(cs_exp, 
+                             cols=ends_with("sd"),
+                             names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_exp_coeff.png", sep=""),
+            plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+  
+  molten_avgs <- pivot_longer(cs_sim, 
+                              cols=ends_with("avg"), 
+                              names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Linear Coefficient") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(cs_sim, 
+                             cols=ends_with("sd"),
+                             names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_sim_coeff.png", sep=""),
+            plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+}
+close(pb)
+
+# we combine plots across models
+## expected pi
+### R2
+r2s_exp_f <- dplyr::select(r2s_exp, -starts_with("B:u")) %>%
+             dplyr::select(., -ends_with("sd"))
+
+r2_exp_models <- merge(models, r2s_exp_f,by=c("model", "scale"))
+r2_exp_models$source_pi <- "exp"
+m_r2_exp_models <- pivot_longer(r2_exp_models, 
+                                cols=ends_with("avg"),
+                                names_to="var")
+
+### coeffs
+coeff_exp_f <- dplyr::select(cs_exp, -starts_with("B:u")) %>%
+               dplyr::select(., -ends_with("sd")) %>%
+               mutate(., ratio = u_avg / B_avg)
+
+coeff_exp_models <- merge(models, coeff_exp_f, by=c("model", "scale"))
+coeff_exp_models$source_pi <- "exp"
+m_coeff_exp_models <- pivot_longer(coeff_exp_models, 
+                                   cols=c("ratio", ends_with("avg")),
+                                   names_to="var")
+
+## simulated pi
+### R2
+r2s_sim_f <- dplyr::select(r2s_sim, -starts_with("B:u")) %>%
+             dplyr::select(., -ends_with("sd")) 
+
+r2_sim_models <- merge(models, r2s_sim_f, by=c("model", "scale"))
+r2_sim_models$source_pi <- "sim"
+m_r2_sim_models <- pivot_longer(r2_sim_models,
+                                cols=ends_with("avg"),
+                                names_to="var")
+
+### coeffs
+coeff_sim_f <- dplyr::select(cs_sim, -starts_with("B:u")) %>%
+               dplyr::select(., -ends_with("sd")) %>%
+               mutate(., ratio = u_avg / B_avg)
+
+coeff_sim_models <- merge(models, coeff_sim_f, by=c("model", "scale"))
+coeff_sim_models$source_pi <- "sim"
+m_coeff_sim_models <- pivot_longer(coeff_sim_models,
+                                   cols=c("ratio", ends_with("avg")),
+                                   names_to="var")
+
+m_coeff_models <- rbind.data.frame(m_coeff_exp_models, m_coeff_sim_models)
+m_r2_models <- rbind.data.frame(m_r2_exp_models, m_r2_sim_models)
+
+fwrite(m_coeff_models, "coeff_models.csv.gz")
+fwrite(m_r2_models, "r2_models.csv.gz")
+
+## R2 plots
+p1 <- ggplot(data=filter(m_r2_models,
+                         num_exons[1],
+                         shapes_rate_r==shapes_rate_r[1], 
+                         avg_rec_spans==avg_rec_spans[1]),
+       aes(x=scale/1e+3, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("2% exonic, rec map exponential/1kb, ",
+                   "cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p2 <- ggplot(data=filter(m_r2_models,
+                         num_exons[2], 
+                         shapes_rate_r==shapes_rate_r[1],
+                         avg_rec_spans==avg_rec_spans[1]),
+       aes(x=scale/1e+3, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, rec map exponential/1kb, ",
+                   "cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p3 <- ggplot(data=filter(m_r2_models, num_exons[3], 
+                         shapes_rate_r==shapes_rate_r[1],
+                         avg_rec_spans==avg_rec_spans[1]),
+       aes(x=scale/1e+3, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u")) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, rec map exponential/1kb, ",
+                   "cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_exonic_0.02.png", p1, base_width=14, base_height=9)
+save_plot("r2_exonic_0.05.png", p2, base_width=14, base_height=9)
+save_plot("r2_exonic_0.1.png", p3, base_width=14, base_height=9)
+
+x1kb <- ggplot(data=filter(m_r2_models, num_exons[1], scale==1e+3),
+             aes(x=cv_u_cv_B, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=c(1, 10, 100), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="2% exonic, 1kb scale, rows>shape(r), rows->avg rec. span",
+       x="CV(u) / CV(B)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+x10kb <- ggplot(data=filter(m_r2_models, num_exons[1], scale==1e+4),
+             aes(x=cv_u_cv_B, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=c(1, 10, 100), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="5% exonic, 10kb scale, rows>shape(r), rows->avg rec. span",
+       x="CV(u) / CV(B)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+x100kb <- ggplot(data=filter(m_r2_models, num_exons[1], scale==1e+5),
+             aes(x=cv_u_cv_B, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=c(1, 10, 100), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="2% exonic, 100kb scale, rows>shape(r), rows->avg rec. span",
+       x="CV(u) / CV(B)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+x1Mb <- ggplot(data=filter(m_r2_models, num_exons[1], scale==1e+6),
+                 aes(x=cv_u_cv_B, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=c(1, 10, 100), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="2% exonic, 1Mb scale, rows>shape(r), rows->avg rec. span",
+       x="CV(u) / CV(B)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_exonic_0.02_1kb.png", x1kb, base_width=14, base_height=9)
+save_plot("r2_exonic_0.02_10kb.png", x10kb, base_width=14, base_height=9)
+save_plot("r2_exonic_0.02_100kb.png", x100kb, base_width=14, base_height=9)
+save_plot("r2_exonic_0.02_1Mb.png", x1Mb, base_width=14, base_height=9)
+
+q1 <- ggplot(data=filter(m_r2_models, var=="u_avg", 
+                         num_exons[3],
+                         shapes_rate_r==shapes_rate_r[1]),
+             aes(x=scale/1e+3, y=value, 
+                 shape=as.factor(avg_rec_spans), color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+q2 <- ggplot(data=filter(m_r2_models, 
+                         var=="u_avg", 
+                         num_exons[3], 
+                         shapes_rate_r==shapes_rate_r[2]),
+             aes(x=scale/1e+3,
+                 y=value,
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+q3 <- ggplot(data=filter(m_r2_models, 
+                         var=="u_avg", 
+                         num_exons[3], 
+                         shapes_rate_r==shapes_rate_r[3]),
+             aes(x=scale/1e+3,
+                 y=value, 
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_u_exons_0.1_shape_r_1.png", q1, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.1_shape_r_3.png", q2, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.1_shape_r_10.png", q3, base_height=8, base_width=16)
+
+y1kb <- ggplot(data=filter(m_r2_models, 
+                           var=="u_avg", 
+                           scale==1e+3),
+             aes(x=cv_u_cv_B, 
+                 y=value, 
+                 shape=as.factor(num_exons), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="1kb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+y10kb <- ggplot(data=filter(m_r2_models, 
+                            var=="u_avg", 
+                            scale==1e+4),
+               aes(x=cv_u_cv_B, 
+                   y=value, 
+                   shape=as.factor(num_exons),
+                   color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="10kb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+y100kb <- ggplot(data=filter(m_r2_models, 
+                             var=="u_avg",
+                             scale==1e+5),
+                aes(x=cv_u_cv_B, 
+                    y=value,
+                    shape=as.factor(num_exons), 
+                    color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="100kb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+y1Mb <- ggplot(data=filter(m_r2_models,
+                           var=="u_avg", 
+                           scale==1e+6),
+                 aes(x=cv_u_cv_B, 
+                     y=value, 
+                     shape=as.factor(num_exons), 
+                     color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="1Mb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_u_1kb.png", y1kb, base_height=8, base_width=16)
+save_plot("r2_u_10kb.png", y10kb, base_height=8, base_width=16)
+save_plot("r2_u_100kb.png", y100kb, base_height=8, base_width=16)
+save_plot("r2_u_1Mb.png", y1Mb, base_height=8, base_width=16)
+
+r1 <- ggplot(data=filter(m_r2_models,
+                         var=="u_avg", 
+                         num_exons[2],
+                         shapes_rate_r==shapes_rate_r[1]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+r2 <- ggplot(data=filter(m_r2_models, 
+                         var=="u_avg", 
+                         num_exons[2], 
+                         shapes_rate_r==shapes_rate_r[2]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+r3 <- ggplot(data=filter(m_r2_models,
+                         var=="u_avg",
+                         num_exons[2],
+                         shapes_rate_r==shapes_rate_r[3]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_u_exons_0.05_shape_r_1.png", r1, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.05_shape_r_3.png", r2, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.05_shape_r_10.png", r3, base_height=8, base_width=16)
+
+s1 <- ggplot(data=filter(m_r2_models, 
+                         var=="u_avg",
+                         num_exons[1], 
+                         shapes_rate_r==shapes_rate_r[1]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+s2 <- ggplot(data=filter(m_r2_models, 
+                         var=="u_avg",
+                         num_exons[1],
+                         shapes_rate_r==shapes_rate_r[2]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+s3 <- ggplot(data=filter(m_r2_models, 
+                         var=="u_avg",
+                         num_exons[1], 
+                         shapes_rate_r==shapes_rate_r[3]),
+             aes(x=scale/1e+3,
+                 y=value,
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec Span (kb)") +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Variance Explained by Mutation (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_u_exons_0.02_shape_r_1.png", s1, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.02_shape_r_3.png", s2, base_height=8, base_width=16)
+save_plot("r2_u_exons_0.02_shape_r_10.png", s3, base_height=8, base_width=16)
+
+## coeff plots
+p1 <- ggplot(data=filter(m_coeff_models, 
+                         num_exons[1],
+                         var!="ratio",
+                         shapes_rate_r==shapes_rate_r[1], 
+                         avg_rec_spans==avg_rec_spans[1]),
+             aes(x=scale/1e+3,
+                 y=value, 
+                 shape=var,
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u")) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Std Linear Coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p2 <- ggplot(data=filter(m_coeff_models, 
+                         num_exons[2],
+                         var!="ratio",
+                         shapes_rate_r==shapes_rate_r[1],
+                         avg_rec_spans==avg_rec_spans[1]),
+             aes(x=scale/1e+3,
+                 y=value, 
+                 shape=var, 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u")) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Std Linear Coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p3 <- ggplot(data=filter(m_coeff_models, 
+                         num_exons[3], 
+                         var!="ratio", 
+                         shapes_rate_r==shapes_rate_r[1],
+                         avg_rec_spans==avg_rec_spans[1]),
+             aes(x=scale/1e+3, y=value, shape=var, color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  scale_shape_manual(values=c(0, 1, 2), name=NULL, labels=c("B", "u")) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, cols->shape(u), rows->avg mut. span"),
+       x="Map Scale (kb)", y="Std Linear Coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_exonic_0.02.png", p1, base_width=14, base_height=9)
+save_plot("coeff_exonic_0.05.png", p2, base_width=14, base_height=9)
+save_plot("coeff_exonic_0.1.png", p3, base_width=14, base_height=9)
+
+q1 <- ggplot(data=filter(m_coeff_models,
+                         var=="ratio", 
+                         num_exons[3], 
+                         shapes_rate_r==shapes_rate_r[1]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+q2 <- ggplot(data=filter(m_coeff_models,
+                         var=="ratio",
+                         num_exons[3], 
+                         shapes_rate_r==shapes_rate_r[2]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+q3 <- ggplot(data=filter(m_coeff_models, 
+                         var=="ratio",
+                         num_exons[3],
+                         shapes_rate_r==shapes_rate_r[3]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("10% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_exons_0.1_shape_r_1.png", q1, 
+          base_height=8, base_width=16)
+save_plot("coeff_ratios_exons_0.1_shape_r_3.png", q2, 
+          base_height=8, base_width=16)
+save_plot("coeff_ratios_exons_0.1_shape_r_10.png", q3, 
+          base_height=8, base_width=16)
+
+r1 <- ggplot(data=filter(m_coeff_models, 
+                         var=="ratio", 
+                         num_exons[2], 
+                         shapes_rate_r==shapes_rate_r[1]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+r2 <- ggplot(data=filter(m_coeff_models, 
+                         var=="ratio", 
+                         num_exons[2], 
+                         shapes_rate_r==shapes_rate_r[2]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+r3 <- ggplot(data=filter(m_coeff_models, 
+                         var=="ratio",
+                         num_exons[2], 
+                         shapes_rate_r==shapes_rate_r[3]),
+             aes(x=scale/1e+3,
+                 y=value, 
+                 shape=as.factor(avg_rec_spans))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("5% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_u_exons_0.05_shape_r_1.png", r1, base_height=8, base_width=16)
+save_plot("coeff_u_exons_0.05_shape_r_3.png", r2, base_height=8, base_width=16)
+save_plot("coeff_u_exons_0.05_shape_r_10.png", r3, base_height=8, base_width=16)
+
+s1 <- ggplot(data=filter(m_coeff_models,
+                         var=="ratio", 
+                         num_exons[1], 
+                         shapes_rate_r==shapes_rate_r[1]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("2% exonic, var rec HIGH, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)",  y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+s2 <- ggplot(data=filter(m_coeff_models, 
+                         var=="ratio", 
+                         num_exons[1],
+                         shapes_rate_r==shapes_rate_r[2]),
+             aes(x=scale/1e+3, 
+                 y=value,
+                 shape=as.factor(avg_rec_spans), 
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec. Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("2% exonic, var rec MID, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)",  y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+s3 <- ggplot(data=filter(m_coeff_models,
+                         var=="ratio",
+                         num_exons[1], 
+                         shapes_rate_r==shapes_rate_r[3]),
+             aes(x=scale/1e+3, 
+                 y=value, 
+                 shape=as.factor(avg_rec_spans),
+                 color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_mut_spans~shapes_rate_u) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 3, 4, 8), name="Avg. Rec Span (kb)") +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("2% exonic, var rec LOW, ", 
+                   "cols->shape mu dist., rows->avg mu span"),
+       x="Map Scale (kb)",  y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_exons_0.02_shape_r_1.png", s1,
+          base_height=8, base_width=16)
+save_plot("coeff_ratios_exons_0.02_shape_r_3.png", s2,
+          base_height=8, base_width=16)
+save_plot("coeff_ratios_exons_0.02_shape_r_10.png", s3, 
+          base_height=8, base_width=16)
+
+z1kb <- ggplot(data=filter(m_coeff_models,
+                           var=="ratio", 
+                           scale==1e+3),
+               aes(x=cv_u_cv_B,
+                   y=value,
+                   shape=as.factor(num_exons), 
+                   color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10, 100)) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="1kb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+z10kb <- ggplot(data=filter(m_coeff_models,
+                            var=="ratio",
+                            scale==1e+4),
+                aes(x=cv_u_cv_B, 
+                    y=value, 
+                    shape=as.factor(num_exons), 
+                    color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10, 100)) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="10kb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+z100kb <- ggplot(data=filter(m_coeff_models, 
+                             var=="ratio", 
+                             scale==1e+5),
+               aes(x=cv_u_cv_B,
+                   y=value, 
+                   shape=as.factor(num_exons), 
+                   color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10, 100)) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="1kb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+z1Mb <- ggplot(data=filter(m_coeff_models, 
+                           var=="ratio", 
+                           scale==1e+6),
+               aes(x=cv_u_cv_B, 
+                   y=value, 
+                   shape=as.factor(num_exons), 
+                   color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+avg_rec_spans~shapes_rate_r) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(1, 10, 100)) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title="1Mb, cols->avg_rec_spans, rows->shapes_rate_r",
+       x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_1kb.png", z1kb, 
+          base_height=8, base_width=16)
+save_plot("coeff_ratios_10kb.png", z10kb, 
+          base_height=8, base_width=16)
+save_plot("coeff_ratios_100kb.png", z100kb, 
+          base_height=8, base_width=16)
+save_plot("coeff_ratios_1Mb.png", z1Mb, 
+          base_height=8, base_width=16)
+
+w1 <- ggplot(data=filter(m_coeff_models, 
+                         var=="ratio", 
+                         avg_rec_spans==avg_rec_spans[3], 
+                         shapes_rate_r==shapes_rate_r[1]),
+            aes(x=cv_u_cv_B, 
+                y=value, 
+                shape=as.factor(num_exons),
+                color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_wrap(~scale) +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=c(0.1, 1, 10), trans="log10") +
+  scale_y_continuous(breaks=c(0.1, 1, 10), trans="log10") +
+  labs(title=NULL, x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_scale.png", w1, base_height=8, base_width=16)
+
+w2 <- ggplot(data=filter(m_coeff_models,
+                         var=="ratio",
+                         num_exons[2],
+                         avg_rec_spans==avg_rec_spans[3],
+                         shapes_rate_r==shapes_rate_r[1]),
+             aes(x=cv_u_cv_B, y=value, shape=as.factor(scale), color=source_pi)) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  scale_color_discrete(name="source pi", type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Scale") +
+  scale_x_continuous(breaks=c(0.1, 1, 10), trans="log10") +
+  scale_y_continuous(breaks=c(0.1, 1, 10), trans="log10") +
+  labs(title=NULL, x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_scale_2.png", w2, base_height=8, base_width=16)
+
+
+# meta linear models (pi exp)
+## 1 kb
+std_r2_1kb <- as.data.frame(r2_exp_models %>%
+                            filter(., scale==1e+3) %>% 
+                            dplyr::select(c(u_avg, B_avg,
+                                            num_exons,
+                                            shapes_rate_u,
+                                            shapes_rate_r,
+                                            avg_mut_spans,
+                                            avg_mut_spans)) %>%
+                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
+m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
+
+summary(m_u_1kb)
+summary(m_B_1kb)
+
+## 10 kb
+std_r2_10kb <- as.data.frame(r2_exp_models %>% 
+                              filter(., scale==1e+4) %>% 
+                              dplyr::select(c(u_avg, B_avg,
+                                              num_exons,
+                                              shapes_rate_u,
+                                              shapes_rate_r,
+                                              avg_mut_spans,
+                                              avg_mut_spans)) %>%
+                              apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_10kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
+m_B_10kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
+
+summary(m_u_10kb)
+summary(m_B_10kb)
+
+## 100 kb
+std_r2_100kb <- as.data.frame(r2_exp_models %>% 
+                              filter(., scale==1e+5) %>% 
+                              dplyr::select(c(u_avg, B_avg,
+                                              num_exons,
+                                              shapes_rate_u,
+                                              shapes_rate_r,
+                                              avg_mut_spans,
+                                              avg_mut_spans)) %>%
+                              apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_100kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
+m_B_100kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
+
+summary(m_u_100kb)
+summary(m_B_100kb)
+
+## 1 Mb
+std_r2_1Mb <- as.data.frame(r2_exp_models %>% 
+                            filter(., scale==1e+6) %>% 
+                            dplyr::select(c(u_avg, B_avg,
+                                            num_exons,
+                                            shapes_rate_u,
+                                            shapes_rate_r,
+                                            avg_mut_spans,
+                                            avg_mut_spans)) %>%
+                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_1Mb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
+m_B_1Mb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
+
+summary(m_u_1Mb)
+summary(m_B_1Mb)
+
+# mut
+meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
+                              m_u_10kb$coefficients,
+                              m_u_100kb$coefficients,
+                              m_u_1Mb$coefficients)
+names(meta_lm_u) <- names(m_u_1kb$coefficients)
+
+meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
+                                        "avg_mut_spans",
+                                        "num_exons",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans"))
+
+meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$response <- "Mu"
+
+mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
+                        names_to="var", values_to="coeff")
+
+# B-val
+meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
+                              m_B_10kb$coefficients,
+                              m_B_100kb$coefficients,
+                              m_B_1Mb$coefficients)
+names(meta_lm_B) <- names(m_B_1kb$coefficients)
+
+meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
+                                        "avg_mut_spans",
+                                        "num_exons",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans"))
+
+meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$response <- "B"
+
+mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
+                       names_to="var", values_to="coeff")
+
+mmlm_tbl <- rbind.data.frame(mmlm_mu, mmlm_B)
+
+meta_lm <- ggplot(data=mmlm_tbl, 
+                  aes(x=var, 
+                      y=coeff, 
+                      shape=as.factor(bin_size),
+                      color=response)) +
+  geom_point(size=4) + theme_bw() +
+  geom_hline(yintercept=0, linetype="dashed") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
+  labs(title="Meta Linear Model for Variance Explained by 'Response'",
+       x="Variable", y="Coefficient") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("meta_lm_pi_exp.png", meta_lm, base_height=8, base_width=10)
+
+## 1 kb
+std_r2_1kb <- as.data.frame(r2_sim_models %>%
+                            filter(., scale==1e+3) %>% 
+                            dplyr::select(c(u_avg, B_avg,
+                                            num_exons,
+                                            shapes_rate_u,
+                                            shapes_rate_r,
+                                            avg_mut_spans,
+                                            avg_mut_spans)) %>%
+                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
+m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
+
+summary(m_u_1kb)
+summary(m_B_1kb)
+
+## 10 kb
+std_r2_10kb <- as.data.frame(r2_sim_models %>% 
+                             filter(., scale==1e+4) %>% 
+                             dplyr::select(c(u_avg, B_avg,
+                                             num_exons,
+                                             shapes_rate_u,
+                                             shapes_rate_r,
+                                             avg_mut_spans,
+                                             avg_mut_spans)) %>%
+                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_10kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
+m_B_10kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
+
+summary(m_u_10kb)
+summary(m_B_10kb)
+
+## 100 kb
+std_r2_100kb <- as.data.frame(r2_sim_models %>% 
+                              filter(., scale==1e+5) %>% 
+                              dplyr::select(c(u_avg, B_avg,
+                                              num_exons,
+                                              shapes_rate_u,
+                                              shapes_rate_r,
+                                              avg_mut_spans,
+                                              avg_mut_spans)) %>%
+                              apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_100kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
+m_B_100kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
+
+summary(m_u_100kb)
+summary(m_B_100kb)
+
+## 1 Mb
+std_r2_1Mb <- as.data.frame(r2_sim_models %>% 
+                            filter(., scale==1e+6) %>% 
+                            dplyr::select(c(u_avg, B_avg,
+                                            num_exons,
+                                            shapes_rate_u,
+                                            shapes_rate_r,
+                                            avg_mut_spans,
+                                            avg_mut_spans)) %>%
+                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_1Mb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
+m_B_1Mb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
+
+summary(m_u_1Mb)
+summary(m_B_1Mb)
+
+# mut
+meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
+                              m_u_10kb$coefficients,
+                              m_u_100kb$coefficients,
+                              m_u_1Mb$coefficients)
+names(meta_lm_u) <- names(m_u_1kb$coefficients)
+
+meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
+                                        "avg_mut_spans",
+                                        "num_exons",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans"))
+
+meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$response <- "Mu"
+
+mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
+                        names_to="var", values_to="coeff")
+
+# B-val
+meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
+                              m_B_10kb$coefficients,
+                              m_B_100kb$coefficients,
+                              m_B_1Mb$coefficients)
+names(meta_lm_B) <- names(m_B_1kb$coefficients)
+
+meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
+                                        "avg_mut_spans",
+                                        "num_exons",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans"))
+
+meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$response <- "B"
+
+mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
+                       names_to="var", values_to="coeff")
+
+mmlm_tbl <- rbind.data.frame(mmlm_mu, mmlm_B)
+
+meta_lm <- ggplot(data=mmlm_tbl,
+                  aes(x=var, 
+                      y=coeff, 
+                      shape=as.factor(bin_size), 
+                      color=response)) +
+  geom_point(size=4) + theme_bw() +
+  geom_hline(yintercept=0, linetype="dashed") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
+  labs(title="Meta Linear Model for Variance Explained by 'Response'",
+       x="Variable", y="Coefficient") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("meta_lm_pi_sim.png", meta_lm, base_height=8, base_width=10)
+```
+
+```{r plots-mutagenic-rec, include=F, message=F, warning=F}
+
+setwd("~/Data/bgs_lmr/sim_data/mutagenic_r/")
+
+# loads the main tables
+models <- fread("models.csv")
+num_models <- nrow(models)
+num_reps <- 10
+
+scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
+
+cv_u_cv_B <- as.data.frame(matrix(ncol=4, nrow=num_models))
+names(cv_u_cv_B) <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+for(i in 1:num_models) {
+  
+  print(Sys.time())
+  cat(paste("Visualizing data from model", i, "...\n"))
+  
+  cv_u_cv_B_1kb <- 0
+  cv_u_cv_B_10kb <- 0
+  cv_u_cv_B_100kb <- 0
+  cv_u_cv_B_1Mb <- 0
+  
+  for(j in 1:num_reps) {
+    
+    cat(paste("Rep. ", j, "\n"))
+    
+    m1kb <- fread(paste("model_", i, "/rep_", j, "/tbl_1kb.csv", sep=""))
+    m10kb <- fread(paste("model_", i, "/rep_", j, "/tbl_10kb.csv", sep=""))
+    m100kb <- fread(paste("model_", i, "/rep_", j, "/tbl_100kb.csv",sep=""))
+    m1Mb <- fread(paste("model_", i, "/rep_", j, "/tbl_1Mb.csv",sep=""))
+    
+    cv_u_cv_B_1kb <- cv_u_cv_B_1kb + sd(m1kb$avg_mut) / mean(m1kb$avg_mut) / sd(m1kb$B) / mean(m1kb$B)
+    cv_u_cv_B_10kb <- cv_u_cv_B_10kb + sd(m10kb$avg_mut) / mean(m10kb$avg_mut) / sd(m10kb$B) / mean(m10kb$B)
+    cv_u_cv_B_100kb <- cv_u_cv_B_100kb + sd(m100kb$avg_mut) / mean(m100kb$avg_mut) / sd(m100kb$B) / mean(m100kb$B)
+    cv_u_cv_B_1Mb <- cv_u_cv_B_1Mb + sd(m1Mb$avg_mut) / mean(m1Mb$avg_mut) / sd(m1Mb$B) / mean(m1Mb$B)
+    
+    m1kb$bin <- 1:nrow(m1kb)
+    m10kb$bin <- 1:nrow(m10kb)
+    m100kb$bin <- 1:nrow(m100kb)
+    m1Mb$bin <- 1:nrow(m1Mb)
+    
+    # plots binned maps 
+    m1kb_m <- pivot_longer(m1kb, cols=ends_with("pi"), names_to="diversity")
+    pi_1kb <- ggplot(data=m1kb_m, aes(x=(bin -1) * 1e+3, y=value, color=diversity)) +
+      geom_line(data=m1kb_m) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="1 kb", x=NULL, y=expression(pi)) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_1kb <- ggplot(data=m1kb, aes(x=(bin -1) * 1e+3, y=avg_mut)) + 
+      geom_line(data=m1kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=expression(mu)) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20), 
+            legend.position="none")
+    
+    B_1kb <- ggplot(data=m1kb, aes(x=(bin -1) * 1e+3, y=B)) + 
+      geom_line(data=m1kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y="B") +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20), 
+            legend.position="none")
+    
+    r_1kb <- ggplot(data=m1kb, aes(x=(bin -1) * 1e+3, y=avg_rec)) + 
+      geom_line(data=m1kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position", y="r") +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_text(size=12),
+            axis.title.y=element_text(size=16),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    lands_1kb <- plot_grid(pi_1kb, u_1kb, B_1kb, r_1kb, align='v', ncol=1)
+    
+    m10kb_m <- pivot_longer(m10kb, cols=ends_with("pi"), names_to="diversity")
+    pi_10kb <- ggplot(data=m10kb_m, aes(x=(bin -1) * 1e+4, y=value, color=diversity)) +
+      geom_line(data=m10kb_m) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m10kb$avg_pi), max(m10kb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="10 kb", x=NULL, y=NULL) + 
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_10kb <- ggplot(data=m10kb, aes(x=(bin -1) * 1e+4, y=avg_mut)) + 
+      geom_line(data=m10kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    B_10kb <- ggplot(data=m10kb, aes(x=(bin -1) * 1e+4, y=B)) + 
+      geom_line(data=m10kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    r_10kb <- ggplot(data=m10kb, aes(x=(bin -1) * 1e+4, y=avg_rec)) +
+      geom_line(data=m10kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(),
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position", y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20), legend.position="none")
+    
+    lands_10kb <- plot_grid(pi_10kb, u_10kb, B_10kb, r_10kb, align='v', ncol=1)
+    
+    m100kb_m <- pivot_longer(m100kb, cols=ends_with("pi"), names_to="diversity")
+    pi_100kb <- ggplot(data=m100kb_m, aes(x=(bin -1) * 1e+5, y=value, color=diversity)) +
+      geom_line(data=m100kb_m) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m100kb$avg_pi), max(m100kb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="100 kb", x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_100kb <- ggplot(data=m100kb, aes(x=(bin -1) * 1e+5, y=avg_mut))+
+      geom_line(data=m100kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    B_100kb <- ggplot(data=m100kb, aes(x=(bin -1) * 1e+5, y=B))+
+      geom_line(data=m100kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(),
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    r_100kb <- ggplot(data=m100kb, aes(x=(bin -1) * 1e+5, y=avg_rec)) +
+      geom_line(data=m100kb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position", y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    lands_100kb <- plot_grid(pi_100kb, u_100kb, B_100kb, r_100kb, align='v', ncol=1)
+    
+    m1Mb_m <- pivot_longer(m1Mb, cols=ends_with("pi"), names_to="diversity")
+    pi_1Mb <- ggplot(data=m1Mb_m, aes(x=(bin -1) * 1e+6, y=value, color=diversity)) +
+      geom_line(data=m1Mb_m) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1Mb$avg_pi), max(m1Mb$avg_pi)),
+                         labels=scale.4d) +
+      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+      labs(title="1 Mb", x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+    
+    u_1Mb <- ggplot(data=m1Mb, aes(x=(bin -1) * 1e+6, y=avg_mut))+
+      geom_line(data=m1Mb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         ##limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    B_1Mb <- ggplot(data=m1Mb, aes(x=(bin -1) * 1e+6, y=B))+
+      geom_line(data=m1Mb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(),
+                         #limits=c(min(m1kb$B), max(m1kb$B)),
+                         labels=scientific) +
+      labs(title=NULL, x=NULL, y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    r_1Mb <- ggplot(data=m1Mb, aes(x=(bin -1) * 1e+6, y=avg_rec)) +
+      geom_line(data=m1Mb) + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(), 
+                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
+                         labels=scientific) +
+      labs(title=NULL, x="Position", y=NULL) +
+      theme(axis.title.x=element_text(size=16),
+            axis.text.x=element_text(size=12),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=20),
+            legend.position="none")
+    
+    lands_1Mb <- plot_grid(pi_1Mb, u_1Mb, B_1Mb, r_1Mb, align='v', ncol=1)
+    
+    lands_scales <- plot_grid(lands_1kb, lands_10kb, lands_100kb, lands_1Mb, nrow=1)
+    save_plot(paste("model_", i, "/rep_", j, "/maps.png", sep=""),
+              lands_scales, base_height=12, base_width=24)
+  }
+  
+  cv_u_cv_B[i, 1] <- cv_u_cv_B_1kb / num_reps
+  cv_u_cv_B[i, 2] <- cv_u_cv_B_10kb / num_reps
+  cv_u_cv_B[i, 3] <- cv_u_cv_B_100kb / num_reps
+  cv_u_cv_B[i, 4] <- cv_u_cv_B_1Mb / num_reps
+}
+
+cv_u_cv_B$model <- 1:nrow(cv_u_cv_B)
+models <- merge(cv_u_cv_B, models, by="model")
+models <- pivot_longer(models, cols=as.character(c(1e+3, 1e+4, 1e+5, 1e+6)),
+                       names_to="scale", values_to="cv_u_cv_B")
+models$scale <- as.numeric(models$scale)
+
+# visualization of R^2 and linear coefficients across models
+r2_tbl_exp <- data.table()
+r2_tbl_sim <- data.table()
+
+coeff_tbl_exp <- data.table()
+coeff_tbl_sim <- data.table()
+
+pb <- txtProgressBar(min=1, max=num_models, style=3)
+for(i in 1:num_models) {
+  
+  setTxtProgressBar(pb, i)
+  
+  # converts num_rep tables of dim (3 x 4: 1kb, 10kb, 100kb x u, B, B:u)
+  # into 4 tables of dimension num_reps x 3 (u, B, B:u)
+  r2_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  r2_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  
+  coeff_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  coeff_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  coeff_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  coeff_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  
+  # on expectation
+  for(j in 1:num_reps) {
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_tbl_exp.csv", sep=""))
+    
+    r2_1kb[j,] <- tmp[1,]
+    r2_10kb[j,] <- tmp[2,]
+    r2_100kb[j,] <- tmp[3,]
+    r2_1Mb[j,] <- tmp[4,]
+    
+    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl_exp.csv", sep=""))
+    
+    coeff_1kb[j,] <- tmp[1,]
+    coeff_10kb[j,] <- tmp[2,]
+    coeff_100kb[j,] <- tmp[3,]
+    coeff_1Mb[j,] <- tmp[4,]
+  }
+  
+  tbl_r2 <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb, r2_1Mb)
+  names(tbl_r2) <- c("u", "B", "B:u", "scale")
+  tbl_r2$model <- i
+  tbl_r2$rep <- rep(1:10, 4)
+  
+  tbl_coeff <- rbind.data.frame(coeff_1kb, coeff_10kb, coeff_100kb, coeff_1Mb)
+  names(tbl_coeff) <- c("u", "B", "B:u", "scale")
+  tbl_coeff$model <- i
+  tbl_coeff$rep <- rep(1:10, 4)
+  
+  r2_tbl_exp <- rbind.data.frame(r2_tbl_exp, tbl_r2)
+  coeff_tbl_exp <- rbind.data.frame(coeff_tbl_exp, tbl_coeff)
+  
+  # with mutational variance
+  for(j in 1:num_reps) {
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_tbl_sim.csv", sep=""))
+    
+    r2_1kb[j,] <- tmp[1,]
+    r2_10kb[j,] <- tmp[2,]
+    r2_100kb[j,] <- tmp[3,]
+    r2_1Mb[j,] <- tmp[4,]
+    
+    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl_sim.csv", sep=""))
+    
+    coeff_1kb[j,] <- tmp[1,]
+    coeff_10kb[j,] <- tmp[2,]
+    coeff_100kb[j,] <- tmp[3,]
+    coeff_1Mb[j,] <- tmp[4,]
+  }
+  
+  tbl_r2 <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb, r2_1Mb)
+  names(tbl_r2) <- c("u", "B", "B:u", "scale")
+  tbl_r2$model <- i
+  tbl_r2$rep <- rep(1:10, 4)
+  
+  tbl_coeff <- rbind.data.frame(coeff_1kb, coeff_10kb, coeff_100kb, coeff_1Mb)
+  names(tbl_coeff) <- c("u", "B", "B:u", "scale")
+  tbl_coeff$model <- i
+  tbl_coeff$rep <- rep(1:10, 4)
+  
+  coeff_tbl_sim <- rbind.data.frame(coeff_tbl_sim, tbl_coeff)
+  r2_tbl_sim <- rbind.data.frame(r2_tbl_sim, tbl_r2)
+}
+close(pb)
+
+r2s_exp <- r2_tbl_exp %>% group_by(model, scale) %>% 
+  summarize_at(vars(u, B, `B:u`), 
+               list(avg=mean, sd=sd))
+
+r2s_sim <- r2_tbl_sim %>% group_by(model, scale) %>% 
+  summarize_at(vars(u, B, `B:u`), 
+               list(avg=mean, sd=sd))
+
+cs_exp <- coeff_tbl_exp %>% group_by(model, scale) %>% 
+  summarize_at(vars(u, B, `B:u`), 
+               list(avg=mean, sd=sd))
+
+cs_sim <- coeff_tbl_sim %>% group_by(model, scale) %>% 
+  summarize_at(vars(u, B, `B:u`), 
+               list(avg=mean, sd=sd))
+
+fwrite(r2s_exp, "r2_exp_tbl_models.csv.gz")
+fwrite(r2s_sim, "r2_sim_tbl_models.csv.gz")
+
+fwrite(cs_exp, "coeff_exp_tbl_models.csv.gz")
+fwrite(cs_sim, "coeff_sim_tbl_models.csv.gz")
+
+# plots of R^2 per variable per model
+pb <- txtProgressBar(min=1, max=num_models, style=3)
+for(i in 1:num_models) {
+  
+  setTxtProgressBar(pb, i)
+  
+  molten_avgs <- pivot_longer(r2s_exp, cols=ends_with("avg"), names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Variance Explained (%)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(r2s_exp, cols=ends_with("sd"), names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_exp_r2.png", sep=""), plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+  
+  molten_avgs <- pivot_longer(r2s_sim, cols=ends_with("avg"), names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Variance explained (%)") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(r2s_sim, cols=ends_with("sd"), names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_sim_r2.png", sep=""), plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+}
+close(pb)
+
+# plots of coeffs per variable per model
+pb <- txtProgressBar(min=1, max=num_models, style=3)
+for(i in 1:num_models) {
+  
+  setTxtProgressBar(pb, i)
+  
+  molten_avgs <- pivot_longer(cs_exp,
+                              cols=ends_with("avg"), 
+                              names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Linear Coefficient") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(cs_exp,
+                             cols=ends_with("sd"),
+                             names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_exp_coeff.png", sep=""), 
+            plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+  
+  molten_avgs <- pivot_longer(cs_sim, 
+                              cols=ends_with("avg"), 
+                              names_to="variable")
+  p <- ggplot(data=filter(molten_avgs, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_avgs$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(Mean over replicates)"),
+         x="Map Scale (kb)", y="Linear Coefficient") +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.position="bottom")
+  
+  molten_sds <- pivot_longer(cs_sim, 
+                             cols=ends_with("sd"), 
+                             names_to="variable")
+  q <- ggplot(data=filter(molten_sds, model==i), 
+              aes(x=scale/1e+3, y=value, shape=variable)) +
+    geom_line() + theme_bw() + geom_point(size=4) +
+    scale_shape_manual(values=c(0, 1, 8),
+                       name=NULL, labels=c("B", "B:u", "u")) +
+    scale_x_continuous(breaks=unique(molten_sds$scale/1e+3), trans="log10") +
+    scale_y_continuous(breaks=pretty_breaks()) +
+    labs(title=paste("Model", i, "(SD over replicates)"),
+         x="Map Scale (kb)", y=NULL) +
+    theme(axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16), 
+          legend.position="bottom")
+  
+  save_plot(paste("model_", i, "_sim_coeff.png", sep=""),
+            plot_grid(p, q, nrow=1), 
+            base_height=10, base_width=15)
+}
+close(pb)
+
+# we combine plots across models
+## expected pi
+### R2
+r2s_exp_f <- dplyr::select(r2s_exp, -starts_with("B:u")) %>%
+  dplyr::select(., -ends_with("sd"))
+
+r2_exp_models <- merge(models, r2s_exp_f, by=c("model", "scale"))
+r2_exp_models$source_pi <- "exp"
+m_r2_exp_models <- pivot_longer(r2_exp_models, 
+                                cols=ends_with("avg"),
+                                names_to="var")
+
+### coeffs
+coeff_exp_f <- dplyr::select(cs_exp, -starts_with("B:u")) %>%
+  dplyr::select(., -ends_with("sd")) %>%
+  mutate(., ratio = u_avg / B_avg)
+
+coeff_exp_models <- merge(models, coeff_exp_f, by=c("model", "scale"))
+coeff_exp_models$source_pi <- "exp"
+m_coeff_exp_models <- pivot_longer(coeff_exp_models, 
+                                   cols=c("ratio", ends_with("avg")),
+                                   names_to="var")
+
+## simulated pi
+### R2
+r2s_sim_f <- dplyr::select(r2s_sim, -starts_with("B:u")) %>%
+  dplyr::select(., -ends_with("sd")) 
+
+r2_sim_models <- merge(models, r2s_sim_f, by=c("model", "scale"))
+r2_sim_models$source_pi <- "sim"
+m_r2_sim_models <- pivot_longer(r2_sim_models, 
+                                cols=ends_with("avg"),
+                                names_to="var")
+
+### coeffs
+coeff_sim_f <- dplyr::select(cs_sim, -starts_with("B:u")) %>%
+  dplyr::select(., -ends_with("sd")) %>%
+  mutate(., ratio = u_avg / B_avg)
+
+coeff_sim_models <- merge(models, coeff_sim_f, by=c("model", "scale"))
+coeff_sim_models$source_pi <- "sim"
+m_coeff_sim_models <- pivot_longer(coeff_sim_models,
+                                   cols=c("ratio", ends_with("avg")),
+                                   names_to="var")
+
+# put everything together
+m_coeff_models <- rbind.data.frame(m_coeff_exp_models, m_coeff_sim_models)
+m_r2_models <- rbind.data.frame(m_r2_exp_models, m_r2_sim_models)
+
+fwrite(m_coeff_models, "coeff_models.csv.gz")
+fwrite(m_r2_models, "r2_models.csv.gz")
+
+# R2
+## expected pi
+t1 <- ggplot(data=filter(m_r2_models, 
+                         source_pi=="exp", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[1]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", 
+                       type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean R2 over replicates, pi expected, 2% exonic,",
+                   "SHORT mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+t2 <- ggplot(data=filter(m_r2_models, 
+                         source_pi=="exp", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[2]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean R2 over replicates, pi expected, 2% exonic,",
+                   "MID mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+t3 <- ggplot(data=filter(m_r2_models, 
+                         source_pi=="exp", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[3]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean R2 over replicates, pi expected, 2% exonic,",
+                   "LARGE mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_low_mut_variance_short_spans_pi_exp.png", t1, base_width=16, base_height=10)
+save_plot("r2_low_mut_variance_mid_spans_pi_exp.png", t2, base_width=16, base_height=10)
+save_plot("r2_low_mut_variance_large_spans_pi_exp.png", t3, base_width=16, base_height=10)
+
+## simulated pi
+p1 <- ggplot(data=filter(m_r2_models, 
+                         source_pi=="sim", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[1]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean R2 over replicates, pi sim, 2% exonic,",
+                   "SHORT mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p2 <- ggplot(data=filter(m_r2_models, 
+                         source_pi=="sim", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[2]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean R2 over replicates, pi sim, 2% exonic,",
+                   "MID mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p3 <- ggplot(data=filter(m_r2_models, 
+                         source_pi=="sim", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[3]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean R2 over replicates, pi sim, 2% exonic,",
+                   "LARGE mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Variance Explained (%)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("r2_low_mut_variance_short_spans_pi_sim.png", p1, base_width=16, base_height=10)
+save_plot("r2_low_mut_variance_mid_spans_pi_sim.png", p2, base_width=16, base_height=10)
+save_plot("r2_low_mut_variance_large_spans_pi_sim.png", p3, base_width=16, base_height=10)
+
+
+# Coeffs
+## expected pi
+t1 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="exp",
+                         var!="ratio", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[1]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi expected, 2% exonic,",
+                   "SHORT mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Std Linear Coeff") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+t2 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="exp",
+                         var!="ratio", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[2]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi expected, 2% exonic,",
+                   "MID mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Std Linear Coeff") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+t3 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="exp",
+                         var!="ratio", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[3]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi expected, 2% exonic,",
+                   "LARGE mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Std Linear Coeff") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeffs_low_mut_variance_short_spans_pi_exp.png", t1, base_width=16, base_height=10)
+save_plot("coeffs_low_mut_variance_mid_spans_pi_exp.png", t2, base_width=16, base_height=10)
+save_plot("coeffs_low_mut_variance_large_spans_pi_exp.png", t3, base_width=16, base_height=10)
+
+## simulated pi
+t1 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="sim",
+                         var!="ratio", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[1]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi sim, 2% exonic,",
+                   "SHORT mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Std Linear Coeff") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+t2 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="sim",
+                         var!="ratio", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[2]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi sim, 2% exonic,",
+                   "MID mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Std Linear Coeff") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+t3 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="sim",
+                         var!="ratio", 
+                         num_exons[1],
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[3]),
+             aes(x=scale/1e+3, y=value, shape=var, color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() + 
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  scale_shape_manual(values=c(0, 1), name=NULL, labels=c("B", "u"))+
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_x_continuous(breaks=unique(m_coeff_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi expected, 2% exonic,",
+                   "LARGE mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="Std Linear Coeff") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeffs_low_mut_variance_short_spans_pi_sim.png", t1, base_width=16, base_height=10)
+save_plot("coeffs_low_mut_variance_mid_spans_pi_sim.png", t2, base_width=16, base_height=10)
+save_plot("coeffs_low_mut_variance_large_spans_pi_sim.png", t3, base_width=16, base_height=10)
+
+u1 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="exp",
+                         var=="ratio",
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[1]),
+             aes(x=scale/1e+3, y=value, shape=as.factor(num_exons), color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_shape_manual(values=c(0, 1, 2), name="Num Exons") +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi expected,",
+                   "LARGE mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="c(u) / c(B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratio_pi_exp.png", u1, base_width=16, base_height=10)
+
+r1 <- ggplot(data=filter(m_coeff_models,
+                         source_pi=="sim",
+                         var=="ratio",
+                         shapes_rate_u==shapes_rate_u[4], 
+                         avg_mut_spans==avg_mut_spans[1]),
+             aes(x=scale/1e+3, y=value, shape=as.factor(num_exons), color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_grid(+shapes_rate_r~avg_rec_spans) +
+  geom_hline(yintercept=1, linetype="dashed") +
+  scale_color_discrete(name="Mult. R x U", type=c("plum3", "seagreen3", "brown1")) +
+  scale_shape_manual(values=c(0, 1, 2), name="Num Exons") +
+  scale_x_continuous(breaks=unique(m_r2_exp_models$scale/1e+3), trans="log10") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=paste("Mean coeff over replicates, pi expected,",
+                   "LARGE mut spans,  LOW mut variance,",
+                   "cols->rec spans, rows->rec variance"),
+       x="Map Scale (kb)", y="c(u) / c(B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratio_pi_sim.png", r1, base_width=16, base_height=10)
+
+w1 <- ggplot(data=filter(m_coeff_models, 
+                         var=="ratio", 
+                         avg_rec_spans==avg_rec_spans[3], 
+                         shapes_rate_r==shapes_rate_r[1],
+                         source_pi=="sim"),
+             aes(x=cv_u_cv_B, y=value, shape=as.factor(num_exons), color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  facet_wrap(~scale) +
+  scale_color_discrete(name="mult. r x u", type=c("plum3", "seagreen3", "brown1")) +
+  scale_shape_manual(values=c(0, 1, 2), name="# Exons") +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_scale.png", w1, base_height=8, base_width=16)
+
+w2 <- ggplot(data=filter(m_coeff_models,
+                         var=="ratio",
+                         num_exons[2],
+                         avg_rec_spans==avg_rec_spans[3],
+                         shapes_rate_r==shapes_rate_r[1],
+                         source_pi=="sim"),
+             aes(x=cv_u_cv_B, y=value, shape=as.factor(scale), color=as.factor(mult_r_u))) +
+  geom_line() + geom_point(size=4) + theme_bw() +
+  scale_color_discrete(name="mult. r x u", type=c("plum3", "seagreen3", "brown1")) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Scale") +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x="CV(u) / CV(B)", y="Ratio of Linear Coeffs (u/B)") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("coeff_ratios_scale_2.png", w2, base_height=8, base_width=16)
+
+# meta linear models (pi exp)
+## 1 kb
+std_r2_1kb <- as.data.frame(r2_exp_models %>% 
+                              filter(., scale==1e+3) %>% 
+                              dplyr::select(c(u_avg, B_avg,
+                                              mult_r_u,
+                                              shapes_rate_u,
+                                              shapes_rate_r,
+                                              avg_rec_spans,
+                                              avg_mut_spans,
+                                              num_exons)) %>%
+                              apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_1kb <- lm(u_avg ~ (mult_r_u +
+                       shapes_rate_u +
+                       shapes_rate_r +
+                       avg_rec_spans + 
+                       avg_mut_spans +
+                       num_exons)^2, data=std_r2_1kb)
+m_B_1kb <- lm(B_avg ~ (mult_r_u +
+                       shapes_rate_u + 
+                       shapes_rate_r + 
+                       avg_rec_spans +
+                       avg_mut_spans +
+                       num_exons)^2, data=std_r2_1kb)
+
+summary(m_u_1kb)
+summary(m_B_1kb)
+
+## 10 kb
+std_r2_10kb <- as.data.frame(r2_exp_models %>% 
+                               filter(., scale==1e+4) %>% 
+                               dplyr::select(c(u_avg, B_avg,
+                                               mult_r_u,
+                                               shapes_rate_u,
+                                               shapes_rate_r,
+                                               avg_rec_spans,
+                                               avg_mut_spans,
+                                               num_exons)) %>%
+                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_10kb <- lm(u_avg ~ (mult_r_u +
+                         shapes_rate_u +
+                         shapes_rate_r +
+                         avg_rec_spans + 
+                         avg_mut_spans +
+                         num_exons)^2, data=std_r2_10kb)
+m_B_10kb <- lm(B_avg ~ (mult_r_u +
+                         shapes_rate_u + 
+                         shapes_rate_r + 
+                         avg_rec_spans +
+                         avg_mut_spans +
+                         num_exons)^2, data=std_r2_10kb)
+summary(m_u_10kb)
+summary(m_B_10kb)
+
+## 100 kb
+std_r2_100kb <- as.data.frame(r2_exp_models %>% 
+                               filter(., scale==1e+5) %>% 
+                               dplyr::select(c(u_avg, B_avg,
+                                               mult_r_u,
+                                               shapes_rate_u,
+                                               shapes_rate_r,
+                                               avg_rec_spans,
+                                               avg_mut_spans,
+                                               num_exons)) %>%
+                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_100kb <- lm(u_avg ~ (mult_r_u +
+                          shapes_rate_u +
+                          shapes_rate_r +
+                          avg_rec_spans + 
+                          avg_mut_spans +
+                          num_exons)^2, data=std_r2_100kb)
+m_B_100kb <- lm(B_avg ~ (mult_r_u +
+                          shapes_rate_u + 
+                          shapes_rate_r + 
+                          avg_rec_spans +
+                          avg_mut_spans +
+                          num_exons)^2, data=std_r2_100kb)
+summary(m_u_100kb)
+summary(m_B_100kb)
+
+
+summary(m_u_100kb)
+summary(m_B_100kb)
+
+## 1 Mb
+std_r2_1Mb <- as.data.frame(r2_exp_models %>% 
+                               filter(., scale==1e+6) %>% 
+                               dplyr::select(c(u_avg, B_avg,
+                                               mult_r_u,
+                                               shapes_rate_u,
+                                               shapes_rate_r,
+                                               avg_rec_spans,
+                                               avg_mut_spans,
+                                               num_exons)) %>%
+                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_u_1Mb <- lm(u_avg ~ (mult_r_u +
+                       shapes_rate_u +
+                       shapes_rate_r +
+                       avg_rec_spans + 
+                       avg_mut_spans +
+                       num_exons)^2, data=std_r2_1Mb)
+m_B_1Mb <- lm(B_avg ~ (mult_r_u +
+                       shapes_rate_u + 
+                       shapes_rate_r + 
+                       avg_rec_spans +
+                       avg_mut_spans +
+                       num_exons)^2, data=std_r2_1Mb)
+summary(m_u_1Mb)
+summary(m_B_1Mb)
+
+
+# mut
+meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
+                              m_u_10kb$coefficients,
+                              m_u_100kb$coefficients,
+                              m_u_1Mb$coefficients)
+names(meta_lm_u) <- names(m_u_1kb$coefficients)
+
+meta_lm_u <- dplyr::select(meta_lm_u, c("mult_r_u",
+                                        "shapes_rate_u",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans",
+                                        "avg_mut_spans",
+                                        "num_exons"))
+
+meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$response <- "Mu"
+
+mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
+                        names_to="var", values_to="coeff")
+
+# B-val
+meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
+                              m_B_10kb$coefficients,
+                              m_B_100kb$coefficients,
+                              m_B_1Mb$coefficients)
+names(meta_lm_B) <- names(m_B_1kb$coefficients)
+
+meta_lm_B <- dplyr::select(meta_lm_B, c("mult_r_u",
+                                        "shapes_rate_u",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans",
+                                        "avg_mut_spans",
+                                        "num_exons"))
+
+meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$response <- "B"
+
+mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
+                       names_to="var", values_to="coeff")
+
+mmlm_tbl <- rbind.data.frame(mmlm_mu, mmlm_B)
+
+meta_lm <- ggplot(data=mmlm_tbl, aes(x=var, y=coeff, shape=as.factor(bin_size), color=response)) +
+  geom_point(size=4) + theme_bw() +
+  geom_hline(yintercept=0, linetype="dashed") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
+  labs(title="Meta Linear Model for Variance Explained by 'Response'",
+       x="Variable", y="Coefficient") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("meta_lm_pi_exp.png", meta_lm, base_height=8, base_width=10)
+```
+
+TODO: continue here
+
+```{r real-data, include=F, message=F, warning=F}
+
+num_chr <- 22
+
+tbl_1kb <- list(length=num_chr)
+tbl_10kb <- list(length=num_chr)
+tbl_100kb <- list(length=num_chr)
+tbl_1Mb <- list(length=num_chr)
+
+# YRI pop
+for(i in 1:num_chr) {
+  tbl_1kb[[i]] <- fread(paste("B_tbl_functional_YRI_chr", i, "_1kb.csv.gz", sep=""))
+  tbl_10kb[[i]] <- fread(paste("B_tbl_functional_YRI_chr", i, "_10kb.csv.gz", sep=""))
+  tbl_100kb[[i]] <- fread(paste("B_tbl_functional_YRI_chr", i, "_100kb.csv.gz", sep=""))
+  tbl_1Mb[[i]] <- fread(paste("B_tbl_functional_YRI_chr", i, "_1Mb.csv.gz", sep=""))
+  
+  tbl_1kb[[i]]$'#chrom' <- i
+  tbl_10kb[[i]]$'#chrom' <- i
+  tbl_100kb[[i]]$'#chrom' <- i
+  tbl_1Mb[[i]]$'#chrom' <- i
+}
+
+big_tbl_1kb <- do.call(rbind.data.frame, tbl_1kb)
+big_tbl_10kb <- do.call(rbind.data.frame, tbl_10kb)
+big_tbl_100kb <- do.call(rbind.data.frame, tbl_100kb)
+big_tbl_1Mb <- do.call(rbind.data.frame, tbl_1Mb)
+
+names(big_tbl_1kb)[1] <- "chr"
+names(big_tbl_10kb)[1] <- "chr"
+names(big_tbl_100kb)[1] <- "chr"
+names(big_tbl_1Mb)[1] <- "chr"
+
+
+# mut x rec
+p1 <- ggplot(data=big_tbl_1kb, aes(y=avg_rec, x=avg_mut)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title="1kb", x=expression(mu), y="r") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p2 <- ggplot(data=big_tbl_10kb, aes(y=avg_rec, x=avg_mut)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title="10kb", x=expression(mu), y="r") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p3 <- ggplot(data=big_tbl_100kb, aes(y=avg_rec, x=avg_mut)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title="100kb", x=expression(mu), y="r") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p4 <- ggplot(data=big_tbl_1Mb, aes(y=avg_rec, x=avg_mut)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title="1Mb", x=expression(mu), y="r") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+cp1 <- plot_grid(p1, p2, p3, p4, nrow=2)
+save_plot("cor_r_u.svg", cp1)
+save_plot("cor_r_u.pdf", cp1)
+
+tbl_mut_rec <- as.data.frame(matrix(ncol=4, nrow=4))
+names(tbl_mut_rec) <- c("pearson", "spearman", "kendall", "scale")
+tbl_mut_rec$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+tbl_mut_rec[1, 1] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$avg_mut, method="pearson")$estimate
+tbl_mut_rec[2, 1] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$avg_mut, method="pearson")$estimate
+tbl_mut_rec[3, 1] <- cor.test(big_tbl_100kb$avg_rec, big_tbl_100kb$avg_mut, method="pearson")$estimate
+tbl_mut_rec[4, 1] <- cor.test(big_tbl_1Mb$avg_rec, big_tbl_1Mb$avg_mut, method="pearson")$estimate
+
+tbl_mut_rec[1, 2] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$avg_mut, method="spearman")$estimate
+tbl_mut_rec[2, 2] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$avg_mut, method="spearman")$estimate
+tbl_mut_rec[3, 2] <- cor.test(big_tbl_100kb$avg_rec, big_tbl_100kb$avg_mut, method="spearman")$estimate
+tbl_mut_rec[4, 2] <- cor.test(big_tbl_1Mb$avg_rec, big_tbl_1Mb$avg_mut, method="spearman")$estimate
+
+tbl_mut_rec[1, 3] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$avg_mut, method="kendall")$estimate
+tbl_mut_rec[2, 3] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$avg_mut, method="kendall")$estimate
+tbl_mut_rec[3, 3] <- cor.test(big_tbl_100kb$avg_rec, big_tbl_100kb$avg_mut, method="kendall")$estimate
+tbl_mut_rec[4, 3] <- cor.test(big_tbl_1Mb$avg_rec, big_tbl_1Mb$avg_mut, method="kendall")$estimate
+
+m_cor <- pivot_longer(tbl_mut_rec, cols=c("pearson", "spearman"), names_to="method", values_to="cor")
+
+q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
+  geom_point(size=3) + geom_line() + theme_bw() +
+  scale_y_continuous(breaks=pretty_breaks(), limits=c(0, 1)) +
+  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  labs(title="Correlation mut x rec", x="scale", y="coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+tbl_B_rec <- as.data.frame(matrix(ncol=4, nrow=4))
+names(tbl_B_rec) <- c("pearson", "spearman", "kendall", "scale")
+tbl_B_rec$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+tbl_B_rec[1, 1] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$B, method="pearson")$estimate
+tbl_B_rec[2, 1] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$B, method="pearson")$estimate
+tbl_B_rec[3, 1] <- cor.test(big_tbl_100kb$avg_rec, big_tbl_100kb$B, method="pearson")$estimate
+tbl_B_rec[4, 1] <- cor.test(big_tbl_1Mb$avg_rec, big_tbl_1Mb$B, method="pearson")$estimate
+
+tbl_B_rec[1, 2] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$B, method="spearman")$estimate
+tbl_B_rec[2, 2] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$B, method="spearman")$estimate
+tbl_B_rec[3, 2] <- cor.test(big_tbl_100kb$avg_rec, big_tbl_100kb$B, method="spearman")$estimate
+tbl_B_rec[4, 2] <- cor.test(big_tbl_1Mb$avg_rec, big_tbl_1Mb$B, method="spearman")$estimate
+
+tbl_B_rec[1, 3] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$B, method="kendall")$estimate
+tbl_B_rec[2, 3] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$B, method="kendall")$estimate
+tbl_B_rec[3, 3] <- cor.test(big_tbl_100kb$avg_rec, big_tbl_100kb$B, method="kendall")$estimate
+tbl_B_rec[4, 3] <- cor.test(big_tbl_1Mb$avg_rec, big_tbl_1Mb$B, method="kendall")$estimate
+
+m_cor <- pivot_longer(tbl_B_rec, cols=c("pearson", "spearman"), names_to="method", values_to="cor")
+
+q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
+  geom_point(size=3) + geom_line() + theme_bw() +
+  scale_y_continuous(breaks=pretty_breaks(), limits=c(0, 1)) +
+  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  labs(title="Correlation B x rec", x="scale", y="coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+
+tbl_B_mut <- as.data.frame(matrix(ncol=4, nrow=4))
+names(tbl_B_mut) <- c("pearson", "spearman", "kendall", "scale")
+tbl_B_mut$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+tbl_B_mut[1, 1] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$B, method="pearson")$estimate
+tbl_B_mut[2, 1] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$B, method="pearson")$estimate
+tbl_B_mut[3, 1] <- cor.test(big_tbl_100kb$avg_mut, big_tbl_100kb$B, method="pearson")$estimate
+tbl_B_mut[4, 1] <- cor.test(big_tbl_1Mb$avg_mut, big_tbl_1Mb$B, method="pearson")$estimate
+
+tbl_B_mut[1, 2] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$B, method="spearman")$estimate
+tbl_B_mut[2, 2] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$B, method="spearman")$estimate
+tbl_B_mut[3, 2] <- cor.test(big_tbl_100kb$avg_mut, big_tbl_100kb$B, method="spearman")$estimate
+tbl_B_mut[4, 2] <- cor.test(big_tbl_1Mb$avg_mut, big_tbl_1Mb$B, method="spearman")$estimate
+
+tbl_B_mut[1, 3] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$B, method="kendall")$estimate
+tbl_B_mut[2, 3] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$B, method="kendall")$estimate
+tbl_B_mut[3, 3] <- cor.test(big_tbl_100kb$avg_mut, big_tbl_100kb$B, method="kendall")$estimate
+tbl_B_mut[4, 3] <- cor.test(big_tbl_1Mb$avg_mut, big_tbl_1Mb$B, method="kendall")$estimate
+
+
+p1 <- ggplot(data=big_tbl_1kb, aes(y=del_sites, x=avg_mut, alpha=0.25)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x=expression(mu), y="# del. sites") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p2 <- ggplot(data=big_tbl_10kb, aes(y=del_sites, x=avg_mut, alpha=0.25)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x=expression(mu), y="# del. sites") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p3 <- ggplot(data=big_tbl_100kb, aes(y=del_sites, x=avg_mut, alpha=0.25)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x=expression(mu), y="# del. sites") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+p4 <- ggplot(data=big_tbl_1Mb, aes(y=del_sites, x=avg_mut, alpha=0.25)) +
+  geom_point(size=3, shape=1) + theme_bw() + geom_smooth() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_continuous(breaks=pretty_breaks()) +
+  labs(title=NULL, x=expression(mu), y="# del. sites") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+ggsave("u_delsites.svg", p1, dpi=1000)
+
+# u x del sites
+tbl_del_sites_mut <- as.data.frame(matrix(ncol=4, nrow=4))
+names(tbl_del_sites_mut) <- c("pearson", "spearman", "kendall", "scale")
+tbl_del_sites_mut$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+tbl_del_sites_mut[1, 1] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$del_sites, method="pearson")$estimate
+tbl_del_sites_mut[2, 1] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$del_sites, method="pearson")$estimate
+tbl_del_sites_mut[3, 1] <- cor.test(big_tbl_100kb$avg_mut, big_tbl_100kb$del_sites, method="pearson")$estimate
+tbl_del_sites_mut[4, 1] <- cor.test(big_tbl_1Mb$avg_mut, big_tbl_1Mb$del_sites, method="pearson")$estimate
+
+tbl_del_sites_mut[1, 2] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$del_sites, method="spearman")$estimate
+tbl_del_sites_mut[2, 2] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$del_sites, method="spearman")$estimate
+tbl_del_sites_mut[3, 2] <- cor.test(big_tbl_100kb$avg_mut, big_tbl_100kb$del_sites, method="spearman")$estimate
+tbl_del_sites_mut[4, 2] <- cor.test(big_tbl_1Mb$avg_mut, big_tbl_1Mb$del_sites, method="spearman")$estimate
+
+tbl_del_sites_mut[1, 3] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$del_sites, method="kendall")$estimate
+tbl_del_sites_mut[2, 3] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$del_sites, method="kendall")$estimate
+tbl_del_sites_mut[3, 3] <- cor.test(big_tbl_100kb$avg_mut, big_tbl_100kb$del_sites, method="kendall")$estimate
+tbl_del_sites_mut[4, 3] <- cor.test(big_tbl_1Mb$avg_mut, big_tbl_1Mb$del_sites, method="kendall")$estimate
+
+m_cor <- pivot_longer(tbl_del_sites_mut, cols=c("pearson", "spearman"), names_to="method", values_to="cor")
+
+q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
+  geom_point(size=3) + geom_line() + theme_bw() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  labs(title="Correlation u x # del sites", x="scale", y="coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+# B x del sites
+tbl_del_sites_B <- as.data.frame(matrix(ncol=4, nrow=4))
+names(tbl_del_sites_B) <- c("pearson", "spearman", "kendall", "scale")
+tbl_del_sites_B$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+tbl_del_sites_B[1, 1] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="pearson")$estimate
+tbl_del_sites_B[2, 1] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="pearson")$estimate
+tbl_del_sites_B[3, 1] <- cor.test(big_tbl_100kb$B, big_tbl_100kb$del_sites, method="pearson")$estimate
+tbl_del_sites_B[4, 1] <- cor.test(big_tbl_1Mb$B, big_tbl_1Mb$del_sites, method="pearson")$estimate
+
+tbl_del_sites_B[1, 2] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="spearman")$estimate
+tbl_del_sites_B[2, 2] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="spearman")$estimate
+tbl_del_sites_B[3, 2] <- cor.test(big_tbl_100kb$B, big_tbl_100kb$del_sites, method="spearman")$estimate
+tbl_del_sites_B[4, 2] <- cor.test(big_tbl_1Mb$B, big_tbl_1Mb$del_sites, method="spearman")$estimate
+
+tbl_del_sites_B[1, 3] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="kendall")$estimate
+tbl_del_sites_B[2, 3] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="kendall")$estimate
+tbl_del_sites_B[3, 3] <- cor.test(big_tbl_100kb$B, big_tbl_100kb$del_sites, method="kendall")$estimate
+tbl_del_sites_B[4, 3] <- cor.test(big_tbl_1Mb$B, big_tbl_1Mb$del_sites, method="kendall")$estimate
+
+m_cor <- pivot_longer(tbl_del_sites_B, cols=c("pearson", "spearman"), names_to="method", values_to="cor")
+
+q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
+  geom_point(size=3) + geom_line() + theme_bw() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  labs(title="Correlation B x # del sites", x="scale", y="coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q1
+
+# B x del pi0
+tbl_del_sites_B <- as.data.frame(matrix(ncol=4, nrow=4))
+names(tbl_del_sites_B) <- c("pearson", "spearman", "kendall", "scale")
+tbl_del_sites_B$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+
+tbl_del_sites_B[1, 1] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="pearson")$estimate
+tbl_del_sites_B[2, 1] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="pearson")$estimate
+tbl_del_sites_B[3, 1] <- cor.test(big_tbl_100kb$B, big_tbl_100kb$del_sites, method="pearson")$estimate
+tbl_del_sites_B[4, 1] <- cor.test(big_tbl_1Mb$B, big_tbl_1Mb$del_sites, method="pearson")$estimate
+
+tbl_del_sites_B[1, 2] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="spearman")$estimate
+tbl_del_sites_B[2, 2] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="spearman")$estimate
+tbl_del_sites_B[3, 2] <- cor.test(big_tbl_100kb$B, big_tbl_100kb$del_sites, method="spearman")$estimate
+tbl_del_sites_B[4, 2] <- cor.test(big_tbl_1Mb$B, big_tbl_1Mb$del_sites, method="spearman")$estimate
+
+tbl_del_sites_B[1, 3] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="kendall")$estimate
+tbl_del_sites_B[2, 3] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="kendall")$estimate
+tbl_del_sites_B[3, 3] <- cor.test(big_tbl_100kb$B, big_tbl_100kb$del_sites, method="kendall")$estimate
+tbl_del_sites_B[4, 3] <- cor.test(big_tbl_1Mb$B, big_tbl_1Mb$del_sites, method="kendall")$estimate
+
+m_cor <- pivot_longer(tbl_del_sites_B, cols=c("pearson", "spearman"), names_to="method", values_to="cor")
+
+q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
+  geom_point(size=3) + geom_line() + theme_bw() +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  labs(title="Correlation B x # del sites", x="scale", y="coeff.") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+q1
+```
