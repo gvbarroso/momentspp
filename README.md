@@ -40,17 +40,17 @@ apptainer build momentspp.sif docker://ghcr.io/gvbarroso/momentspp/momentspp:v0.
 After a successful build
 
 ```
-momentspp params=opt.bpp
+momentspp param=opt.bpp
 ```
 
 The apptainer can be run with 
 ```
-./momentspp.sif params=opt.bpp
+./momentspp.sif param=opt.bpp
 ```
 
 And docker can be run with
 ```
-docker run ghcr.io/gvbarroso/momentspp/momentspp:latest params=opt.bpp
+docker run ghcr.io/gvbarroso/momentspp/momentspp:latest param=opt.bpp
 ```
 
 The 'doc' directory (and examples therein) contains instructions on how to write the options file and the associated yaml file which specifies the evolutionary model of interest.
