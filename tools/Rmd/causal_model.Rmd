@@ -43,7 +43,7 @@ use_python("/usr/bin/python3")
 
 scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
 
-knitr::opts_knit$set(root.dir="~/Desktop/sim_data")
+knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/sim_data")
 ```
 
 # Building chr models
@@ -60,7 +60,7 @@ Thus |s| can be seen as "constant" (see DAGs below).
 shapes_rate_u <- c(5, 10, 30, 100)
 shapes_rate_r <- c(1, 3, 10)
 mean_r <- 1e-8
-mean_u <- 1e-8
+mean_u <- 1.25e-8
 
 # Geom dist params
 avg_rec_spans <- c(1e+3, 1e+4, 1e+5)
@@ -68,18 +68,20 @@ avg_mut_spans <- c(1e+3, 1e+4, 1e+5)
 exon_lengths <- 1000
 num_exons <- c(600, 3000, 7500)
 L <- 3e+7
-mult_r_u <- c(0, 0.05, 0.1, 0.25) # no mutagenic recombination is a special case
+mult_r_u <- c(0, 0.05, 0.1, 0.25) # non-mutagenic recomb. is a special case
 
-models <- setDT(crossing(L, num_exons, exon_lengths, mult_r_u,
+p_switch <- 0.25 # related to auto-correlation in the distribution of elements
+# note since average length of intergenic > exon_lengths, p_switch > 0 => AR > 0
+
+models <- setDT(crossing(L, p_switch, num_exons, exon_lengths, mult_r_u,
                          mean_r, mean_u, shapes_rate_u, shapes_rate_r,
                          avg_rec_spans, avg_mut_spans))
 models$model <- 1:nrow(models)
 
-Sys.setenv(num_models = nrow(models))
-Sys.setenv(num_reps = 10)
+Sys.setenv(num_models=nrow(models))
+Sys.setenv(num_reps=10)
 
 fwrite(models, "models.csv")
-
 ```
 
 ```{bash, mk-dirs, engine.opts='-i', include=T, eval=T, results=F, warning=F}
@@ -96,7 +98,6 @@ do
   done
   cd ..
 done
-
 ```
 
 We use the models to assemble the genomic maps
@@ -104,14 +105,13 @@ We use the models to assemble the genomic maps
 ```{r, build-chr-maps, include=F, message=F, warning=F}
 
 for(m in 1:num_models) {
-  
+
   bin_size <- 1e+3 # "basal" scale, larger windows are built after
   L <- models$L[m]
   V <- L - models$num_exons[m] * models$exon_lengths[m]
   mult <- models$mult_r_u[m]
     
-  for(r in 1:num_reps) {
-    
+  for(rep in 1:num_reps) {
     # constrained elements, call them genes or exons 
     intergenic_lengths <- rgeom(n=models$num_exons[m], prob=models$num_exons[m]/V) 
     
@@ -123,13 +123,68 @@ for(m in 1:num_models) {
       intergenic_lengths <- intergenic_lengths[cumsum(intergenic_lengths) < V]
       intergenic_lengths <- c(intergenic_lengths, V - sum(intergenic_lengths))
     }
+    intergenic_lengths <- intergenic_lengths[intergenic_lengths>0]
     
-    elements <- c(rbind(intergenic_lengths, 
+    chr_elements <- c(rbind(intergenic_lengths, 
                         rep(models$exon_lengths[m],
                             models$num_exons[m])))
+
+    # Introducing clusters of exonic and integenic sites (for "realism" ++)
+    # this function avoids problems with sample from vector with length == 1
+    resample <- function(x) x[sample.int(length(x))][1] 
+    p_switch <- models$p_switch[m] # symmetric auto-correlation
+    is_exonic <- chr_elements[1] == models$exon_lengths[m]
+    
+    new_elements <- numeric(length=length(chr_elements)) # init
+    new_elements[1] <- chr_elements[1]
+    chr_elements <- chr_elements[-1]
+    
+    for(i in 2:length(new_elements)) {
+      if(!is_exonic) {
+        if(any(chr_elements != models$exon_lengths[m])) {
+          val <- resample(chr_elements[chr_elements!=models$exon_lengths[m]])
+          idx <- which(chr_elements==val)[1] # first occurrence of val in elems
+          
+          new_elements[i] <- val
+          chr_elements <- chr_elements[-idx] # removes sampled item
+        } else { # we ran out of intergenic regions
+          is_exonic <- T
+          p_switch <- 1
+          
+          val <- resample(chr_elements[chr_elements==models$exon_lengths[m]]) 
+          idx <- which(chr_elements==val)[1] # first occurrence of val in elems
+          
+          new_elements[i] <- val
+          chr_elements <- chr_elements[-idx] # removes sampled item
+        }
+      }
+      else {
+        if(any(chr_elements == models$exon_lengths[m])) {
+          val <- resample(chr_elements[chr_elements==models$exon_lengths[m]])
+          idx <- which(chr_elements==val)[1] # first occurrence of val in elems
+          
+          new_elements[i] <- val
+          chr_elements <- chr_elements[-idx] # removes sampled item
+        } else { # we ran out of exons
+          is_exonic <- F
+          p_switch <- 1
+          
+          val <- resample(chr_elements[chr_elements!=models$exon_lengths[m]])
+          idx <- which(chr_elements==val)[1] # first occurrence of val in elems
+          
+          new_elements[i] <- val
+          chr_elements <- chr_elements[-idx] # removes sampled item
+        }
+      }
+    
+      if(runif(1, 0, 1) > p_switch) { # switch from/to exonic/intergenic
+        is_exonic <- !is_exonic
+      }
+    }
+    
     elements <- setDT(bind_cols(chr="chr1",
-    		                    dplyr::lag(cumsum(elements), n=1, default=0),
-    		                    dplyr::lag(cumsum(elements), n=0, default=0)))
+    		              dplyr::lag(cumsum(new_elements), n=1, default=0),
+    		              dplyr::lag(cumsum(new_elements), n=0, default=0)))
     names(elements) <- c("chr", "start", "end")
     elements <- filter(elements, start < L)
     elements$end[nrow(elements)] <- L
@@ -156,8 +211,8 @@ elements$start == models$exon_lengths[m])
                  shape=models$shapes_rate_r[m],
                  rate=models$shapes_rate_r[m])
     rmap$r <- rs * models$mean_r[m]
-    fwrite(rmap, paste("model_", m, "/rep_", r, "/rec_map.csv.gz", sep=""))
-    
+    fwrite(rmap, paste("model_", m, "/rep_", rep, "/rec_map.csv.gz", sep=""))
+
     # mutation map
     mut_spans <- rgeom(n=ceiling(L/models$avg_mut_spans[m]), 
                        prob=1/models$avg_mut_spans[m])
@@ -219,7 +274,7 @@ elements$start == models$exon_lengths[m])
     mmap3$u <- unique(models$mean_u) * (mmap3$u / mean(mmap3$u)) # re-center
     mmap2 <- mmap3
     mmap2$start <- mmap2$start - 1
-    fwrite(mmap2, paste("model_", m, "/rep_", r, "/mut_map.csv.gz", sep=""))
+    fwrite(mmap2, paste("model_", m, "/rep_", rep, "/mut_map.csv.gz", sep=""))
     
     # binning mut
     mut_gr <- makeGRangesFromDataFrame(mmap3, keep.extra.columns=T) # over-write
@@ -244,7 +299,7 @@ elements$start == models$exon_lengths[m])
     x <- distinct(y, elems, .keep_all=T)
     elements$u <- x$avg_mut
     
-    fwrite(elements, paste("model_", m, "/rep_", r, "/elements.csv.gz", sep=""))
+    fwrite(elements, paste("model_", m, "/rep_", rep, "/elements.csv.gz", sep=""))
     
     # binning exons (number of exonic sites per 1kb window)
     bins$bins_1kb <- 1:nrow(bins)
@@ -258,23 +313,39 @@ elements$start == models$exon_lengths[m])
     elem_bins <- merge(dplyr::select(elem_bins, -chr), bins, by="bins_1kb") 
     names(elem_bins) <- c("bins_1kb", "elem_bins", "start_elem", "end_elem",
                           "selected", "chr", "start_1kb", "end_1kb")
-    # finds first and second occurrences of elements within 1 kb windows
+    
+    # find 1st, last, and middle occurrences of selected elems within 1 kb bins
     elem_bins <- elem_bins %>% mutate(isFirst=as.integer(selected==1 &
-(is.na(lag(selected)) | lag(selected)!=1)))
-    elem_bins$isSecond <- lag(elem_bins$isFirst, 1)
-    elem_bins$isSecond[1] <- 0
+(is.na(dplyr::lag(selected)) | dplyr::lag(selected)!=1)))
+    elem_bins <- elem_bins %>% mutate(isLast=as.integer(selected==1 &
+(is.na(dplyr::lag(selected)) | dplyr::lead(selected)!=1)))
+    elem_bins <- elem_bins %>% mutate(isMiddle=as.integer(selected==1 &
+(dplyr::lag(selected)==1) & dplyr::lead(selected)==1))
+    
+    # cleaning corners
+    elem_bins$isFirst[is.na(elem_bins$isFirst)] <- 0
+    elem_bins$isMiddle[is.na(elem_bins$isMiddle)] <- 0
+    elem_bins$isLast[is.na(elem_bins$isLast)] <- 0
+    
     # assigns exonic counts to each 1kb bin
     elem_bins$leftCount <- elem_bins$isFirst * 
 (elem_bins$end_1kb - elem_bins$start_elem + 1)
-    elem_bins$rightCount <- elem_bins$isSecond * 
+    elem_bins$rightCount <- elem_bins$isLast * 
 (elem_bins$end_elem - elem_bins$start_1kb + 1)
-    elem_bins$elemCount <- elem_bins$leftCount + elem_bins$rightCount
+    elem_bins$midCount <- elem_bins$isMiddle * models$exon_lengths[m] 
+    elem_bins$elemCount <- elem_bins$leftCount + 
+                           elem_bins$rightCount +
+                           elem_bins$midCount
     
     elem_bins_2 <- elem_bins %>%
                    group_by(bins_1kb) %>% 
                    mutate(exonic_sites=sum(elemCount)) %>% 
                    distinct(bins_1kb, .keep_all=T) %>%
                    dplyr::select(chr, start_1kb, end_1kb, exonic_sites)
+    
+    # corrects the double counting of middle elements assigned to 2 1kb bins
+    elem_bins_2[elem_bins_2$exonic_sites==2*models$exon_lengths[m],]$exonic_sites <-
+      models$exon_lengths[m]
 
     maps_1kb <- bind_cols(bins,
                           rec_bins["avg_rec"],
@@ -339,25 +410,24 @@ elements$start == models$exon_lengths[m])
                                                          exonic_sites))
     
     fwrite(maps_1kb, paste("model_", m,
-                           "/rep_", r,
+                           "/rep_", rep,
                            "/maps_1kb.csv.gz", sep=""))
     fwrite(maps_10kb, paste("model_", m,
-                            "/rep_", r,
+                            "/rep_", rep,
                             "/maps_10kb.csv.gz", sep=""))
     fwrite(maps_100kb, paste("model_", m,
-                             "/rep_", r,
+                             "/rep_", rep,
                              "/maps_100kb.csv.gz", sep=""))
     fwrite(maps_1Mb, paste("model_", m,
-                           "/rep_", r,
+                           "/rep_", rep,
                            "/maps_1Mb.csv.gz", sep=""))
   }
 }
-
 ```
 
 This chunk has the python code use to predict B and pi
 
-```{python}
+```{python, build-tbl}
 #!/usr/bin/env python
 # coding: utf-8
 
@@ -388,19 +458,19 @@ max_r = max(df_sub["r"])
 
 ss = np.sort(list(set(df_sub["s"])))
 
-L = 30000000
+L = np.unique(chr_models["L"])[0]
 rec_file = "rec_map.csv.gz"
 rmap = bgshr.Util.load_bedgraph(rec_file, L=L)
 
 efile = "elements.csv.gz"
 regions = pandas.read_csv(efile, sep=",")
 
-mus = regions[regions["selected"] == 1]["u"] # avg u per exon
+mus_exons = regions[regions["selected"] == 1]["u"] # avg u per exon
 elements = bgshr.Util.get_elements(regions, L=L)
 
-u = float(np.unique(chr_models["mean_u"])[0])
-u_nonsyn = (2.31) / (2.31 + 1) * u
-u_fac = u_nonsyn / u
+u_avg = float(np.unique(chr_models["mean_u"])[0]) # only 1 mean u in models.csv
+u_nonsyn = (2.31) / (2.31 + 1) * u_avg
+u_fac = u_nonsyn / u_avg
 
 # DFE, from Kim et al (2017)
 shape = 0.215
@@ -411,8 +481,8 @@ weights = bgshr.Util.weights_gamma_dfe(s_vals, shape, scale)
 weights[len(weights)-1] = 1 - sum(weights[0:len(weights)-2])
 
 spacing = 1000 # evaluate B's every 1 kb
-xs = np.arange(500, L, spacing) # xs may not contemplate fine-scale LMR variation
-Bs = bgshr.Predict.Bvals(xs, s_vals[:-1], splines, L=L, u=mus, rmap=rmap, 
+xs = np.arange(500, L, spacing) # xs may not contemplate fine-scale LMRs
+Bs = bgshr.Predict.Bvals(xs, s_vals[:-1], splines, L=L, u=mus_exons, rmap=rmap, 
                          elements=elements, max_r=0.5)
 
 B = bgshr.Util.integrate_with_weights(Bs, weights[:-1], u_fac=u_fac)
@@ -420,28 +490,32 @@ B = bgshr.Util.integrate_with_weights(Bs, weights[:-1], u_fac=u_fac)
 # we want a DAG without feedback loops
 bmap = scipy.interpolate.CubicSpline(xs, B, bc_type="natural")
 
-ns_fac = u_fac * mus / u
-syn_fac = (1 - u_fac) * mus / u
+ns_fac = mus_exons * u_fac / u_avg
+syn_fac = (1 - u_fac) * mus_exons / u_avg
 
 hls = []
 for s in s_vals:
-    hls.append(bgshr.ClassicBGS._get_Hl(s, Ne, u))
+    hls.append(bgshr.ClassicBGS._get_Hl(s, Ne, u_avg))
 
-pi0_ns = np.sum([h * w * ns_fac for h, w in zip(hls, weights)], axis=0)
-pi0_syn = 2 * Ne * u * syn_fac
+pi0_ns = np.sum([h * w * ns_fac for h, w in zip(hls, weights)], axis=0) # pi_del
+pi0_syn = 2 * Ne * u_avg * syn_fac
 
 pi0_exons = np.array(pi0_ns + pi0_syn)
-pi0_exons[0:24]
 
 # 1kb
 file_1kb = "maps_1kb.csv.gz"
 maps_1kb = pandas.read_csv(file_1kb, sep=",")
 bins_1kb = np.array(maps_1kb["end"])
 
-jumps = 250
-# a finer grid than the xs, to capture exonic vs intergenic pi0's
+# getting sum of pi del. in each 1kb window
+fac_1kb = maps_1kb["avg_mut"] * u_fac / u_avg
+pi_del_1kb = np.sum([h * w * fac_1kb for h, w in zip(hls, weights)], axis=0) 
+pi_del = B * np.array(maps_1kb["exonic_sites"]) * pi_del_1kb / 1e3
+
+jumps = 250 # a finer grid than the xs, to capture exonic vs intergenic pi0's
 ys = np.arange(0, L, jumps) 
-pi0z = np.asarray(maps_1kb["avg_mut"])[np.digitize(ys, bins_1kb)] * 2 * Ne # init
+pi0z = np.asarray(maps_1kb["avg_mut"])[np.digitize(ys, bins_1kb)] * 2 * Ne 
+pi_neu_exp = B * np.mean(pi0z.reshape(-1, int(1000/jumps)), axis=1)
 
 for i in range(0, len(ys)):
     for j in range(0, len(elements)):
@@ -453,98 +527,43 @@ pi_1kb = B * pi0_1kb # B is evaluated every 'spacing' bp (1 kb)
 
 # with mutational variance
 # later on we can incorporate genealogical noise (directly on the "final" table)
-pi_mu_1kb = np.zeros(len(pi_1kb))
+pi_1kb_sim = np.zeros(len(pi_1kb))
+pi_neu_sim = np.zeros(len(pi_1kb))
 S = 100 # diploid sample size
 for i in range(0, S): 
-    pi_mu_1kb += np.random.binomial(n=1000, size=len(pi_1kb), p=pi_1kb) / 1000
-
+    pi_1kb_sim += np.random.binomial(n=1000, size=len(pi_1kb), p=pi_1kb) / 1000
+    pi_neu_sim += np.random.binomial(n=1000, size=len(pi_neu_exp), p=pi_neu_exp) / 1000
+    
 pi_mu_1kb = pi_mu_1kb / S
+pi_neu_sim = pi_neu_sim / S
 
 maps_1kb.insert(len(maps_1kb.columns), "B", B)
-maps_1kb.insert(len(maps_1kb.columns), "avg_pi", pi_1kb)
-maps_1kb.insert(len(maps_1kb.columns), "sim_pi", pi_mu_1kb)
+maps_1kb.insert(len(maps_1kb.columns), "pi_neu_exp", pi_neu_exp)
+maps_1kb.insert(len(maps_1kb.columns), "pi_neu_sim", pi_neu_sim)
+maps_1kb.insert(len(maps_1kb.columns), "pi_del_exp", pi_del)
+maps_1kb.insert(len(maps_1kb.columns), "pi_exp", pi_1kb)
+maps_1kb.insert(len(maps_1kb.columns), "sim_pi", pi_1kb_sim)
 
 fout = "tbl_1kb.csv.gz"
 maps_1kb.to_csv(fout, index=False)
-
-# 10 kb
-file_10kb = "maps_10kb.csv.gz"
-maps_10kb = pandas.read_csv(file_10kb, sep=",")
-
-B_10kb = np.mean(B.reshape(-1, 10), axis=1) # B is evaluated 'spacing' bp
-pi0_10kb = np.mean(pi0_1kb.reshape(-1, 10), axis=1) 
-pi_10kb = B_10kb * pi0_10kb
-
-# with mutational variance
-# later on we can incorporate genealogical noise (directly on the "final" table)
-pi_mu_10kb = np.zeros(len(pi_10kb))
-S = 100 # diploid sample size
-for i in range(0, S): 
-    pi_mu_10kb += np.random.binomial(n=10000, size=len(pi_10kb), p=pi_10kb) / 10000
-
-pi_mu_10kb = pi_mu_10kb / S
-
-maps_10kb.insert(len(maps_10kb.columns), "B", B_10kb)
-maps_10kb.insert(len(maps_10kb.columns), "avg_pi", pi_10kb)
-maps_10kb.insert(len(maps_10kb.columns), "sim_pi", pi_mu_10kb)
-
-fout = "tbl_10kb.csv.gz"
-maps_10kb.to_csv(fout, index=False)
-
-# 100kb
-file_100kb = "maps_100kb.csv.gz"
-maps_100kb = pandas.read_csv(file_100kb, sep=",")
-
-B_100kb = np.mean(B.reshape(-1, 100), axis=1) # B is evaluated 'spacing' bp
-pi0_100kb = np.mean(pi0_1kb.reshape(-1, 100), axis=1)
-pi_100kb = B_100kb * pi0_100kb
-
-# with mutational variance
-# later on we can incorporate genealogical noise (directly on the "final" table)
-pi_mu_100kb = np.zeros(len(pi_100kb))
-S = 100 # diploid sample size
-for i in range(0, S): 
-    pi_mu_100kb += np.random.binomial(n=100000, size=len(pi_100kb), p=pi_100kb) / 100000
-
-pi_mu_100kb = pi_mu_100kb / S
-
-
-maps_100kb.insert(len(maps_100kb.columns), "B", B_100kb)
-maps_100kb.insert(len(maps_100kb.columns), "avg_pi", pi_100kb)
-maps_100kb.insert(len(maps_100kb.columns), "sim_pi", pi_mu_100kb)
-
-fout = "tbl_100kb.csv.gz"
-maps_100kb.to_csv(fout, index=False)
-
-# 1Mb
-file_1Mb = "maps_1Mb.csv.gz"
-maps_1Mb = pandas.read_csv(file_1Mb, sep=",")
-
-B_1Mb = np.mean(B.reshape(-1, 1000), axis=1) # B is evaluated 'spacing' bp
-pi0_1Mb = np.mean(pi0_1kb.reshape(-1, 1000), axis=1)
-pi_1Mb = B_1Mb * pi0_1Mb
-
-# with mutational variance 
-# later on we can incorporate genealogical noise (directly on the "final" table)
-pi_mu_1Mb = np.zeros(len(pi_1Mb))
-S = 100 # diploid sample size
-for i in range(0, S): 
-    pi_mu_1Mb += np.random.binomial(n=1000000, size=len(pi_1Mb), p=pi_1Mb) / 1000000
-
-pi_mu_1Mb = pi_mu_1Mb / S
-
-maps_1Mb.insert(len(maps_1Mb.columns), "B", B_1Mb)
-maps_1Mb.insert(len(maps_1Mb.columns), "avg_pi", pi_1Mb)
-maps_1Mb.insert(len(maps_1Mb.columns), "sim_pi", pi_mu_1Mb)
-
-fout = "tbl_1Mb.csv.gz"
-maps_1Mb.to_csv(fout, index=False)
-
 ```
 
-```{bash, mk-dirs, engine.opts='-i', include=T, eval=T, results=F, warning=F}
+```{bash, run-python, engine.opts='-i', include=T, eval=T, results=F, warning=F}
 
 source ~/.bashrc
+
+conda activate bgs
+for ((m=1; m<=$num_models; m++))
+do
+  cd model_$m
+  for ((r=1; r<=$num_reps; r++))
+  do
+    cd rep_$r
+    python build_tbl.py
+    cd ..
+  done
+  cd ..
+done
 
 ```
 
@@ -553,6 +572,7 @@ source ~/.bashrc
 Visualization
 
 https://www.erikigelstrom.com/articles/causal-graphs-in-r-with-diagrammer/
+https://cran.r-project.org/web/packages/ggdag/vignettes/intro-to-ggdag.html TODO
 
 ```{r dags-viz, include=F, message=F, warning=F}
 
@@ -666,7 +686,7 @@ digraph {
 }
 ")
 
-# if the strength of selection is constant across functional elements
+# assuming the strength of selection is constant across functional elements
 D5p <- DiagrammeR::grViz("
 digraph {
   rankdir=LR; // Left to Right, instead of Top to Bottom
@@ -692,6 +712,47 @@ digraph {
 }
 ")
 
+# simplifying by focusing on pi_neu
+D6p <- DiagrammeR::grViz("
+digraph {
+  rankdir=LR; // Left to Right, instead of Top to Bottom
+  graph []
+  node [shape = box]
+    A [label = 'u']
+    B [label = 'r']
+    C [label = 'exonic_sites'] 
+    X [label = 'B']
+    Y [label = 'pi_neu_sim']
+  edge [minlen = 2]
+    B->X
+    B->A
+    C->X
+    A->Y
+    A->X
+    X->Y
+}
+")
+
+# non-mutagenic rec
+D7p <- DiagrammeR::grViz("
+digraph {
+  rankdir=LR; // Left to Right, instead of Top to Bottom
+  graph []
+  node [shape = box]
+    A [label = 'u']
+    B [label = 'r']
+    C [label = 'exonic_sites'] 
+    X [label = 'B']
+    Y [label = 'pi_neu_sim']
+  edge [minlen = 2]
+    B->X
+    C->X
+    A->Y
+    A->X
+    X->Y
+}
+")
+
 #grViz(D1p) %>% export_svg() %>% read_xml() %>% write_xml("causal_model_1.svg")
 #export_graph(D1p, file_name="causal_model_1.pdf", file_type="pdf")
 D1p
@@ -699,287 +760,366 @@ D2p
 D3p
 D4p
 D5p
+D6p
+D7p
 ```
 
-The DAGs that we will test with the data
+The DAGs that we will test with the data (based on D6p and D7p).
+NOTE: '~' operator means 'is a affected by'
+Selection is constant across exons.
+We set variable names to match column names in the output of the python chunk.
 
 ```{r dags-models, include=F, message=F, warning=F}
 
+# pi neutral as the "final" outcome variable
 D1g <- DAG(
-  r~u,
-  r~B,
-  u~B,
-  s~B,
-  u~pi
+  B~avg_rec,
+  B~exonic_sites,
+  B~avg_mut,
+  pi_neu_sim~B,
+  pi_neu_sim~avg_mut
 )
 
 D2g <- DAG(
-  r~u,
-  r~B,
-  u~pi_del,
-  u~pi_neu,
-  s~pi_del,
-  s~B,
-  pi_del~B,
-  B~pi_neu
+  avg_mut~avg_rec,
+  B~avg_rec,
+  B~exonic_sites,
+  B~avg_mut,
+  pi_neu_sim~B,
+  pi_neu_sim~avg_mut
 )
 
+# pi "total" as the "final" outcome variable
+# non-mutagenic rec
 D3g <- DAG(
-  r~u,
-  r~LD,
-  u~pi_del,
-  u~pi_neu,
-  pi_del~B,
-  s~pi_del,
-  s~LD,
-  LD~B,
-  B~pi_neu
+  B~avg_rec,
+  B~exonic_sites,
+  B~avg_mut,
+  #pi_del_exp~B,
+  pi_neu_sim~B,
+  pi_neu_sim~avg_mut,
+  #sim_pi~pi_del_exp,
+  sim_pi~pi_neu_sim
+)
+
+D4g <- DAG(
+  avg_mut~avg_rec,
+  B~avg_rec,
+  B~exonic_sites,
+  B~avg_mut,
+  #pi_del_exp~B,
+  pi_neu_sim~B,
+  pi_neu_sim~avg_mut,
+  #sim_pi~pi_del_exp,
+  sim_pi~pi_neu_sim
 )
 
 bs1 <- basiSet(D1g)
 bs2 <- basiSet(D2g)
 bs3 <- basiSet(D3g)
+bs4 <- basiSet(D4g)
 ```
 
 # Simulated data
 
-These simulations are based purely on moments++ predictions using 
+These simulations are based purely on (naive) moments++ predictions using 
 artificially constructed maps.
 
 Therefore, there is no interference in these data.
 
-The good old linear models
+```{r d-sep, include=F, message=F, warning=F}
+
+tbl <- fread("model_1/rep_1/tbl_1kb.csv.gz") # testing
+basis_set <- bs1
+
+for(i in 1:length(basis_set)) {
+  
+  var1 <- basis_set[[i]][1]
+  var2 <- basis_set[[i]][2]
+  
+  cond <- NULL
+  if(length(basis_set[[i]]) > 2) {
+    cond <- basis_set[[i]][3:length(basis_set[[i]])]
+  }
+  
+  dSep(D1g, var1, var2, cond)
+  
+  if(length(basis_set[[i]]) > 2) {
+    print(ppcor::pcor.test(tbl[, ..var1], tbl[, ..var2], tbl[, ..cond],
+                           method="spearman"))
+  } else {
+    print(cor.test(tbl[, ..var1][[1]], tbl[, ..var2][[1]], method="spearman"))
+  }
+}
+```
+
+The good old linear models (but not only)
 
 ```{r lms, include=F, message=F, warning=F}
 
-maps_1kb <- fread("tbl_1kb.csv.gz")
-maps_10kb <- fread("tbl_10kb.csv.gz")
-maps_100kb <- fread("tbl_100kb.csv.gz")
-maps_1Mb <- fread("tbl_1Mb.csv.gz")
-
-t1kb=dplyr::select(maps_1kb, c(avg_mut, B, exp_pi0, exp_pi))
-mat=rcorr(as.matrix(t1kb))
-x <- mat$r
-x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
-suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_1kb.csv", sep="")))
-
-t10kb=dplyr::select(maps_10kb, c(avg_mut, B, exp_pi0, exp_pi))
-mat=rcorr(as.matrix(t10kb))
-x <- mat$r
-x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
-suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_10kb.csv", sep="")))
-
-t100kb=dplyr::select(maps_100kb, c(avg_mut, B, exp_pi0, exp_pi))
-mat=rcorr(as.matrix(t100kb))
-x <- mat$r
-x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
-suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_100kb.csv", sep="")))
-
-t1Mb=dplyr::select(maps_1Mb, c(avg_mut, B, exp_pi0, exp_pi))
-mat=rcorr(as.matrix(t1Mb))
-x <- mat$r
-x[upper.tri(x)] <- mat$P[upper.tri(mat$P)]
-suppressMessages(fwrite(x, paste(prefix, "_pval_upper_pearson_lower_1Mb.csv", sep="")))
-
-# table for storing partitioned R^2 values from type II ANOVA (rows are bin sizes)
-r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-names(r2_tbl) <- c("u", "B", "B:u")
-r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
-
-# table for storing total R^2 values straight from the lm function (rows are bin sizes)
-r2_raw <- as.data.frame(matrix(ncol=1, nrow=4))
-names(r2_raw) <- "r2_typeI"
-r2_raw$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
-
-# tables for storing Pearson correlations with observed pi (rows are bin sizes)
-corr_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-names(corr_tbl) <- c("u", "B", "Predicted")
-corr_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
-
-corr_tbl$Predicted[1] <- cor.test(maps_1kb$exp_pi, 
-                                  maps_1kb$avg_pi, 
-                                  method="pearson")$estimate 
-corr_tbl$Predicted[2] <- cor.test(maps_10kb$exp_pi, 
-                                  maps_10kb$avg_pi, 
-                                  method="pearson")$estimate 
-corr_tbl$Predicted[3] <- cor.test(maps_100kb$exp_pi, 
-                                  maps_100kb$avg_pi,
-                                  method="pearson")$estimate  
-corr_tbl$Predicted[4] <- cor.test(maps_1Mb$exp_pi,
-                                  maps_1Mb$avg_pi, 
-                                  method="pearson")$estimate 
-
-corr_tbl$B[1] <- cor.test(maps_1kb$B, 
-                          maps_1kb$avg_pi,
-                          method="pearson")$estimate 
-corr_tbl$B[2] <- cor.test(maps_10kb$B, 
-                          maps_10kb$avg_pi, 
-                          method="pearson")$estimate 
-corr_tbl$B[3] <- cor.test(maps_100kb$B,
-                          maps_100kb$avg_pi,
-                          method="pearson")$estimate  
-corr_tbl$B[4] <- cor.test(maps_1Mb$B,
-                          maps_1Mb$avg_pi, 
-                          method="pearson")$estimate 
-
-corr_tbl$u[1] <- cor.test(maps_1kb$avg_mut, 
-                          maps_1kb$avg_pi, 
-                          method="pearson")$estimate 
-corr_tbl$u[2] <- cor.test(maps_10kb$avg_mut, 
-                          maps_10kb$avg_pi,
-                          method="pearson")$estimate 
-corr_tbl$u[3] <- cor.test(maps_100kb$avg_mut,
-                          maps_100kb$avg_pi, 
-                          method="pearson")$estimate  
-corr_tbl$u[4] <- cor.test(maps_1Mb$avg_mut,
-                          maps_1Mb$avg_pi,
-                          method="pearson")$estimate 
-
-fwrite(corr_tbl, paste(prefix, "_pearson_avg_pi_tbl.csv", sep=""))
-
-if(sd(maps_1kb$avg_mut)==0) {
-  stop("Flat mutation map! Stopping execution, check Pearson cor. table.")  
+for(m in 1:num_models) {
+  
+  for(r in 1:num_reps) {
+    
+    maps_1kb <- fread(paste("model_", m, "/rep_", r, "/tbl_1kb.csv.gz", sep=""))
+    
+    maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
+    maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
+    maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    maps_10kb <- maps_1kb %>%
+                 group_by(bin_10kb) %>% 
+                 summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+    
+    
+    t1kb=dplyr::select(maps_1kb, c(avg_rec,
+                                   avg_mut,
+                                   exonic_sites,
+                                   B,
+                                   pi_neu_sim))
+    mat=Hmisc::rcorr(as.matrix(t1kb), type="spearman")
+    tbl_1kb <- mat$r
+    tbl_1kb[upper.tri(tbl_1kb)] <- mat$P[upper.tri(mat$P)]
+    suppressMessages(fwrite(tbl_1kb, paste("model_", m, "/rep_", r, 
+                                           "/pval_upper_spearman_lower_1kb.csv", 
+                                           sep="")))
+    
+    t10kb=dplyr::select(maps_10kb, c(avg_rec,
+                                     avg_mut,
+                                     exonic_sites,
+                                     B,
+                                     pi_neu_sim))
+    mat=Hmisc::rcorr(as.matrix(t10kb), type="spearman")
+    tbl_10kb <- mat$r
+    tbl[upper.tri(tbl_10kb)] <- mat$P[upper.tri(mat$P)]
+    suppressMessages(fwrite(tbl_10kb, paste("model_", m, "/rep_", r, 
+                                            "/pval_upper_spearman_lower_10kb.csv", 
+                                            sep="")))
+    
+    t100kb=dplyr::select(maps_100kb, c(avg_rec,
+                                       avg_mut,
+                                       exonic_sites,
+                                       B,
+                                       pi_neu_sim))
+    mat=Hmisc::rcorr(as.matrix(t100kb), type="spearman")
+    tbl_100kb <- mat$r
+    tbl_100kb[upper.tri(tbl_100kb)] <- mat$P[upper.tri(mat$P)]
+    suppressMessages(fwrite(tbl_100kb, paste("model_", m, "/rep_", r, 
+                                             "/pval_upper_spearman_lower_100kb.csv", 
+                                             sep="")))
+    
+    t1Mb=dplyr::select(maps_1Mb, c(avg_rec,
+                                   avg_mut,
+                                   exonic_sites,
+                                   B,
+                                   pi_neu_sim))
+    mat=Hmisc::rcorr(as.matrix(t1Mb), type="spearman")
+    tbl_1Mb <- mat$r
+    tbl_1Mb[upper.tri(tbl_1Mb)] <- mat$P[upper.tri(mat$P)]
+    suppressMessages(fwrite(tbl_1Mb, paste("model_", m, "/rep_", r, 
+                                           "/pval_upper_spearman_lower_1Mb.csv", 
+                                           sep="")))
+    
+    # table for storing partitioned R^2 values from type II ANOVA 
+    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    names(r2_tbl) <- c("u", "B", "B:u")
+    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) # rows are bin sizes
+    
+    # table for storing total R^2 values straight from the lm function ()
+    r2_raw <- as.data.frame(matrix(ncol=1, nrow=4))
+    names(r2_raw) <- "r2_typeI"
+    r2_raw$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) # rows are bin sizes
+    
+    # tables for storing correlations with observed pi 
+    corr_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    names(corr_tbl) <- c("u", "B", "Predicted")
+    corr_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) # rows are bin sizes
+    
+    corr_tbl$Predicted[1] <- cor.test(maps_1kb$exp_pi, 
+                                      maps_1kb$pi_exp, 
+                                      method="pearson")$estimate 
+    corr_tbl$Predicted[2] <- cor.test(maps_10kb$exp_pi, 
+                                      maps_10kb$pi_exp, 
+                                      method="pearson")$estimate 
+    corr_tbl$Predicted[3] <- cor.test(maps_100kb$exp_pi, 
+                                      maps_100kb$pi_exp,
+                                      method="pearson")$estimate  
+    corr_tbl$Predicted[4] <- cor.test(maps_1Mb$exp_pi,
+                                      maps_1Mb$pi_exp, 
+                                      method="pearson")$estimate 
+    
+    corr_tbl$B[1] <- cor.test(maps_1kb$B, 
+                              maps_1kb$pi_exp,
+                              method="pearson")$estimate 
+    corr_tbl$B[2] <- cor.test(maps_10kb$B, 
+                              maps_10kb$pi_exp, 
+                              method="pearson")$estimate 
+    corr_tbl$B[3] <- cor.test(maps_100kb$B,
+                              maps_100kb$pi_exp,
+                              method="pearson")$estimate  
+    corr_tbl$B[4] <- cor.test(maps_1Mb$B,
+                              maps_1Mb$pi_exp, 
+                              method="pearson")$estimate 
+    
+    corr_tbl$u[1] <- cor.test(maps_1kb$avg_mut, 
+                              maps_1kb$pi_exp, 
+                              method="pearson")$estimate 
+    corr_tbl$u[2] <- cor.test(maps_10kb$avg_mut, 
+                              maps_10kb$pi_exp,
+                              method="pearson")$estimate 
+    corr_tbl$u[3] <- cor.test(maps_100kb$avg_mut,
+                              maps_100kb$pi_exp, 
+                              method="pearson")$estimate  
+    corr_tbl$u[4] <- cor.test(maps_1Mb$avg_mut,
+                              maps_1Mb$pi_exp,
+                              method="pearson")$estimate 
+    
+    fwrite(corr_tbl, paste(prefix, "_pearson_avg_pi_tbl.csv", sep=""))
+    
+    if(sd(maps_1kb$avg_mut)==0) {
+      stop("Flat mutation map! Stopping execution, check Pearson cor. table.")  
+    }
+    
+    if(sd(maps_1kb$B)==0) {
+      stop("Flat B-map! Stopping execution, check Pearson cor. table.")  
+    }
+    
+    # tables for storing estimates from linear models (rows are bin sizes)
+    coeff_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    pval_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    names(coeff_tbl) <- c("u", "B", "B:u")
+    names(pval_tbl) <- c("u", "B", "B:u")
+    coeff_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    pval_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    
+    # VIFs
+    vif_tbl <- as.data.frame(matrix(ncol=2, nrow=4))
+    names(vif_tbl) <- c("u", "B")
+    vif_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    
+    # standardizing variables to help interpretation of linear coefficients
+    tbl_1kb <- dplyr::select(maps_1kb, c(avg_mut, B, pi_exp))
+    std_1kb <- as.data.frame(apply(tbl_1kb, 2, function(x) (x-mean(x)) / sd(x)))
+    std_1kb$bin <- 1:nrow(std_1kb)
+    
+    tbl_10kb <- dplyr::select(maps_10kb, c(avg_mut, B, pi_exp))
+    std_10kb <- as.data.frame(apply(tbl_10kb, 2, function(x) (x-mean(x)) / sd(x)))
+    std_10kb$bin <- 1:nrow(std_10kb)
+    
+    tbl_100kb <- dplyr::select(maps_100kb, c(avg_mut, B, pi_exp))
+    std_100kb <- as.data.frame(apply(tbl_100kb, 2, function(x) (x-mean(x)) / sd(x)))
+    std_100kb$bin <- 1:nrow(std_100kb)
+    
+    tbl_1Mb <- dplyr::select(maps_1Mb, c(avg_mut, B, pi_exp))
+    std_1Mb <- as.data.frame(apply(tbl_1Mb, 2, function(x) (x-mean(x)) / sd(x)))
+    std_1Mb$bin <- 1:nrow(std_1Mb)
+    
+    # 1 kb
+    m_1kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, std_1kb)
+    summary(m_1kb)
+    r2_raw$r2_typeI[1] <- summary(m_1kb)$r.squared * 100
+    v1kb <- vif(m_1kb, type = 'predictor')
+    
+    vif_tbl$B[1] <- v1kb$GVIF[1]
+    vif_tbl$u[1] <- v1kb$GVIF[2]
+    
+    coeff_tbl$u[1] <- m_1kb$coefficients[3]
+    coeff_tbl$B[1] <- m_1kb$coefficients[2]
+    coeff_tbl$`B:u`[1] <- m_1kb$coefficients[4]
+    
+    pval_tbl$u[1] <- summary(m_1kb)$coefficients[3,4]
+    pval_tbl$B[1] <- summary(m_1kb)$coefficients[2,4]
+    pval_tbl$`B:u`[1] <- summary(m_1kb)$coefficients[4,4]
+    
+    anova.pi <- Anova(m_1kb)
+    apiss <- anova.pi$"Sum Sq"
+    anova.pi$VarExp <- apiss / sum(apiss)
+    
+    r2_tbl$`B:u`[1] <- anova.pi$VarExp[3] * 100
+    r2_tbl$u[1] <- anova.pi$VarExp[2] * 100
+    r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
+    
+    # 10 kb
+    m_10kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, std_10kb)
+    summary(m_10kb)
+    r2_raw$r2_typeI[2] <- summary(m_10kb)$r.squared * 100
+    v10kb <- vif(m_10kb, type = 'predictor')
+    
+    vif_tbl$B[2] <- v10kb$GVIF[1]
+    vif_tbl$u[2] <- v10kb$GVIF[2]
+    
+    coeff_tbl$u[2] <- m_10kb$coefficients[3]
+    coeff_tbl$B[2] <- m_10kb$coefficients[2]
+    coeff_tbl$`B:u`[2] <- m_10kb$coefficients[4]
+    
+    pval_tbl$u[2] <- summary(m_10kb)$coefficients[3,4]
+    pval_tbl$B[2] <- summary(m_10kb)$coefficients[2,4]
+    pval_tbl$`B:u`[2] <- summary(m_10kb)$coefficients[4,4]
+    
+    anova.pi <- Anova(m_10kb)
+    apiss <- anova.pi$"Sum Sq"
+    anova.pi$VarExp <- apiss / sum(apiss)
+    
+    r2_tbl$`B:u`[2] <- anova.pi$VarExp[3] * 100
+    r2_tbl$u[2] <- anova.pi$VarExp[2] * 100
+    r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
+    
+    # 100 kb
+    m_100kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, std_100kb)
+    summary(m_100kb)
+    r2_raw$r2_typeI[3] <- summary(m_100kb)$r.squared * 100
+    v100kb <- vif(m_100kb, type = 'predictor')
+    
+    vif_tbl$B[3] <- v100kb$GVIF[1]
+    vif_tbl$u[3] <- v100kb$GVIF[2]
+    
+    coeff_tbl$u[3] <- m_100kb$coefficients[3]
+    coeff_tbl$B[3] <- m_100kb$coefficients[2]
+    coeff_tbl$`B:u`[3] <- m_100kb$coefficients[4]
+    
+    pval_tbl$u[3] <- summary(m_100kb)$coefficients[3,4]
+    pval_tbl$B[3] <- summary(m_100kb)$coefficients[2,4]
+    pval_tbl$`B:u`[3] <- summary(m_100kb)$coefficients[4,4]
+    
+    anova.pi <- Anova(m_100kb)
+    apiss <- anova.pi$"Sum Sq"
+    anova.pi$VarExp <- apiss / sum(apiss)
+    
+    r2_tbl$`B:u`[3] <- anova.pi$VarExp[3] * 100
+    r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
+    r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
+    
+    # 1 Mb
+    m_1Mb <- lm(pi_exp ~ (B + avg_mut) ^ 2, data=std_1Mb)
+    summary(m_1Mb)
+    r2_raw$r2_typeI[4] <- summary(m_1Mb)$r.squared * 100
+    v1Mb <- vif(m_1Mb, type = 'predictor')
+    
+    vif_tbl$B[4] <- v1Mb$GVIF[1]
+    vif_tbl$u[4] <- v1Mb$GVIF[2]
+    
+    coeff_tbl$u[4] <- m_1Mb$coefficients[3]
+    coeff_tbl$B[4] <- m_1Mb$coefficients[2]
+    coeff_tbl$`B:u`[4] <- m_1Mb$coefficients[4]
+    
+    pval_tbl$u[4] <- summary(m_1Mb)$coefficients[3,4]
+    pval_tbl$B[4] <- summary(m_1Mb)$coefficients[2,4]
+    pval_tbl$`B:u`[4] <- summary(m_1Mb)$coefficients[4,4]
+    
+    anova.pi <- Anova(m_1Mb)
+    apiss <- anova.pi$"Sum Sq"
+    anova.pi$VarExp <- apiss / sum(apiss)
+    
+    r2_tbl$`B:u`[4] <- anova.pi$VarExp[3] * 100
+    r2_tbl$u[4] <- anova.pi$VarExp[2] * 100
+    r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
+    
+    fwrite(r2_raw, paste(prefix, "_r2_raw_tbl.csv", sep=""))
+    fwrite(coeff_tbl, paste(prefix, "_coeff_tbl.csv", sep=""))
+    fwrite(pval_tbl, paste(prefix, "_pval_tbl.csv", sep=""))
+    fwrite(r2_tbl, paste(prefix, "_r2_typeII_tbl.csv", sep=""))
+    fwrite(vif_tbl, paste(prefix, "_vif_tbl.csv", sep=""))
+  }
 }
-
-if(sd(maps_1kb$B)==0) {
-  stop("Flat B-map! Stopping execution, check Pearson cor. table.")  
-}
-
-# tables for storing estimates from linear models (rows are bin sizes)
-coeff_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-pval_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-names(coeff_tbl) <- c("u", "B", "B:u")
-names(pval_tbl) <- c("u", "B", "B:u")
-coeff_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
-pval_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
-
-# VIFs
-vif_tbl <- as.data.frame(matrix(ncol=2, nrow=4))
-names(vif_tbl) <- c("u", "B")
-vif_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
-
-# standardizing variables to help interpretation of linear coefficients
-tbl_1kb <- dplyr::select(maps_1kb, c(avg_mut, B, avg_pi))
-std_1kb <- as.data.frame(apply(tbl_1kb, 2, function(x) (x-mean(x)) / sd(x)))
-std_1kb$bin <- 1:nrow(std_1kb)
-
-tbl_10kb <- dplyr::select(maps_10kb, c(avg_mut, B, avg_pi))
-std_10kb <- as.data.frame(apply(tbl_10kb, 2, function(x) (x-mean(x)) / sd(x)))
-std_10kb$bin <- 1:nrow(std_10kb)
-
-tbl_100kb <- dplyr::select(maps_100kb, c(avg_mut, B, avg_pi))
-std_100kb <- as.data.frame(apply(tbl_100kb, 2, function(x) (x-mean(x)) / sd(x)))
-std_100kb$bin <- 1:nrow(std_100kb)
-
-tbl_1Mb <- dplyr::select(maps_1Mb, c(avg_mut, B, avg_pi))
-std_1Mb <- as.data.frame(apply(tbl_1Mb, 2, function(x) (x-mean(x)) / sd(x)))
-std_1Mb$bin <- 1:nrow(std_1Mb)
-
-# 1 kb
-m_1kb <- lm(avg_pi ~ (B + avg_mut) ^ 2, std_1kb)
-summary(m_1kb)
-r2_raw$r2_typeI[1] <- summary(m_1kb)$r.squared * 100
-v1kb <- vif(m_1kb, type = 'predictor')
-
-vif_tbl$B[1] <- v1kb$GVIF[1]
-vif_tbl$u[1] <- v1kb$GVIF[2]
-
-coeff_tbl$u[1] <- m_1kb$coefficients[3]
-coeff_tbl$B[1] <- m_1kb$coefficients[2]
-coeff_tbl$`B:u`[1] <- m_1kb$coefficients[4]
-
-pval_tbl$u[1] <- summary(m_1kb)$coefficients[3,4]
-pval_tbl$B[1] <- summary(m_1kb)$coefficients[2,4]
-pval_tbl$`B:u`[1] <- summary(m_1kb)$coefficients[4,4]
-
-anova.pi <- Anova(m_1kb)
-apiss <- anova.pi$"Sum Sq"
-anova.pi$VarExp <- apiss / sum(apiss)
-
-r2_tbl$`B:u`[1] <- anova.pi$VarExp[3] * 100
-r2_tbl$u[1] <- anova.pi$VarExp[2] * 100
-r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
-
-# 10 kb
-m_10kb <- lm(avg_pi ~ (B + avg_mut) ^ 2, std_10kb)
-summary(m_10kb)
-r2_raw$r2_typeI[2] <- summary(m_10kb)$r.squared * 100
-v10kb <- vif(m_10kb, type = 'predictor')
-
-vif_tbl$B[2] <- v10kb$GVIF[1]
-vif_tbl$u[2] <- v10kb$GVIF[2]
-
-coeff_tbl$u[2] <- m_10kb$coefficients[3]
-coeff_tbl$B[2] <- m_10kb$coefficients[2]
-coeff_tbl$`B:u`[2] <- m_10kb$coefficients[4]
-
-pval_tbl$u[2] <- summary(m_10kb)$coefficients[3,4]
-pval_tbl$B[2] <- summary(m_10kb)$coefficients[2,4]
-pval_tbl$`B:u`[2] <- summary(m_10kb)$coefficients[4,4]
-
-anova.pi <- Anova(m_10kb)
-apiss <- anova.pi$"Sum Sq"
-anova.pi$VarExp <- apiss / sum(apiss)
-
-r2_tbl$`B:u`[2] <- anova.pi$VarExp[3] * 100
-r2_tbl$u[2] <- anova.pi$VarExp[2] * 100
-r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
-
-# 100 kb
-m_100kb <- lm(avg_pi ~ (B + avg_mut) ^ 2, std_100kb)
-summary(m_100kb)
-r2_raw$r2_typeI[3] <- summary(m_100kb)$r.squared * 100
-v100kb <- vif(m_100kb, type = 'predictor')
-
-vif_tbl$B[3] <- v100kb$GVIF[1]
-vif_tbl$u[3] <- v100kb$GVIF[2]
-
-coeff_tbl$u[3] <- m_100kb$coefficients[3]
-coeff_tbl$B[3] <- m_100kb$coefficients[2]
-coeff_tbl$`B:u`[3] <- m_100kb$coefficients[4]
-
-pval_tbl$u[3] <- summary(m_100kb)$coefficients[3,4]
-pval_tbl$B[3] <- summary(m_100kb)$coefficients[2,4]
-pval_tbl$`B:u`[3] <- summary(m_100kb)$coefficients[4,4]
-
-anova.pi <- Anova(m_100kb)
-apiss <- anova.pi$"Sum Sq"
-anova.pi$VarExp <- apiss / sum(apiss)
-
-r2_tbl$`B:u`[3] <- anova.pi$VarExp[3] * 100
-r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
-r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
-
-# 1 Mb
-m_1Mb <- lm(avg_pi ~ (B + avg_mut) ^ 2, data=std_1Mb)
-summary(m_1Mb)
-r2_raw$r2_typeI[4] <- summary(m_1Mb)$r.squared * 100
-v1Mb <- vif(m_1Mb, type = 'predictor')
-
-vif_tbl$B[4] <- v1Mb$GVIF[1]
-vif_tbl$u[4] <- v1Mb$GVIF[2]
-
-coeff_tbl$u[4] <- m_1Mb$coefficients[3]
-coeff_tbl$B[4] <- m_1Mb$coefficients[2]
-coeff_tbl$`B:u`[4] <- m_1Mb$coefficients[4]
-
-pval_tbl$u[4] <- summary(m_1Mb)$coefficients[3,4]
-pval_tbl$B[4] <- summary(m_1Mb)$coefficients[2,4]
-pval_tbl$`B:u`[4] <- summary(m_1Mb)$coefficients[4,4]
-
-anova.pi <- Anova(m_1Mb)
-apiss <- anova.pi$"Sum Sq"
-anova.pi$VarExp <- apiss / sum(apiss)
-
-r2_tbl$`B:u`[4] <- anova.pi$VarExp[3] * 100
-r2_tbl$u[4] <- anova.pi$VarExp[2] * 100
-r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
-
-fwrite(r2_raw, paste(prefix, "_r2_raw_tbl.csv", sep=""))
-fwrite(coeff_tbl, paste(prefix, "_coeff_tbl.csv", sep=""))
-fwrite(pval_tbl, paste(prefix, "_pval_tbl.csv", sep=""))
-fwrite(r2_tbl, paste(prefix, "_r2_typeII_tbl.csv", sep=""))
-fwrite(vif_tbl, paste(prefix, "_vif_tbl.csv", sep=""))
 ```
 
 ```{r plots-exons-models, include=F, message=F, warning=F}
@@ -1060,7 +1200,7 @@ for(i in 1:num_models) {
     pi_1kb <- ggplot(data=m1kb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
       geom_point(data=m1kb_m, shape=1) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
+                         #limits=c(min(m1kb$pi_exp), max(m1kb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="1 kb", x=NULL, y=expression(pi)) +
@@ -1116,7 +1256,7 @@ for(i in 1:num_models) {
     pi_10kb <- ggplot(data=m10kb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
       geom_point(data=m10kb_m, shape=1) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m10kb$avg_pi), max(m10kb$avg_pi)),
+                         #limits=c(min(m10kb$pi_exp), max(m10kb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="10 kb", x=NULL, y=NULL) + 
@@ -1170,7 +1310,7 @@ for(i in 1:num_models) {
                            color=diversity)) +
       geom_line(data=m100kb_m) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m100kb$avg_pi), max(m100kb$avg_pi)),
+                         #limits=c(min(m100kb$pi_exp), max(m100kb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="100 kb", x=NULL, y=NULL) +
@@ -1225,7 +1365,7 @@ for(i in 1:num_models) {
     pi_1Mb <- ggplot(data=m1Mb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
       geom_line(data=m1Mb_m) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1Mb$avg_pi), max(m1Mb$avg_pi)),
+                         #limits=c(min(m1Mb$pi_exp), max(m1Mb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="1 Mb", x=NULL, y=NULL) +
@@ -2928,7 +3068,7 @@ for(i in 1:num_models) {
     pi_1kb <- ggplot(data=m1kb_m, aes(x=(bin -1) * 1e+3, y=value, color=diversity)) +
       geom_line(data=m1kb_m) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1kb$avg_pi), max(m1kb$avg_pi)),
+                         #limits=c(min(m1kb$pi_exp), max(m1kb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="1 kb", x=NULL, y=expression(pi)) +
@@ -2984,7 +3124,7 @@ for(i in 1:num_models) {
     pi_10kb <- ggplot(data=m10kb_m, aes(x=(bin -1) * 1e+4, y=value, color=diversity)) +
       geom_line(data=m10kb_m) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m10kb$avg_pi), max(m10kb$avg_pi)),
+                         #limits=c(min(m10kb$pi_exp), max(m10kb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="10 kb", x=NULL, y=NULL) + 
@@ -3035,7 +3175,7 @@ for(i in 1:num_models) {
     pi_100kb <- ggplot(data=m100kb_m, aes(x=(bin -1) * 1e+5, y=value, color=diversity)) +
       geom_line(data=m100kb_m) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m100kb$avg_pi), max(m100kb$avg_pi)),
+                         #limits=c(min(m100kb$pi_exp), max(m100kb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="100 kb", x=NULL, y=NULL) +
@@ -3087,7 +3227,7 @@ for(i in 1:num_models) {
     pi_1Mb <- ggplot(data=m1Mb_m, aes(x=(bin -1) * 1e+6, y=value, color=diversity)) +
       geom_line(data=m1Mb_m) + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1Mb$avg_pi), max(m1Mb$avg_pi)),
+                         #limits=c(min(m1Mb$pi_exp), max(m1Mb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
       labs(title="1 Mb", x=NULL, y=NULL) +
