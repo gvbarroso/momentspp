@@ -37,6 +37,8 @@ library(ggm)
 library(lavaan)
 library(DiagrammeR)
 library(DiagrammeRsvg)
+library(dagitty)
+library(ggdag)
 library(magrittr)
 library(rsvg)
 library(xml2)
@@ -46,10 +48,11 @@ use_python("/usr/bin/python3")
 
 scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
 
-knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/sim_data")
+knitr::opts_knit$set(root.dir="~/Desktop/sim_data")
+#knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/sim_data")
 ```
 
-# Building chr models
+# Building chromosome models
 
 We write a table with parameters shaping genomic landscapes
 (mutation, recombination, functional elements)
@@ -576,213 +579,209 @@ done
 
 Visualization
 
-https://www.erikigelstrom.com/articles/causal-graphs-in-r-with-diagrammer/
-https://cran.r-project.org/web/packages/ggdag/vignettes/intro-to-ggdag.html TODO
-
 ```{r dags-viz, include=F, message=F, warning=F}
 
-D1p <- DiagrammeR::grViz("
-digraph {
-  rankdir=LR; // Left to Right, instead of Top to Bottom
-  graph []
-  node [shape = box]
-    A [label = 'u']
-    B [label = 'r']
-    C [label = 'selection'] // sensu lato
-    X [label = 'B']
-    W [label = 'Drift']
-    Y [label = 'pi']
-  edge [minlen = 2]
-    A->X
-    B->X
-    C->X
-    B->A
-    A->Y
-    W->Y
-    X->Y
-  { rank = same; A; C }
-}
-")
+DAG1 <- dagify(
+  pi ~ D,
+  pi ~ B,
+  pi ~ u,
+  B ~ S,
+  B ~ u,
+  B ~ r,
+  u ~ r
+)
 
-D2p <- DiagrammeR::grViz("
-digraph {
-  rankdir=LR; // Left to Right, instead of Top to Bottom
-  graph []
-  node [shape = box]
-    A [label = 'u']
-    B [label = 'r']
-    C [label = 'selection'] // sensu lato
-    E [label = 'pi_del']
-    X [label = 'B']
-    Y [label = 'pi_neu']
-  edge [minlen = 2]
-    A->E
-    B->X
-    B->A
-    C->E
-    C->X
-    E->X
-    A->Y
-    X->Y
-}
-")
+DD1p <- DAG1 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "D", "S", expression(pi), "r", expression(mu)))
+  
+save_plot("DAG_1.svg", DD1p)
+save_plot("DAG_1.png", DD1p)
 
-# without interference
-D3p <- DiagrammeR::grViz("
-digraph {
-  rankdir=LR; // Left to Right, instead of Top to Bottom
-  graph []
-  node [shape = box]
-    A [label = 'u']
-    B [label = 'r']
-    D [label = 'pi_del']
-    E [label = 'selection'] // sensu lato
-    F [label = 'LD'] // D(1-2q)?
-    X [label = 'B']
-    Y [label = 'pi_neu']
-    W [label = '?']
-  edge [minlen = 2]
-    A->D
-    B->A
-    D->X
-    X->Y
-    F->W
-    W->X
-    B->F
-    E->F
-    E->D
-    A->Y
-  { rank = same; A; E }
-}
-")
+DAG2 <- dagify(
+  pi_s ~ B,
+  pi_s ~ u,
+  B ~ pi_n,
+  B ~ r,
+  B ~ S,
+  u ~ r,
+  pi_n ~ u,
+  pi_n ~ S
+)
+
+DD2p <- DAG2 %>% 
+  tidy_dagitty(layout="fr") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "S", 
+                          expression(pi[N]), expression(pi[S]), 
+                          "r", expression(mu)))
+  
+save_plot("DAG_2.svg", DD2p)
+save_plot("DAG_2.png", DD2p)
+
+DAG3 <- dagify(
+  pi_s ~ B,
+  pi_s ~ u,
+  B ~ pi_n,
+  B ~ LD,
+  LD ~ S,
+  LD ~ r,
+  pi_n ~ S,
+  u ~ r,
+  pi_n ~ u
+)
+
+DD3p <- DAG3 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "LD", "S", 
+                          expression(pi[N]), 
+                          expression(pi[S]), "r", expression(mu)))
+
+save_plot("DAG_3.svg", DD3p)
+save_plot("DAG_3.png", DD3p)
 
 # with interference
-D4p <- DiagrammeR::grViz("
-digraph {
-  rankdir=LR; // Left to Right, instead of Top to Bottom
-  graph []
-  node [shape = box]
-    A [label = 'u']
-    B [label = 'r']
-    D [label = 'pi_del']
-    E [label = 'selection'] // sensu lato
-    F [label = 'LD'] // D(1-2q)?
-    X [label = 'B']
-    Y [label = 'pi_neu']
-    W [label = '?']
-    Z [label = 'Ne']
-  edge [minlen = 2]
-    A->D
-    B->A
-    D->X
-    X->Z
-    X->Y
-    Z->Y
-    F->W
-    W->X
-    B->F
-    E->F
-    E->D
-    Z->D
-    A->Y
-    Z->E
-    Z->B
-  { rank = same; A; E }
-}
-")
+DAG4 <- dagify(
+  pi_s ~ B,
+  pi_s ~ u,
+  B ~ pi_n,
+  B ~ LD,
+  Ne ~ B,
+  LD ~ Ne,
+  pi_n ~ Ne,
+  S ~ Ne,
+  pi_s ~ Ne,
+  LD ~ S,
+  LD ~ r,
+  pi_n ~ S,
+  u ~ r,
+  pi_n ~ u
+)
+
+DD4p <- DAG4 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "LD", "Ne", "S",
+                          expression(pi[N]), 
+                          expression(pi[S]), "r", expression(mu)))
+
+save_plot("DAG_4.svg", DD4p)
+save_plot("DAG_4.png", DD4p)
+
+DAG5 <- dagify(
+  pi_s ~ B,
+  pi_s ~ u,
+  B ~ pi_n,
+  B ~ r,
+  pi_n ~ E,
+  u ~ r,
+  pi_n ~ u,
+  pi ~ pi_s,
+  pi ~ pi_n
+)
 
 # assuming the strength of selection is constant across functional elements
-D5p <- DiagrammeR::grViz("
-digraph {
-  rankdir=LR; // Left to Right, instead of Top to Bottom
-  graph []
-  node [shape = box]
-    A [label = 'u']
-    B [label = 'r']
-    C [label = '#del_sites'] 
-    E [label = 'pi_del']
-    X [label = 'B']
-    Y [label = 'pi_neu']
-    Z [label = 'pi']
-  edge [minlen = 2]
-    A->E
-    B->X
-    B->A
-    C->E
-    E->X
-    A->Y
-    X->Y
-    Y->Z
-    E->Z
-}
-")
+# the problem is that B and piN cannot affect each other directly
+DD5p <- DAG5 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E", expression(pi),
+                          expression(pi[N]), 
+                          expression(pi[S]),
+                          "r", expression(mu)))
 
-# simplifying by focusing on pi_neu
-D6p <- DiagrammeR::grViz("
-digraph {
-  rankdir=LR; // Left to Right, instead of Top to Bottom
-  graph []
-  node [shape = box]
-    A [label = 'u']
-    B [label = 'r']
-    C [label = 'exonic_sites'] 
-    X [label = 'B']
-    Y [label = 'pi_neu_sim']
-  edge [minlen = 2]
-    B->X
-    B->A
-    C->X
-    A->Y
-    A->X
-    X->Y
-}
-")
+save_plot("DAG_5.svg", DD5p)
+save_plot("DAG_5.png", DD5p)
+
+DAG6 <- dagify(
+  pi ~ B,
+  pi ~ u,
+  B ~ E,
+  B ~ r,
+  B ~ u,
+  u ~ r
+)
+
+# simplifying pi
+DD6p <- DAG6 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E", expression(pi),
+                          "r", expression(mu)))
+
+save_plot("DAG_6.svg", DD6p)
+save_plot("DAG_6.png", DD6p)
 
 # non-mutagenic rec
-D7p <- DiagrammeR::grViz("
-digraph {
-  rankdir=LR; // Left to Right, instead of Top to Bottom
-  graph []
-  node [shape = box]
-    A [label = 'u']
-    B [label = 'r']
-    C [label = 'exonic_sites'] 
-    X [label = 'B']
-    Y [label = 'pi_neu_sim']
-  edge [minlen = 2]
-    B->X
-    C->X
-    A->Y
-    A->X
-    X->Y
-}
-")
+DAG7 <- dagify(
+  pi ~ B,
+  pi ~ u,
+  B ~ E,
+  B ~ r,
+  B ~ u
+)
 
-#grViz(D1p) %>% export_svg() %>% read_xml() %>% write_xml("causal_model_1.svg")
-#export_graph(D1p, file_name="causal_model_1.pdf", file_type="pdf")
-D1p
-D2p
-D3p
-D4p
-D5p
-D6p
-D7p
+# simplifying pi
+DD7p <- DAG7 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E", expression(pi),
+                          "r", expression(mu)))
+
+save_plot("DAG_7.svg", DD7p)
+save_plot("DAG_7.png", DD7p)
 ```
 
-The DAGs that we will test with the data (based on D6p and D7p).
+The DAGs that we will test with the data via d-sep (based on DD6p and DD7p).
 NOTE: '~' operator means 'is a affected by'
 Selection is constant across exons.
 We set variable names to match column names in the output of the python chunk.
 
 ```{r dags-models, include=F, message=F, warning=F}
 
-# pi neutral as the "final" outcome variable
 D1g <- DAG(
   B~avg_rec,
   B~exonic_sites,
   B~avg_mut,
-  pi_neu_sim~B,
-  pi_neu_sim~avg_mut
+  pi_exp~B,
+  pi_exp~avg_mut
 )
 
 D2g <- DAG(
@@ -790,22 +789,16 @@ D2g <- DAG(
   B~avg_rec,
   B~exonic_sites,
   B~avg_mut,
-  pi_neu_sim~B,
-  pi_neu_sim~avg_mut
+  pi_exp~B,
+  pi_exp~avg_mut
 )
 
-# pi "total" as the "final" outcome variable
-# non-mutagenic rec
 D3g <- DAG(
   B~avg_rec,
   B~exonic_sites,
   B~avg_mut,
-  pi_del_exp~B,
-  pi_del_exp~avg_mut,
-  pi_neu_sim~B,
-  pi_neu_sim~avg_mut,
-  sim_pi~pi_del_exp,
-  sim_pi~pi_neu_sim
+  sim_pi~B,
+  sim_pi~avg_mut
 )
 
 D4g <- DAG(
@@ -813,12 +806,8 @@ D4g <- DAG(
   B~avg_rec,
   B~exonic_sites,
   B~avg_mut,
-  pi_del_exp~B,
-  pi_del_exp~avg_mut,
-  pi_neu_sim~B,
-  pi_neu_sim~avg_mut,
-  sim_pi~pi_del_exp,
-  sim_pi~pi_neu_sim
+  sim_pi~B,
+  sim_pi~avg_mut
 )
 
 bs1 <- basiSet(D1g)
@@ -834,22 +823,26 @@ artificially constructed maps.
 
 Therefore, there is no interference in these data.
 
+First we evaluate the goodness of fit of models 1-4 via d-separation.
+Unlike the SEM approach from later chunks, these tests include the number of
+exonic sites in the DAG, because they are more flexible (Spearman pcors).
+
 ```{r d-sep-DAG1, include=F, message=F, warning=F}
 
-basis_set <- bs1 # testing non-mutagenic recomb. model
+basis_set <- bs1
 weights <- rep(1, length=length(basis_set))
     
-DAG1_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-DAG1_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-DAG1_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-DAG1_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 # NOTE: interpreting Fisher's C test is tricky because of auto-correlation
 # within each of the genomic maps. Looking at larger scales is more informative
-names(DAG1_c_1kb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
-names(DAG1_c_10kb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
-names(DAG1_c_100kb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
-names(DAG1_c_1Mb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
+names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
 
 pb <- txtProgressBar(min=0, max=num_models, style=3)  
 for(m in 1:num_models) {
@@ -881,7 +874,7 @@ for(m in 1:num_models) {
     
     maps_1kb <- dplyr::select(maps_1kb, data_cols)
     # this filtering step is to remove auto-correlation at smaller scales
-    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 200 == 0) 
+    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
     maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
     
     pvals_1kb <- numeric(length=length(basis_set))
@@ -941,36 +934,43 @@ for(m in 1:num_models) {
       }
     }
 
-    DAG1_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
-    DAG1_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
-    DAG1_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
-    DAG1_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
+    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
+    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
+    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
+    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
   }
 }
 close(pb)
 
-fwrite(DAG1_c_1kb, "DAG1_c_1kb.csv")
-fwrite(DAG1_c_10kb, "DAG1_c_10kb.csv")
-fwrite(DAG1_c_100kb, "DAG1_c_100kb.csv")
-fwrite(DAG1_c_1Mb, "DAG1_c_1Mb.csv")
+pval_dsep <- rbind.data.frame(dsep_c_1kb,
+                              dsep_c_10kb,
+                              dsep_c_100kb,
+                              dsep_c_1Mb)
+pval_dsep$DAG <- 1
+pval_dsep$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+
+fwrite(pval_dsep, "pval_dsep1.csv")
 ```
 
 ```{r d-sep-DAG2, include=F, message=F, warning=F}
 
-basis_set <- bs2 # testing non-mutagenic recomb. model
+basis_set <- bs2
 weights <- rep(1, length=length(basis_set))
     
-DAG2_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-DAG2_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-DAG2_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-DAG2_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 # NOTE: interpreting Fisher's C test is tricky because of auto-correlation
 # within each of the genomic maps. Looking at larger scales is more informative
-names(DAG2_c_1kb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
-names(DAG2_c_10kb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
-names(DAG2_c_100kb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
-names(DAG2_c_1Mb) <- paste("Fisher_C_rep_", 1:num_reps, sep="")
+names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
 
 pb <- txtProgressBar(min=0, max=num_models, style=3)  
 for(m in 1:num_models) {
@@ -1002,7 +1002,7 @@ for(m in 1:num_models) {
     
     maps_1kb <- dplyr::select(maps_1kb, data_cols)
     # this filtering step is to remove auto-correlation at smaller scales
-    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 200 == 0) 
+    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
     maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
     
     pvals_1kb <- numeric(length=length(basis_set))
@@ -1062,21 +1062,296 @@ for(m in 1:num_models) {
       }
     }
 
-    DAG2_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
-    DAG2_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
-    DAG2_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
-    DAG2_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
+    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
+    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
+    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
+    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
   }
 }
 close(pb)
 
-fwrite(DAG2_c_1kb, "DAG2_c_1kb.csv")
-fwrite(DAG2_c_10kb, "DAG2_c_10kb.csv")
-fwrite(DAG2_c_100kb, "DAG2_c_100kb.csv")
-fwrite(DAG2_c_1Mb, "DAG2_c_1Mb.csv")
+pval_dsep <- rbind.data.frame(dsep_c_1kb,
+                              dsep_c_10kb,
+                              dsep_c_100kb,
+                              dsep_c_1Mb)
+pval_dsep$DAG <- 2
+pval_dsep$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+
+fwrite(pval_dsep, "pval_dsep2.csv")
 ```
 
-Correlations and linear models fist
+```{r d-sep-DAG3, include=F, message=F, warning=F}
+
+basis_set <- bs3
+weights <- rep(1, length=length(basis_set))
+    
+dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+# NOTE: interpreting Fisher's C test is tricky because of auto-correlation
+# within each of the genomic maps. Looking at larger scales is more informative
+names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
+
+pb <- txtProgressBar(min=0, max=num_models, style=3)  
+for(m in 1:num_models) {
+  setTxtProgressBar(pb, m)
+  for(rep in 1:num_reps) {
+    
+    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+                            "/tbl_1kb.csv.gz", sep=""))
+    data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
+    
+    maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
+    maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
+    maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    
+    maps_10kb <- maps_1kb %>%
+                 group_by(bin_10kb) %>% 
+                 summarise_at(data_cols, mean) %>%
+                 dplyr::select(., -bin_10kb) %>% as.data.table()
+    
+    maps_100kb <- maps_1kb %>%
+                  group_by(bin_100kb) %>% 
+                  summarise_at(data_cols, mean) %>%
+                  dplyr::select(., -bin_100kb) %>% as.data.table()
+    
+    maps_1Mb <- maps_1kb %>%
+                group_by(bin_1Mb) %>% 
+                summarise_at(data_cols, mean) %>%
+                dplyr::select(., -bin_1Mb) %>% as.data.table()
+    
+    maps_1kb <- dplyr::select(maps_1kb, data_cols)
+    # this filtering step is to remove auto-correlation at smaller scales
+    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
+    maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
+    
+    pvals_1kb <- numeric(length=length(basis_set))
+    pvals_10kb <- numeric(length=length(basis_set))
+    pvals_100kb <- numeric(length=length(basis_set))
+    pvals_1Mb <- numeric(length=length(basis_set))
+    
+    for(i in 1:length(basis_set)) {
+      
+      var1 <- basis_set[[i]][1]
+      var2 <- basis_set[[i]][2]
+      
+      cond <- NULL
+      if(length(basis_set[[i]]) > 2) {
+        cond <- basis_set[[i]][3:length(basis_set[[i]])]
+      }
+      
+      dSep(D3g, var1, var2, cond)
+      
+      if(length(basis_set[[i]]) > 2) {
+         pvals_1kb[i] <- ppcor::pcor.test(maps_1kb[, ..var1], 
+                                          maps_1kb[, ..var2], 
+                                          maps_1kb[, ..cond],
+                                          method="spearman")$p.value
+         
+         pvals_10kb[i] <- ppcor::pcor.test(maps_10kb[, ..var1], 
+                                           maps_10kb[, ..var2], 
+                                           maps_10kb[, ..cond],
+                                           method="spearman")$p.value
+         
+         pvals_100kb[i] <- ppcor::pcor.test(maps_100kb[, ..var1], 
+                                            maps_100kb[, ..var2], 
+                                            maps_100kb[, ..cond],
+                                            method="spearman")$p.value
+         
+         pvals_1Mb[i] <- ppcor::pcor.test(maps_1Mb[, ..var1], 
+                                          maps_1Mb[, ..var2], 
+                                          maps_1Mb[, ..cond],
+                                          method="spearman")$p.value
+         
+      } else {
+        pvals_1kb[i] <- cor.test(maps_1kb[, ..var1][[1]],
+                                 maps_1kb[, ..var2][[1]],
+                                 method="spearman")$p.value
+        
+        pvals_10kb[i] <- cor.test(maps_10kb[, ..var1][[1]],
+                                  maps_10kb[, ..var2][[1]],
+                                  method="spearman")$p.value
+        
+        pvals_100kb[i] <- cor.test(maps_100kb[, ..var1][[1]],
+                                   maps_100kb[, ..var2][[1]],
+                                   method="spearman")$p.value
+        
+        pvals_1Mb[i] <- cor.test(maps_1Mb[, ..var1][[1]],
+                                 maps_1Mb[, ..var2][[1]],
+                                 method="spearman")$p.value
+      }
+    }
+
+    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
+    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
+    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
+    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
+  }
+}
+close(pb)
+
+pval_dsep <- rbind.data.frame(dsep_c_1kb,
+                              dsep_c_10kb,
+                              dsep_c_100kb,
+                              dsep_c_1Mb)
+pval_dsep$DAG <- 3
+pval_dsep$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+
+fwrite(pval_dsep, "pval_dsep3.csv")
+```
+
+```{r d-sep-DAG4, include=F, message=F, warning=F}
+
+basis_set <- bs4
+weights <- rep(1, length=length(basis_set))
+    
+dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+# NOTE: interpreting Fisher's C test is tricky because of auto-correlation
+# within each of the genomic maps. Looking at larger scales is more informative
+names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
+names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
+
+pb <- txtProgressBar(min=0, max=num_models, style=3)  
+for(m in 1:num_models) {
+  setTxtProgressBar(pb, m)
+  for(rep in 1:num_reps) {
+    
+    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+                            "/tbl_1kb.csv.gz", sep=""))
+    data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
+    
+    maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
+    maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
+    maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    
+    maps_10kb <- maps_1kb %>%
+                 group_by(bin_10kb) %>% 
+                 summarise_at(data_cols, mean) %>%
+                 dplyr::select(., -bin_10kb) %>% as.data.table()
+    
+    maps_100kb <- maps_1kb %>%
+                  group_by(bin_100kb) %>% 
+                  summarise_at(data_cols, mean) %>%
+                  dplyr::select(., -bin_100kb) %>% as.data.table()
+    
+    maps_1Mb <- maps_1kb %>%
+                group_by(bin_1Mb) %>% 
+                summarise_at(data_cols, mean) %>%
+                dplyr::select(., -bin_1Mb) %>% as.data.table()
+    
+    maps_1kb <- dplyr::select(maps_1kb, data_cols)
+    # this filtering step is to remove auto-correlation at smaller scales
+    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
+    maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
+    
+    pvals_1kb <- numeric(length=length(basis_set))
+    pvals_10kb <- numeric(length=length(basis_set))
+    pvals_100kb <- numeric(length=length(basis_set))
+    pvals_1Mb <- numeric(length=length(basis_set))
+    
+    for(i in 1:length(basis_set)) {
+      
+      var1 <- basis_set[[i]][1]
+      var2 <- basis_set[[i]][2]
+      
+      cond <- NULL
+      if(length(basis_set[[i]]) > 2) {
+        cond <- basis_set[[i]][3:length(basis_set[[i]])]
+      }
+      
+      dSep(D4g, var1, var2, cond)
+      
+      if(length(basis_set[[i]]) > 2) {
+         pvals_1kb[i] <- ppcor::pcor.test(maps_1kb[, ..var1], 
+                                          maps_1kb[, ..var2], 
+                                          maps_1kb[, ..cond],
+                                          method="spearman")$p.value
+         
+         pvals_10kb[i] <- ppcor::pcor.test(maps_10kb[, ..var1], 
+                                           maps_10kb[, ..var2], 
+                                           maps_10kb[, ..cond],
+                                           method="spearman")$p.value
+         
+         pvals_100kb[i] <- ppcor::pcor.test(maps_100kb[, ..var1], 
+                                            maps_100kb[, ..var2], 
+                                            maps_100kb[, ..cond],
+                                            method="spearman")$p.value
+         
+         pvals_1Mb[i] <- ppcor::pcor.test(maps_1Mb[, ..var1], 
+                                          maps_1Mb[, ..var2], 
+                                          maps_1Mb[, ..cond],
+                                          method="spearman")$p.value
+         
+      } else {
+        pvals_1kb[i] <- cor.test(maps_1kb[, ..var1][[1]],
+                                 maps_1kb[, ..var2][[1]],
+                                 method="spearman")$p.value
+        
+        pvals_10kb[i] <- cor.test(maps_10kb[, ..var1][[1]],
+                                  maps_10kb[, ..var2][[1]],
+                                  method="spearman")$p.value
+        
+        pvals_100kb[i] <- cor.test(maps_100kb[, ..var1][[1]],
+                                   maps_100kb[, ..var2][[1]],
+                                   method="spearman")$p.value
+        
+        pvals_1Mb[i] <- cor.test(maps_1Mb[, ..var1][[1]],
+                                 maps_1Mb[, ..var2][[1]],
+                                 method="spearman")$p.value
+      }
+    }
+
+    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
+    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
+    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
+    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
+  }
+}
+close(pb)
+
+pval_dsep <- rbind.data.frame(dsep_c_1kb,
+                              dsep_c_10kb,
+                              dsep_c_100kb,
+                              dsep_c_1Mb)
+pval_dsep$DAG <- 4
+pval_dsep$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+
+fwrite(pval_dsep, "pval_dsep4.csv")
+```
+
+Combine table with results from previous chunks.
+
+```{r d-sep-tbl, include=F, message=F, warning=F}
+
+pval_dsep1 <- fread("pval_dsep1.csv")
+pval_dsep2 <- fread("pval_dsep2.csv")
+pval_dsep3 <- fread("pval_dsep3.csv")
+pval_dsep4 <- fread("pval_dsep4.csv")
+
+```
+
+Correlations and linear models.
+TODO: Explain why we do this.
 
 ```{r lms, include=F, message=F, warning=F}
 
@@ -1109,7 +1384,7 @@ for(m in 1:num_models) {
     
     maps_1kb <- dplyr::select(maps_1kb, data_cols)
 
-    mat=Hmisc::rcorr(as.matrix(filter(maps_1kb, row_number() %% 200 == 0)),
+    mat=Hmisc::rcorr(as.matrix(filter(maps_1kb, row_number() %% 1000 == 0)),
                      type="spearman") # to remove auto-correlation
     tbl_1kb <- mat$r
     tbl_1kb[upper.tri(tbl_1kb)] <- mat$P[upper.tri(mat$P)]
@@ -1117,7 +1392,8 @@ for(m in 1:num_models) {
                                            "/pval_upper_spearman_lower_1kb.csv", 
                                            sep="")))
 
-    mat=Hmisc::rcorr(as.matrix(maps_10kb), type="spearman")
+    mat=Hmisc::rcorr(as.matrix(filter(maps_1kb, row_number() %% 100 == 0)),
+                     type="spearman") # to remove auto-correlation
     tbl_10kb <- mat$r
     tbl_10kb[upper.tri(tbl_10kb)] <- mat$P[upper.tri(mat$P)]
     suppressMessages(fwrite(tbl_10kb, paste("model_", m, "/rep_", rep, 
@@ -1486,215 +1762,419 @@ for(m in 1:num_models) {
 
 Structural Equation Modeling
 
-```{r SEM, include=F, message=F, warning=F}
-
-# reload
-maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
-                        "/tbl_1kb.csv.gz", sep=""))
-data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
-
-maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
-maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
-maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
-
-maps_10kb <- maps_1kb %>%
-             group_by(bin_10kb) %>% 
-             summarise_at(data_cols, mean) %>%
-             dplyr::select(., -bin_10kb)
-
-maps_100kb <- maps_1kb %>%
-              group_by(bin_100kb) %>% 
-              summarise_at(data_cols, mean) %>%
-              dplyr::select(., -bin_100kb)
-
-maps_1Mb <- maps_1kb %>%
-            group_by(bin_1Mb) %>% 
-            summarise_at(data_cols, mean) %>%
-            dplyr::select(., -bin_1Mb)
-
-maps_1kb <- dplyr::select(maps_1kb, data_cols)
-
-# excluding exonic_sites from MVN test and keeping only one pi variable
-mvn_1kb <- mvn(data=dplyr::select(filter(maps_1kb, row_number() %% 1000 == 0),
-                    c(avg_rec, avg_mut, B, sim_pi)),
-               transform="log",
-               univariatePlot="histogram",
-               multivariatePlot="qq",
-               mvnTest="hz")
-
-mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, row_number() %% 50 == 0),
-                     c(avg_rec, avg_mut, B, sim_pi)),
-                transform="log",
-                univariatePlot="histogram",
-                multivariatePlot="qq",
-                mvnTest="hz")
-
-mvn_100kb <- mvn(data=dplyr::select(filter(maps_100kb, row_number() %% 2 == 0),
-                      c(avg_rec, avg_mut, B, sim_pi)),
-                 transform="log",
-                 univariatePlot="histogram",
-                 multivariatePlot="qq",
-                 mvnTest="hz")
-
-mvn_1Mb <- mvn(data=dplyr::select(maps_1Mb,
-                     c(avg_rec, avg_mut, B, sim_pi)),
-                transform="log",
-                univariatePlot="histogram",
-                multivariatePlot="qq",
-                mvnTest="hz",
-                showOutliers=T)
-
-mvn_tbl <- data.frame(pval=c(mvn_1kb$multivariateNormality$`p value`,
-                             mvn_10kb$multivariateNormality$`p value`,
-                             mvn_100kb$multivariateNormality$`p value`,
-                             mvn_1Mb$multivariateNormality$`p value`),
-                       scale=c(1e+3, 1e+4, 1e+5, 1e+6))
-
-fwrite(mvn_tbl, paste("model_", m, "/rep_", rep, "/mvn_tests.csv", sep=""))
-
-# log-stransforming and standardizing variables
-filt_1kb <- filter(maps_1kb, row_number() %% 1000 == 0, sim_pi > 0) # filtering
-std_1kb <- as.data.frame(apply(apply(dplyr::select(filt_1kb,
-  -c(exonic_sites, pi_del_exp)), 2, log), 2, function(x) (x-mean(x)) / sd(x)))
-
-filt_10kb <- filter(maps_10kb, row_number() %% 50 == 0) # filtering
-std_10kb <- as.data.frame(apply(apply(dplyr::select(filt_10kb,
-  -c(exonic_sites, pi_del_exp)), 2, log), 2, function(x) (x-mean(x)) / sd(x)))
-
-std_100kb <- as.data.frame(apply(apply(dplyr::select(maps_100kb,
-  -c(exonic_sites, pi_del_exp)), 2, log), 2, function(x) (x-mean(x)) / sd(x)))
-
-std_1Mb <- as.data.frame(apply(apply(dplyr::select(maps_1Mb,
-  -c(exonic_sites, pi_del_exp)), 2, log), 2, function(x) (x-mean(x)) / sd(x)))
-
-svg(paste("model_", m, "/rep_", rep, "/qq_1kb.svg", sep=""), width=9, height=7)
-heplots::cqplot(dplyr::select(std_1kb, c(avg_rec,avg_mut, B, sim_pi)))
-dev.off()
-
-svg(paste("model_", m, "/rep_", rep, "/qq_10kb.svg", sep=""), width=9, height=7)
-heplots::cqplot(dplyr::select(std_10kb, c(avg_rec,avg_mut, B, sim_pi)))
-dev.off()
-
-svg(paste("model_", m, "/rep_", rep, "/qq_100kb.svg", sep=""), width=9, height=7)
-heplots::cqplot(dplyr::select(std_100kb, c(avg_rec,avg_mut, B, sim_pi)))
-dev.off()
-
-svg(paste("model_", m, "/rep_", rep, "/qq_1Mb.svg", sep=""), width=9, height=7)
-heplots::cqplot(dplyr::select(std_1Mb, c(avg_rec,avg_mut, B, sim_pi)))
-dev.off()
-
-# pairwise scatterplots
-## NOTE: here the downsampling serves to reduce file size!
-svg(paste("model_", m, "/rep_", rep, "/scatter_1kb.svg", sep=""), width=9, height=7)
-pairs(std_1kb)
-dev.off()
-
-svg(paste("model_", m, "/rep_", rep, "/scatter_10kb.svg", sep=""), width=9, height=7)
-pairs(std_10kb)
-dev.off()
-
-svg(paste("model_", m, "/rep_", rep, "/scatter_100kb.svg", sep=""), width=9, height=7)
-pairs(filter(std_100kb, row_number() %% 10 == 0))
-dev.off()
-
-svg(paste("model_", m, "/rep_", rep, "/scatter_1Mb.svg", sep=""), width=9, height=7)
-pairs(std_1Mb)
-dev.off()
-
-# using lavaan to fit path models
+```{r DAGs-lavaan, include=F, message=F, warning=F}
+## pi expected
 DAG1 <- "
-pi_exp ~ B
-pi_exp ~ avg_mut
-B ~ avg_mut
-B ~ avg_rec
-avg_mut ~ 0*avg_rec
+pi_exp ~ c1*B
+pi_exp ~ c2*avg_mut
+B ~ c3*avg_mut
+B ~ c4*avg_rec
+avg_mut ~~ 0*avg_rec
+# fixing exogenous residual variances since we standardize variables?
+avg_mut ~~ 1*avg_mut
+avg_rec ~~ 1*avg_rec
+# defining indirect and total effects
+rec_B_pi:=c1*c4
+mu_B_pi:=c1*c3
+total_mu_pi:=c2 + mu_B_pi
 "
 
 DAG2 <- "
-pi_exp ~ B
-pi_exp ~ avg_mut
-B ~ avg_mut
-B ~ avg_rec
-avg_mut ~ avg_rec
+pi_exp ~ c1*B
+pi_exp ~ c2*avg_mut
+B ~ c3*avg_mut
+B ~ c4*avg_rec
+avg_mut ~ c5*avg_rec
+# fixing exogenous residual variance since we standardize variables?
+avg_mut ~~ 1*avg_mut
+# defining indirect and total effects
+mu_B_pi:=c1*c3
+rec_B_pi:=c1*c4
+rec_mu_pi:=c2*c5
+rec_mu_B_pi:=mu_B_pi*c5
+total_mu_pi:=c2 + mu_B_pi
+total_rec_pi:=rec_B_pi + rec_mu_pi + rec_mu_B_pi
 "
 
-# using lavaan to fit path models
+## with mutational variance
 DAG3 <- "
-sim_pi ~ B
-sim_pi ~ avg_mut
-B ~ avg_mut
-B ~ avg_rec
-avg_mut ~ 0*avg_rec
+sim_pi ~ c1*B
+sim_pi ~ c2*avg_mut
+B ~ c3*avg_mut
+B ~ c4*avg_rec
+avg_mut ~~ 0*avg_rec
+# fixing exogenous residual variances since we standardize variables?
+avg_mut ~~ 1*avg_mut
+avg_rec ~~ 1*avg_rec
+# defining indirect and total effects
+rec_B_pi:=c1*c4
+mu_B_pi:=c1*c3
+total_mu_pi:=c2 + mu_B_pi
 "
 
 DAG4 <- "
-sim_pi ~ B
-sim_pi ~ avg_mut
-B ~ avg_mut
-B ~ avg_rec
-avg_mut ~ avg_rec
+sim_pi ~ c1*B
+sim_pi ~ c2*avg_mut
+B ~ c3*avg_mut
+B ~ c4*avg_rec
+avg_mut ~ c5*avg_rec
+# fixing exogenous residual variance since we standardize variables?
+avg_mut ~~ 1*avg_mut
+# defining indirect and total effects
+mu_B_pi:=c1*c3
+rec_B_pi:=c1*c4
+rec_mu_pi:=c2*c5
+rec_mu_B_pi:=mu_B_pi*c5
+total_mu_pi:=c2 + mu_B_pi
+total_rec_pi:=rec_B_pi + rec_mu_pi + rec_mu_B_pi
 "
-
-sem1_1kb <- sem(DAG1, data=std_1kb)
-sem1_10kb <- sem(DAG1, data=std_10kb)
-sem1_100kb <- sem(DAG1, data=std_100kb)
-sem1_1Mb <- sem(DAG1, data=std_1Mb)
-
-sem3_1kb <- sem(DAG3, data=std_1kb)
-sem3_10kb <- sem(DAG3, data=std_10kb)
-sem3_100kb <- sem(DAG3, data=std_100kb)
-sem3_1Mb <- sem(DAG3, data=std_1Mb)
-
-fwrite(parameterestimates(sem3_100kb, ci=T), 
-       paste("model_", m, "/rep_", rep, "/lavaan_est_DAG1_1kb.csv", sep=""))
-
-fwrite(as.data.frame(fitted(sem3_100kb)[[1]]),
-       paste("model_", m, "/rep_", rep, "/lavaan_fitted_DAG1_1kb.csv", sep=""))
-
-sem_r2 <- rbind.data.frame(inspect(sem1_1kb, "rsquare"),
-                           inspect(sem1_10kb, "rsquare"),
-                           inspect(sem1_100kb, "rsquare"),
-                           inspect(sem1_1Mb, "rsquare"))
-
-sem_r2
-
-summary(sem1_1kb)
-summary(sem1_10kb)
-summary(sem1_100kb)
-summary(sem1_1Mb)
-
-summary(sem3_1kb)
-summary(sem3_10kb)
-summary(sem3_100kb)
-summary(sem3_1Mb)
-
-inspect(sem1_100kb, "rsquare")
-
-
-residuals(sem1_100kb)
-
-inspect(sem3_100kb, "rsquare")
-parameterestimates(sem3_100kb, ci=T)
-fitted(sem3_100kb)
-residuals(sem3_100kb)
-
-# psem
-# model with correlation structure
-std_10kb <- as.data.frame(apply(apply(dplyr::select(maps_10kb,
-  -c(exonic_sites, pi_del_exp)), 2, log), 2, function(x) (x-mean(x)) / sd(x)))
-std_10kb$bin <- 1:nrow(std_10kb)
-
-sem <- psem(
-B <- gls(B ~ avg_rec + avg_mut, 
-         cor=corAR1(0, ~bin), method = "ML",
-         data=std_10kb),
-
-sim_pi <- gls(sim_pi ~ B + avg_mut,
-              cor=corAR1(0, ~bin), method = "ML",
-              data=std_10kb)
-)
-
 ```
+
+```{r SEM, include=F, message=F, warning=F}
+
+# match with d-sep Fisher's C p-value
+pval_sem1_1kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem1_10kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem1_100kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem1_1Mb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+
+pval_sem2_1kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem2_10kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem2_100kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem2_1Mb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+
+pval_sem3_1kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem3_10kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem3_100kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem3_1Mb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+
+pval_sem4_1kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem4_10kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem4_100kb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+pval_sem4_1Mb <- as.data.table(matrix(ncol=num_models, nrow=num_reps))
+
+for(m in 1:num_models) {
+  print(paste(m, Sys.Date(), Sys.time()), sep="\t")
+  for(rep in 1:num_reps) {
+    # reload
+    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+                            "/tbl_1kb.csv.gz", sep=""))
+    data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
+    
+    maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
+    maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
+    maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    
+    maps_10kb <- maps_1kb %>%
+                 group_by(bin_10kb) %>% 
+                 summarise_at(data_cols, mean) %>%
+                 dplyr::select(., -bin_10kb)
+    
+    maps_100kb <- maps_1kb %>%
+                  group_by(bin_100kb) %>% 
+                  summarise_at(data_cols, mean) %>%
+                  dplyr::select(., -bin_100kb)
+    
+    maps_1Mb <- maps_1kb %>%
+                group_by(bin_1Mb) %>% 
+                summarise_at(data_cols, mean) %>%
+                dplyr::select(., -bin_1Mb)
+    
+    maps_1kb <- dplyr::select(maps_1kb, data_cols)
+    
+    # MVN tests
+    ## excluding exonic_sites (too far from MVN, can test its corr. to Bvals)
+    ## filtering regions to avoid auto-correlation
+    ## and keeping only one pi variable to avoid singularity
+    mvn_1kb <- mvn(data=dplyr::select(filter(maps_1kb, 
+                                             sim_pi > 0, # can happen by chance
+                                             row_number() %% 1000==0),
+                        c(avg_rec, avg_mut, B, sim_pi)),
+                   transform="log",
+                   univariatePlot="none",
+                   multivariatePlot="none",
+                   mvnTest="hz")
+    
+    mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, row_number() %% 100==0),
+                         c(avg_rec, avg_mut, B, sim_pi)),
+                    transform="log",
+                    univariatePlot="none",
+                    multivariatePlot="none",
+                    mvnTest="hz")
+    
+    mvn_100kb <- mvn(data=dplyr::select(filter(maps_100kb, row_number() %% 4==0),
+                          c(avg_rec, avg_mut, B, sim_pi)),
+                     transform="log",
+                     univariatePlot="none",
+                     multivariatePlot="none",
+                     mvnTest="hz")
+    
+    mvn_1Mb <- mvn(data=dplyr::select(maps_1Mb,
+                         c(avg_rec, avg_mut, B, sim_pi)),
+                    transform="log",
+                    univariatePlot="none",
+                    multivariatePlot="none",
+                    mvnTest="hz",
+                    showOutliers=T)
+    
+    mvn_tbl <- data.frame(pval=c(mvn_1kb$multivariateNormality$`p value`,
+                                 mvn_10kb$multivariateNormality$`p value`,
+                                 mvn_100kb$multivariateNormality$`p value`,
+                                 mvn_1Mb$multivariateNormality$`p value`),
+                           scale=c(1e+3, 1e+4, 1e+5, 1e+6))
+    
+    fwrite(mvn_tbl, paste("model_", m, "/rep_", rep, "/mvn_tests.csv", sep=""))
+    
+    # log-transforming and standardizing, filtering to remove autocorrelation
+    filt_1kb <- filter(maps_1kb, row_number() %% 1000 == 0, sim_pi > 0) 
+    std_1kb <- as.data.frame(apply(apply(dplyr::select(filt_1kb,
+      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      2, function(x) (x-mean(x)) / sd(x)))
+    
+    filt_10kb <- filter(maps_10kb, row_number() %% 100 == 0) 
+    std_10kb <- as.data.frame(apply(apply(dplyr::select(filt_10kb,
+      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      2, function(x) (x-mean(x)) / sd(x)))
+    
+    filt_100kb <- filter(maps_100kb, row_number() %% 4 == 0) 
+    std_100kb <- as.data.frame(apply(apply(dplyr::select(filt_100kb,
+      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      2, function(x) (x-mean(x)) / sd(x)))
+    
+    std_1Mb <- as.data.frame(apply(apply(dplyr::select(maps_1Mb,
+      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      2, function(x) (x-mean(x)) / sd(x)))
+    
+    # Q-Q plots
+    svg(paste("model_", m, "/rep_", rep, "/qq_1kb.svg", sep=""),
+        width=9, height=7)
+    heplots::cqplot(dplyr::select(std_1kb, c(avg_rec, avg_mut, B, sim_pi)))
+    dev.off()
+    
+    svg(paste("model_", m, "/rep_", rep, "/qq_10kb.svg", sep=""), 
+        width=9, height=7)
+    heplots::cqplot(dplyr::select(std_10kb, c(avg_rec, avg_mut, B, sim_pi)))
+    dev.off()
+    
+    svg(paste("model_", m, "/rep_", rep, "/qq_100kb.svg", sep=""),
+        width=9, height=7)
+    heplots::cqplot(dplyr::select(std_100kb, c(avg_rec, avg_mut, B, sim_pi)))
+    dev.off()
+    
+    svg(paste("model_", m, "/rep_", rep, "/qq_1Mb.svg", sep=""),
+        width=9, height=7)
+    heplots::cqplot(dplyr::select(std_1Mb, c(avg_rec ,avg_mut, B, sim_pi)))
+    dev.off()
+    
+    # pairwise scatter plots
+    svg(paste("model_", m, "/rep_", rep, "/scatter_1kb.svg", sep=""),
+        width=9, height=7)
+    pairs(std_1kb)
+    dev.off()
+    
+    svg(paste("model_", m, "/rep_", rep, "/scatter_10kb.svg", sep=""), 
+        width=9, height=7)
+    pairs(std_10kb)
+    dev.off()
+    
+    svg(paste("model_", m, "/rep_", rep, "/scatter_100kb.svg", sep=""),
+        width=9, height=7)
+    pairs(std_100kb)
+    dev.off()
+    
+    svg(paste("model_", m, "/rep_", rep, "/scatter_1Mb.svg", sep=""),
+        width=9, height=7)
+    pairs(std_1Mb)
+    dev.off()
+    
+    # using lavaan to fit path models, DAG 1
+    sem1_1kb <- sem(DAG1, data=std_1kb)
+    sem1_10kb <- sem(DAG1, data=std_10kb)
+    sem1_100kb <- sem(DAG1, data=std_100kb)
+    sem1_1Mb <- sem(DAG1, data=std_1Mb)
+    
+    # storing p-values
+    pval_sem1_1kb[m, rep] <- fitMeasures(sem1_1kb)[5]
+    pval_sem1_10kb[m, rep] <- fitMeasures(sem1_10kb)[5]
+    pval_sem1_100kb[m, rep] <- fitMeasures(sem1_100kb)[5]
+    pval_sem1_1Mb[m, rep] <- fitMeasures(sem1_1Mb)[5]
+    
+    # r-sqrd of endogenous variables, low for B because
+    # (1) its determinants extend beyond the windows
+    # (2) we exclude exonic_sites from the SEM (not MVN)
+    sem1_r2 <- rbind.data.frame(inspect(sem1_1kb, "rsquare"),
+                                inspect(sem1_10kb, "rsquare"),
+                                inspect(sem1_100kb, "rsquare"),
+                                inspect(sem1_1Mb, "rsquare"))
+    names(sem1_r2) <- c("pi_exp", "B")
+    fwrite(sem1_r2, paste("model_", m, "/rep_", rep, "/sem_DAG1_r2.csv", sep=""))
+    
+    fwrite(parameterestimates(sem1_1kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_1kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem1_10kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_10kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem1_100kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_100kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem1_1Mb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_1Mb.csv", sep=""))
+    
+    # DAG2
+    sem2_1kb <- sem(DAG2, data=std_1kb)
+    sem2_10kb <- sem(DAG2, data=std_10kb)
+    sem2_100kb <- sem(DAG2, data=std_100kb)
+    sem2_1Mb <- sem(DAG2, data=std_1Mb)
+    
+    pval_sem2_1kb[m, rep] <- fitMeasures(sem2_1kb)[5]
+    pval_sem2_10kb[m, rep] <- fitMeasures(sem2_10kb)[5]
+    pval_sem2_100kb[m, rep] <- fitMeasures(sem2_100kb)[5]
+    pval_sem2_1Mb[m, rep] <- fitMeasures(sem2_1Mb)[5]
+    
+    sem2_r2 <- rbind.data.frame(inspect(sem2_1kb, "rsquare"),
+                                inspect(sem2_10kb, "rsquare"),
+                                inspect(sem2_100kb, "rsquare"),
+                                inspect(sem2_1Mb, "rsquare"))
+    names(sem2_r2) <- c("pi_exp", "B")
+    fwrite(sem2_r2, paste("model_", m, "/rep_", rep, "/sem_DAG2_r2.csv", sep=""))
+    
+    fwrite(parameterestimates(sem2_1kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_1kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem2_10kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_10kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem2_100kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_100kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem2_1Mb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_1Mb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem2_100kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_100kb.csv", sep=""))
+    
+    # DAG3
+    sem3_1kb <- sem(DAG3, data=std_1kb)
+    sem3_10kb <- sem(DAG3, data=std_10kb)
+    sem3_100kb <- sem(DAG3, data=std_100kb)
+    sem3_1Mb <- sem(DAG3, data=std_1Mb)
+    
+    pval_sem3_1kb[m, rep] <- fitMeasures(sem3_1kb)[5]
+    pval_sem3_10kb[m, rep] <- fitMeasures(sem3_10kb)[5]
+    pval_sem3_100kb[m, rep] <- fitMeasures(sem3_100kb)[5]
+    pval_sem3_1Mb[m, rep] <- fitMeasures(sem3_1Mb)[5]
+    
+    sem3_r2 <- rbind.data.frame(inspect(sem3_1kb, "rsquare"),
+                                inspect(sem3_10kb, "rsquare"),
+                                inspect(sem3_100kb, "rsquare"),
+                                inspect(sem3_1Mb, "rsquare"))
+    names(sem3_r2) <- c("pi_exp", "B")
+    fwrite(sem3_r2, paste("model_", m, "/rep_", rep, "/sem_DAG3_r2.csv", sep=""))
+    
+    fwrite(parameterestimates(sem3_1kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_1kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem3_10kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_10kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem3_100kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_100kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem3_1Mb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_1Mb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem3_100kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_100kb.csv", sep=""))
+    
+    # DAG4
+    sem4_1kb <- sem(DAG4, data=std_1kb)
+    sem4_10kb <- sem(DAG4, data=std_10kb)
+    sem4_100kb <- sem(DAG4, data=std_100kb)
+    sem4_1Mb <- sem(DAG4, data=std_1Mb)
+    
+    pval_sem4_1kb[m, rep] <- fitMeasures(sem4_1kb)[5]
+    pval_sem4_10kb[m, rep] <- fitMeasures(sem4_10kb)[5]
+    pval_sem4_100kb[m, rep] <- fitMeasures(sem4_100kb)[5]
+    pval_sem4_1Mb[m, rep] <- fitMeasures(sem4_1Mb)[5]
+    
+    sem4_r2 <- rbind.data.frame(inspect(sem4_1kb, "rsquare"),
+                                inspect(sem4_10kb, "rsquare"),
+                                inspect(sem4_100kb, "rsquare"),
+                                inspect(sem4_1Mb, "rsquare"))
+    names(sem4_r2) <- c("pi_exp", "B")
+    fwrite(sem4_r2, paste("model_", m, "/rep_", rep, "/sem_DAG4_r2.csv", sep=""))
+    
+    fwrite(parameterestimates(sem4_1kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_1kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem4_10kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_10kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem4_100kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_100kb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem4_1Mb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_1Mb.csv", sep=""))
+    
+    fwrite(parameterestimates(sem4_100kb, ci=T), 
+           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_100kb.csv", sep=""))
+    
+  }
+}
+
+pval_SEM1 <- rbind.data.frame(pval_SEM1_1kb,
+                              pval_SEM1_10kb,
+                              pval_SEM1_100kb,
+                              pval_SEM1_1Mb)
+pval_SEM1$DAG <- 1
+pval_SEM1$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+  
+pval_SEM2 <- rbind.data.frame(pval_SEM2_1kb,
+                              pval_SEM2_10kb,
+                              pval_SEM2_100kb,
+                              pval_SEM2_1Mb)
+pval_SEM2$DAG <- 2
+pval_SEM2$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+
+pval_SEM3 <- rbind.data.frame(pval_SEM3_1kb,
+                              pval_SEM3_10kb,
+                              pval_SEM3_100kb,
+                              pval_SEM3_1Mb)
+pval_SEM3$DAG <- 3
+pval_SEM3$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+
+pval_SEM4 <- rbind.data.frame(pval_SEM4_1kb,
+                              pval_SEM4_10kb,
+                              pval_SEM4_100kb,
+                              pval_SEM4_1Mb)
+pval_SEM4$DAG <- 4
+pval_SEM4$scale <- c(rep(1e+3, num_models),
+                     rep(1e+4, num_models),
+                     rep(1e+5, num_models),
+                     rep(1e+6, num_models))
+
+pval_SEM <- rbind.data.frame(pval_SEM1, pval_SEM2, pval_SEM3, pval_SEM4)
+names(pval_SEM)[1:10] <- paste("rep_", 1:num_reps, sep="")
+
+pivot_longer(pval_SEM,
+             cols=c(paste("rep", 1:num_reps, sep="_")),
+             values_to="p-val",
+             names_to="rep")
+```
+
+TODO: Manhattan plot of p-values per rep per model,
+shape = d-sep || SEM, color = exon density, 
+one panel per scale, one figure per DAG
 
 ```{r plots-lm, include=F, message=F, warning=F}
 
