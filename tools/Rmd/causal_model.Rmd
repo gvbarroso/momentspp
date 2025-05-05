@@ -38,6 +38,7 @@ library(lavaan)
 library(dagitty)
 library(ggdag)
 library(magrittr)
+library(ggpubr)
 
 library(reticulate)
 use_python("/usr/bin/python3")
@@ -1497,7 +1498,7 @@ TODO: Explain why we do this.
 
 ```{r lms, include=F, message=F, warning=F}
 
-for(m in 1:num_models) {
+for(m in 316:num_models) {
   print(paste(m, Sys.Date(), Sys.time()), sep="\t")
   for(rep in 1:num_reps) {
     
@@ -1555,11 +1556,6 @@ for(m in 1:num_models) {
     suppressMessages(fwrite(tbl_1Mb, paste("model_", m, "/rep_", rep, 
                                            "/pval_upper_spearman_lower_1Mb.csv", 
                                            sep="")))
-    
-    # table for storing partitioned R^2 values from type II ANOVA 
-    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-    names(r2_tbl) <- c("u", "B", "B:u")
-    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) # rows are bin sizes
     
     # table for storing total R^2 values straight from the lm function ()
     r2_raw <- as.data.frame(matrix(ncol=1, nrow=4))
@@ -1648,10 +1644,14 @@ for(m in 1:num_models) {
                                    function(x) (x-mean(x)) / sd(x)))
     std_1Mb$bin <- 1:nrow(std_1Mb)
     
-    # 1 kb (NOTE: GLS on 1kb windows is too expensive)
-    # filtering to remove auto-correlation
+    # NOTE: GLS to model autocorrelation at lower scales gets too expensive
+    
+    #################################
+    # simulated pi
+    
+    # 1 kb, filtering to remove auto-correlation
     m_1kb <- lm(sim_pi ~ (B + avg_mut) ^ 2, 
-                data=filter(std_1kb, row_number() %% 200 == 0))
+                data=filter(std_1kb, row_number() %% 1000 == 0))
     summary(m_1kb)
     r2_raw$r2_typeI[1] <- summary(m_1kb)$r.squared * 100
     
@@ -1675,6 +1675,10 @@ for(m in 1:num_models) {
     pval_tbl$B[1] <- summary(m_1kb)$coefficients[2,4]
     pval_tbl$`B:u`[1] <- summary(m_1kb)$coefficients[4,4]
     
+    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    names(r2_tbl) <- c("u", "B", "B:u")
+    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) 
+    
     anova.pi <- Anova(m_1kb)
     apiss <- anova.pi$"Sum Sq"
     anova.pi$VarExp <- apiss / sum(apiss)
@@ -1683,10 +1687,9 @@ for(m in 1:num_models) {
     r2_tbl$u[1] <- anova.pi$VarExp[2] * 100
     r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
     
-    # 10 kb 
-    # filtering to remove auto-correlation
+    # 10 kb, filtering to remove auto-correlation
     m_10kb <- lm(sim_pi ~ (B + avg_mut) ^ 2,
-                 data=filter(std_10kb, row_number() %% 10 == 0))
+                 data=filter(std_10kb, row_number() %% 100 == 0))
     summary(m_10kb)
     r2_raw$r2_typeI[2] <- summary(m_10kb)$r.squared * 100
     
@@ -1718,7 +1721,8 @@ for(m in 1:num_models) {
     r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
     
     # 100 kb
-    m_100kb <- lm(sim_pi ~ (B + avg_mut) ^ 2, std_100kb)
+    m_100kb <- lm(sim_pi ~ (B + avg_mut) ^ 2, 
+                  data=filter(std_100kb, row_number() %% 10 == 0))
     summary(m_100kb)
     r2_raw$r2_typeI[3] <- summary(m_100kb)$r.squared * 100
     
@@ -1782,17 +1786,17 @@ for(m in 1:num_models) {
     r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
     
     fwrite(r2_raw, paste("model_", m, "/rep_", rep, 
-                         "/r2_raw_tbl.csv", sep=""))
+                         "/r2_raw_tbl_simpi.csv", sep=""))
     fwrite(coeff_tbl, paste("model_", m, "/rep_", rep, 
-                         "/coeff_tbl.csv", sep=""))
+                         "/coeff_tbl_simpi.csv", sep=""))
     fwrite(pval_tbl, paste("model_", m, "/rep_", rep, 
-                         "/pval_tbl.csv", sep=""))
+                         "/pval_tbl_simpi.csv", sep=""))
     fwrite(r2_tbl, paste("model_", m, "/rep_", rep, 
-                         "/r2_typeII_tbl.csv", sep=""))
+                         "/r2_typeII_tbl_simpi.csv", sep=""))
     fwrite(vif_tbl, paste("model_", m, "/rep_", rep, 
                          "/vif_tbl.csv", sep=""))
     fwrite(tests_tbl, paste("model_", m, "/rep_", rep, 
-                         "/tests_tbl.csv", sep=""))
+                         "/tests_tbl_simpi.csv", sep=""))
 
     # 1 kb
     df_1kb <- cbind.data.frame(resid(m_1kb), fitted(m_1kb))
@@ -1896,7 +1900,271 @@ for(m in 1:num_models) {
     lm_1Mb <- plot_grid(p_1Mb, q_1Mb, ncol=1)
     
     lm_plots <- plot_grid(lm_1kb, lm_10kb, lm_100kb, lm_1Mb, nrow=1)
-    save_plot(paste("model_", m, "/rep_", rep, "/lm_plots.svg", sep=""),
+    save_plot(paste("model_", m, "/rep_", rep, "/lm_plots_simpi.svg", sep=""),
+              lm_plots, base_height=10, base_width=20)
+    
+    ################################# 
+    # expected pi
+    
+    # 1 kb, filtering to remove auto-correlation
+    m_1kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, 
+                data=filter(std_1kb, row_number() %% 1000 == 0))
+    summary(m_1kb)
+    r2_raw$r2_typeI[1] <- summary(m_1kb)$r.squared * 100
+    
+    v1kb <- suppressMessages(vif(m_1kb, type='predictor'))
+    vif_tbl$B[1] <- v1kb$GVIF[1]
+    vif_tbl$u[1] <- v1kb$GVIF[2]
+    
+    dw_1kb <- dwtest(m_1kb)
+    hmc_1kb <- hmctest(m_1kb)
+    
+    shapiro_1kb <- shapiro.test(resid(m_1kb)) 
+    tests_tbl$DW_test_p[1] <- dw_1kb$p.value
+    tests_tbl$HMC_test_p[1] <- hmc_1kb$p.value
+    tests_tbl$Shapiro_test_p[1] <- shapiro_1kb$p.value
+    
+    coeff_tbl$u[1] <- m_1kb$coefficients[3]
+    coeff_tbl$B[1] <- m_1kb$coefficients[2]
+    coeff_tbl$`B:u`[1] <- m_1kb$coefficients[4]
+    
+    pval_tbl$u[1] <- summary(m_1kb)$coefficients[3,4]
+    pval_tbl$B[1] <- summary(m_1kb)$coefficients[2,4]
+    pval_tbl$`B:u`[1] <- summary(m_1kb)$coefficients[4,4]
+    
+    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    names(r2_tbl) <- c("u", "B", "B:u")
+    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) 
+    
+    tryCatch({ # to handle residual sum of squares == 0 
+      anova.pi <- Anova(m_1kb)
+      apiss <- anova.pi$"Sum Sq"
+      anova.pi$VarExp <- apiss / sum(apiss)
+    
+      r2_tbl$`B:u`[1] <- anova.pi$VarExp[3] * 100
+      r2_tbl$u[1] <- anova.pi$VarExp[2] * 100
+      r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
+    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    
+    # 10 kb, filtering to remove auto-correlation
+    m_10kb <- lm(pi_exp ~ (B + avg_mut) ^ 2,
+                 data=filter(std_10kb, row_number() %% 100 == 0))
+    summary(m_10kb)
+    r2_raw$r2_typeI[2] <- summary(m_10kb)$r.squared * 100
+    
+    v10kb <- suppressMessages(vif(m_10kb, type='predictor'))
+    vif_tbl$B[2] <- v10kb$GVIF[1]
+    vif_tbl$u[2] <- v10kb$GVIF[2]
+    
+    dw_10kb <- dwtest(m_10kb)
+    hmc_10kb <- hmctest(m_10kb)
+    shapiro_10kb <- shapiro.test(resid(m_10kb)) 
+    tests_tbl$DW_test_p[2] <- dw_10kb$p.value
+    tests_tbl$HMC_test_p[2] <- hmc_10kb$p.value
+    tests_tbl$Shapiro_test_p[2] <- shapiro_10kb$p.value
+    
+    coeff_tbl$u[2] <- m_10kb$coefficients[3]
+    coeff_tbl$B[2] <- m_10kb$coefficients[2]
+    coeff_tbl$`B:u`[2] <- m_10kb$coefficients[4]
+    
+    pval_tbl$u[2] <- summary(m_10kb)$coefficients[3,4]
+    pval_tbl$B[2] <- summary(m_10kb)$coefficients[2,4]
+    pval_tbl$`B:u`[2] <- summary(m_10kb)$coefficients[4,4]
+    
+    tryCatch({ # to handle residual sum of squares == 0 
+      anova.pi <- Anova(m_10kb)
+      apiss <- anova.pi$"Sum Sq"
+      anova.pi$VarExp <- apiss / sum(apiss)
+    
+      r2_tbl$`B:u`[2] <- anova.pi$VarExp[3] * 100
+      r2_tbl$u[2] <- anova.pi$VarExp[2] * 100
+      r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
+    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    
+    # 100 kb
+    m_100kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, std_100kb)
+    summary(m_100kb)
+    r2_raw$r2_typeI[3] <- summary(m_100kb)$r.squared * 100
+    
+    v100kb <- suppressMessages(vif(m_100kb, type = 'predictor'))
+    vif_tbl$B[3] <- v100kb$GVIF[1]
+    vif_tbl$u[3] <- v100kb$GVIF[2]
+    
+    dw_100kb <- dwtest(m_100kb)
+    hmc_100kb <- hmctest(m_100kb)
+    shapiro_100kb <- shapiro.test(resid(m_100kb))
+    tests_tbl$DW_test_p[3] <- dw_100kb$p.value
+    tests_tbl$HMC_test_p[3] <- hmc_100kb$p.value
+    tests_tbl$Shapiro_test_p[3] <- shapiro_100kb$p.value
+    
+    coeff_tbl$u[3] <- m_100kb$coefficients[3]
+    coeff_tbl$B[3] <- m_100kb$coefficients[2]
+    coeff_tbl$`B:u`[3] <- m_100kb$coefficients[4]
+    
+    pval_tbl$u[3] <- summary(m_100kb)$coefficients[3,4]
+    pval_tbl$B[3] <- summary(m_100kb)$coefficients[2,4]
+    pval_tbl$`B:u`[3] <- summary(m_100kb)$coefficients[4,4]
+    
+    tryCatch({ # to handle residual sum of squares == 0 
+      anova.pi <- Anova(m_100kb)
+      apiss <- anova.pi$"Sum Sq"
+      anova.pi$VarExp <- apiss / sum(apiss)
+    
+      r2_tbl$`B:u`[3] <- anova.pi$VarExp[3] * 100
+      r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
+      r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
+    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    
+    # 1 Mb
+    m_1Mb <- lm(pi_exp ~ (B + avg_mut) ^ 2, data=std_1Mb)
+    summary(m_1Mb)
+    r2_raw$r2_typeI[4] <- summary(m_1Mb)$r.squared * 100
+    
+    v1Mb <- suppressMessages(vif(m_1Mb, type = 'predictor'))
+    vif_tbl$B[4] <- v1Mb$GVIF[1]
+    vif_tbl$u[4] <- v1Mb$GVIF[2]
+    
+    dw_1Mb <- dwtest(m_1Mb)
+    hmc_1Mb <- hmctest(m_1Mb)
+    shapiro_1Mb <- shapiro.test(resid(m_1Mb))
+    tests_tbl$DW_test_p[4] <- dw_1Mb$p.value
+    tests_tbl$HMC_test_p[4] <- hmc_1Mb$p.value
+    tests_tbl$Shapiro_test_p[4] <- shapiro_1Mb$p.value
+    
+    coeff_tbl$u[4] <- m_1Mb$coefficients[3]
+    coeff_tbl$B[4] <- m_1Mb$coefficients[2]
+    coeff_tbl$`B:u`[4] <- m_1Mb$coefficients[4]
+    
+    pval_tbl$u[4] <- summary(m_1Mb)$coefficients[3,4]
+    pval_tbl$B[4] <- summary(m_1Mb)$coefficients[2,4]
+    pval_tbl$`B:u`[4] <- summary(m_1Mb)$coefficients[4,4]
+    
+    tryCatch({ # to handle residual sum of squares == 0 
+      anova.pi <- Anova(m_1Mb)
+      apiss <- anova.pi$"Sum Sq"
+      anova.pi$VarExp <- apiss / sum(apiss)
+    
+      r2_tbl$`B:u`[4] <- anova.pi$VarExp[3] * 100
+      r2_tbl$u[4] <- anova.pi$VarExp[2] * 100
+      r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
+    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    
+    fwrite(r2_raw, paste("model_", m, "/rep_", rep, 
+                         "/r2_raw_tbl_exppi.csv", sep=""))
+    fwrite(coeff_tbl, paste("model_", m, "/rep_", rep, 
+                         "/coeff_tbl_exppi.csv", sep=""))
+    fwrite(pval_tbl, paste("model_", m, "/rep_", rep, 
+                         "/pval_tbl_exppi.csv", sep=""))
+    fwrite(r2_tbl, paste("model_", m, "/rep_", rep, 
+                         "/r2_typeII_tbl_exppi.csv", sep=""))
+    fwrite(vif_tbl, paste("model_", m, "/rep_", rep, 
+                         "/vif_tbl.csv", sep=""))
+    fwrite(tests_tbl, paste("model_", m, "/rep_", rep, 
+                         "/tests_tbl_exppi.csv", sep=""))
+
+    # 1 kb
+    df_1kb <- cbind.data.frame(resid(m_1kb), fitted(m_1kb))
+    names(df_1kb) <- c("residuals", "fitted")
+    p_1kb <- ggplot(data=df_1kb, aes(x=residuals, y=fitted)) + 
+             geom_point(size=2, shape=1) + 
+             theme_bw() + labs(title="1kb", x=NULL, y="Fitted") +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20))
+    
+    q_1kb <- ggplot(data=df_1kb, aes(x=residuals)) + 
+             geom_histogram(aes(y=..density..), bins=50) + 
+             stat_function(fun=dnorm, color="red",
+                           args=list(mean=mean(df_1kb$residuals), 
+                                    sd=sd(df_1kb$residuals))) +
+             theme_bw() + labs(title=NULL, x="Residuals", y="Count") +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20)) 
+    
+    lm_1kb <- plot_grid(p_1kb, q_1kb, ncol=1)
+    
+    # 10 kb
+    df_10kb <- cbind.data.frame(resid(m_10kb), fitted(m_10kb))
+    names(df_10kb) <- c("residuals", "fitted")
+    p_10kb <- ggplot(data=df_10kb, aes(x=residuals, y=fitted)) + 
+             geom_point(size=2, shape=1) + 
+             theme_bw() + labs(title="10 kb", x=NULL, y=NULL) +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20)) 
+    q_10kb <- ggplot(data=df_10kb, aes(x=residuals)) + 
+             geom_histogram(aes(y=..density..), bins=30) + 
+             stat_function(fun=dnorm, color="red",
+                           args=list(mean=mean(df_10kb$residuals), 
+                                    sd=sd(df_10kb$residuals))) +
+             theme_bw() + labs(title=NULL, x="Residuals", y=NULL) +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20)) 
+    
+    lm_10kb <- plot_grid(p_10kb, q_10kb, ncol=1)
+    
+    # 100 kb
+    df_100kb <- cbind.data.frame(resid(m_100kb), fitted(m_100kb))
+    names(df_100kb) <- c("residuals", "fitted")
+    p_100kb <- ggplot(data=df_100kb, aes(x=residuals, y=fitted)) + 
+             geom_point(size=2, shape=1) + 
+             theme_bw() + labs(title="100 kb", x=NULL, y=NULL) +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20)) 
+    q_100kb <- ggplot(data=df_100kb, aes(x=residuals)) + 
+             geom_histogram(aes(y=..density..), bins=15) + 
+             stat_function(fun=dnorm, color="red",
+                           args=list(mean=mean(df_100kb$residuals), 
+                                    sd=sd(df_100kb$residuals))) +
+             theme_bw() + labs(title=NULL, x="Residuals", y=NULL) +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20)) 
+    
+    lm_100kb <- plot_grid(p_100kb, q_100kb, ncol=1)
+    
+    # 1 Mb
+    df_1Mb <- cbind.data.frame(resid(m_1Mb), fitted(m_1Mb))
+    names(df_1Mb) <- c("residuals", "fitted")
+    p_1Mb <- ggplot(data=df_1Mb, aes(x=residuals, y=fitted)) + 
+             geom_point(size=2, shape=1) + 
+             theme_bw() + labs(title="1 Mb", x=NULL, y=NULL) +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20)) 
+    q_1Mb <- ggplot(data=df_1Mb, aes(x=residuals)) + 
+             geom_histogram(aes(y=..density..), bins=7) + 
+             stat_function(fun=dnorm, color="red",
+                           args=list(mean=mean(df_1Mb$residuals), 
+                                    sd=sd(df_1Mb$residuals))) +
+             theme_bw() + labs(title=NULL, x="Residuals", y=NULL) +
+             theme(axis.title.x=element_text(size=16),
+                   axis.text.x=element_text(size=12),
+                   axis.text.y=element_text(size=12),
+                   axis.title.y=element_text(size=16),
+                   plot.title=element_text(size=20)) 
+    
+    lm_1Mb <- plot_grid(p_1Mb, q_1Mb, ncol=1)
+    
+    lm_plots <- plot_grid(lm_1kb, lm_10kb, lm_100kb, lm_1Mb, nrow=1)
+    save_plot(paste("model_", m, "/rep_", rep, "/lm_plots_exppi.svg", sep=""),
               lm_plots, base_height=10, base_width=20)
   }
 }
@@ -1934,6 +2202,7 @@ avg_mut ~ start(0.1)*c5*avg_rec
 avg_mut ~~ 1*avg_mut
 # defining indirect and total effects
 mu_B_pi:=c1*c3
+rec_mu_B:=c3*c5
 rec_B_pi:=c1*c4
 rec_mu_pi:=c2*c5
 rec_mu_B_pi:=mu_B_pi*c5
@@ -1968,6 +2237,7 @@ avg_mut ~ start(0.1)*c5*avg_rec
 avg_mut ~~ 1*avg_mut
 # defining indirect and total effects
 mu_B_pi:=c1*c3
+rec_mu_B:=c3*c5
 rec_B_pi:=c1*c4
 rec_mu_pi:=c2*c5
 rec_mu_B_pi:=mu_B_pi*c5
@@ -2375,26 +2645,72 @@ Manhattan plots matching those obtained with d-separation
 
 ```{r manhattan-plots-SEM, include=F, message=F, warning=F}
 
+mvn_tests_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+mvn_tests_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+mvn_tests_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+mvn_tests_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+names(mvn_tests_1kb) <- paste("rep_", 1:num_reps, sep="")
+names(mvn_tests_10kb) <- paste("rep_", 1:num_reps, sep="")
+names(mvn_tests_100kb) <- paste("rep_", 1:num_reps, sep="")
+names(mvn_tests_1Mb) <- paste("rep_", 1:num_reps, sep="")
+
+# collecting pvalues from MVN tests
+pb <- txtProgressBar(min=0, max=num_models, style=3)
+for(m in 1:num_models) {
+  setTxtProgressBar(pb, m)
+  for(rep in 1:num_reps) {
+    mvn <- fread(paste("model_", m, "/rep_", rep,  "/mvn_tests.csv", sep=""))
+    
+    mvn_tests_1kb[m, rep] <- mvn$pval[1]
+    mvn_tests_10kb[m, rep] <- mvn$pval[2]
+    mvn_tests_100kb[m, rep] <- mvn$pval[3]
+    mvn_tests_1Mb[m, rep] <- mvn$pval[4]
+  }
+}
+close(pb)
+
+mvn_tests_1kb$scale <- 1e+3
+mvn_tests_10kb$scale <- 1e+4
+mvn_tests_100kb$scale <- 1e+5
+mvn_tests_1Mb$scale <- 1e+6
+
+mvn_tests_1kb$model <- 1:num_models
+mvn_tests_10kb$model <- 1:num_models
+mvn_tests_100kb$model <- 1:num_models
+mvn_tests_1Mb$model <- 1:num_models
+
+mvn_tests <- rbind.data.frame(mvn_tests_1kb, 
+                              mvn_tests_10kb, 
+                              mvn_tests_100kb,
+                              mvn_tests_1Mb)
+
+m_mvn <- pivot_longer(mvn_tests, cols=starts_with("rep_"), 
+                      names_to="replicate",
+                      values_to="mvn_p")
+
 pval_sem <- fread("pval_sem.csv.gz")
 m_pval_sem <- pivot_longer(merge(pval_sem, models, by="model"),
                            cols=paste("rep", 1:num_reps, sep="_"),
                            names_to="replicate", values_to="pval")
 
-p1 <- ggplot(data=filter(m_pval_sem, DAG==1),
+df <- merge(m_pval_sem, m_mvn, by=c("model", "replicate", "scale"))
+
+p1 <- ggplot(data=filter(df, DAG==1),
              aes(x=model, y=-log(pval), 
-             shape=as.factor(100* exon_lengths * num_exons / L), 
-             color=as.factor(mult_r_u))) +
+                 shape=mvn_p > 0.01, 
+                 color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
       labs(title="H0: data fits DAG 1 (non-mutagenic rec., E[pi])",
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density (%)", color="Mutagenic Rec.") +
+           shape="MVN p-val > 1%", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -2403,21 +2719,21 @@ p1 <- ggplot(data=filter(m_pval_sem, DAG==1),
             legend.position="bottom")
 save_plot("manhattan_SEM_dag1.png", p1, base_height=10, base_width=15)
 
-p2 <- ggplot(data=filter(m_pval_sem, DAG==2),
+p2 <- ggplot(data=filter(df, DAG==2),
              aes(x=model, y=-log(pval), 
-             shape=as.factor(100* exon_lengths * num_exons / L), 
+             shape=mvn_p > 0.01, 
              color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
       labs(title="H0: data fits DAG 2 (mutagenic rec., E[pi])",
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density (%)", color="Mutagenic Rec.") +
+           shape="MVN p-val > 1%", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -2426,21 +2742,21 @@ p2 <- ggplot(data=filter(m_pval_sem, DAG==2),
             legend.position="bottom")
 save_plot("manhattan_SEM_dag2.png", p2, base_height=10, base_width=15)
 
-p3 <- ggplot(data=filter(m_pval_sem, DAG==3),
+p3 <- ggplot(data=filter(df, DAG==3),
              aes(x=model, y=-log(pval), 
-             shape=as.factor(100* exon_lengths * num_exons / L), 
+             shape=mvn_p > 0.01, 
              color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
       labs(title="H0: data fits DAG 3 (non-mutagenic rec., sim. pi)",
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density (%)", color="Mutagenic Rec.") +
+           shape="MVN p-val > 1%", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -2449,21 +2765,21 @@ p3 <- ggplot(data=filter(m_pval_sem, DAG==3),
             legend.position="bottom")
 save_plot("manhattan_SEM_dag3.png", p3, base_height=10, base_width=15)
 
-p4 <- ggplot(data=filter(m_pval_sem, DAG==4),
+p4 <- ggplot(data=filter(df, DAG==4),
              aes(x=model, y=-log(pval), 
-             shape=as.factor(100* exon_lengths * num_exons / L), 
+             shape=mvn_p > 0.01, 
              color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
       labs(title="H0: data fits DAG 4 (mutagenic rec., sim. pi)",
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density (%)", color="Mutagenic Rec.") +
+           shape="MVN p-val > 1%", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -2471,9 +2787,289 @@ p4 <- ggplot(data=filter(m_pval_sem, DAG==4),
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("manhattan_SEM_dag4.png", p4, base_height=10, base_width=15)
+
+# DAG 1, bracketing MVN p-value
+p5 <- ggplot(data=filter(df, DAG==1, mvn_p < 1e-2),
+             aes(x=model, y=-log(pval), 
+                 
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 1 (non-mutagenic rec., E[pi]) | MVN p < 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag1_mvnpL.png", p5, base_height=10, base_width=15)
+
+p6 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-2 & mvn_p < 1e-1),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,  
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 1 (non-mutagenic rec., E[pi]) | 10% < MVN p > 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag1_mvnpM.png", p6, base_height=10, base_width=15)
+
+p7 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-1),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,   
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 1 (non-mutagenic rec., E[pi]) | MVN p > 10%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag1_mvnpH.png", p7, base_height=10, base_width=15)
+
+# DAG 2, bracketing MVN p-value
+p8 <- ggplot(data=filter(df, DAG==2, mvn_p < 1e-2),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,   
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 2 (mutagenic rec., E[pi]) | MVN p < 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag2_mvnpL.png", p8, base_height=10, base_width=15)
+
+p9 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-2 & mvn_p < 1e-1),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,   
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 2 (mutagenic rec., E[pi]) | 10% < MVN p > 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag2_mvnpM.png", p9, base_height=10, base_width=15)
+
+p10 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-1),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,   
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 2 (mutagenic rec., E[pi]) | MVN p > 10%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag2_mvnpH.png", p10, base_height=10, base_width=15)
+
+# DAG 3, bracketing MVN p-value
+p11 <- ggplot(data=filter(df, DAG==3, mvn_p < 1e-2),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,   
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 3 (non-mutagenic rec., sim. pi) | MVN p < 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag3_mvnpL.png", p11, base_height=10, base_width=15)
+
+p12 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-2 & mvn_p < 1e-1),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,   
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 3 (non-mutagenic rec., sim. pi) | 10% < MVN p > 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag3_mvnpM.png", p12, base_height=10, base_width=15)
+
+p13 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-1),
+             aes(x=model, y=-log(pval),  
+                 alpha=mvn_p,  
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 3 (non-mutagenic rec., sim. pi) | MVN p > 10%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag3_mvnpH.png", p13, base_height=10, base_width=15)
+
+# DAG 4, bracketing MVN p-value
+p14 <- ggplot(data=filter(df, DAG==4, mvn_p < 1e-2),
+             aes(x=model, y=-log(pval), 
+                 alpha=mvn_p,  
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 4 (mutagenic rec., sim. pi) | MVN p < 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag4_mvnpL.png", p14, base_height=10, base_width=15)
+
+p15 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-2 & mvn_p < 1e-1),
+             aes(x=model, y=-log(pval),  
+                 alpha=mvn_p,  
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 4 (mutagenic rec., sim. pi) | 10% < MVN p > 1%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag4_mvnpM.png", p15, base_height=10, base_width=15)
+
+p16 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-1),
+             aes(x=model, y=-log(pval),  
+                 alpha=mvn_p,  
+                 color=as.factor(mult_r_u))) +
+      geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
+                 linetype="dashed", color="grey1") +
+      geom_point(size=1.5) + theme_bw() + 
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(1, 4)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title="H0: data fits DAG 4 (mutagenic rec., sim. pi) | MVN p > 10%",
+           x="Model ID", y="-log10(p-value)",
+           color="Mutagenic Rec.") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("manhattan_SEM_dag4_mvnpH.png", p16, base_height=10, base_width=15)
 ```
 
-R-squared plots 
+R-squared SEM plots 
 
 ```{r r2-plots-SEM, include=F, message=F, warning=F}
 
@@ -2681,10 +3277,12 @@ for(e in unique(m_r2_sem_2$num_exons)) {
 }
 ```
 
-Path Coefficient plots 
+Path Coefficients 
 TODO: CHECK FOR MODEL CONVERGENCE (NA'S IN P-VALUE TABLE)
 
-```{r path_coeff-plots-SEM, include=F, message=F, warning=F}
+Assembling the tables
+
+```{r path_coeff-SEM-1, include=F, message=F, warning=F}
 
 # path coefficients under DAG 1
 pc_dag1 <- list(length=num_models)
@@ -2874,9 +3472,33 @@ pc_sem_dag4 <- filter(pc_sem_dag4, label != "")
 pc_nonmut_rec <- rbind.data.frame(pc_sem_dag1, pc_sem_dag3) # B, pi endogenous
 pc_mut_rec <- rbind.data.frame(pc_sem_dag2, pc_sem_dag4) # u, B, pi endogenous
 
+fwrite(pc_nonmut_rec, "pc_SEM_nonmut_rec.csv")
+fwrite(pc_mut_rec, "pc_SEM_mut_rec.csv")
+```
+
+Filtering the tables
+
+```{r path_coeff-SEM-2, include=F, message=F, warning=F}
+
+pc_nonmut_rec <- fread("pc_SEM_nonmut_rec.csv")
+pc_mut_rec <- fread("pc_SEM_mut_rec.csv")
+
+########################################################
 # focusing on pi as the outcome
-pc_nonmut_rec_pi <- filter(pc_nonmut_rec, lhs=="pi_exp" | lhs=="sim_pi")
-pc_mut_rec_pi <- filter(pc_mut_rec, lhs=="pi_exp" | lhs=="sim_pi")
+pc_nonmut_rec_pi <- filter(pc_nonmut_rec, lhs=="pi_exp" | 
+                                          lhs=="sim_pi" |
+                                          lhs=="mu_B_pi")
+
+pc_mut_rec_pi <- filter(pc_mut_rec, lhs=="pi_exp" |
+                                    lhs=="sim_pi" | 
+                                    lhs=="mu_B_pi")
+
+# combinig pvalues across replicates to plot significance later on
+pc_nonmut_rec_pi <- pc_nonmut_rec_pi %>% group_by(model, rhs, scale, DAG) %>%
+                 mutate(fisher_c=combine.test(pvalue, 1:10, "fisher", na.rm=T)) 
+
+pc_mut_rec_pi <- pc_mut_rec_pi %>% group_by(model, rhs, scale, DAG) %>%
+                 mutate(fisher_c=combine.test(pvalue, 1:10, "fisher", na.rm=T)) 
 
 # true model: mutagenic rec
 m_pc_sem_p_mutrec <- merge(pc_mut_rec_pi, models, by="model") %>%
@@ -2884,6 +3506,7 @@ m_pc_sem_p_mutrec <- merge(pc_mut_rec_pi, models, by="model") %>%
                       mutate(mean_pc=mean(est),
                              sd_pc=sd(est)) %>% ungroup %>%
                       distinct(model, rhs, scale, DAG, .keep_all=TRUE) 
+
 
 # true model: non-mutagenic rec
 m_pc_sem_p_nonmutrec <- merge(pc_nonmut_rec_pi, models, by="model") %>%
@@ -2893,8 +3516,68 @@ m_pc_sem_p_nonmutrec <- merge(pc_nonmut_rec_pi, models, by="model") %>%
                         distinct(model, rhs, scale, DAG, .keep_all=TRUE) 
 
 # adding "indicator" variable for source of pi
-m_pc_sem_p_mutrec$pi_source <- ifelse(m_pc_sem_p_mutrec$DAG == 2, "exp", "sim")
-m_pc_sem_p_nonmutrec$pi_source <- ifelse(m_pc_sem_p_nonmutrec$DAG == 1, "exp", "sim")
+m_pc_sem_p_mutrec$pi_source <- ifelse(m_pc_sem_p_mutrec$DAG == 2, 
+                                      "exp", "sim")
+m_pc_sem_p_nonmutrec$pi_source <- ifelse(m_pc_sem_p_nonmutrec$DAG == 1, 
+                                         "exp", "sim")
+
+fwrite(m_pc_sem_p_mutrec, "pc_sem_pi_mutrec.csv.gz")
+fwrite(m_pc_sem_p_nonmutrec, "pc_sem_pi_nonmutrec.csv.gz")
+
+########################################################
+# focusing on B as the outcome
+pc_nonmut_rec_B <- filter(pc_nonmut_rec, lhs=="B")
+pc_mut_rec_B <- filter(pc_mut_rec, lhs=="B")
+
+# combinig pvalues across replicates to plot significance later on
+pc_nonmut_rec_B <- pc_nonmut_rec_B %>% group_by(model, rhs, scale, DAG) %>%
+                   mutate(fisher_c=combine.test(pvalue, 1:10, "fisher", na.rm=T)) 
+
+pc_mut_rec_B <- pc_mut_rec_B %>% group_by(model, rhs, scale, DAG) %>%
+                mutate(fisher_c=combine.test(pvalue, 1:10, "fisher", na.rm=T)) 
+
+# true model: mutagenic rec
+m_pc_sem_B_mutrec <- merge(pc_mut_rec_B, models, by="model") %>%
+                      group_by(model, rhs, scale, DAG) %>%
+                      mutate(mean_pc=mean(est),
+                             sd_pc=sd(est)) %>% ungroup %>%
+                      distinct(model, rhs, scale, DAG, .keep_all=TRUE) 
+
+# true model: non-mutagenic rec
+m_pc_sem_B_nonmutrec <- merge(pc_nonmut_rec_B, models, by="model") %>%
+                        group_by(model, rhs, scale, DAG) %>%
+                        mutate(mean_pc=mean(est),
+                               sd_pc=sd(est)) %>% ungroup %>%
+                        distinct(model, rhs, scale, DAG, .keep_all=TRUE) 
+
+fwrite(m_pc_sem_B_mutrec, "pc_sem_B_mutrec.csv.gz")
+fwrite(m_pc_sem_B_nonmutrec, "pc_sem_B_nonmutrec.csv.gz")
+
+########################################################
+# focusing on the indirect effects of rec on pi 
+# (mutagenic rec only, assessing the Przeworksi regime)
+pc_rec_pi <- filter(pc_mut_rec, lhs=="rec_B_pi" | lhs=="rec_mu_pi")
+
+# combinig pvalues across replicates to plot significance later on
+pc_rec_pi <- pc_rec_pi %>% group_by(model, rhs, scale, DAG) %>%
+             mutate(fisher_c=combine.test(pvalue, 1:10, "fisher", na.rm=T)) 
+
+# true model: mutagenic rec
+m_pc_sem_rec_pi <- merge(pc_rec_pi, models, by="model") %>%
+                      group_by(model, rhs, scale, DAG) %>%
+                      mutate(mean_pc=mean(est),
+                             sd_pc=sd(est)) %>% ungroup %>%
+                      distinct(model, rhs, scale, DAG, .keep_all=TRUE) 
+
+m_pc_sem_rec_pi$pi_source <- ifelse(m_pc_sem_rec_pi$DAG == 2, "exp", "sim")
+
+fwrite(m_pc_sem_rec_pi, "pc_sem_recpi.csv.gz")
+```
+
+```{r pc-plots-SEM-pi, include=F, message=F, warning=F}
+
+m_pc_sem_p_mutrec <- fread("pc_sem_pi_mutrec.csv.gz")
+m_pc_sem_p_nonmutrec <- fread("pc_sem_pi_nonmutrec.csv.gz")
 
 # plotting mutagenic rec data
 for(e in unique(m_pc_sem_p_mutrec$num_exons)) {
@@ -2906,16 +3589,20 @@ for(e in unique(m_pc_sem_p_mutrec$num_exons)) {
                                  avg_rec_spans==ars, 
                                  shapes_rate_r==srr, 
                                  mult_r_u==mru),
-             aes(x=scale, y=mean_pc, 
+             aes(x=scale, 
+                 y=mean_pc, 
                  shape=as.factor(pi_source), 
-                 color=rhs)) +
+                 color=rhs,
+                 label=ifelse(fisher_c < 0.05, "*", ""))) +
+             geom_text(vjust=0.8, size=10) +
              geom_point(size=3) + geom_line() + theme_bw() + 
+             geom_hline(aes(yintercept=0), linetype="dashed", color="grey1") +
              facet_grid(+shapes_rate_u~avg_mut_spans, labeller=label_both) +
              scale_shape_manual(values=c(0, 1, 2)) +
-             scale_color_manual(values=c("brown1", "green4")) +
-             scale_y_continuous(breaks=pretty_breaks()) +
-             scale_x_log10() + 
-             labs(title="Direct effects on pi",
+             scale_color_manual(values=c("brown1", "green4", "purple3"),
+                                labels=c(expression(mu), "B", "u>B>pi")) +
+             scale_x_log10() + scale_y_continuous(breaks=pretty_breaks()) +
+             labs(title="Path coefficients (effects on pi, mutagenic DAG)",
                   x="Scale (window size)", y="Path Coefficient",
                   shape="pi", color="Variable") +
              theme(axis.title=element_text(size=16), 
@@ -2925,7 +3612,7 @@ for(e in unique(m_pc_sem_p_mutrec$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("pcoeff_mutagenic_DAG_exons", e, 
+        fout <- paste("pcoeff_pi_mutagenic_DAG_exons", e, 
                       "_ars", ars, 
                       "_srr", srr, 
                       "_mru", mru,
@@ -2950,12 +3637,14 @@ for(e in unique(m_pc_sem_p_nonmutrec$num_exons)) {
              shape=as.factor(pi_source), 
              color=rhs)) +
              geom_point(size=3) + geom_line() + theme_bw() + 
+             geom_hline(aes(yintercept=0), linetype="dashed", color="grey1") +
              facet_grid(+shapes_rate_u~avg_mut_spans, labeller=label_both) +
              scale_shape_manual(values=c(0, 1, 2)) +
-             scale_color_manual(values=c("brown1", "green4")) +
+             scale_color_manual(values=c("brown1", "green4", "purple3"),
+                                labels=c(expression(mu), "B", "u>B>pi")) +
              scale_y_continuous(breaks=pretty_breaks()) +
              scale_x_log10() + 
-             labs(title="Direct effects on pi",
+             labs(title="Path coefficients (effects on pi, non-mutagenic DAG)",
                   x="Scale (window size)", y="Path Coefficient",
                   shape="pi", color="Variable") +
              theme(axis.title=element_text(size=16), 
@@ -2965,7 +3654,7 @@ for(e in unique(m_pc_sem_p_nonmutrec$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("pcoeff_non-mutagenic_DAG_exons", e, 
+        fout <- paste("pcoeff_pi_non-mutagenic_DAG_exons", e, 
                        "_ars", ars, 
                        "_srr", srr, 
                        "_mru", mru,
@@ -2975,8 +3664,285 @@ for(e in unique(m_pc_sem_p_nonmutrec$num_exons)) {
     }
   }
 }
+```
 
-TODO: plot PCs other than direct effects
+```{r pc-plots-SEM-B, include=F, message=F, warning=F}
+
+m_pc_sem_B_mutrec <- fread("pc_sem_B_mutrec.csv.gz")
+m_pc_sem_B_nonmutrec <- fread("pc_sem_B_nonmutrec.csv.gz")
+
+# effect on B independent from source pi, keep simulated only
+m_pc_sem_B <- rbind.data.frame(m_pc_sem_B_mutrec, m_pc_sem_B_nonmutrec)
+m_pc_sem_B <- filter(m_pc_sem_B, DAG==3 | DAG==4) 
+m_pc_sem_B$mutagenic_rec <- ifelse(m_pc_sem_B$DAG == 4, TRUE, FALSE)
+
+# plotting mutagenic rec data
+for(e in unique(m_pc_sem_B$num_exons)) {
+  for(ars in unique(m_pc_sem_B$avg_rec_spans)) {
+    for(srr in unique(m_pc_sem_B$shapes_rate_r)) {
+      for(mru in unique(m_pc_sem_B$mult_r_u)) {
+        p1 <- ggplot(data=filter(m_pc_sem_B, 
+                                 num_exons==e, 
+                                 avg_rec_spans==ars, 
+                                 shapes_rate_r==srr, 
+                                 mult_r_u==mru),
+             aes(x=scale,
+                 y=mean_pc,
+                 color=rhs, 
+                 shape=mutagenic_rec,
+                 label=ifelse(fisher_c < 0.05, "*", ""))) +
+             geom_text(vjust=0.8, size=10) +
+             geom_point(size=3) + geom_line() + theme_bw() + 
+             geom_hline(aes(yintercept=0), linetype="dashed", color="grey1") +
+             facet_grid(+shapes_rate_u~avg_mut_spans, labeller=label_both) +
+             scale_shape_manual(values=c(0, 1, 2)) +
+             scale_color_manual(values=c("brown1", "green4"),
+                                labels=c(expression(mu), "r")) +
+             scale_y_continuous(breaks=pretty_breaks()) +
+             scale_x_log10() + 
+             labs(title="Direct effects on B",
+                  x="Scale (window size)", y="Path Coefficient",
+                  color="Variable", shape="mutagenic_rec") +
+             theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   axis.text.x=element_text(size=12),
+                   legend.text=element_text(size=16),
+                   legend.title=element_text(size=16),
+                   legend.position="bottom")
+        
+        fout <- paste("pcoeff_B_exons", e, 
+                      "_ars", ars, 
+                      "_srr", srr, 
+                      "_mru", mru,
+                      ".png", sep="")
+        save_plot(fout, p1, base_height=10, base_width=18)
+      }
+    }
+  }
+}
+
+```
+
+```{r pc-plots-SEM-recpi, include=F, message=F, warning=F}
+
+m_pc_sem_recpi <- fread("pc_sem_recpi.csv.gz")
+
+# plotting mutagenic rec data
+for(e in unique(m_pc_sem_recpi$num_exons)) {
+  for(ars in unique(m_pc_sem_recpi$avg_rec_spans)) {
+    for(srr in unique(m_pc_sem_recpi$shapes_rate_r)) {
+      for(mru in unique(m_pc_sem_recpi$mult_r_u)) {
+        p1 <- ggplot(data=filter(m_pc_sem_recpi, 
+                                 num_exons==e, 
+                                 avg_rec_spans==ars, 
+                                 shapes_rate_r==srr, 
+                                 mult_r_u==mru),
+             aes(x=scale, 
+                 y=mean_pc, 
+                 shape=as.factor(pi_source), 
+                 color=lhs,
+                 label=ifelse(fisher_c < 0.05, "*", ""))) +
+             geom_text(vjust=0.8, size=10) +
+             geom_point(size=3) + geom_line() + theme_bw() + 
+             geom_hline(aes(yintercept=0), linetype="dashed", color="grey1") +
+             facet_grid(+shapes_rate_u~avg_mut_spans, labeller=label_both) +
+             scale_shape_manual(values=c(0, 1, 2)) +
+             scale_color_manual(values=c("brown1", "green4")) +
+             scale_y_continuous(breaks=pretty_breaks()) +
+             scale_x_log10() + 
+             labs(title="Effects of recombination on pi (finding the Przeworski regime)",
+                  x="Scale (window size)", y="Path Coefficient",
+                  color="Variable", shape="pi") +
+             theme(axis.title=element_text(size=16), 
+                   axis.text=element_text(size=12), 
+                   axis.text.x=element_text(size=12),
+                   legend.text=element_text(size=16),
+                   legend.title=element_text(size=16),
+                   legend.position="bottom")
+        
+        fout <- paste("pcoeff_recpi_exons", e, 
+                      "_ars", ars, 
+                      "_srr", srr, 
+                      "_mru", mru,
+                      ".png", sep="")
+        save_plot(fout, p1, base_height=10, base_width=18)
+      }
+    }
+  }
+}
+```
+
+Building a linear regression that models SEM path coefficients as a function
+of parameters shaping chromosome landscapes.
+
+TODO: repeat for rec_x_pi
+
+```{r meta-lm-SEM-pc, include=F, message=F, warning=F}
+
+# path coefficients to pi
+# first we standardize the variables
+df <- pivot_wider(dplyr::select(m_pc_sem_p_mutrec, -c(model,
+                                                      lhs,
+                                                      op, 
+                                                      rhs,
+                                                      est,
+                                                      z,
+                                                      se,
+                                                      pvalue,
+                                                      ci.lower,
+                                                      ci.upper,
+                                                      fisher_c,
+                                                      sd_pc,
+                                                      replicate)),
+                  names_from=label, 
+                  values_from=mean_pc)
+names(df)[(ncol(df)-2):ncol(df)] <- c("B", "mut", "mu_B_pi")
+
+std_pc_1kb <- as.data.frame(df %>%
+                            filter(., scale==1e+3) %>% 
+                            dplyr::select(c(B, 
+                                            mut,
+                                            mu_B_pi,
+                                            num_exons,
+                                            shapes_rate_u,
+                                            shapes_rate_r,
+                                            avg_rec_spans,
+                                            avg_mut_spans)) %>%
+                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_B_1kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
+m_u_1kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                     avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
+m_uBp_1kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
+
+summary(m_B_1kb)
+summary(m_u_1kb)
+summary(m_uBp_1kb)
+
+## 10 kb
+std_pc_10kb <- as.data.frame(df %>%
+                            filter(., scale==1e+4) %>% 
+                            dplyr::select(c(B, 
+                                            mut,
+                                            mu_B_pi,
+                                            num_exons,
+                                            shapes_rate_u,
+                                            shapes_rate_r,
+                                            avg_rec_spans,
+                                            avg_mut_spans)) %>%
+                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_B_10kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
+m_u_10kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                     avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
+m_uBp_10kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
+
+## 100 kb
+std_pc_100kb <- as.data.frame(df %>%
+                              filter(., scale==1e+5) %>% 
+                              dplyr::select(c(B, 
+                                              mut,
+                                              mu_B_pi,
+                                              num_exons,
+                                              shapes_rate_u,
+                                              shapes_rate_r,
+                                              avg_rec_spans,
+                                              avg_mut_spans)) %>%
+                              apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_B_100kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
+m_u_100kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                     avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
+m_uBp_100kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
+
+## 1 Mb
+std_pc_1Mb <- as.data.frame(df %>%
+                            filter(., scale==1e+6) %>% 
+                            dplyr::select(c(B, 
+                                            mut,
+                                            mu_B_pi,
+                                            num_exons,
+                                            shapes_rate_u,
+                                            shapes_rate_r,
+                                            avg_rec_spans,
+                                            avg_mut_spans)) %>%
+                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
+
+m_B_1Mb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
+m_u_1Mb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                     avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
+m_uBp_1Mb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                           avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
+
+# mut
+meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
+                              m_u_10kb$coefficients,
+                              m_u_100kb$coefficients,
+                              m_u_1Mb$coefficients)
+names(meta_lm_u) <- names(m_u_1kb$coefficients)
+
+meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
+                                        "avg_mut_spans",
+                                        "num_exons",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans"))
+
+meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$response <- "Mu"
+
+mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
+                        names_to="var", values_to="coeff")
+
+# B
+meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
+                              m_B_10kb$coefficients,
+                              m_B_100kb$coefficients,
+                              m_B_1Mb$coefficients)
+names(meta_lm_B) <- names(m_B_1kb$coefficients)
+
+meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
+                                        "avg_mut_spans",
+                                        "num_exons",
+                                        "shapes_rate_r",
+                                        "avg_rec_spans"))
+
+meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$response <- "B"
+
+mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
+                       names_to="var", values_to="coeff")
+
+mmlm_tbl <- rbind.data.frame(mmlm_mu, mmlm_B)
+
+# TODO add real data
+meta_lm <- ggplot(data=mmlm_tbl, 
+                  aes(x=var, 
+                      y=coeff, 
+                      shape=as.factor(bin_size),
+                      color=response)) +
+  geom_point(size=4) + theme_bw() +
+  geom_hline(yintercept=0, linetype="dashed") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_color_manual(values=c("brown1", "green4"),
+                              labels=c("B", expression(mu))) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
+  labs(title="Regression of Path Coefficient of 'Response' on pi",
+       x="Variable", y="Coefficient") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("meta_lm_pi.png", meta_lm, base_height=8, base_width=10)
 ```
 
 ```{r plots-lm, include=F, message=F, warning=F}
@@ -3035,7 +4001,7 @@ for(i in 1:num_models) {
             summarise_at(data_cols, mean) %>%
             dplyr::select(., -bin_1Mb)
     m1Mb$start <- seq(1, by=1e+6, length.out=nrow(m1Mb)) 
-    m1Mb$end <- seq(1e+6, by=1e+6, length.out=nrow(m1Mb)) 
+    m1Mb$end <- seq(1e+5, by=1e+6, length.out=nrow(m1Mb)) 
     
     cv_u_cv_B_1kb <- cv_u_cv_B_1kb + sd(m1kb$avg_mut) / 
       mean(m1kb$avg_mut) / sd(m1kb$B) / mean(m1kb$B)
@@ -3077,115 +4043,60 @@ for(i in 1:num_models) {
     m100kb$bin <- 1:nrow(m100kb)
     m1Mb$bin <- 1:nrow(m1Mb)
     
-    # plots binned maps 
-    m1kb_m <- pivot_longer(m1kb, cols=ends_with("pi"), names_to="diversity")
-    pi_1kb <- ggplot(data=m1kb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
-      geom_point(data=m1kb_m, shape=1) + theme_bw() +
+    # plots binned maps 10kb - 1Mb (1kb too noisy and too many points)
+    m10kb_m <- pivot_longer(m10kb, cols=c("sim_pi", "pi_exp"), names_to="diversity")
+    pi_10kb <- ggplot(data=m10kb_m, aes(x=start/1e+6, y=value, color=diversity)) +
+      geom_point(data=m10kb_m, shape=1) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1kb$pi_exp), max(m1kb$pi_exp)),
+                         #limits=c(min(m10kb$pi_exp), max(m10kb$pi_exp)),
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
-      labs(title="1 kb", x=NULL, y=expression(pi)) +
+      labs(title="10 kb", x=NULL, y=expression(pi)) + 
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
-            axis.text.y=element_text(size=12),
-            axis.title.y=element_text(size=16),
+            axis.text.y=element_text(size=16),
             plot.title=element_text(size=20),
             legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
     
-    u_1kb <- ggplot(data=m1kb, aes(x=start / 1e+6, y=avg_mut)) + 
-      geom_line(data=m1kb) + theme_bw() +
+    u_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_mut)) + 
+      geom_line(data=m10kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
                          labels=scientific) +
       labs(title=NULL, x=NULL, y=expression(mu)) +
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
-            axis.text.y=element_text(size=12),
-            axis.title.y=element_text(size=16),
-            plot.title=element_text(size=20), 
+            axis.text.y=element_text(size=16),
+            plot.title=element_text(size=20),
             legend.position="none")
     
-    B_1kb <- ggplot(data=m1kb, aes(x=start / 1e+6, y=B)) + 
-      geom_line(data=m1kb) + theme_bw() +
+    B_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=B)) + 
+      geom_line(data=m10kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          #limits=c(min(m1kb$B), max(m1kb$B)),
                          labels=scientific) +
       labs(title=NULL, x=NULL, y="B") +
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
-            axis.text.y=element_text(size=12),
-            axis.title.y=element_text(size=16),
-            plot.title=element_text(size=20), 
+            axis.text.y=element_text(size=16),
+            plot.title=element_text(size=20),
             legend.position="none")
     
-    r_1kb <- ggplot(data=m1kb, aes(x=start / 1e+6, y=avg_rec)) + 
-      geom_line(data=m1kb) + theme_bw() +
-      scale_y_continuous(breaks=pretty_breaks(), 
+    r_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_rec)) +
+      geom_line(data=m10kb) + geom_point() + theme_bw() +
+      scale_y_continuous(breaks=pretty_breaks(),
                          #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
                          labels=scientific) +
       labs(title=NULL, x="Position (Mb)", y="r") +
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_text(size=12),
-            axis.text.y=element_text(size=12),
-            axis.title.y=element_text(size=16),
-            plot.title=element_text(size=20),
-            legend.position="none")
-    
-    lands_1kb <- plot_grid(pi_1kb, u_1kb, B_1kb, r_1kb, align='v', ncol=1)
-
-    m10kb_m <- pivot_longer(m10kb, cols=ends_with("pi"), names_to="diversity")
-    pi_10kb <- ggplot(data=m10kb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
-      geom_point(data=m10kb_m, shape=1) + theme_bw() +
-      scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m10kb$pi_exp), max(m10kb$pi_exp)),
-                         labels=scale.4d) +
-      scale_color_discrete(name=NULL, type=c("plum3", "seagreen3")) +
-      labs(title="10 kb", x=NULL, y=NULL) + 
-      theme(axis.title.x=element_text(size=16),
-            axis.text.x=element_blank(),
-            axis.text.y=element_blank(),
-            plot.title=element_text(size=20),
-            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
-    
-    u_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_mut)) + 
-      geom_line(data=m10kb) + theme_bw() +
-      scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
-                         labels=scientific) +
-      labs(title=NULL, x=NULL, y=NULL) +
-      theme(axis.title.x=element_text(size=16),
-            axis.text.x=element_blank(),
-            axis.text.y=element_blank(),
-            plot.title=element_text(size=20),
-            legend.position="none")
-    
-    B_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=B)) + 
-      geom_line(data=m10kb) + theme_bw() +
-      scale_y_continuous(breaks=pretty_breaks(), 
-                         #limits=c(min(m1kb$B), max(m1kb$B)),
-                         labels=scientific) +
-      labs(title=NULL, x=NULL, y=NULL) +
-      theme(axis.title.x=element_text(size=16),
-            axis.text.x=element_blank(),
-            axis.text.y=element_blank(),
-            plot.title=element_text(size=20),
-            legend.position="none")
-    
-    r_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_rec)) +
-      geom_line(data=m10kb) + theme_bw() +
-      scale_y_continuous(breaks=pretty_breaks(),
-                         #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
-                         labels=scientific) +
-      labs(title=NULL, x="Position (Mb)", y=NULL) +
-      theme(axis.title.x=element_text(size=16),
-            axis.text.x=element_text(size=12),
-            axis.text.y=element_blank(),
+            axis.text.y=element_text(size=16),
             plot.title=element_text(size=20), legend.position="none")
     
-    lands_10kb <- plot_grid(pi_10kb, u_10kb, B_10kb, r_10kb, align='v', ncol=1)
+    lands_10kb <- plot_grid(pi_10kb, u_10kb, B_10kb, r_10kb,
+                            align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
 
-    m100kb_m <- pivot_longer(m100kb, cols=ends_with("pi"), names_to="diversity")
+    m100kb_m <- pivot_longer(m100kb, cols=c("sim_pi", "pi_exp"), names_to="diversity")
     pi_100kb <- ggplot(data=m100kb_m, 
                        aes(x=start / 1e+6, 
                            y=value,
@@ -3203,7 +4114,7 @@ for(i in 1:num_models) {
             legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
     
     u_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=avg_mut))+
-      geom_line(data=m100kb) + theme_bw() +
+      geom_line(data=m100kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          #limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
                          labels=scientific) +
@@ -3215,7 +4126,7 @@ for(i in 1:num_models) {
             legend.position="none")
     
     B_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=B))+
-      geom_line(data=m100kb) + theme_bw() +
+      geom_line(data=m100kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(),
                          #limits=c(min(m1kb$B), max(m1kb$B)),
                          labels=scientific) +
@@ -3227,7 +4138,7 @@ for(i in 1:num_models) {
             legend.position="none")
     
     r_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=avg_rec)) +
-      geom_line(data=m100kb) + theme_bw() +
+      geom_line(data=m100kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
                          labels=scientific) +
@@ -3238,13 +4149,11 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    lands_100kb <- plot_grid(pi_100kb,
-                             u_100kb, 
-                             B_100kb, 
-                             r_100kb, align='v', ncol=1)
+    lands_100kb <- plot_grid(pi_100kb,u_100kb,  B_100kb, r_100kb, 
+                             align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
     
-    m1Mb_m <- pivot_longer(m1Mb, cols=ends_with("pi"), names_to="diversity")
-    pi_1Mb <- ggplot(data=m1Mb_m, aes(x=start / 1e+6, y=value, color=diversity)) +
+    m1Mb_m <- pivot_longer(m1Mb, cols=c("sim_pi", "pi_exp"), names_to="diversity")
+    pi_1Mb <- ggplot(data=m1Mb_m, aes(x=start/1e+6, y=value, color=diversity)) +
       geom_line(data=m1Mb_m) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          #limits=c(min(m1Mb$pi_exp), max(m1Mb$pi_exp)),
@@ -3258,7 +4167,7 @@ for(i in 1:num_models) {
             legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
     
     u_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=avg_mut))+
-      geom_line(data=m1Mb) + theme_bw() +
+      geom_line(data=m1Mb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          ##limits=c(min(m1kb$avg_mut), max(m1kb$avg_mut)),
                          labels=scientific) +
@@ -3270,7 +4179,7 @@ for(i in 1:num_models) {
             legend.position="none")
     
     B_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=B))+
-      geom_line(data=m1Mb) + theme_bw() +
+      geom_line(data=m1Mb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(),
                          #limits=c(min(m1kb$B), max(m1kb$B)),
                          labels=scientific) +
@@ -3282,7 +4191,7 @@ for(i in 1:num_models) {
             legend.position="none")
     
     r_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=avg_rec)) +
-      geom_line(data=m1Mb) + theme_bw() +
+      geom_line(data=m1Mb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          #limits=c(min(m1kb$avg_rec), max(m1kb$avg_rec)),
                          labels=scientific) +
@@ -3293,12 +4202,10 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    lands_1Mb <- plot_grid(pi_1Mb, u_1Mb, B_1Mb, r_1Mb, align='v', ncol=1)
+    lands_1Mb <- plot_grid(pi_1Mb, u_1Mb, B_1Mb, r_1Mb, 
+                           align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
 
-    lands_scales <- plot_grid(lands_1kb, 
-                              lands_10kb, 
-                              lands_100kb, 
-                              lands_1Mb, nrow=1)
+    lands_scales <- plot_grid(lands_10kb, lands_100kb, lands_1Mb, nrow=1)
     save_plot(paste("model_", i, "/rep_", j, "/maps.png", sep=""),
               lands_scales, base_height=12, base_width=24)
   }
@@ -3347,14 +4254,14 @@ for(i in 1:num_models) {
   
   # in expectation
   for(j in 1:num_reps) {
-    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_tbl_exp.csv.gz", sep=""))
+    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_typeII_tbl.csv", sep=""))
     
     r2_1kb[j,] <- tmp[1,]
     r2_10kb[j,] <- tmp[2,]
     r2_100kb[j,] <- tmp[3,]
     r2_1Mb[j,] <- tmp[4,]
     
-    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl_exp.csv.gz", sep=""))
+    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl.csv", sep=""))
     
     coeff_1kb[j,] <- tmp[1,]
     coeff_10kb[j,] <- tmp[2,]
@@ -4902,6 +5809,7 @@ meta_lm <- ggplot(data=mmlm_tbl,
 save_plot("meta_lm_pi_sim.png", meta_lm, base_height=8, base_width=10)
 ```
 
+TODO: plot simple correlations, build lm on path coefficients
 TODO: continue here
 
 ```{r real-data, include=F, message=F, warning=F}
