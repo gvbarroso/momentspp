@@ -119,7 +119,8 @@ for(m in 1:num_models) {
     
   for(rep in 1:num_reps) {
     # constrained elements, call them genes or exons 
-    intergenic_lengths <- rgeom(n=models$num_exons[m], prob=models$num_exons[m]/V) 
+    intergenic_lengths <- rgeom(n=models$num_exons[m], 
+                                prob=models$num_exons[m]/V) 
     
     while(sum(intergenic_lengths) < V) {
       intergenic_lengths <- c(intergenic_lengths, 
@@ -305,7 +306,9 @@ elements$start == models$exon_lengths[m])
     x <- distinct(y, elems, .keep_all=T)
     elements$u <- x$avg_mut
     
-    fwrite(elements, paste("model_", m, "/rep_", rep, "/elements.csv.gz", sep=""))
+    fwrite(elements, paste("model_", m,
+                           "/rep_", rep, 
+                           "/elements.csv.gz", sep=""))
     
     # binning exons (number of exonic sites per 1kb window)
     bins$bins_1kb <- 1:nrow(bins)
@@ -904,8 +907,13 @@ for(i in 1:num_models) {
       mean(m1Mb$avg_mut) / sd(m1Mb$B) / mean(m1Mb$B)
 
     # plots binned maps 10kb - 1Mb (1kb too noisy and too many points)
-    m10kb_m <- pivot_longer(m10kb, cols=c("sim_pi", "pi_exp"), names_to="diversity")
-    pi_10kb <- ggplot(data=m10kb_m, aes(x=start/1e+6, y=value, color=diversity)) +
+    m10kb_m <- pivot_longer(m10kb, 
+                            cols=c("sim_pi", "pi_exp"),
+                            names_to="diversity")
+    pi_10kb <- ggplot(data=m10kb_m, 
+                      aes(x=start/1e+6, 
+                          y=value, 
+                          color=diversity)) +
       geom_point(data=m10kb_m, shape=1) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scale.4d) +
@@ -915,9 +923,12 @@ for(i in 1:num_models) {
             axis.text.x=element_blank(),
             axis.text.y=element_text(size=16),
             plot.title=element_text(size=20),
-            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+            legend.position="inside", 
+            legend.position.inside=c(0.925, 0.925)) 
     
-    u_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_mut)) + 
+    u_10kb <- ggplot(data=m10kb, 
+                     aes(x=start / 1e+6, 
+                         y=avg_mut)) + 
       geom_line(data=m10kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scientific) +
@@ -928,7 +939,9 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    B_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=B)) + 
+    B_10kb <- ggplot(data=m10kb, 
+                     aes(x=start / 1e+6,
+                         y=B)) + 
       geom_line(data=m10kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scientific) +
@@ -939,7 +952,9 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    r_10kb <- ggplot(data=m10kb, aes(x=start / 1e+6, y=avg_rec)) +
+    r_10kb <- ggplot(data=m10kb, 
+                     aes(x=start / 1e+6,
+                         y=avg_rec)) +
       geom_line(data=m10kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(),
                          labels=scientific) +
@@ -947,12 +962,18 @@ for(i in 1:num_models) {
       theme(axis.title.x=element_text(size=16),
             axis.text.x=element_text(size=12),
             axis.text.y=element_text(size=16),
-            plot.title=element_text(size=20), legend.position="none")
+            plot.title=element_text(size=20), 
+            legend.position="none")
     
-    lands_10kb <- plot_grid(pi_10kb, u_10kb, B_10kb, r_10kb,
+    lands_10kb <- plot_grid(pi_10kb, 
+                            u_10kb, 
+                            B_10kb, 
+                            r_10kb,
                             align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
 
-    m100kb_m <- pivot_longer(m100kb, cols=c("sim_pi", "pi_exp"), names_to="diversity")
+    m100kb_m <- pivot_longer(m100kb, 
+                             cols=c("sim_pi", "pi_exp"),
+                             names_to="diversity")
     pi_100kb <- ggplot(data=m100kb_m, 
                        aes(x=start / 1e+6, 
                            y=value,
@@ -966,9 +987,12 @@ for(i in 1:num_models) {
             axis.text.x=element_blank(),
             axis.text.y=element_blank(),
             plot.title=element_text(size=20),
-            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+            legend.position="inside", 
+            legend.position.inside=c(0.925, 0.925)) 
     
-    u_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=avg_mut))+
+    u_100kb <- ggplot(data=m100kb,
+                      aes(x=start / 1e+6,
+                          y=avg_mut))+
       geom_line(data=m100kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scientific) +
@@ -979,7 +1003,9 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    B_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=B))+
+    B_100kb <- ggplot(data=m100kb, 
+                      aes(x=start / 1e+6,
+                          y=B))+
       geom_line(data=m100kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(),
                          labels=scientific) +
@@ -990,7 +1016,9 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    r_100kb <- ggplot(data=m100kb, aes(x=start / 1e+6, y=avg_rec)) +
+    r_100kb <- ggplot(data=m100kb, 
+                      aes(x=start / 1e+6,
+                          y=avg_rec)) +
       geom_line(data=m100kb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scientific) +
@@ -1001,11 +1029,19 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    lands_100kb <- plot_grid(pi_100kb,u_100kb,  B_100kb, r_100kb, 
+    lands_100kb <- plot_grid(pi_100kb,
+                             u_100kb,
+                             B_100kb, 
+                             r_100kb, 
                              align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
     
-    m1Mb_m <- pivot_longer(m1Mb, cols=c("sim_pi", "pi_exp"), names_to="diversity")
-    pi_1Mb <- ggplot(data=m1Mb_m, aes(x=start/1e+6, y=value, color=diversity)) +
+    m1Mb_m <- pivot_longer(m1Mb, 
+                           cols=c("sim_pi", "pi_exp"),
+                           names_to="diversity")
+    pi_1Mb <- ggplot(data=m1Mb_m, 
+                     aes(x=start/1e+6,
+                        y=value, 
+                        color=diversity)) +
       geom_line(data=m1Mb_m) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scale.4d) +
@@ -1015,9 +1051,12 @@ for(i in 1:num_models) {
             axis.text.x=element_blank(),
             axis.text.y=element_blank(),
             plot.title=element_text(size=20),
-            legend.position="inside", legend.position.inside=c(0.925, 0.925)) 
+            legend.position="inside", 
+            legend.position.inside=c(0.925, 0.925)) 
     
-    u_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=avg_mut))+
+    u_1Mb <- ggplot(data=m1Mb, 
+                    aes(x=start / 1e+6,
+                        y=avg_mut))+
       geom_line(data=m1Mb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scientific) +
@@ -1028,7 +1067,9 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    B_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=B))+
+    B_1Mb <- ggplot(data=m1Mb, 
+                    aes(x=start / 1e+6, 
+                        y=B))+
       geom_line(data=m1Mb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(),
                          labels=scientific) +
@@ -1039,7 +1080,9 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    r_1Mb <- ggplot(data=m1Mb, aes(x=start / 1e+6, y=avg_rec)) +
+    r_1Mb <- ggplot(data=m1Mb, 
+                    aes(x=start / 1e+6,
+                        y=avg_rec)) +
       geom_line(data=m1Mb) + geom_point() + theme_bw() +
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scientific) +
@@ -1050,7 +1093,10 @@ for(i in 1:num_models) {
             plot.title=element_text(size=20),
             legend.position="none")
     
-    lands_1Mb <- plot_grid(pi_1Mb, u_1Mb, B_1Mb, r_1Mb, 
+    lands_1Mb <- plot_grid(pi_1Mb,
+                           u_1Mb,
+                           B_1Mb,
+                           r_1Mb, 
                            align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
 
     lands_scales <- plot_grid(lands_10kb, lands_100kb, lands_1Mb, nrow=1)
@@ -1082,7 +1128,7 @@ First we evaluate the goodness of fit of DAGs 1-4 via d-separation.
 Unlike the SEM approach from later chunks, these tests include the number of
 exonic sites in the DAG, because they are more flexible (Spearman pcors).
 
-Model: non-mutagenic recombination, expected pi
+DAG 1: non-mutagenic recombination, expected pi
 ```{r d-sep-DAG1, include=F, message=F, warning=F}
 
 basis_set <- bs1
@@ -1220,7 +1266,7 @@ pval_dsep$scale <- c(rep(1e+3, num_models),
 fwrite(pval_dsep, "pval_dsep1.csv")
 ```
 
-Model: mutagenic recombination, expected pi
+DAG 2: mutagenic recombination, expected pi
 ```{r d-sep-DAG2, include=F, message=F, warning=F}
 
 basis_set <- bs2
@@ -1351,7 +1397,7 @@ pval_dsep$scale <- c(rep(1e+3, num_models),
 fwrite(pval_dsep, "pval_dsep2.csv")
 ```
 
-Model: non-mutagenic recombination, simu;lated pi (mutational variance)
+DAG 3: non-mutagenic recombination, simu;lated pi (mutational variance)
 ```{r d-sep-DAG3, include=F, message=F, warning=F}
 
 basis_set <- bs3
@@ -1482,7 +1528,7 @@ pval_dsep$scale <- c(rep(1e+3, num_models),
 fwrite(pval_dsep, "pval_dsep3.csv")
 ```
 
-Model: mutagenic recombination, simu;lated pi (mutational variance)
+DAG 4: mutagenic recombination, simu;lated pi (mutational variance)
 ```{r d-sep-DAG4, include=F, message=F, warning=F}
 
 basis_set <- bs4
@@ -1627,9 +1673,11 @@ m_dsep1 <- pivot_longer(merge(pval_dsep1, models, by="model"),
                         cols=paste("rep", 1:num_reps, sep="_"),
                         names_to="replicate", values_to="pval")
 
-p1 <- ggplot(data=m_dsep1, aes(x=model, y=-log(pval), 
-                               shape=as.factor(100* exon_lengths * num_exons / L), 
-                               color=as.factor(mult_r_u))) +
+p1 <- ggplot(data=m_dsep1, 
+             aes(x=model, 
+                 y=-log(pval), 
+                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
@@ -1653,9 +1701,11 @@ m_dsep2 <- pivot_longer(merge(pval_dsep2, models, by="model"),
                         cols=paste("rep", 1:num_reps, sep="_"),
                         names_to="replicate", values_to="pval")
 
-p2 <- ggplot(data=m_dsep2, aes(x=model, y=-log(pval), 
-                               shape=as.factor(100* exon_lengths * num_exons / L), 
-                               color=as.factor(mult_r_u))) +
+p2 <- ggplot(data=m_dsep2, 
+             aes(x=model, 
+                 y=-log(pval), 
+                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
@@ -1679,9 +1729,11 @@ m_dsep3 <- pivot_longer(merge(pval_dsep3, models, by="model"),
                         cols=paste("rep", 1:num_reps, sep="_"),
                         names_to="replicate", values_to="pval")
 
-p3 <- ggplot(data=m_dsep3, aes(x=model, y=-log(pval), 
-                               shape=as.factor(100* exon_lengths * num_exons / L), 
-                               color=as.factor(mult_r_u))) +
+p3 <- ggplot(data=m_dsep3, 
+             aes(x=model, 
+                 y=-log(pval), 
+                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
@@ -1705,9 +1757,11 @@ m_dsep4 <- pivot_longer(merge(pval_dsep4, models, by="model"),
                         cols=paste("rep", 1:num_reps, sep="_"),
                         names_to="replicate", values_to="pval")
 
-p4 <- ggplot(data=m_dsep4, aes(x=model, y=-log(pval), 
-                               shape=as.factor(100* exon_lengths * num_exons / L), 
-                               color=as.factor(mult_r_u))) +
+p4 <- ggplot(data=m_dsep4, 
+             aes(x=model, 
+                 y=-log(pval), 
+                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
@@ -1768,31 +1822,35 @@ for(m in 1:num_models) {
                      type="spearman") # to remove auto-correlation
     tbl_1kb <- mat$r
     tbl_1kb[upper.tri(tbl_1kb)] <- mat$P[upper.tri(mat$P)]
-    suppressMessages(fwrite(tbl_1kb, paste("model_", m, "/rep_", rep, 
-                                           "/pval_upper_spearman_lower_1kb.csv", 
-                                           sep="")))
+    suppressMessages(fwrite(tbl_1kb, 
+                            paste("model_", m, "/rep_", rep, 
+                                  "/pval_upper_spearman_lower_1kb.csv", 
+                                  sep="")))
 
     mat=Hmisc::rcorr(as.matrix(filter(maps_1kb, row_number() %% 100 == 0)),
                      type="spearman") # to remove auto-correlation
     tbl_10kb <- mat$r
     tbl_10kb[upper.tri(tbl_10kb)] <- mat$P[upper.tri(mat$P)]
-    suppressMessages(fwrite(tbl_10kb, paste("model_", m, "/rep_", rep, 
-                                            "/pval_upper_spearman_lower_10kb.csv", 
-                                            sep="")))
+    suppressMessages(fwrite(tbl_10kb, 
+                            paste("model_", m, "/rep_", rep, 
+                                  "/pval_upper_spearman_lower_10kb.csv", 
+                                  sep="")))
 
     mat=Hmisc::rcorr(as.matrix(maps_100kb), type="spearman")
     tbl_100kb <- mat$r
     tbl_100kb[upper.tri(tbl_100kb)] <- mat$P[upper.tri(mat$P)]
-    suppressMessages(fwrite(tbl_100kb, paste("model_", m, "/rep_", rep, 
-                                             "/pval_upper_spearman_lower_100kb.csv", 
-                                             sep="")))
+    suppressMessages(fwrite(tbl_100kb, 
+                            paste("model_", m, "/rep_", rep, 
+                                  "/pval_upper_spearman_lower_100kb.csv", 
+                                  sep="")))
 
     mat=Hmisc::rcorr(as.matrix(maps_1Mb), type="spearman")
     tbl_1Mb <- mat$r
     tbl_1Mb[upper.tri(tbl_1Mb)] <- mat$P[upper.tri(mat$P)]
-    suppressMessages(fwrite(tbl_1Mb, paste("model_", m, "/rep_", rep, 
-                                           "/pval_upper_spearman_lower_1Mb.csv", 
-                                           sep="")))
+    suppressMessages(fwrite(tbl_1Mb,
+                            paste("model_", m, "/rep_", rep, 
+                                   "/pval_upper_spearman_lower_1Mb.csv", 
+                                   sep="")))
     
     # table for storing total R^2 values straight from the lm function ()
     r2_raw <- as.data.frame(matrix(ncol=1, nrow=4))
@@ -2137,7 +2195,9 @@ for(m in 1:num_models) {
     lm_1Mb <- plot_grid(p_1Mb, q_1Mb, ncol=1)
     
     lm_plots <- plot_grid(lm_1kb, lm_10kb, lm_100kb, lm_1Mb, nrow=1)
-    save_plot(paste("model_", m, "/rep_", rep, "/lm_plots_simpi.svg", sep=""),
+    save_plot(paste("model_", m, 
+                    "/rep_", rep,
+                    "/lm_plots_simpi.svg", sep=""),
               lm_plots, base_height=10, base_width=20)
     
     ################################# 
@@ -2401,7 +2461,9 @@ for(m in 1:num_models) {
     lm_1Mb <- plot_grid(p_1Mb, q_1Mb, ncol=1)
     
     lm_plots <- plot_grid(lm_1kb, lm_10kb, lm_100kb, lm_1Mb, nrow=1)
-    save_plot(paste("model_", m, "/rep_", rep, "/lm_plots_exppi.svg", sep=""),
+    save_plot(paste("model_", m, 
+                    "/rep_", rep, 
+                    "/lm_plots_exppi.svg", sep=""),
               lm_plots, base_height=10, base_width=20)
   }
 }
@@ -2670,52 +2732,299 @@ B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_1kb,
 fwrite(B_vs_exonic_sites, "corr_B_E.csv")
 ```
 
+Preparing tables with p-values
+
+```{r prep-corrs, include=F, message=F, warning=F}
+
+r_vs_u_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_u_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_u_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_u_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+r_vs_B_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_B_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_B_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_B_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+r_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+r_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+u_vs_B_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+u_vs_B_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+u_vs_B_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+u_vs_B_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+u_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+u_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+u_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+u_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+B_vs_exonic_sites_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_exonic_sites_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_exonic_sites_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_exonic_sites_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+B_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+
+pb <- txtProgressBar(min=0, max=num_models, style=3)
+for(m in 1:num_models) {
+  setTxtProgressBar(pb, m)
+  for(rep in 1:num_reps) {
+    # correlations in lower part of triangular matrices, pvalues in upper
+    pval_1kb <- fread(paste("model_", m, "/rep_", rep, 
+                            "/pval_upper_spearman_lower_1kb.csv", sep=""))
+    
+    pval_10kb <- fread(paste("model_", m, "/rep_", rep, 
+                            "/pval_upper_spearman_lower_10kb.csv", sep=""))
+    
+    pval_100kb <- fread(paste("model_", m, "/rep_", rep, 
+                            "/pval_upper_spearman_lower_100kb.csv", sep=""))
+    
+    pval_1Mb <- fread(paste("model_", m, "/rep_", rep, 
+                            "/pval_upper_spearman_lower_1Mb.csv", sep=""))
+    
+    row <- which(names(pval_1kb) == "avg_rec")
+    r_vs_u_1kb[m, rep] <- pval_1kb[row, "avg_mut"]
+    r_vs_u_10kb[m, rep] <- pval_10kb[row, "avg_mut"]
+    r_vs_u_100kb[m, rep] <- pval_100kb[row, "avg_mut"]
+    r_vs_u_1Mb[m, rep] <- pval_1Mb[row, "avg_mut"]
+    
+    row <- which(names(pval_1kb) == "avg_rec")
+    r_vs_B_1kb[m, rep] <- pval_1kb[row, "B"]
+    r_vs_B_10kb[m, rep] <- pval_10kb[row, "B"]
+    r_vs_B_100kb[m, rep] <- pval_100kb[row, "B"]
+    r_vs_B_1Mb[m, rep] <- pval_1Mb[row, "B"]
+    
+    row <- which(names(pval_1kb) == "avg_rec")
+    r_vs_piexp_1kb[m, rep] <- pval_1kb[row, "pi_exp"]
+    r_vs_piexp_10kb[m, rep] <- pval_10kb[row, "pi_exp"]
+    r_vs_piexp_100kb[m, rep] <- pval_100kb[row, "pi_exp"]
+    r_vs_piexp_1Mb[m, rep] <- pval_1Mb[row, "pi_exp"]
+    
+    row <- which(names(pval_1kb) == "avg_mut")
+    u_vs_B_1kb[m, rep] <- pval_1kb[row, "B"]
+    u_vs_B_10kb[m, rep] <- pval_10kb[row, "B"]
+    u_vs_B_100kb[m, rep] <- pval_100kb[row, "B"]
+    u_vs_B_1Mb[m, rep] <- pval_1Mb[row, "B"]
+    
+    row <- which(names(pval_1kb) == "avg_mut")
+    u_vs_piexp_1kb[m, rep] <- pval_1kb[row, "pi_exp"]
+    u_vs_piexp_10kb[m, rep] <- pval_10kb[row, "pi_exp"]
+    u_vs_piexp_100kb[m, rep] <- pval_100kb[row, "pi_exp"]
+    u_vs_piexp_1Mb[m, rep] <- pval_1Mb[row, "pi_exp"]
+    
+    row <- which(names(pval_1kb) == "exonic_sites")
+    B_vs_exonic_sites_1kb[m, rep] <- pval_1kb[row, "B"]
+    B_vs_exonic_sites_10kb[m, rep] <- pval_10kb[row, "B"]
+    B_vs_exonic_sites_100kb[m, rep] <- pval_100kb[row, "B"]
+    B_vs_exonic_sites_1Mb[m, rep] <- pval_1Mb[row, "B"]
+    
+    row <- which(names(pval_1kb) == "B")
+    B_vs_piexp_1kb[m, rep] <- pval_1kb[row, "pi_exp"]
+    B_vs_piexp_10kb[m, rep] <- pval_10kb[row, "pi_exp"]
+    B_vs_piexp_100kb[m, rep] <- pval_100kb[row, "pi_exp"]
+    B_vs_piexp_1Mb[m, rep] <- pval_1Mb[row, "pi_exp"]
+  }
+}
+close(pb)
+
+# r vs mu
+names(r_vs_u_1kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_u_1kb$model <- 1:num_models
+r_vs_u_1kb$scale <- 1e+3
+
+names(r_vs_u_10kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_u_10kb$model <- 1:num_models
+r_vs_u_10kb$scale <- 1e+4
+
+names(r_vs_u_100kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_u_100kb$model <- 1:num_models
+r_vs_u_100kb$scale <- 1e+5
+
+names(r_vs_u_1Mb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_u_1Mb$model <- 1:num_models
+r_vs_u_1Mb$scale <- 1e+6
+
+r_vs_u <- rbind.data.frame(r_vs_u_1kb,
+                           r_vs_u_10kb,
+                           r_vs_u_100kb,
+                           r_vs_u_1Mb)
+fwrite(r_vs_u, "pval_r_u.csv")
+
+# r vs B
+names(r_vs_B_1kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_B_1kb$model <- 1:num_models
+r_vs_B_1kb$scale <- 1e+3
+
+names(r_vs_B_10kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_B_10kb$model <- 1:num_models
+r_vs_B_10kb$scale <- 1e+4
+
+names(r_vs_B_100kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_B_100kb$model <- 1:num_models
+r_vs_B_100kb$scale <- 1e+5
+
+names(r_vs_B_1Mb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_B_1Mb$model <- 1:num_models
+r_vs_B_1Mb$scale <- 1e+6
+
+r_vs_B <- rbind.data.frame(r_vs_B_1kb,
+                           r_vs_B_10kb,
+                           r_vs_B_100kb,
+                           r_vs_B_1Mb)
+fwrite(r_vs_B, "pval_r_B.csv")
+
+# r vs pi
+names(r_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_piexp_1kb$model <- 1:num_models
+r_vs_piexp_1kb$scale <- 1e+3
+
+names(r_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_piexp_10kb$model <- 1:num_models
+r_vs_piexp_10kb$scale <- 1e+4
+
+names(r_vs_piexp_100kb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_piexp_100kb$model <- 1:num_models
+r_vs_piexp_100kb$scale <- 1e+5
+
+names(r_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
+r_vs_piexp_1Mb$model <- 1:num_models
+r_vs_piexp_1Mb$scale <- 1e+6
+
+r_vs_piexp <- rbind.data.frame(r_vs_piexp_1kb,
+                               r_vs_piexp_10kb,
+                               r_vs_piexp_100kb,
+                               r_vs_piexp_1Mb)
+fwrite(r_vs_piexp, "pval_r_piexp.csv")
+
+# mu x B
+names(u_vs_B_1kb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_B_1kb$model <- 1:num_models
+u_vs_B_1kb$scale <- 1e+3
+
+names(u_vs_B_10kb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_B_10kb$model <- 1:num_models
+u_vs_B_10kb$scale <- 1e+4
+
+names(u_vs_B_100kb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_B_100kb$model <- 1:num_models
+u_vs_B_100kb$scale <- 1e+5
+
+names(u_vs_B_1Mb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_B_1Mb$model <- 1:num_models
+u_vs_B_1Mb$scale <- 1e+6
+
+u_vs_B <- rbind.data.frame(u_vs_B_1kb,
+                           u_vs_B_10kb,
+                           u_vs_B_100kb,
+                           u_vs_B_1Mb)
+fwrite(u_vs_B, "pval_u_B.csv")
+
+# mu x pi
+names(u_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_piexp_1kb$model <- 1:num_models
+u_vs_piexp_1kb$scale <- 1e+3
+
+names(u_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_piexp_10kb$model <- 1:num_models
+u_vs_piexp_10kb$scale <- 1e+4
+
+names(u_vs_piexp_100kb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_piexp_100kb$model <- 1:num_models
+u_vs_piexp_100kb$scale <- 1e+5
+
+names(u_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
+u_vs_piexp_1Mb$model <- 1:num_models
+u_vs_piexp_1Mb$scale <- 1e+6
+
+u_vs_piexp <- rbind.data.frame(u_vs_piexp_1kb,
+                               u_vs_piexp_10kb,
+                               u_vs_piexp_100kb,
+                               u_vs_piexp_1Mb)
+fwrite(u_vs_piexp, "pval_u_piexp.csv")
+
+# B vs pi
+names(B_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_piexp_1kb$model <- 1:num_models
+B_vs_piexp_1kb$scale <- 1e+3
+
+names(B_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_piexp_10kb$model <- 1:num_models
+B_vs_piexp_10kb$scale <- 1e+4
+
+names(B_vs_piexp_100kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_piexp_100kb$model <- 1:num_models
+B_vs_piexp_100kb$scale <- 1e+5
+
+names(B_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_piexp_1Mb$model <- 1:num_models
+B_vs_piexp_1Mb$scale <- 1e+6
+
+B_vs_piexp <- rbind.data.frame(B_vs_piexp_1kb,
+                               B_vs_piexp_10kb,
+                               B_vs_piexp_100kb,
+                               B_vs_piexp_1Mb)
+fwrite(B_vs_piexp, "pval_B_piexp.csv")
+
+# B vs E
+names(B_vs_exonic_sites_1kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_exonic_sites_1kb$model <- 1:num_models
+B_vs_exonic_sites_1kb$scale <- 1e+3
+
+names(B_vs_exonic_sites_10kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_exonic_sites_10kb$model <- 1:num_models
+B_vs_exonic_sites_10kb$scale <- 1e+4
+
+names(B_vs_exonic_sites_100kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_exonic_sites_100kb$model <- 1:num_models
+B_vs_exonic_sites_100kb$scale <- 1e+5
+
+names(B_vs_exonic_sites_1Mb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_exonic_sites_1Mb$model <- 1:num_models
+B_vs_exonic_sites_1Mb$scale <- 1e+6
+
+B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_1kb,
+                                      B_vs_exonic_sites_10kb,
+                                      B_vs_exonic_sites_100kb,
+                                      B_vs_exonic_sites_1Mb)
+fwrite(B_vs_exonic_sites, "pval_B_E.csv")
+```
+
 Plotting the simple correlations
 
 ```{r plot-corrs, include=F, message=F, warning=F}
 
+models <- fread("models.csv")
+
 # B vs E
-B_vs_exonic_sites<- fread("corr_B_E.csv")
-B_vs_exonic_sites <- merge(B_vs_exonic_sites, models, by="model")
-m_B_vs_E <- pivot_longer(B_vs_exonic_sites, 
-                         cols=starts_with("rep"),
-                         names_to="replicate",
-                         values_to="cor")
+## cors
+B_vs_exonic_sites <- fread("corr_B_E.csv")
+B_vs_E_c <- merge(B_vs_exonic_sites, 
+                  models, 
+                  by="model")
+m_B_vs_E_c <- pivot_longer(B_vs_E_c, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="cor")
+## pvals
+pvals <- fread("pval_B_E.csv")
+B_vs_E_p <- merge(pvals, 
+                  models, 
+                  by="model")
+m_B_vs_E_p <- pivot_longer(B_vs_E_p, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="pval")
 
-p <- ggplot(data=m_B_vs_E, 
+m_B_vs_E <- left_join(m_B_vs_E_c, m_B_vs_E_p)
+
+p <- ggplot(data=filter(m_B_vs_E, pval < 0.01),
             aes(x=model, 
-                y=cor, 
-                color=as.factor(shapes_rate_u), 
-                shape=as.factor(avg_mut_spans))) +
-      geom_point(size=1.5) + theme_bw() + 
-      geom_hline(aes(yintercept=0), 
-                 linetype="dashed", color="grey1") +
-      facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2, 3)) +
-      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
-      scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="Simple Spearman correlations between B and % Exonic",
-           x="Model ID", y="Spearman's rho",
-           color="Shape Rate Mu", shape="Avg. Mut. Span") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("corr_B_E.png", p, base_height=10, base_width=16)
-
-B_vs_pi <- fread("corr_B_piexp.csv")
-B_vs_pi <- merge(B_vs_pi, models, by="model")
-m_B_vs_pi <- pivot_longer(B_vs_pi, 
-                          cols=starts_with("rep"),
-                          names_to="replicate",
-                          values_to="cor")
-
-# B vs pi
-p <- ggplot(data=m_B_vs_pi,
-            aes(x=model,
                 y=cor, 
                 color=as.factor(shapes_rate_r), 
                 shape=as.factor(avg_rec_spans))) +
@@ -2724,12 +3033,60 @@ p <- ggplot(data=m_B_vs_pi,
                  linetype="dashed", color="grey1") +
       facet_wrap(~scale, ncol=1, labeller=label_both) +
       scale_shape_manual(values=c(0, 1, 2, 3)) +
-      scale_color_manual(values=c("brown1", "purple3", "green4")) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="Simple Spearman correlations between B and pi",
+      labs(title=paste("Simple Spearman correlations between",
+                       "B and % Exonic, pval < 1%"),
            x="Model ID", y="Spearman's rho",
-           color="Shape Rate Rec.", shape="Avg. Rec. Span") +
+           color="Shape Rate Rec.", shape="Avg. Rec. Spans") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("corr_B_E.png", p, base_height=10, base_width=16)
+
+# B vs pi
+## cors
+B_vs_pi <- fread("corr_B_piexp.csv")
+B_vs_pi_c <- merge(B_vs_pi, 
+                   models,
+                   by="model")
+m_B_vs_pi_c <- pivot_longer(B_vs_pi_c, 
+                          cols=starts_with("rep"),
+                          names_to="replicate",
+                          values_to="cor")
+## pvals
+pvals <- fread("pval_B_piexp.csv")
+B_vs_pi_p <- merge(pvals, 
+                   models, 
+                   by="model")
+m_B_vs_pi_p <- pivot_longer(B_vs_pi_p, 
+                            cols=starts_with("rep"),
+                            names_to="replicate",
+                            values_to="pval")
+
+m_B_vs_pi <- left_join(m_B_vs_pi_c, m_B_vs_pi_p)
+
+p <- ggplot(data=filter(m_B_vs_pi, pval < 0.01),
+            aes(x=model,
+                y=cor, 
+                color=as.factor(shapes_rate_u), 
+                shape=as.factor(avg_rec_spans))) +
+      geom_point(size=1.5) + theme_bw() + 
+      geom_hline(aes(yintercept=0), 
+                 linetype="dashed", color="grey1") +
+      facet_wrap(~scale, ncol=1, labeller=label_both) +
+      scale_shape_manual(values=c(0, 1, 2, 3)) +
+      scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      labs(title=paste("Simple Spearman correlations between",
+                       "B and pi, pval < 1%"),
+           x="Model ID", y="Spearman's rho",
+           color="Shape Rate Mut.", shape="Avg. Rec. Span") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -2738,15 +3095,30 @@ p <- ggplot(data=m_B_vs_pi,
             legend.position="bottom")
 save_plot("corr_B_pi.png", p, base_height=10, base_width=16)
 
+# mut vs pi
+## cors
 u_vs_pi <- fread("corr_u_piexp.csv")
-u_vs_pi <- merge(u_vs_pi, models, by="model")
-m_u_vs_pi <- pivot_longer(u_vs_pi, 
-                          cols=starts_with("rep"),
-                          names_to="replicate",
-                          values_to="cor")
+u_vs_pi_c <- merge(u_vs_pi,
+                   models,
+                   by="model")
+m_u_vs_pi_c <- pivot_longer(u_vs_pi_c, 
+                            cols=starts_with("rep"),
+                            names_to="replicate",
+                            values_to="cor")
 
-# Mu vs pi
-p <- ggplot(data=m_u_vs_pi,
+## pvals
+pvals <- fread("pval_u_piexp.csv")
+u_vs_pi_p <- merge(pvals, 
+                   models, 
+                   by="model")
+m_u_vs_pi_p <- pivot_longer(u_vs_pi_p, 
+                            cols=starts_with("rep"),
+                            names_to="replicate",
+                            values_to="pval")
+
+m_u_vs_pi <- left_join(m_u_vs_pi_c, m_u_vs_pi_p)
+
+p <- ggplot(data=filter(m_u_vs_pi, pval < 0.01),
             aes(x=model,
                 y=cor, 
                 color=as.factor(shapes_rate_u), 
@@ -2759,7 +3131,8 @@ p <- ggplot(data=m_u_vs_pi,
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="Simple Spearman correlations between mu and pi",
+      labs(title=paste("Simple Spearman correlations between",
+                       "mutation rate and pi, pval < 1%"),
            x="Model ID", y="Spearman's rho",
            shape="Avg. Mu Span", color="Shape Rate Mu") +
       theme(axis.title=element_text(size=16), 
@@ -2772,13 +3145,27 @@ save_plot("corr_mu_pi.png", p, base_height=10, base_width=16)
 
 # mu vs B
 u_vs_B <- fread("corr_u_B.csv")
-u_vs_B <- merge(u_vs_B, models, by="model")
-m_u_vs_B <- pivot_longer(u_vs_B, 
-                         cols=starts_with("rep"),
-                         names_to="replicate",
-                         values_to="cor")
+u_vs_B_c <- merge(u_vs_B, 
+                  models, 
+                  by="model")
+m_u_vs_B_c <- pivot_longer(u_vs_B_c, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="cor")
 
-p <- ggplot(data=m_u_vs_B,
+## pvals
+pvals <- fread("pval_u_B.csv")
+u_vs_B_p <- merge(pvals, 
+                  models, 
+                  by="model")
+m_u_vs_B_p <- pivot_longer(u_vs_B_p, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="pval")
+
+m_u_vs_B <- left_join(m_u_vs_B_c, m_u_vs_B_p)
+
+p <- ggplot(data=filter(m_u_vs_B, pval < 0.01),
             aes(x=model,
                 y=cor, 
                 color=as.factor(mult_r_u), 
@@ -2791,7 +3178,8 @@ p <- ggplot(data=m_u_vs_B,
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="Simple Spearman correlations between mu and B",
+      labs(title=paste("Simple Spearman correlations between",
+                       "mu and B, pval < 1%"),
            x="Model ID", y="Spearman's rho",
            shape="Avg. Mu Span", color="Mult. Rec Mu") +
       theme(axis.title=element_text(size=16), 
@@ -2803,17 +3191,33 @@ p <- ggplot(data=m_u_vs_B,
 save_plot("corr_mu_B.png", p, base_height=10, base_width=16)
 
 # r vs B
+## cors
 r_vs_B <- fread("corr_r_B.csv")
-r_vs_B <- merge(r_vs_B, models, by="model")
-m_r_vs_B <- pivot_longer(r_vs_B, 
-                         cols=starts_with("rep"),
-                         names_to="replicate",
-                         values_to="cor")
+r_vs_B_c <- merge(r_vs_B,
+                 models, 
+                 by="model")
 
-p <- ggplot(data=m_r_vs_B,
+m_r_vs_B_c <- pivot_longer(r_vs_B_c, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="cor")
+## pvals
+pvals <- fread("pval_r_B.csv")
+r_vs_B_p <- merge(pvals,
+                  models, 
+                  by="model")
+
+m_r_vs_B_p <- pivot_longer(r_vs_B_p, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="pval")
+
+m_r_vs_B <- left_join(m_r_vs_B_c, m_r_vs_B_p)
+
+p <- ggplot(data=filter(m_r_vs_B, pval < 0.01),
             aes(x=model,
                 y=cor, 
-                color=as.factor(mult_r_u), 
+                color=as.factor(shapes_rate_r), 
                 shape=as.factor(avg_rec_spans))) +
       geom_point(size=1.5) + theme_bw() + 
       geom_hline(aes(yintercept=0), 
@@ -2823,9 +3227,10 @@ p <- ggplot(data=m_r_vs_B,
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="Simple Spearman correlations between rec. and B",
+      labs(title=paste("Simple Spearman correlations between",
+                       "recombination and B, pval < 1%"),
            x="Model ID", y="Spearman's rho",
-           shape="Avg. Rec Span", color="Mult. Rec Mu") +
+           shape="Avg. Rec. Span", color="Shapes Rate Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -2835,14 +3240,28 @@ p <- ggplot(data=m_r_vs_B,
 save_plot("corr_r_B.png", p, base_height=10, base_width=16)
 
 # r vs pi
+## cors
 r_vs_pi <- fread("corr_r_piexp.csv")
-r_vs_pi <- merge(r_vs_pi, models, by="model")
-m_r_vs_pi <- pivot_longer(r_vs_pi, 
-                          cols=starts_with("rep"),
-                          names_to="replicate",
-                          values_to="cor")
+r_vs_pi_c <- merge(r_vs_pi, 
+                   models, 
+                   by="model")
+m_r_vs_pi_c <- pivot_longer(r_vs_pi_c, 
+                            cols=starts_with("rep"),
+                            names_to="replicate",
+                            values_to="cor")
+## pvals
+pvals <- fread("pval_r_piexp.csv")
+r_vs_pi_p <- merge(pvals, 
+                   models, 
+                   by="model")
+m_r_vs_pi_p <- pivot_longer(r_vs_pi_p, 
+                            cols=starts_with("rep"),
+                            names_to="replicate",
+                            values_to="pval")
 
-p <- ggplot(data=m_r_vs_pi,
+m_r_vs_pi <- left_join(m_r_vs_pi_c, m_r_vs_pi_p)
+
+p <- ggplot(data=filter(m_r_vs_pi, pval < 0.01),
             aes(x=model,
                 y=cor, 
                 color=as.factor(mult_r_u), 
@@ -2855,7 +3274,8 @@ p <- ggplot(data=m_r_vs_pi,
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="Simple Spearman correlations between rec. and B",
+      labs(title=paste("Simple Spearman correlations between",
+                       "recombination and pi, pval < 1%"),
            x="Model ID", y="Spearman's rho",
            shape="Avg. Rec Span", color="Mult. Rec Mu") +
       theme(axis.title=element_text(size=16), 
@@ -2866,16 +3286,30 @@ p <- ggplot(data=m_r_vs_pi,
             legend.position="bottom")
 save_plot("corr_r_pi.png", p, base_height=10, base_width=16)
 
-
 # r vs mu
+## cors
 r_vs_u <- fread("corr_r_u.csv")
-r_vs_u <- merge(r_vs_u, models, by="model")
-m_r_vs_u <- pivot_longer(r_vs_u, 
-                         cols=starts_with("rep"),
-                         names_to="replicate",
-                         values_to="cor")
+r_vs_u_c <- merge(r_vs_u, 
+                  models, 
+                  by="model")
+m_r_vs_u_c <- pivot_longer(r_vs_u_c, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="cor")
 
-p <- ggplot(data=m_r_vs_u,
+## pvals
+pvals <- fread("pval_r_u.csv")
+r_vs_u_p <- merge(pvals,
+                  models, 
+                  by="model")
+m_r_vs_u_p <- pivot_longer(r_vs_u_p, 
+                           cols=starts_with("rep"),
+                           names_to="replicate",
+                           values_to="pval")
+
+m_r_vs_u <- left_join(m_r_vs_u_c, m_r_vs_u_p)
+
+p <- ggplot(data=filter(m_r_vs_u, pval < 0.01),
             aes(x=model,
                 y=cor, 
                 color=as.factor(mult_r_u), 
@@ -2888,9 +3322,10 @@ p <- ggplot(data=m_r_vs_u,
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="Simple Spearman correlations between rec. and B",
+      labs(title=paste("Simple Spearman correlations between",
+                       "recombination and mutation, pval < 1%"),
            x="Model ID", y="Spearman's rho",
-           shape="Avg. Rec. Span", color="Mult. Rec Mu") +
+           shape="Avg. Rec. Spans", color="Mult. Rec. Mut.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -2941,14 +3376,18 @@ for(i in 1:num_models) {
 
   # in expectation
   for(j in 1:num_reps) {
-    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_typeII_tbl_exppi.csv", sep=""))
+    tmp <- fread(paste("model_", i,
+                       "/rep_", j, 
+                       "/r2_typeII_tbl_exppi.csv", sep=""))
     
     r2_1kb[j,] <- tmp[1,]
     r2_10kb[j,] <- tmp[2,]
     r2_100kb[j,] <- tmp[3,]
     r2_1Mb[j,] <- tmp[4,]
     
-    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl_exppi.csv", sep=""))
+    tmp <- fread(paste("model_", i,
+                       "/rep_", j, 
+                       "/coeff_tbl_exppi.csv", sep=""))
     
     coeff_1kb[j,] <- tmp[1,]
     coeff_10kb[j,] <- tmp[2,]
@@ -2971,14 +3410,18 @@ for(i in 1:num_models) {
   
   # with mutational variance
   for(j in 1:num_reps) {
-    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_typeII_tbl_simpi.csv", sep=""))
+    tmp <- fread(paste("model_", i, 
+                       "/rep_", j, 
+                       "/r2_typeII_tbl_simpi.csv", sep=""))
     
     r2_1kb[j,] <- tmp[1,]
     r2_10kb[j,] <- tmp[2,]
     r2_100kb[j,] <- tmp[3,]
     r2_1Mb[j,] <- tmp[4,]
     
-    tmp <- fread(paste("model_", i, "/rep_", j, "/coeff_tbl_simpi.csv", sep=""))
+    tmp <- fread(paste("model_", i, 
+                       "/rep_", j, 
+                       "/coeff_tbl_simpi.csv", sep=""))
     
     coeff_1kb[j,] <- tmp[1,]
     coeff_10kb[j,] <- tmp[2,]
@@ -3002,7 +3445,9 @@ for(i in 1:num_models) {
   # raw R^2 (from lm() or type I ANOVA)
   ## sim pi
   for(j in 1:num_reps) {
-    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_raw_tbl_simpi.csv", sep=""))
+    tmp <- fread(paste("model_", i,
+                       "/rep_", j,
+                       "/r2_raw_tbl_simpi.csv", sep=""))
     
     r2_raw_1kb[j, 1] <- tmp[1, 1]
     r2_raw_10kb[j, 1] <- tmp[2, 1]
@@ -3012,7 +3457,9 @@ for(i in 1:num_models) {
   
   ## exp pi
   for(j in 1:num_reps) {
-    tmp <- fread(paste("model_", i, "/rep_", j, "/r2_raw_tbl_exppi.csv", sep=""))
+    tmp <- fread(paste("model_", i,
+                       "/rep_", j,
+                       "/r2_raw_tbl_exppi.csv", sep=""))
     
     r2_raw_1kb[j, 2] <- tmp[1, 1]
     r2_raw_10kb[j, 2] <- tmp[2, 1]
@@ -3148,7 +3595,9 @@ for(i in 1:num_models) {
           legend.text=element_text(size=16),
           legend.position="bottom")
   
-  molten_sds <- pivot_longer(r2s_exp, cols=ends_with("sd"), names_to="variable")
+  molten_sds <- pivot_longer(r2s_exp, 
+                             cols=ends_with("sd"), 
+                             names_to="variable")
   q <- ggplot(data=filter(molten_sds, model==i), 
               aes(x=scale/1e+3, y=value, shape=variable)) +
     geom_line() + theme_bw() + geom_point(size=4) +
@@ -3203,7 +3652,8 @@ for(i in 1:num_models) {
           legend.text=element_text(size=16), 
           legend.position="bottom")
   
-  save_plot(paste("model_", i, "_sim_r2.png", sep=""), plot_grid(p, q, nrow=1), 
+  save_plot(paste("model_", i, "_sim_r2.png", sep=""), 
+            plot_grid(p, q, nrow=1), 
             base_height=10, base_width=15)
 }
 close(pb)
@@ -3300,6 +3750,13 @@ close(pb)
 Combining data across models to facilitate visualization
 
 ```{r lm-tbls, include=F, message=F, warning=F}
+
+r2s_raw <- fread("r2_raw_tbl_models.csv")
+r2s_exp <- fread("r2_exp_tbl_models.csv")
+r2s_sim <- fread("r2_sim_tbl_models.csv")
+
+cs_exp <- fread("coeff_exp_tbl_models.csv")
+cs_sim <- fread("coeff_sim_tbl_models.csv")
 
 # expected pi
 ## R2
@@ -3557,6 +4014,7 @@ save_plot("ratios_lmcoeff_cv.png", p, base_height=12, base_width=18)
 ```
 
 Meta linear models
+
 The goal is to understand the effect of genomic parameters on the effect of
 mu and B on pi.
 
@@ -3568,16 +4026,21 @@ std_r2_1kb <- as.data.frame(r2_exp_models %>% na.omit() %>% # 1 entry is NA (?!)
                             filter(., scale==1e+3) %>% 
                             dplyr::select(c(u_avg, B_avg,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_mut_spans,
                                             avg_rec_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
-m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
+m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1kb)
+m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1kb)
 
 summary(m_u_1kb)
 summary(m_B_1kb)
@@ -3587,16 +4050,21 @@ std_r2_10kb <- as.data.frame(r2_exp_models %>%
                               filter(., scale==1e+4) %>% 
                               dplyr::select(c(u_avg, B_avg,
                                               num_exons,
+                                              mult_r_u,
                                               shapes_rate_u,
                                               shapes_rate_r,
                                               avg_mut_spans,
                                               avg_rec_spans)) %>%
                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_10kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
-m_B_10kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
+m_u_10kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                        shapes_rate_r + mult_r_u +
+                        avg_mut_spans + avg_rec_spans)^2,
+               data=std_r2_10kb)
+m_B_10kb <- lm(B_avg ~ (num_exons + shapes_rate_u +
+                        shapes_rate_r + mult_r_u +
+                        avg_mut_spans + avg_rec_spans)^2,
+               data=std_r2_10kb)
 
 summary(m_u_10kb)
 summary(m_B_10kb)
@@ -3606,16 +4074,21 @@ std_r2_100kb <- as.data.frame(r2_exp_models %>%
                               filter(., scale==1e+5) %>% 
                               dplyr::select(c(u_avg, B_avg,
                                               num_exons,
+                                              mult_r_u,
                                               shapes_rate_u,
                                               shapes_rate_r,
                                               avg_mut_spans,
                                               avg_rec_spans)) %>%
                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_100kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
-m_B_100kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
+m_u_100kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                         shapes_rate_r + mult_r_u +
+                         avg_mut_spans + avg_rec_spans)^2, 
+                data=std_r2_100kb)
+m_B_100kb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
+                         shapes_rate_r + mult_r_u +
+                         avg_mut_spans + avg_rec_spans)^2,
+                data=std_r2_100kb)
 
 summary(m_u_100kb)
 summary(m_B_100kb)
@@ -3625,16 +4098,21 @@ std_r2_1Mb <- as.data.frame(r2_exp_models %>%
                             filter(., scale==1e+6) %>% 
                             dplyr::select(c(u_avg, B_avg,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_mut_spans,
                                             avg_rec_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_1Mb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                       avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
-m_B_1Mb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
+m_u_1Mb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1Mb)
+m_B_1Mb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1Mb)
 
 summary(m_u_1Mb)
 summary(m_B_1Mb)
@@ -3649,6 +4127,7 @@ names(meta_lm_u) <- names(m_u_1kb$coefficients)
 meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "avg_mut_spans",
                                         "num_exons",
+                                        "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
@@ -3668,6 +4147,7 @@ names(meta_lm_B) <- names(m_B_1kb$coefficients)
 meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "avg_mut_spans",
                                         "num_exons",
+                                        "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
@@ -3697,24 +4177,29 @@ meta_lm <- ggplot(data=mmlm_tbl,
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-
 save_plot("meta_lm_pi_exp.png", meta_lm, base_height=8, base_width=10)
 
+# pi sim
 ## 1 kb
 std_r2_1kb <- as.data.frame(r2_sim_models %>%
                             filter(., scale==1e+3) %>% 
                             dplyr::select(c(u_avg, B_avg,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_mut_spans,
                                             avg_rec_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
-m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1kb)
+m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1kb)
+m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1kb)
 
 summary(m_u_1kb)
 summary(m_B_1kb)
@@ -3724,16 +4209,21 @@ std_r2_10kb <- as.data.frame(r2_sim_models %>%
                              filter(., scale==1e+4) %>% 
                              dplyr::select(c(u_avg, B_avg,
                                              num_exons,
+                                             mult_r_u,
                                              shapes_rate_u,
                                              shapes_rate_r,
                                              avg_mut_spans,
                                              avg_rec_spans)) %>%
                              apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_10kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
-m_B_10kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                          avg_mut_spans + avg_rec_spans)^2, data=std_r2_10kb)
+m_u_10kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                        shapes_rate_r + mult_r_u +
+                        avg_mut_spans + avg_rec_spans)^2,
+               data=std_r2_10kb)
+m_B_10kb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
+                        shapes_rate_r + mult_r_u +
+                        avg_mut_spans + avg_rec_spans)^2,
+               data=std_r2_10kb)
 
 summary(m_u_10kb)
 summary(m_B_10kb)
@@ -3743,16 +4233,21 @@ std_r2_100kb <- as.data.frame(r2_sim_models %>%
                               filter(., scale==1e+5) %>% 
                               dplyr::select(c(u_avg, B_avg,
                                               num_exons,
+                                              mult_r_u,
                                               shapes_rate_u,
                                               shapes_rate_r,
                                               avg_mut_spans,
                                               avg_rec_spans)) %>%
                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_100kb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
-m_B_100kb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                           avg_mut_spans + avg_rec_spans)^2, data=std_r2_100kb)
+m_u_100kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                         shapes_rate_r + mult_r_u +
+                         avg_mut_spans + avg_rec_spans)^2, 
+                data=std_r2_100kb)
+m_B_100kb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
+                         shapes_rate_r + mult_r_u +
+                         avg_mut_spans + avg_rec_spans)^2, 
+                data=std_r2_100kb)
 
 summary(m_u_100kb)
 summary(m_B_100kb)
@@ -3762,16 +4257,21 @@ std_r2_1Mb <- as.data.frame(r2_sim_models %>%
                             filter(., scale==1e+6) %>% 
                             dplyr::select(c(u_avg, B_avg,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_mut_spans,
                                             avg_rec_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_u_1Mb <- lm(u_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
-m_B_1Mb <- lm(B_avg ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                         avg_mut_spans + avg_rec_spans)^2, data=std_r2_1Mb)
+m_u_1Mb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1Mb)
+m_B_1Mb <- lm(B_avg ~ (num_exons + shapes_rate_u +
+                       shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2,
+              data=std_r2_1Mb)
 
 summary(m_u_1Mb)
 summary(m_B_1Mb)
@@ -3786,9 +4286,9 @@ names(meta_lm_u) <- names(m_u_1kb$coefficients)
 meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "avg_mut_spans",
                                         "num_exons",
+                                        "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
-
 meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
 meta_lm_u$response <- "Mu"
 
@@ -3805,9 +4305,9 @@ names(meta_lm_B) <- names(m_B_1kb$coefficients)
 meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "avg_mut_spans",
                                         "num_exons",
+                                        "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
-
 meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
 meta_lm_B$response <- "B"
 
@@ -3834,7 +4334,6 @@ meta_lm <- ggplot(data=mmlm_tbl,
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-
 save_plot("meta_lm_pi_sim.png", meta_lm, base_height=8, base_width=10)
 ```
 
@@ -3983,14 +4482,16 @@ for(m in 1:num_models) {
                    multivariatePlot="none",
                    mvnTest="hz")
     
-    mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, row_number() %% 100==0),
+    mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, 
+                                              row_number() %% 100==0),
                          c(avg_rec, avg_mut, B, sim_pi)),
                     transform="log",
                     univariatePlot="none",
                     multivariatePlot="none",
                     mvnTest="hz")
     
-    mvn_100kb <- mvn(data=dplyr::select(filter(maps_100kb, row_number() %% 10==0),
+    mvn_100kb <- mvn(data=dplyr::select(filter(maps_100kb, 
+                                               row_number() %% 10==0),
                           c(avg_rec, avg_mut, B, sim_pi)),
                      transform="log",
                      univariatePlot="none",
@@ -4108,19 +4609,29 @@ for(m in 1:num_models) {
                                 inspect(sem1_100kb, "rsquare"),
                                 inspect(sem1_1Mb, "rsquare"))
     names(sem1_r2) <- c("pi_exp", "B")
-    fwrite(sem1_r2, paste("model_", m, "/rep_", rep, "/sem_DAG1_r2.csv", sep=""))
+    fwrite(sem1_r2, paste("model_", m, 
+                          "/rep_", rep, 
+                          "/sem_DAG1_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem1_1kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_1kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG1_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem1_10kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_10kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG1_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem1_100kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_100kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep,
+                 "/lavaan_DAG1_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem1_1Mb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG1_1Mb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG1_1Mb.csv", sep=""))
     
     # DAG2
     sem2_1kb <- sem(DAG2, data=std_1kb)
@@ -4151,22 +4662,34 @@ for(m in 1:num_models) {
                                 inspect(sem2_100kb, "rsquare"),
                                 inspect(sem2_1Mb, "rsquare"))
     names(sem2_r2) <- c("avg_mut", "pi_exp", "B")
-    fwrite(sem2_r2, paste("model_", m, "/rep_", rep, "/sem_DAG2_r2.csv", sep=""))
+    fwrite(sem2_r2, paste("model_", m,
+                          "/rep_", rep,
+                          "/sem_DAG2_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem2_1kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_1kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG2_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem2_10kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_10kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG2_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem2_100kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_100kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG2_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem2_1Mb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_1Mb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG2_1Mb.csv", sep=""))
     
     fwrite(parameterestimates(sem2_100kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG2_100kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG2_100kb.csv", sep=""))
     
     # DAG3
     sem3_1kb <- sem(DAG3, data=std_1kb)
@@ -4197,22 +4720,34 @@ for(m in 1:num_models) {
                                 inspect(sem3_100kb, "rsquare"),
                                 inspect(sem3_1Mb, "rsquare"))
     names(sem3_r2) <- c("pi_exp", "B")
-    fwrite(sem3_r2, paste("model_", m, "/rep_", rep, "/sem_DAG3_r2.csv", sep=""))
+    fwrite(sem3_r2, paste("model_", m,
+                          "/rep_", rep,
+                          "/sem_DAG3_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem3_1kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_1kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG3_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem3_10kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_10kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG3_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem3_100kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_100kb.csv", sep=""))
+           paste("model_", m,
+                 "/rep_", rep, 
+                 "/lavaan_DAG3_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem3_1Mb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_1Mb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG3_1Mb.csv", sep=""))
     
     fwrite(parameterestimates(sem3_100kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG3_100kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG3_100kb.csv", sep=""))
     
     # DAG4
     sem4_1kb <- sem(DAG4, data=std_1kb)
@@ -4243,22 +4778,34 @@ for(m in 1:num_models) {
                                 inspect(sem4_100kb, "rsquare"),
                                 inspect(sem4_1Mb, "rsquare"))
     names(sem4_r2) <- c("avg_mut", "pi_exp", "B")
-    fwrite(sem4_r2, paste("model_", m, "/rep_", rep, "/sem_DAG4_r2.csv", sep=""))
+    fwrite(sem4_r2, paste("model_", m,
+                          "/rep_", rep,
+                          "/sem_DAG4_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem4_1kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_1kb.csv", sep=""))
+           paste("model_", m,
+                 "/rep_", rep, 
+                 "/lavaan_DAG4_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem4_10kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_10kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG4_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem4_100kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_100kb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep,
+                 "/lavaan_DAG4_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem4_1Mb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_1Mb.csv", sep=""))
+           paste("model_", m, 
+                 "/rep_", rep, 
+                 "/lavaan_DAG4_1Mb.csv", sep=""))
     
     fwrite(parameterestimates(sem4_100kb, ci=T), 
-           paste("model_", m, "/rep_", rep, "/lavaan_DAG4_100kb.csv", sep=""))
+           paste("model_", m,
+                 "/rep_", rep, 
+                 "/lavaan_DAG4_100kb.csv", sep=""))
     
   }
 }
@@ -4332,7 +4879,9 @@ pb <- txtProgressBar(min=0, max=num_models, style=3)
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   for(rep in 1:num_reps) {
-    mvn <- fread(paste("model_", m, "/rep_", rep,  "/mvn_tests.csv", sep=""))
+    mvn <- fread(paste("model_", m,
+                       "/rep_", rep,
+                       "/mvn_tests.csv", sep=""))
     
     mvn_tests_1kb[m, rep] <- mvn$pval[1]
     mvn_tests_10kb[m, rep] <- mvn$pval[2]
@@ -4370,7 +4919,8 @@ df <- merge(m_pval_sem, m_mvn, by=c("model", "replicate", "scale"))
 
 # manhattan plots with shape of points indicating significance
 p1 <- ggplot(data=filter(df, DAG==1),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  shape=mvn_p > 0.01, 
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4393,9 +4943,10 @@ p1 <- ggplot(data=filter(df, DAG==1),
 save_plot("manhattan_SEM_dag1.png", p1, base_height=10, base_width=15)
 
 p2 <- ggplot(data=filter(df, DAG==2),
-             aes(x=model, y=-log(pval), 
-             shape=mvn_p > 0.01, 
-             color=as.factor(mult_r_u))) +
+             aes(x=model, 
+                 y=-log(pval), 
+                 shape=mvn_p > 0.01, 
+                 color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
@@ -4416,7 +4967,8 @@ p2 <- ggplot(data=filter(df, DAG==2),
 save_plot("manhattan_SEM_dag2.png", p2, base_height=10, base_width=15)
 
 p3 <- ggplot(data=filter(df, DAG==3),
-             aes(x=model, y=-log(pval), 
+             aes(x=model, 
+                 y=-log(pval), 
                  shape=mvn_p > 0.01, 
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4439,9 +4991,10 @@ p3 <- ggplot(data=filter(df, DAG==3),
 save_plot("manhattan_SEM_dag3.png", p3, base_height=10, base_width=15)
 
 p4 <- ggplot(data=filter(df, DAG==4),
-             aes(x=model, y=-log(pval), 
-             shape=mvn_p > 0.01, 
-             color=as.factor(mult_r_u))) +
+             aes(x=model,
+                 y=-log(pval), 
+                 shape=mvn_p > 0.01, 
+                 color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
@@ -4463,7 +5016,8 @@ save_plot("manhattan_SEM_dag4.png", p4, base_height=10, base_width=15)
 
 # DAG 1, bracketing MVN p-value
 p5 <- ggplot(data=filter(df, DAG==1, mvn_p < 1e-2),
-             aes(x=model, y=-log(pval), 
+             aes(x=model, 
+                 y=-log(pval), 
                  alpha=mvn_p,  
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4486,7 +5040,8 @@ p5 <- ggplot(data=filter(df, DAG==1, mvn_p < 1e-2),
 save_plot("manhattan_SEM_dag1_mvnpL.png", p5, base_height=10, base_width=15)
 
 p6 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-2 & mvn_p < 1e-1),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  alpha=mvn_p,  
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4497,7 +5052,8 @@ p6 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-2 & mvn_p < 1e-1),
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="H0: data fits DAG 1 (non-mutagenic rec., E[pi]) | 10% < MVN p > 1%",
+      labs(title=paste("H0: data fits DAG 1 (non-mutagenic rec., E[pi])",
+                       "| 10% < MVN p > 1%"),
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
@@ -4509,7 +5065,8 @@ p6 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-2 & mvn_p < 1e-1),
 save_plot("manhattan_SEM_dag1_mvnpM.png", p6, base_height=10, base_width=15)
 
 p7 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-1),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  alpha=mvn_p,   
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4533,7 +5090,8 @@ save_plot("manhattan_SEM_dag1_mvnpH.png", p7, base_height=10, base_width=15)
 
 # DAG 2, bracketing MVN p-value
 p8 <- ggplot(data=filter(df, DAG==2, mvn_p < 1e-2),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  alpha=mvn_p,   
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4556,7 +5114,8 @@ p8 <- ggplot(data=filter(df, DAG==2, mvn_p < 1e-2),
 save_plot("manhattan_SEM_dag2_mvnpL.png", p8, base_height=10, base_width=15)
 
 p9 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-2 & mvn_p < 1e-1),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  alpha=mvn_p,   
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4579,7 +5138,8 @@ p9 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-2 & mvn_p < 1e-1),
 save_plot("manhattan_SEM_dag2_mvnpM.png", p9, base_height=10, base_width=15)
 
 p10 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-1),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  alpha=mvn_p,   
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4603,7 +5163,8 @@ save_plot("manhattan_SEM_dag2_mvnpH.png", p10, base_height=10, base_width=15)
 
 # DAG 3, bracketing MVN p-value
 p11 <- ggplot(data=filter(df, DAG==3, mvn_p < 1e-2),
-             aes(x=model, y=-log(pval), 
+             aes(x=model, 
+                 y=-log(pval), 
                  alpha=mvn_p,   
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4626,7 +5187,8 @@ p11 <- ggplot(data=filter(df, DAG==3, mvn_p < 1e-2),
 save_plot("manhattan_SEM_dag3_mvnpL.png", p11, base_height=10, base_width=15)
 
 p12 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-2 & mvn_p < 1e-1),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  alpha=mvn_p,   
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4649,7 +5211,8 @@ p12 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-2 & mvn_p < 1e-1),
 save_plot("manhattan_SEM_dag3_mvnpM.png", p12, base_height=10, base_width=15)
 
 p13 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-1),
-             aes(x=model, y=-log(pval),  
+             aes(x=model, 
+                 y=-log(pval),  
                  alpha=mvn_p,  
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4673,7 +5236,8 @@ save_plot("manhattan_SEM_dag3_mvnpH.png", p13, base_height=10, base_width=15)
 
 # DAG 4, bracketing MVN p-value
 p14 <- ggplot(data=filter(df, DAG==4, mvn_p < 1e-2),
-             aes(x=model, y=-log(pval), 
+             aes(x=model,
+                 y=-log(pval), 
                  alpha=mvn_p,  
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4696,7 +5260,8 @@ p14 <- ggplot(data=filter(df, DAG==4, mvn_p < 1e-2),
 save_plot("manhattan_SEM_dag4_mvnpL.png", p14, base_height=10, base_width=15)
 
 p15 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-2 & mvn_p < 1e-1),
-             aes(x=model, y=-log(pval),  
+             aes(x=model, 
+                 y=-log(pval),  
                  alpha=mvn_p,  
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4719,7 +5284,8 @@ p15 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-2 & mvn_p < 1e-1),
 save_plot("manhattan_SEM_dag4_mvnpM.png", p15, base_height=10, base_width=15)
 
 p16 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-1),
-             aes(x=model, y=-log(pval),  
+             aes(x=model, 
+                 y=-log(pval),  
                  alpha=mvn_p,  
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
@@ -4753,7 +5319,9 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   r2_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df <- fread(paste("model_", m, "/rep_", rep, "/sem_DAG1_r2.csv", sep=""))
+    df <- fread(paste("model_", m, 
+                      "/rep_", rep,
+                      "/sem_DAG1_r2.csv", sep=""))
     df$DAG <- 1
     df$model <- m
     df$replicate <- rep
@@ -4775,7 +5343,9 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   r2_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df <- fread(paste("model_", m, "/rep_", rep, "/sem_DAG2_r2.csv", sep=""))
+    df <- fread(paste("model_", m, 
+                      "/rep_", rep, 
+                      "/sem_DAG2_r2.csv", sep=""))
     df$DAG <- 2
     df$model <- m
     df$replicate <- rep
@@ -4797,7 +5367,9 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   r2_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df <- fread(paste("model_", m, "/rep_", rep, "/sem_DAG3_r2.csv", sep=""))
+    df <- fread(paste("model_", m, 
+                      "/rep_", rep,
+                      "/sem_DAG3_r2.csv", sep=""))
     df$DAG <- 3
     df$model <- m
     df$replicate <- rep
@@ -4819,7 +5391,9 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   r2_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df <- fread(paste("model_", m, "/rep_", rep, "/sem_DAG4_r2.csv", sep=""))
+    df <- fread(paste("model_", m,
+                      "/rep_", rep, 
+                      "/sem_DAG4_r2.csv", sep=""))
     df$DAG <- 4
     df$model <- m
     df$replicate <- rep
@@ -4879,9 +5453,10 @@ for(e in unique(m_r2_sem_1$num_exons)) {
                                  avg_rec_spans==ars, 
                                  shapes_rate_r==srr, 
                                  mult_r_u==mru),
-             aes(x=scale, y=mean_rsqrd, 
-             shape=as.factor(pi_source), 
-             color=variable)) +
+             aes(x=scale,
+                 y=mean_rsqrd, 
+                 shape=as.factor(pi_source), 
+                 color=variable)) +
              geom_point(size=3) + geom_line() + theme_bw() + 
              facet_grid(+shapes_rate_u~avg_mut_spans, labeller=label_both) +
              scale_shape_manual(values=c(0, 1, 2)) +
@@ -4919,9 +5494,10 @@ for(e in unique(m_r2_sem_2$num_exons)) {
                                  avg_rec_spans==ars, 
                                  shapes_rate_r==srr, 
                                  mult_r_u==mru),
-             aes(x=scale, y=mean_rsqrd, 
-             shape=as.factor(pi_source), 
-             color=variable)) +
+             aes(x=scale, 
+                 y=mean_rsqrd, 
+                 shape=as.factor(pi_source), 
+                 color=variable)) +
              geom_point(size=3) + geom_line() + theme_bw() + 
              facet_grid(+shapes_rate_u~avg_mut_spans, labeller=label_both) +
              scale_shape_manual(values=c(0, 1, 2)) +
@@ -4964,14 +5540,16 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1kb <- fread(paste("model_", m,
+                          "/rep_", rep, 
                           "/lavaan_DAG1_1kb.csv", sep=""))
     df_1kb$DAG <- 1
     df_1kb$model <- m
     df_1kb$replicate <- rep
     df_1kb$scale <- 1e+3
     
-    df_10kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_10kb <- fread(paste("model_", m, 
+                           "/rep_", rep, 
                           "/lavaan_DAG1_10kb.csv", sep=""))
     df_10kb$DAG <- 1
     df_10kb$model <- m
@@ -4985,14 +5563,18 @@ for(m in 1:num_models) {
     df_100kb$replicate <- rep
     df_100kb$scale <- 1e+5
     
-    df_1Mb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1Mb <- fread(paste("model_", m, 
+                          "/rep_", rep, 
                           "/lavaan_DAG1_1Mb.csv", sep=""))
     df_1Mb$DAG <- 1
     df_1Mb$model <- m
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb, df_10kb, df_100kb, df_1Mb)
+    pc_reps[[rep]] <- rbind.data.frame(df_1kb, 
+                                       df_10kb,
+                                       df_100kb,
+                                       df_1Mb)
   }
   
   tbl <- do.call(rbind.data.frame, pc_reps)
@@ -5010,35 +5592,42 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1kb <- fread(paste("model_", m, 
+                          "/rep_", rep, 
                           "/lavaan_DAG2_1kb.csv", sep=""))
     df_1kb$DAG <- 2
     df_1kb$model <- m
     df_1kb$replicate <- rep
     df_1kb$scale <- 1e+3
     
-    df_10kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_10kb <- fread(paste("model_", m,
+                           "/rep_", rep, 
                           "/lavaan_DAG2_10kb.csv", sep=""))
     df_10kb$DAG <- 2
     df_10kb$model <- m
     df_10kb$replicate <- rep
     df_10kb$scale <- 1e+4
     
-    df_100kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_100kb <- fread(paste("model_", m,
+                            "/rep_", rep, 
                           "/lavaan_DAG2_100kb.csv", sep=""))
     df_100kb$DAG <- 2
     df_100kb$model <- m
     df_100kb$replicate <- rep
     df_100kb$scale <- 1e+5
     
-    df_1Mb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1Mb <- fread(paste("model_", m,
+                          "/rep_", rep, 
                           "/lavaan_DAG2_1Mb.csv", sep=""))
     df_1Mb$DAG <- 2
     df_1Mb$model <- m
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb, df_10kb, df_100kb, df_1Mb)
+    pc_reps[[rep]] <- rbind.data.frame(df_1kb,
+                                       df_10kb, 
+                                       df_100kb, 
+                                       df_1Mb)
   }
   
   tbl <- do.call(rbind.data.frame, pc_reps)
@@ -5056,35 +5645,42 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1kb <- fread(paste("model_", m,
+                          "/rep_", rep, 
                           "/lavaan_DAG3_1kb.csv", sep=""))
     df_1kb$DAG <- 3
     df_1kb$model <- m
     df_1kb$replicate <- rep
     df_1kb$scale <- 1e+3
     
-    df_10kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_10kb <- fread(paste("model_", m, 
+                           "/rep_", rep, 
                           "/lavaan_DAG3_10kb.csv", sep=""))
     df_10kb$DAG <- 3
     df_10kb$model <- m
     df_10kb$replicate <- rep
     df_10kb$scale <- 1e+4
     
-    df_100kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_100kb <- fread(paste("model_", m,
+                            "/rep_", rep, 
                           "/lavaan_DAG3_100kb.csv", sep=""))
     df_100kb$DAG <- 3
     df_100kb$model <- m
     df_100kb$replicate <- rep
     df_100kb$scale <- 1e+5
     
-    df_1Mb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1Mb <- fread(paste("model_", m, 
+                          "/rep_", rep, 
                           "/lavaan_DAG3_1Mb.csv", sep=""))
     df_1Mb$DAG <- 3
     df_1Mb$model <- m
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb, df_10kb, df_100kb, df_1Mb)
+    pc_reps[[rep]] <- rbind.data.frame(df_1kb,
+                                       df_10kb,
+                                       df_100kb,
+                                       df_1Mb)
   }
   
   tbl <- do.call(rbind.data.frame, pc_reps)
@@ -5102,35 +5698,42 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1kb <- fread(paste("model_", m,
+                          "/rep_", rep, 
                           "/lavaan_DAG4_1kb.csv", sep=""))
     df_1kb$DAG <- 4
     df_1kb$model <- m
     df_1kb$replicate <- rep
     df_1kb$scale <- 1e+3
     
-    df_10kb <- fread(paste("model_", m, "/rep_", rep, 
-                          "/lavaan_DAG4_10kb.csv", sep=""))
+    df_10kb <- fread(paste("model_", m, 
+                           "/rep_", rep, 
+                           "/lavaan_DAG4_10kb.csv", sep=""))
     df_10kb$DAG <- 4
     df_10kb$model <- m
     df_10kb$replicate <- rep
     df_10kb$scale <- 1e+4
     
-    df_100kb <- fread(paste("model_", m, "/rep_", rep, 
-                          "/lavaan_DAG4_100kb.csv", sep=""))
+    df_100kb <- fread(paste("model_", m, 
+                            "/rep_", rep, 
+                            "/lavaan_DAG4_100kb.csv", sep=""))
     df_100kb$DAG <- 4
     df_100kb$model <- m
     df_100kb$replicate <- rep
     df_100kb$scale <- 1e+5
     
-    df_1Mb <- fread(paste("model_", m, "/rep_", rep, 
+    df_1Mb <- fread(paste("model_", m,
+                          "/rep_", rep, 
                           "/lavaan_DAG4_1Mb.csv", sep=""))
     df_1Mb$DAG <- 4
     df_1Mb$model <- m
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb, df_10kb, df_100kb, df_1Mb)
+    pc_reps[[rep]] <- rbind.data.frame(df_1kb, 
+                                       df_10kb,
+                                       df_100kb, 
+                                       df_1Mb)
   }
   
   tbl <- do.call(rbind.data.frame, pc_reps)
@@ -5492,7 +6095,8 @@ for(e in unique(m_pc_sem_p_nonmutrec$num_exons)) {
                                 labels=c(expression(mu), "B", "u>B>pi")) +
              scale_y_continuous(breaks=pretty_breaks()) +
              scale_x_log10() + 
-             labs(title=paste("Path coefficients (effects on pi, non-mutagenic DAG)",
+             labs(title=paste("Path coefficients",
+                              "(effects on pi, non-mutagenic DAG)",
                               "average PC across 10 replicates"),
                   x="Scale (window size)", y="Path Coefficient",
                   shape="pi", color="Variable") +
@@ -5540,8 +6144,9 @@ for(e in unique(pc_sem_mutrec_cv_models$num_exons)) {
                                type=c("brown1", "green4", "purple3")) +
           scale_x_continuous(breaks=c(1, 10, 100), trans="log10") +
           scale_y_continuous(breaks=pretty_breaks()) +
-          labs(title=paste("Path coefficients (effects on pi, non-mutagenic DAG)",
-                              "average PC across 10 replicates"),
+          labs(title=paste("Path coefficients",
+                           "(effects on pi, non-mutagenic DAG)",
+                           "average PC across 10 replicates"),
                x="CV(u) / CV(B)", y=" Mean path coefficient") +
           theme(axis.title=element_text(size=16), 
                 axis.text=element_text(size=12), 
@@ -5805,7 +6410,7 @@ for(e in unique(m_pc_sem_recpi$num_exons)) {
 Building a linear regression that models SEM path coefficients (mu, B to pi)
 as a function of parameters shaping chromosome landscapes.
 
-```{r meta-lm-SEM-pc, include=F, message=F, warning=F}
+```{r meta-lm-SEM-pc-1, include=F, message=F, warning=F}
 
 # path coefficients to pi, mutagenic DAGs
 m_pc_sem_p_mutrec <- fread("pc_sem_pi_mutrec.csv.gz")
@@ -5834,6 +6439,7 @@ std_pc_1kb <- as.data.frame(df %>%
                                             mut,
                                             mu_B_pi,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_rec_spans,
@@ -5841,10 +6447,10 @@ std_pc_1kb <- as.data.frame(df %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
 m_B_1kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
-m_u_1kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+                   avg_mut_spans + avg_rec_spans + mult_r_u)^2, data=std_pc_1kb)
+m_u_1kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                      avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
-m_uBp_1kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_uBp_1kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                            avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
 
 summary(m_B_1kb)
@@ -5853,22 +6459,23 @@ summary(m_uBp_1kb)
 
 ## 10 kb
 std_pc_10kb <- as.data.frame(df %>%
-                            filter(., scale==1e+4) %>% 
-                            dplyr::select(c(B, 
-                                            mut,
-                                            mu_B_pi,
-                                            num_exons,
-                                            shapes_rate_u,
-                                            shapes_rate_r,
-                                            avg_rec_spans,
-                                            avg_mut_spans)) %>%
+                             filter(., scale==1e+4) %>% 
+                             dplyr::select(c(B, 
+                                             mut,
+                                             mu_B_pi,
+                                             num_exons,
+                                             mult_r_u,
+                                             shapes_rate_u,
+                                             shapes_rate_r,
+                                             avg_rec_spans,
+                                             avg_mut_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_B_10kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_B_10kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
-m_u_10kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_u_10kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                      avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
-m_uBp_10kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_uBp_10kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                            avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
 
 ## 100 kb
@@ -5878,17 +6485,18 @@ std_pc_100kb <- as.data.frame(df %>%
                                               mut,
                                               mu_B_pi,
                                               num_exons,
+                                              mult_r_u,
                                               shapes_rate_u,
                                               shapes_rate_r,
                                               avg_rec_spans,
                                               avg_mut_spans)) %>%
                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_B_100kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_B_100kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
-m_u_100kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_u_100kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                      avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
-m_uBp_100kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_uBp_100kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                            avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
 
 ## 1 Mb
@@ -5898,17 +6506,18 @@ std_pc_1Mb <- as.data.frame(df %>%
                                             mut,
                                             mu_B_pi,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_rec_spans,
                                             avg_mut_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_B_1Mb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_B_1Mb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
-m_u_1Mb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_u_1Mb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u + 
                      avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
-m_uBp_1Mb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
+m_uBp_1Mb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                            avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
 
 # mut
@@ -5921,6 +6530,7 @@ names(meta_lm_u) <- names(m_u_1kb$coefficients)
 meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "avg_mut_spans",
                                         "num_exons",
+                                        "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
@@ -5940,6 +6550,7 @@ names(meta_lm_B) <- names(m_B_1kb$coefficients)
 meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "avg_mut_spans",
                                         "num_exons",
+                                        "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
@@ -5971,14 +6582,61 @@ meta_lm <- ggplot(data=mmlm_tbl,
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
+save_plot("meta_lm_pi_SEM.png", meta_lm, base_height=8, base_width=10)
 
-save_plot("meta_lm_pi.png", meta_lm, base_height=8, base_width=10)
+# mu -> B -> pi
+## coeffs
+meta_lm_uBp_c <- rbind.data.frame(m_uBp_1kb$coefficients,
+                                  m_uBp_10kb$coefficients,
+                                  m_uBp_100kb$coefficients,
+                                  m_uBp_1Mb$coefficients)
+
+names(meta_lm_uBp_c) <- names(m_uBp_1kb$coefficients)
+meta_lm_uBp_c$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_uBp_c$path <- "u->B->pi"
+
+mmlm_uBp_c <- pivot_longer(meta_lm_uBp_c, 
+                           cols=names(meta_lm_uBp_c)[1:(ncol(meta_lm_uBp_c)-2)],
+                           names_to="var", values_to="coeff")
+
+## pvals
+meta_lm_uBp_p <- rbind.data.frame(summary(m_uBp_1kb)$coefficients[,4],
+                                  summary(m_uBp_10kb)$coefficients[,4], 
+                                  summary(m_uBp_100kb)$coefficients[,4], 
+                                  summary(m_uBp_1Mb)$coefficients[,4])
+
+names(meta_lm_uBp_p) <- names(m_uBp_1kb$coefficients)
+meta_lm_uBp_p$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_uBp_p$path <- "u->B->pi"
+
+mmlm_uBp_p <- pivot_longer(meta_lm_uBp_p, 
+                           cols=names(meta_lm_uBp_p)[1:(ncol(meta_lm_uBp_p)-2)],
+                           names_to="var", values_to="pval")
+
+mmlm_uBp <- left_join(mmlm_uBp_c, mmlm_uBp_p)
+
+p <- ggplot(data=filter(mmlm_uBp, pval < 0.01), 
+            aes(x=var, 
+                y=coeff, 
+                shape=as.factor(bin_size))) +
+  geom_point(size=4) + theme_bw() +
+  geom_hline(yintercept=0, linetype="dashed") +
+  scale_y_continuous(breaks=pretty_breaks()) +
+  scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
+  labs(title="Regression of Path Coefficient mu -> B -> pi",
+       x="Variable", y="Coefficient") +
+  theme(axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
 ```
 
 Building a linear regression that models SEM path coefficients (rec. to pi)
 as a function of parameters shaping chromosome landscapes.
 
-```{r meta-lm-SEM-pc, include=F, message=F, warning=F}
+```{r meta-lm-SEM-pc-2, include=F, message=F, warning=F}
 
 # path coefficients from rec to pi
 m_pc_sem_recpi <- fread("pc_sem_recpi.csv.gz")
@@ -6005,16 +6663,21 @@ std_pc_1kb <- as.data.frame(df %>%
                             dplyr::select(c(rec_B_pi, 
                                             rec_mu_pi,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_rec_spans,
                                             avg_mut_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_rBp_1kb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
-m_rup_1kb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
+m_rBp_1kb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + 
+                            shapes_rate_r + mult_r_u +
+                            avg_mut_spans + avg_rec_spans)^2,
+                data=std_pc_1kb)
+m_rup_1kb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + 
+                             shapes_rate_r + mult_r_u +
+                             avg_mut_spans + avg_rec_spans)^2, 
+                data=std_pc_1kb)
 
 summary(m_rBp_1kb)
 summary(m_rup_1kb)
@@ -6025,16 +6688,21 @@ std_pc_10kb <- as.data.frame(df %>%
                             dplyr::select(c(rec_B_pi, 
                                             rec_mu_pi,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_rec_spans,
                                             avg_mut_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_rBp_10kb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
-m_rup_10kb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
+m_rBp_10kb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + 
+                             shapes_rate_r + mult_r_u +
+                             avg_mut_spans + avg_rec_spans)^2,
+                 data=std_pc_10kb)
+m_rup_10kb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u +
+                              shapes_rate_r + mult_r_u +
+                              avg_mut_spans + avg_rec_spans)^2, 
+                 data=std_pc_10kb)
 
 summary(m_rBp_10kb)
 summary(m_rup_10kb)
@@ -6045,16 +6713,21 @@ std_pc_100kb <- as.data.frame(df %>%
                             dplyr::select(c(rec_B_pi, 
                                             rec_mu_pi,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_rec_spans,
                                             avg_mut_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_rBp_100kb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
-m_rup_100kb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
+m_rBp_100kb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + 
+                              shapes_rate_r + mult_r_u +
+                              avg_mut_spans + avg_rec_spans)^2, 
+                  data=std_pc_100kb)
+m_rup_100kb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + 
+                               shapes_rate_r + mult_r_u +
+                               avg_mut_spans + avg_rec_spans)^2, 
+                  data=std_pc_100kb)
 
 summary(m_rBp_100kb)
 summary(m_rup_100kb)
@@ -6065,21 +6738,26 @@ std_pc_1Mb <- as.data.frame(df %>%
                             dplyr::select(c(rec_B_pi, 
                                             rec_mu_pi,
                                             num_exons,
+                                            mult_r_u,
                                             shapes_rate_u,
                                             shapes_rate_r,
                                             avg_rec_spans,
                                             avg_mut_spans)) %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
-m_rBp_1Mb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
-m_rup_1Mb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
+m_rBp_1Mb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + 
+                            shapes_rate_r + mult_r_u +
+                            avg_mut_spans + avg_rec_spans)^2,
+                data=std_pc_1Mb)
+m_rup_1Mb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + 
+                             shapes_rate_r + mult_r_u +
+                             avg_mut_spans + avg_rec_spans)^2, 
+                data=std_pc_1Mb)
 
 summary(m_rBp_1Mb)
 summary(m_rup_1Mb)
 
-# rec > B > pi
+# rec -> B -> pi
 m_rBp <- rbind.data.frame(m_rBp_1kb$coefficients,
                           m_rBp_10kb$coefficients,
                           m_rBp_100kb$coefficients,
@@ -6088,12 +6766,13 @@ names(m_rBp) <- names(m_rBp_1kb$coefficients)
 
 m_rBp <- dplyr::select(m_rBp, c("shapes_rate_u",
                                 "avg_mut_spans",
+                                "mult_r_u",
                                 "num_exons",
                                 "shapes_rate_r",
                                 "avg_rec_spans"))
 
 m_rBp$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
-m_rBp$path <- "rec>B>pi"
+m_rBp$path <- "rec->B->pi"
 
 mmlm_rBp <- pivot_longer(m_rBp, cols=names(m_rBp)[1:(ncol(m_rBp)-2)],
                         names_to="var", values_to="coeff")
@@ -6108,11 +6787,12 @@ names(m_rup) <- names(m_rup_1kb$coefficients)
 m_rup <- dplyr::select(m_rup, c("shapes_rate_u",
                                 "avg_mut_spans",
                                 "num_exons",
+                                "mult_r_u",
                                 "shapes_rate_r",
                                 "avg_rec_spans"))
 
 m_rup$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
-m_rup$path <- "rec>mu>pi"
+m_rup$path <- "rec->mu->pi"
 
 mmlm_rup <- pivot_longer(m_rup, cols=names(m_rup)[1:(ncol(m_rup)-2)],
                          names_to="var", values_to="coeff")
@@ -6120,17 +6800,17 @@ mmlm_rup <- pivot_longer(m_rup, cols=names(m_rup)[1:(ncol(m_rup)-2)],
 mmlm_tbl <- rbind.data.frame(mmlm_rBp, mmlm_rup)
 
 # TODO add real data
-meta_lm <- ggplot(data=mmlm_tbl, 
-                  aes(x=var, 
-                      y=coeff, 
-                      shape=as.factor(bin_size),
-                      color=path)) +
+p <- ggplot(data=mmlm_tbl, 
+            aes(x=var, 
+                y=coeff, 
+                shape=as.factor(bin_size),
+                color=path)) +
   geom_point(size=4) + theme_bw() +
   geom_hline(yintercept=0, linetype="dashed") +
   scale_y_continuous(breaks=pretty_breaks()) +
   scale_color_manual(name=NULL, values=c("brown1", "green4")) +
   scale_shape_manual(values=c(0, 1, 2, 4), name="Bin Size") +
-  labs(title="Regression of Path Coefficient of 'Path' on pi",
+  labs(title="Regression of total coefficient along 'Path' to pi",
        x="Variable", y="Coefficient") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
@@ -6138,10 +6818,10 @@ meta_lm <- ggplot(data=mmlm_tbl,
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
-
-save_plot("meta_lm_rec_X_pi.png", meta_lm, base_height=8, base_width=10)
+save_plot("meta_lm_rec_pi_SEM.png", p, base_height=8, base_width=10)
 ```
 
+TODO
 # Real Data
 
 PCA of genomic maps (simulated and real)
@@ -6149,27 +6829,60 @@ PCA of genomic maps (simulated and real)
 ```{r real-data-PCA, include=F, message=F, warning=F}
 
 # collecting simulated maps
-muts_1kb <- as.data.frame(matrix(nrow=1e+5, ncol=num_models*num_reps))
-recs_1kb <- as.data.frame(matrix(nrow=1e+5, ncol=num_models*num_reps))
-exons_1kb <- as.data.frame(matrix(nrow=1e+5, ncol=num_models*num_reps))
+muts_100kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+3))
+recs_100kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+3))
+exons_100kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+3))
 
 pb <- txtProgressBar(min=0, max=num_models, style=3)
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   
   for(rep in 1:num_reps) {
-    maps <- fread(paste("model_", m, "/rep_", rep, "/maps_1kb.csv.gz", sep=""))
+    maps_1kb <- fread(paste("model_", m,
+                            "/rep_", rep, 
+                            "/maps_1kb.csv.gz", sep=""))
+    
+    maps_1kb$bin_1kb <- 1:nrow(maps_1kb)
+    maps_1kb$bin_10kb <- (maps_1kb$bin_1kb - 1) %/% 10
+    maps_1kb$bin_100kb <- (maps_1kb$bin_1kb - 1) %/% 100
+    maps_1kb$bin_1Mb <- (maps_1kb$bin_1kb - 1) %/% 1000
+    
+    maps_10kb <- maps_1kb %>% group_by(bin_10kb) %>% 
+                 summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+    maps_100kb <- maps_1kb %>% group_by(bin_100kb) %>% 
+                  summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+    maps_1Mb <- maps_1kb %>% group_by(bin_1Mb) %>% 
+                summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
     
     idx <- rep + (m - 1) * num_reps
     
-    muts_1kb[idx] <- maps$avg_mut
-    recs_1kb[idx] <- maps$avg_rec
-    exons_1kb[,idx] <- maps$exonic_sites
+    muts_100kb[idx,] <- maps_100kb$avg_mut
+    recs_100kb[idx,] <- maps_100kb$avg_rec
+    exons_100kb[idx,] <- maps_100kb$exonic_sites
   }
 }
 close(pb)
 
+names(muts_100kb) <- paste("bin", 1:ncol(muts_100kb), sep="_")
+muts_100kb$model <- sort(rep(1:865, 10))
+  
+mut_model <- crossing(models$shapes_rate_u, models$avg_mut_spans)
+names(mut_model) <- c("shapes_rate_u", "avg_mut_spans")
+mut_model$mut_model_id <- 1:nrow(mut_model)
 
+mm <- merge(models, mut_model, by=c("shapes_rate_u", "avg_mut_spans"))
+df_mmap_100kb <- merge(muts_100kb, mm, by="model")
+
+dfsub <- dplyr::filter(df_mmap_100kb, mut_model_id < 4) %>%
+         dplyr::select(., c(mut_model_id, starts_with("bin")))
+pca_mut_100kb <- PCA(dfsub[,-1])
+fviz_eig(pca_mut_100kb, addlabels=TRUE)
+p <- fviz_pca_ind(pca_mut_100kb,
+                  label = "none", # hide individual labels
+                  habillage = dfsub$mut_model_id, # color by groups
+                  #palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+                  addEllipses = F # Concentration ellipses
+                  )
 #rs <- paste("rep", 1:num_reps, sep="")
 #ms <- paste("m", 1:num_models, sep="")
 #ns <- crossing(ms, rs)
