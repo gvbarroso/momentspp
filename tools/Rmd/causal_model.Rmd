@@ -76,7 +76,7 @@ L <- 1e+8
 mult_r_u <- c(0, 0.05, 0.1, 0.25) # non-mutagenic recomb. is a special case
 
 p_stay <- 0.25 # related to auto-correlation in the distribution of elements
-# note since average length of intergenic > exon_lengths, p_stay > 0 => AR > 0
+# note since the mean length of intergenic > exon_lengths, p_stay > 0 => AR > 0
 
 models <- setDT(crossing(L, p_stay, num_exons, exon_lengths, mult_r_u,
                          mean_r, mean_u, shapes_rate_u, shapes_rate_r,
@@ -104,6 +104,13 @@ do
   done
   cd ..
 done
+
+mkdir Coeff_lm
+mkdir Correlations
+mkdir DAGs
+mkdir Manhattan
+mkdir R2
+mkdir SEM
 ```
 
 We use the models to assemble the genomic maps
@@ -579,8 +586,6 @@ done
 
 # Specifying causal models
 
-## Visualization
-
 ```{r dags-viz, include=F, message=F, warning=F}
 
 # Barroso & Dutheil 2023
@@ -603,6 +608,9 @@ DD0p <- DAG0 %>%
                 label = c("D", "r", expression(pi),
                           "S", expression(tau), expression(mu)))
   
+save_plot("DAGs/DAG_0.svg", DD1p)
+save_plot("DAGs/DAG_0.png", DD1p)
+
 DAG1 <- dagify(
   pi ~ D,
   pi ~ B,
@@ -623,8 +631,8 @@ DD1p <- DAG1 %>%
   geom_dag_text(parse=TRUE, 
                 label = c("B", "D", "S", expression(pi), "r", expression(mu)))
   
-save_plot("DAG_1.svg", DD1p)
-save_plot("DAG_1.png", DD1p)
+save_plot("DAGs/DAG_1.svg", DD1p)
+save_plot("DAGs/DAG_1.png", DD1p)
 
 DAG2 <- dagify(
   pi_s ~ B,
@@ -649,8 +657,8 @@ DD2p <- DAG2 %>%
                           expression(pi[N]), expression(pi[S]), 
                           "r", expression(mu)))
   
-save_plot("DAG_2.svg", DD2p)
-save_plot("DAG_2.png", DD2p)
+save_plot("DAGs/DAG_2.svg", DD2p)
+save_plot("DAGs/DAG_2.png", DD2p)
 
 DAG3 <- dagify(
   pi_s ~ B,
@@ -676,8 +684,8 @@ DD3p <- DAG3 %>%
                           expression(pi[N]), 
                           expression(pi[S]), "r", expression(mu)))
 
-save_plot("DAG_3.svg", DD3p)
-save_plot("DAG_3.png", DD3p)
+save_plot("DAGs/DAG_3.svg", DD3p)
+save_plot("DAGs/DAG_3.png", DD3p)
 
 # with interference
 DAG4 <- dagify(
@@ -709,8 +717,8 @@ DD4p <- DAG4 %>%
                           expression(pi[N]), 
                           expression(pi[S]), "r", expression(mu)))
 
-save_plot("DAG_4.svg", DD4p)
-save_plot("DAG_4.png", DD4p)
+save_plot("DAGs/DAG_4.svg", DD4p)
+save_plot("DAGs/DAG_4.png", DD4p)
 
 DAG5 <- dagify(
   pi_s ~ B,
@@ -739,8 +747,8 @@ DD5p <- DAG5 %>%
                           expression(pi[S]),
                           "r", expression(mu)))
 
-save_plot("DAG_5.svg", DD5p)
-save_plot("DAG_5.png", DD5p)
+save_plot("DAGs/DAG_5.svg", DD5p)
+save_plot("DAGs/DAG_5.png", DD5p)
 
 # the DAGs that we will test with d-sep
 DAG6 <- dagify(
@@ -763,8 +771,8 @@ DD6p <- DAG6 %>%
                 label = c("B", "E", expression(pi[S]),
                           "r", expression(mu)))
 
-save_plot("DAG_6.svg", DD6p)
-save_plot("DAG_6.png", DD6p)
+save_plot("DAGs/DAG_6.svg", DD6p)
+save_plot("DAGs/DAG_6.png", DD6p)
 
 # non-mutagenic rec
 DAG7 <- dagify(
@@ -786,8 +794,8 @@ DD7p <- DAG7 %>%
                 label = c("B", "E", expression(pi[S]),
                           "r", expression(mu)))
 
-save_plot("DAG_7.svg", DD7p)
-save_plot("DAG_7.png", DD7p)
+save_plot("DAGs/DAG_7.svg", DD7p)
+save_plot("DAGs/DAG_7.png", DD7p)
 ```
 
 The DAGs that we will test with the data via d-sep (based on DD6p and DD7p).
@@ -1695,7 +1703,8 @@ p1 <- ggplot(data=m_dsep1,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_d-sep_dag1.png", p1, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_d-sep_dag1.png", p1, 
+          base_height=10, base_width=15)
 
 m_dsep2 <- pivot_longer(merge(pval_dsep2, models, by="model"),
                         cols=paste("rep", 1:num_reps, sep="_"),
@@ -1723,7 +1732,8 @@ p2 <- ggplot(data=m_dsep2,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_d-sep_dag2.png", p2, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_d-sep_dag2.png", p2, 
+          base_height=10, base_width=15)
 
 m_dsep3 <- pivot_longer(merge(pval_dsep3, models, by="model"),
                         cols=paste("rep", 1:num_reps, sep="_"),
@@ -1751,7 +1761,8 @@ p3 <- ggplot(data=m_dsep3,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_d-sep_dag3.png", p3, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_d-sep_dag3.png", p3, 
+          base_height=10, base_width=15)
 
 m_dsep4 <- pivot_longer(merge(pval_dsep4, models, by="model"),
                         cols=paste("rep", 1:num_reps, sep="_"),
@@ -1779,8 +1790,8 @@ p4 <- ggplot(data=m_dsep4,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_d-sep_dag4.png", p4, base_height=10, base_width=15)
-
+save_plot("Manhattan/manhattan_d-sep_dag4.png", p4,
+          base_height=10, base_width=15)
 ```
 
 ## Classic statistical models
@@ -3046,7 +3057,7 @@ p <- ggplot(data=filter(m_B_vs_E, pval < 0.01),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("corr_B_E.png", p, base_height=10, base_width=16)
+save_plot("Correlations/corr_B_E.png", p, base_height=10, base_width=16)
 
 # B vs pi
 ## cors
@@ -3093,7 +3104,7 @@ p <- ggplot(data=filter(m_B_vs_pi, pval < 0.01),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("corr_B_pi.png", p, base_height=10, base_width=16)
+save_plot("Correlations/corr_B_pi.png", p, base_height=10, base_width=16)
 
 # mut vs pi
 ## cors
@@ -3141,7 +3152,7 @@ p <- ggplot(data=filter(m_u_vs_pi, pval < 0.01),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("corr_mu_pi.png", p, base_height=10, base_width=16)
+save_plot("Correlations/corr_mu_pi.png", p, base_height=10, base_width=16)
 
 # mu vs B
 u_vs_B <- fread("corr_u_B.csv")
@@ -3188,7 +3199,7 @@ p <- ggplot(data=filter(m_u_vs_B, pval < 0.01),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("corr_mu_B.png", p, base_height=10, base_width=16)
+save_plot("Correlations/corr_mu_B.png", p, base_height=10, base_width=16)
 
 # r vs B
 ## cors
@@ -3237,7 +3248,7 @@ p <- ggplot(data=filter(m_r_vs_B, pval < 0.01),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("corr_r_B.png", p, base_height=10, base_width=16)
+save_plot("Correlations/corr_r_B.png", p, base_height=10, base_width=16)
 
 # r vs pi
 ## cors
@@ -3284,7 +3295,7 @@ p <- ggplot(data=filter(m_r_vs_pi, pval < 0.01),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("corr_r_pi.png", p, base_height=10, base_width=16)
+save_plot("Correlations/corr_r_pi.png", p, base_height=10, base_width=16)
 
 # r vs mu
 ## cors
@@ -3332,7 +3343,7 @@ p <- ggplot(data=filter(m_r_vs_u, pval < 0.01),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("corr_r_mu.png", p, base_height=10, base_width=16)
+save_plot("Correlations/corr_r_mu.png", p, base_height=10, base_width=16)
 ```
 
 Assembling tables from linear regression (R-sqrd and linear coefficients)
@@ -3562,7 +3573,7 @@ for(ars in unique(m_r2_raw_models$avg_rec_spans)) {
               legend.title=element_text(size=16),
               legend.position="bottom")
       
-      fout <- paste("r2_total_ars", ars, 
+      fout <- paste("R2/r2_total_ars", ars, 
                     "_srr", srr, 
                     "_mru", mru,
                     ".png", sep="")
@@ -3613,7 +3624,7 @@ for(i in 1:num_models) {
           legend.text=element_text(size=16), 
           legend.position="bottom")
   
-  save_plot(paste("model_", i, "_exp_r2.png", sep=""), plot_grid(p, q, nrow=1), 
+  save_plot(paste("model_", i, "/piexp_r2.png", sep=""), plot_grid(p, q, nrow=1), 
             base_height=10, base_width=15)
   
   molten_avgs <- pivot_longer(r2s_sim, 
@@ -3652,7 +3663,7 @@ for(i in 1:num_models) {
           legend.text=element_text(size=16), 
           legend.position="bottom")
   
-  save_plot(paste("model_", i, "_sim_r2.png", sep=""), 
+  save_plot(paste("model_", i, "/simpi_r2.png", sep=""), 
             plot_grid(p, q, nrow=1), 
             base_height=10, base_width=15)
 }
@@ -3700,7 +3711,7 @@ for(i in 1:num_models) {
           legend.text=element_text(size=16), 
           legend.position="bottom")
   
-  save_plot(paste("model_", i, "_exp_coeff.png", sep=""),
+  save_plot(paste("model_", i, "/piexp_coeff.png", sep=""),
             plot_grid(p, q, nrow=1), 
             base_height=10, base_width=15)
   
@@ -3740,7 +3751,7 @@ for(i in 1:num_models) {
           legend.text=element_text(size=16), 
           legend.position="bottom")
   
-  save_plot(paste("model_", i, "_sim_coeff.png", sep=""),
+  save_plot(paste("model_", i, "/simpi_coeff.png", sep=""),
             plot_grid(p, q, nrow=1), 
             base_height=10, base_width=15)
 }
@@ -3843,7 +3854,7 @@ for(e in unique(m_r2_models$num_exons)) {
                  legend.title=element_text(size=16),
                  legend.position="bottom")
         
-          fout <- paste("r2_vars_lm_exons", e, 
+          fout <- paste("R2/r2_vars_lm_exons", e, 
                         "_ars", ars, 
                         "_srr", srr, 
                         "_mru", mru,
@@ -3884,11 +3895,11 @@ for(e in unique(m_r2_models$num_exons)) {
                 legend.title=element_text(size=16),
                 legend.position="bottom")
         
-        fout <- paste("r2_cvs_lm_exons", e, 
-                        "_ars", ars, 
-                        "_srr", srr, 
-                        "_mru", mru,
-                        ".png", sep="")
+        fout <- paste("R2/r2_cvs_lm_exons", e, 
+                      "_ars", ars, 
+                      "_srr", srr, 
+                      "_mru", mru,
+                      ".png", sep="")
         save_plot(fout, p, base_height=10, base_width=18)
       }
     }
@@ -3931,7 +3942,7 @@ for(e in unique(m_coeff_models$num_exons)) {
                  legend.title=element_text(size=16),
                  legend.position="bottom")
         
-          fout <- paste("coeff_vars_lm_exons", e, 
+          fout <- paste("Coeff_lm/coeff_vars_lm_exons", e, 
                         "_ars", ars, 
                         "_srr", srr, 
                         "_mru", mru,
@@ -3974,7 +3985,7 @@ for(e in unique(coeff_cv_models$num_exons)) {
                 legend.title=element_text(size=16),
                 legend.position="bottom")
         
-        fout <- paste("coeff_cvs_lm_exons", e, 
+        fout <- paste("Coeff_lm/coeff_cvs_lm_exons", e, 
                       "_ars", ars, 
                       "_srr", srr, 
                       "_mru", mru,
@@ -4010,7 +4021,7 @@ p <- ggplot(data=filter(coeff_cv_models,
                 legend.text=element_text(size=16),
                 legend.title=element_text(size=16),
                 legend.position="bottom")
-save_plot("ratios_lmcoeff_cv.png", p, base_height=12, base_width=18)
+save_plot("Coeff_lm/ratios_lmcoeff_cv.png", p, base_height=12, base_width=18)
 ```
 
 Meta linear models
@@ -4337,7 +4348,7 @@ meta_lm <- ggplot(data=mmlm_tbl,
 save_plot("meta_lm_pi_sim.png", meta_lm, base_height=8, base_width=10)
 ```
 
-## Structural Equation Modeling
+## Path Model
 
 Specifying the DAGs in lavaan format
 
@@ -4940,7 +4951,8 @@ p1 <- ggplot(data=filter(df, DAG==1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag1.png", p1, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag1.png", p1, 
+          base_height=10, base_width=15)
 
 p2 <- ggplot(data=filter(df, DAG==2),
              aes(x=model, 
@@ -4964,7 +4976,8 @@ p2 <- ggplot(data=filter(df, DAG==2),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag2.png", p2, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag2.png", p2, 
+          base_height=10, base_width=15)
 
 p3 <- ggplot(data=filter(df, DAG==3),
              aes(x=model, 
@@ -4988,7 +5001,8 @@ p3 <- ggplot(data=filter(df, DAG==3),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag3.png", p3, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag3.png", p3,
+          base_height=10, base_width=15)
 
 p4 <- ggplot(data=filter(df, DAG==4),
              aes(x=model,
@@ -5012,7 +5026,8 @@ p4 <- ggplot(data=filter(df, DAG==4),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag4.png", p4, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag4.png", p4, 
+          base_height=10, base_width=15)
 
 # DAG 1, bracketing MVN p-value
 p5 <- ggplot(data=filter(df, DAG==1, mvn_p < 1e-2),
@@ -5037,7 +5052,8 @@ p5 <- ggplot(data=filter(df, DAG==1, mvn_p < 1e-2),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag1_mvnpL.png", p5, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag1_mvnpL.png", p5, 
+          base_height=10, base_width=15)
 
 p6 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-2 & mvn_p < 1e-1),
              aes(x=model,
@@ -5062,7 +5078,8 @@ p6 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-2 & mvn_p < 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag1_mvnpM.png", p6, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag1_mvnpM.png", p6,
+          base_height=10, base_width=15)
 
 p7 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-1),
              aes(x=model,
@@ -5086,7 +5103,8 @@ p7 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag1_mvnpH.png", p7, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag1_mvnpH.png", p7,
+          base_height=10, base_width=15)
 
 # DAG 2, bracketing MVN p-value
 p8 <- ggplot(data=filter(df, DAG==2, mvn_p < 1e-2),
@@ -5111,7 +5129,8 @@ p8 <- ggplot(data=filter(df, DAG==2, mvn_p < 1e-2),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag2_mvnpL.png", p8, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag2_mvnpL.png", p8,
+          base_height=10, base_width=15)
 
 p9 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-2 & mvn_p < 1e-1),
              aes(x=model,
@@ -5135,7 +5154,8 @@ p9 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-2 & mvn_p < 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag2_mvnpM.png", p9, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag2_mvnpM.png", p9, 
+          base_height=10, base_width=15)
 
 p10 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-1),
              aes(x=model,
@@ -5159,7 +5179,8 @@ p10 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag2_mvnpH.png", p10, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag2_mvnpH.png", p10, 
+          base_height=10, base_width=15)
 
 # DAG 3, bracketing MVN p-value
 p11 <- ggplot(data=filter(df, DAG==3, mvn_p < 1e-2),
@@ -5184,7 +5205,8 @@ p11 <- ggplot(data=filter(df, DAG==3, mvn_p < 1e-2),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag3_mvnpL.png", p11, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag3_mvnpL.png", p11, 
+          base_height=10, base_width=15)
 
 p12 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-2 & mvn_p < 1e-1),
              aes(x=model,
@@ -5208,7 +5230,8 @@ p12 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-2 & mvn_p < 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag3_mvnpM.png", p12, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag3_mvnpM.png", p12,
+          base_height=10, base_width=15)
 
 p13 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-1),
              aes(x=model, 
@@ -5232,7 +5255,8 @@ p13 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag3_mvnpH.png", p13, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag3_mvnpH.png", p13, 
+          base_height=10, base_width=15)
 
 # DAG 4, bracketing MVN p-value
 p14 <- ggplot(data=filter(df, DAG==4, mvn_p < 1e-2),
@@ -5257,7 +5281,8 @@ p14 <- ggplot(data=filter(df, DAG==4, mvn_p < 1e-2),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag4_mvnpL.png", p14, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag4_mvnpL.png", p14,
+          base_height=10, base_width=15)
 
 p15 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-2 & mvn_p < 1e-1),
              aes(x=model, 
@@ -5281,7 +5306,8 @@ p15 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-2 & mvn_p < 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag4_mvnpM.png", p15, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag4_mvnpM.png", p15, 
+          base_height=10, base_width=15)
 
 p16 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-1),
              aes(x=model, 
@@ -5305,7 +5331,8 @@ p16 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-1),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("manhattan_SEM_dag4_mvnpH.png", p16, base_height=10, base_width=15)
+save_plot("Manhattan/manhattan_SEM_dag4_mvnpH.png", p16,
+          base_height=10, base_width=15)
 ```
 
 R-squared SEM plots 
@@ -5473,7 +5500,7 @@ for(e in unique(m_r2_sem_1$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("r-sqrd_mutagenic_DAG_exons", e, 
+        fout <- paste("SEM/r-sqrd_mutagenic_DAG_exons", e, 
                       "_ars", ars, 
                       "_srr", srr, 
                       "_mru", mru,
@@ -5514,7 +5541,7 @@ for(e in unique(m_r2_sem_2$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("r-sqrd_non-mutagenic_DAG_exons", e, 
+        fout <- paste("SEM/r-sqrd_non-mutagenic_DAG_exons", e, 
                        "_ars", ars, 
                        "_srr", srr, 
                        "_mru", mru,
@@ -5885,7 +5912,7 @@ p1 <- ggplot(data=filter(m_pc_sem_p_mutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_B_piexp_DAG2.png", p1, base_height=10, base_width=16)
+save_plot("SEM/pc_B_piexp_DAG2.png", p1, base_height=10, base_width=16)
 
 p2 <- ggplot(data=filter(m_pc_sem_p_mutrec, 
                          fisher_c < 0.01,
@@ -5913,7 +5940,7 @@ p2 <- ggplot(data=filter(m_pc_sem_p_mutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_mu_piexp_DAG2.png", p2, base_height=10, base_width=16)
+save_plot("SEM/pc_mu_piexp_DAG2.png", p2, base_height=10, base_width=16)
 
 # non-mutagenic rec, DAG 1
 p3 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
@@ -5942,7 +5969,7 @@ p3 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_mu_B_piexp_DAG1.png", p3, base_height=10, base_width=16)
+save_plot("SEM/pc_mu_B_piexp_DAG1.png", p3, base_height=10, base_width=16)
 
 q1 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
                          fisher_c < 0.01,
@@ -5970,7 +5997,7 @@ q1 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_B_piexp_DAG1.png", q1, base_height=10, base_width=16)
+save_plot("SEM/pc_B_piexp_DAG1.png", q1, base_height=10, base_width=16)
 
 q2 <- ggplot(data=filter(m_pc_sem_p_mutrec,
                          fisher_c < 0.01,
@@ -5998,7 +6025,7 @@ q2 <- ggplot(data=filter(m_pc_sem_p_mutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_mu_piexp_DAG1.png", q2, base_height=10, base_width=16)
+save_plot("SEM/pc_mu_piexp_DAG1.png", q2, base_height=10, base_width=16)
 
 q3 <- ggplot(data=filter(m_pc_sem_p_nonmutrec, 
                          fisher_c < 0.01,
@@ -6026,7 +6053,7 @@ q3 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_mu_B_piexp_DAG4.png", q3, base_height=10, base_width=16)
+save_plot("SEM/pc_mu_B_piexp_DAG4.png", q3, base_height=10, base_width=16)
 
 # mutagenic rec DAGs
 for(e in unique(m_pc_sem_p_mutrec$num_exons)) {
@@ -6062,7 +6089,7 @@ for(e in unique(m_pc_sem_p_mutrec$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("pcoeff_pi_mutagenic_DAG_exons", e, 
+        fout <- paste("SEM/pcoeff_pi_mutagenic_DAG_exons", e, 
                       "_ars", ars, 
                       "_srr", srr, 
                       "_mru", mru,
@@ -6107,7 +6134,7 @@ for(e in unique(m_pc_sem_p_nonmutrec$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("pcoeff_pi_non-mutagenic_DAG_exons", e, 
+        fout <- paste("SEM/pcoeff_pi_non-mutagenic_DAG_exons", e, 
                        "_ars", ars, 
                        "_srr", srr, 
                        "_mru", mru,
@@ -6155,7 +6182,7 @@ for(e in unique(pc_sem_mutrec_cv_models$num_exons)) {
                 legend.title=element_text(size=16),
                 legend.position="bottom")
         
-        fout <- paste("sem_pc_cvs_exons", e, 
+        fout <- paste("SEM/sem_pc_cvs_exons", e, 
                       "_ars", ars, 
                       "_srr", srr, 
                       "_mru", mru,
@@ -6211,7 +6238,7 @@ p <- ggplot(data=filter(df,
                 legend.text=element_text(size=16),
                 legend.title=element_text(size=16),
                 legend.position="bottom")
-save_plot("ratios_sem_pc_cv.png", p, base_height=12, base_width=18)
+save_plot("SEM/ratios_sem_pc_cv.png", p, base_height=12, base_width=18)
 ```
 
 Plotting path coefficients on B
@@ -6246,7 +6273,7 @@ p1 <- ggplot(data=filter(m_pc_sem_B_mutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_to_B_DAG2.png", p1, base_height=10, base_width=16)
+save_plot("SEM/pc_to_B_DAG2.png", p1, base_height=10, base_width=16)
 
 # non-mutagenic rec, DAG 4
 q1 <- ggplot(data=filter(m_pc_sem_B_nonmutrec,
@@ -6273,7 +6300,7 @@ q1 <- ggplot(data=filter(m_pc_sem_B_nonmutrec,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_to_B_DAG4.png", q1, base_height=10, base_width=16)
+save_plot("SEM/pc_to_B_DAG4.png", q1, base_height=10, base_width=16)
 
 # effect on B is independent from source pi, keep simulated only
 m_pc_sem_B <- rbind.data.frame(m_pc_sem_B_mutrec, m_pc_sem_B_nonmutrec)
@@ -6314,7 +6341,7 @@ for(e in unique(m_pc_sem_B$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("pcoeff_B_exons", e, 
+        fout <- paste("SEM/pcoeff_B_exons", e, 
                       "_ars", ars, 
                       "_srr", srr, 
                       "_mru", mru,
@@ -6359,7 +6386,7 @@ p1 <- ggplot(data=filter(m_pc_sem_recpi,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("pc_rec_pi_DAG2.png", p1, base_height=10, base_width=16)
+save_plot("SEM/pc_rec_pi_DAG2.png", p1, base_height=10, base_width=16)
 
 # plotting mutagenic rec data
 for(e in unique(m_pc_sem_recpi$num_exons)) {
@@ -6395,7 +6422,7 @@ for(e in unique(m_pc_sem_recpi$num_exons)) {
                    legend.title=element_text(size=16),
                    legend.position="bottom")
         
-        fout <- paste("pcoeff_recpi_exons", e, 
+        fout <- paste("SEM/pcoeff_recpi_exons", e, 
                       "_ars", ars, 
                       "_srr", srr, 
                       "_mru", mru,
@@ -6824,19 +6851,24 @@ save_plot("meta_lm_rec_pi_SEM.png", p, base_height=8, base_width=10)
 TODO
 # Real Data
 
-PCA of genomic maps (simulated and real)
+Finding the parameter combination which results in maps most similar to the
+real ones 
 
-```{r real-data-PCA, include=F, message=F, warning=F}
+```{r real-data-desc, include=F, message=F, warning=F}
 
 # collecting simulated maps
+muts_10kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+4))
+recs_10kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+4))
+
 muts_100kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+3))
 recs_100kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+3))
-exons_100kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+3))
+
+muts_1Mb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+2))
+recs_1Mb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+2))
 
 pb <- txtProgressBar(min=0, max=num_models, style=3)
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
-  
   for(rep in 1:num_reps) {
     maps_1kb <- fread(paste("model_", m,
                             "/rep_", rep, 
@@ -6848,24 +6880,66 @@ for(m in 1:num_models) {
     maps_1kb$bin_1Mb <- (maps_1kb$bin_1kb - 1) %/% 1000
     
     maps_10kb <- maps_1kb %>% group_by(bin_10kb) %>% 
-                 summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+                 summarise_at(c("avg_mut", "avg_rec"), mean)
     maps_100kb <- maps_1kb %>% group_by(bin_100kb) %>% 
-                  summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+                  summarise_at(c("avg_mut", "avg_rec"), mean)
     maps_1Mb <- maps_1kb %>% group_by(bin_1Mb) %>% 
-                summarise_at(c("avg_mut", "avg_rec", "exonic_sites"), mean)
+                summarise_at(c("avg_mut", "avg_rec"), mean)
     
     idx <- rep + (m - 1) * num_reps
     
+    muts_10kb[idx,] <- maps_10kb$avg_mut
+    recs_10kb[idx,] <- maps_10kb$avg_rec
+
     muts_100kb[idx,] <- maps_100kb$avg_mut
     recs_100kb[idx,] <- maps_100kb$avg_rec
-    exons_100kb[idx,] <- maps_100kb$exonic_sites
+
+    muts_1Mb[idx,] <- maps_1Mb$avg_mut
+    recs_1Mb[idx,] <- maps_1Mb$avg_rec
   }
 }
 close(pb)
 
+# mutation maps
+names(muts_10kb) <- paste("bin", 1:ncol(muts_10kb), sep="_")
+muts_10kb$model <- sort(rep(1:num_models, num_reps))
+
 names(muts_100kb) <- paste("bin", 1:ncol(muts_100kb), sep="_")
-muts_100kb$model <- sort(rep(1:865, 10))
+muts_100kb$model <- sort(rep(1:num_models, num_reps))
+
+names(muts_1Mb) <- paste("bin", 1:ncol(muts_1Mb), sep="_")
+muts_1Mb$model <- sort(rep(1:num_models, num_reps))
+
+# recombination maps
+names(recs_10kb) <- paste("bin", 1:ncol(recs_10kb), sep="_")
+recs_10kb$model <- sort(rep(1:num_models, num_reps))
+
+names(recs_100kb) <- paste("bin", 1:ncol(recs_100kb), sep="_")
+recs_100kb$model <- sort(rep(1:num_models, num_reps))
+
+names(recs_1Mb) <- paste("bin", 1:ncol(recs_1Mb), sep="_")
+recs_1Mb$model <- sort(rep(1:num_models, num_reps))
+
+fwrite(muts_10kb, "mut_maps_10kb_models.csv.gz")
+fwrite(muts_100kb, "mut_maps_100kb_models.csv.gz")
+fwrite(muts_1Mb, "mut_maps_1Mb_models.csv.gz")
   
+fwrite(recs_10kb, "rec_maps_10kb_models.csv.gz")
+fwrite(recs_100kb, "rec_maps_100kb_models.csv.gz")
+fwrite(recs_1Mb, "rec_maps_1Mb_models.csv.gz")
+
+# 1st order autocorrelation
+ac_mut_100kb <- apply(df, 2, 
+                  function(x) as.numeric(unlist(acf(x, lag=1, pl=FALSE))[2]))
+
+sd_mut_100kb <- apply(df, 1, function(x) fitdistr(x, "normal")$estimate[2])
+
+
+            
+# TODO 2D plot: AC1 x SD of Gaussian, facet by scale
+# see where real maps fall
+
+
 mut_model <- crossing(models$shapes_rate_u, models$avg_mut_spans)
 names(mut_model) <- c("shapes_rate_u", "avg_mut_spans")
 mut_model$mut_model_id <- 1:nrow(mut_model)
@@ -6875,6 +6949,7 @@ df_mmap_100kb <- merge(muts_100kb, mm, by="model")
 
 dfsub <- dplyr::filter(df_mmap_100kb, mut_model_id < 4) %>%
          dplyr::select(., c(mut_model_id, starts_with("bin")))
+
 pca_mut_100kb <- PCA(dfsub[,-1])
 fviz_eig(pca_mut_100kb, addlabels=TRUE)
 p <- fviz_pca_ind(pca_mut_100kb,
