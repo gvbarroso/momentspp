@@ -858,15 +858,14 @@ Computing CVs and plotting landscapes
 
 ```{r plots-lands, include=F, message=F, warning=F}
 
-cv_u_cv_B <- as.data.frame(matrix(ncol=4, nrow=num_models))
-names(cv_u_cv_B) <- c(1e+3, 1e+4, 1e+5, 1e+6)
+cv_u_cv_B <- as.data.frame(matrix(ncol=3, nrow=num_models))
+names(cv_u_cv_B) <- c(1e+4, 1e+5, 1e+6)
 
 for(i in 1:num_models) {
   
   print(Sys.time())
   cat(paste("Visualizing data from model", i, "...\n"))
   
-  cv_u_cv_B_1kb <- 0
   cv_u_cv_B_10kb <- 0
   cv_u_cv_B_100kb <- 0
   cv_u_cv_B_1Mb <- 0
@@ -905,8 +904,6 @@ for(i in 1:num_models) {
     m1Mb$start <- seq(1, by=1e+6, length.out=nrow(m1Mb)) 
     m1Mb$end <- seq(1e+5, by=1e+6, length.out=nrow(m1Mb)) 
     
-    cv_u_cv_B_1kb <- cv_u_cv_B_1kb + sd(m1kb$avg_mut) / 
-      mean(m1kb$avg_mut) / sd(m1kb$B) / mean(m1kb$B)
     cv_u_cv_B_10kb <- cv_u_cv_B_10kb + sd(m10kb$avg_mut) /
       mean(m10kb$avg_mut) / sd(m10kb$B) / mean(m10kb$B)
     cv_u_cv_B_100kb <- cv_u_cv_B_100kb + sd(m100kb$avg_mut) / 
@@ -914,7 +911,7 @@ for(i in 1:num_models) {
     cv_u_cv_B_1Mb <- cv_u_cv_B_1Mb + sd(m1Mb$avg_mut) /
       mean(m1Mb$avg_mut) / sd(m1Mb$B) / mean(m1Mb$B)
 
-    # plots binned maps 10kb - 1Mb (1kb too noisy and too many points)
+    # plots binned maps 10kb - 1Mb 
     m10kb_m <- pivot_longer(m10kb, 
                             cols=c("sim_pi", "pi_exp"),
                             names_to="diversity")
@@ -1112,7 +1109,6 @@ for(i in 1:num_models) {
               lands_scales, base_height=12, base_width=24)
   }
   
-  cv_u_cv_B[i, 1] <- cv_u_cv_B_1kb / num_reps
   cv_u_cv_B[i, 2] <- cv_u_cv_B_10kb / num_reps
   cv_u_cv_B[i, 3] <- cv_u_cv_B_100kb / num_reps
   cv_u_cv_B[i, 4] <- cv_u_cv_B_1Mb / num_reps
@@ -1120,8 +1116,7 @@ for(i in 1:num_models) {
 
 cv_u_cv_B$model <- 1:nrow(cv_u_cv_B)
 cv_models <- merge(cv_u_cv_B, models, by="model")
-cv_models <- pivot_longer(cv_models, cols=as.character(c(1e+3, 
-                                                         1e+4, 
+cv_models <- pivot_longer(cv_models, cols=as.character(c(1e+4, 
                                                          1e+5, 
                                                          1e+6)),
                           names_to="scale", values_to="cv_u_cv_B")
@@ -1142,14 +1137,12 @@ DAG 1: non-mutagenic recombination, expected pi
 basis_set <- bs1
 weights <- rep(1, length=length(basis_set))
     
-dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 # NOTE: interpreting Fisher's C test is tricky because of auto-correlation
 # within each of the genomic maps. Looking at larger scales is more informative
-names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
@@ -1182,14 +1175,11 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb) %>% as.data.table()
     
-    maps_1kb <- dplyr::select(maps_1kb, data_cols)
     # this filtering step is to remove auto-correlation at smaller scales
-    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
     maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
     maps_100kb <- dplyr::filter(maps_10kb, row_number() %% 10 == 0) 
     
     # init as NAs for easy handling of matrix singularity in ppcor() (see below)
-    pvals_1kb <- rep(NA, length(basis_set))
     pvals_10kb <- rep(NA, length(basis_set))
     pvals_100kb <- rep(NA, length(basis_set))
     pvals_1Mb <- rep(NA, length(basis_set))
@@ -1210,12 +1200,6 @@ for(m in 1:num_models) {
       # we let these cases remain NA in the pval vectors
       if(length(basis_set[[i]]) > 2) {
         tryCatch({
-          pvals_1kb[i] <- ppcor::pcor.test(maps_1kb[, ..var1], 
-                                           maps_1kb[, ..var2], 
-                                           maps_1kb[, ..cond],
-                                           method="spearman")$p.value
-        }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
-        tryCatch({
           pvals_10kb[i] <- ppcor::pcor.test(maps_10kb[, ..var1], 
                                             maps_10kb[, ..var2], 
                                             maps_10kb[, ..cond],
@@ -1234,10 +1218,6 @@ for(m in 1:num_models) {
                                            method="spearman")$p.value
         }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
       } else {
-        pvals_1kb[i] <- cor.test(maps_1kb[, ..var1][[1]],
-                                 maps_1kb[, ..var2][[1]],
-                                 method="spearman")$p.value
-        
         pvals_10kb[i] <- cor.test(maps_10kb[, ..var1][[1]],
                                   maps_10kb[, ..var2][[1]],
                                   method="spearman")$p.value
@@ -1252,7 +1232,6 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher", na.rm=T)
     dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
     dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
     dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
@@ -1260,14 +1239,12 @@ for(m in 1:num_models) {
 }
 close(pb)
 
-pval_dsep <- rbind.data.frame(dsep_c_1kb,
-                              dsep_c_10kb,
+pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
 pval_dsep$model <- rep(1:num_models, 4)
 pval_dsep$DAG <- 1
-pval_dsep$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
 
@@ -1280,14 +1257,12 @@ DAG 2: mutagenic recombination, expected pi
 basis_set <- bs2
 weights <- rep(1, length=length(basis_set))
     
-dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 # NOTE: interpreting Fisher's C test is tricky because of auto-correlation
 # within each of the genomic maps. Looking at larger scales is more informative
-names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
@@ -1320,13 +1295,10 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb) %>% as.data.table()
     
-    maps_1kb <- dplyr::select(maps_1kb, data_cols)
     # this filtering step is to remove auto-correlation at smaller scales
-    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
     maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
     maps_100kb <- dplyr::filter(maps_100kb, row_number() %% 10 == 0) 
     
-    pvals_1kb <- numeric(length=length(basis_set))
     pvals_10kb <- numeric(length=length(basis_set))
     pvals_100kb <- numeric(length=length(basis_set))
     pvals_1Mb <- numeric(length=length(basis_set))
@@ -1344,11 +1316,6 @@ for(m in 1:num_models) {
       dSep(D1g, var1, var2, cond)
       
       if(length(basis_set[[i]]) > 2) {
-         pvals_1kb[i] <- ppcor::pcor.test(maps_1kb[, ..var1], 
-                                          maps_1kb[, ..var2], 
-                                          maps_1kb[, ..cond],
-                                          method="spearman")$p.value
-         
          pvals_10kb[i] <- ppcor::pcor.test(maps_10kb[, ..var1], 
                                            maps_10kb[, ..var2], 
                                            maps_10kb[, ..cond],
@@ -1365,10 +1332,6 @@ for(m in 1:num_models) {
                                           method="spearman")$p.value
          
       } else {
-        pvals_1kb[i] <- cor.test(maps_1kb[, ..var1][[1]],
-                                 maps_1kb[, ..var2][[1]],
-                                 method="spearman")$p.value
-        
         pvals_10kb[i] <- cor.test(maps_10kb[, ..var1][[1]],
                                   maps_10kb[, ..var2][[1]],
                                   method="spearman")$p.value
@@ -1383,7 +1346,6 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
     dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
     dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
     dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
@@ -1391,14 +1353,12 @@ for(m in 1:num_models) {
 }
 close(pb)
 
-pval_dsep <- rbind.data.frame(dsep_c_1kb,
-                              dsep_c_10kb,
+pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
 pval_dsep$model <- rep(1:num_models, 4)
 pval_dsep$DAG <- 2
-pval_dsep$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
 
@@ -1411,14 +1371,12 @@ DAG 3: non-mutagenic recombination, simu;lated pi (mutational variance)
 basis_set <- bs3
 weights <- rep(1, length=length(basis_set))
     
-dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 # NOTE: interpreting Fisher's C test is tricky because of auto-correlation
 # within each of the genomic maps. Looking at larger scales is more informative
-names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
@@ -1451,13 +1409,10 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb) %>% as.data.table()
     
-    maps_1kb <- dplyr::select(maps_1kb, data_cols)
     # this filtering step is to remove auto-correlation at smaller scales
-    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
     maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
     maps_100kb <- dplyr::filter(maps_100kb, row_number() %% 10 == 0) 
     
-    pvals_1kb <- numeric(length=length(basis_set))
     pvals_10kb <- numeric(length=length(basis_set))
     pvals_100kb <- numeric(length=length(basis_set))
     pvals_1Mb <- numeric(length=length(basis_set))
@@ -1475,11 +1430,6 @@ for(m in 1:num_models) {
       dSep(D3g, var1, var2, cond)
       
       if(length(basis_set[[i]]) > 2) {
-         pvals_1kb[i] <- ppcor::pcor.test(maps_1kb[, ..var1], 
-                                          maps_1kb[, ..var2], 
-                                          maps_1kb[, ..cond],
-                                          method="spearman")$p.value
-         
          pvals_10kb[i] <- ppcor::pcor.test(maps_10kb[, ..var1], 
                                            maps_10kb[, ..var2], 
                                            maps_10kb[, ..cond],
@@ -1496,10 +1446,6 @@ for(m in 1:num_models) {
                                           method="spearman")$p.value
          
       } else {
-        pvals_1kb[i] <- cor.test(maps_1kb[, ..var1][[1]],
-                                 maps_1kb[, ..var2][[1]],
-                                 method="spearman")$p.value
-        
         pvals_10kb[i] <- cor.test(maps_10kb[, ..var1][[1]],
                                   maps_10kb[, ..var2][[1]],
                                   method="spearman")$p.value
@@ -1514,7 +1460,6 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
     dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
     dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
     dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
@@ -1522,14 +1467,12 @@ for(m in 1:num_models) {
 }
 close(pb)
 
-pval_dsep <- rbind.data.frame(dsep_c_1kb,
-                              dsep_c_10kb,
+pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
 pval_dsep$model <- rep(1:num_models, 4)
 pval_dsep$DAG <- 3
-pval_dsep$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
 
@@ -1542,14 +1485,12 @@ DAG 4: mutagenic recombination, simu;lated pi (mutational variance)
 basis_set <- bs4
 weights <- rep(1, length=length(basis_set))
     
-dsep_c_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 dsep_c_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 # NOTE: interpreting Fisher's C test is tricky because of auto-correlation
 # within each of the genomic maps. Looking at larger scales is more informative
-names(dsep_c_1kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_10kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_100kb) <- paste("rep_", 1:num_reps, sep="")
 names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
@@ -1582,13 +1523,10 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb) %>% as.data.table()
     
-    maps_1kb <- dplyr::select(maps_1kb, data_cols)
     # this filtering step is to remove auto-correlation at smaller scales
-    maps_1kb <- dplyr::filter(maps_1kb, row_number() %% 1000 == 0) 
     maps_10kb <- dplyr::filter(maps_10kb, row_number() %% 100 == 0) 
     maps_100kb <- dplyr::filter(maps_100kb, row_number() %% 10 == 0) 
     
-    pvals_1kb <- numeric(length=length(basis_set))
     pvals_10kb <- numeric(length=length(basis_set))
     pvals_100kb <- numeric(length=length(basis_set))
     pvals_1Mb <- numeric(length=length(basis_set))
@@ -1606,11 +1544,6 @@ for(m in 1:num_models) {
       dSep(D4g, var1, var2, cond)
       
       if(length(basis_set[[i]]) > 2) {
-         pvals_1kb[i] <- ppcor::pcor.test(maps_1kb[, ..var1], 
-                                          maps_1kb[, ..var2], 
-                                          maps_1kb[, ..cond],
-                                          method="spearman")$p.value
-         
          pvals_10kb[i] <- ppcor::pcor.test(maps_10kb[, ..var1], 
                                            maps_10kb[, ..var2], 
                                            maps_10kb[, ..cond],
@@ -1627,10 +1560,6 @@ for(m in 1:num_models) {
                                           method="spearman")$p.value
          
       } else {
-        pvals_1kb[i] <- cor.test(maps_1kb[, ..var1][[1]],
-                                 maps_1kb[, ..var2][[1]],
-                                 method="spearman")$p.value
-        
         pvals_10kb[i] <- cor.test(maps_10kb[, ..var1][[1]],
                                   maps_10kb[, ..var2][[1]],
                                   method="spearman")$p.value
@@ -1645,7 +1574,6 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_1kb[m, rep] <- combine.test(pvals_1kb, weights, "fisher")
     dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
     dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
     dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
@@ -1653,14 +1581,12 @@ for(m in 1:num_models) {
 }
 close(pb)
 
-pval_dsep <- rbind.data.frame(dsep_c_1kb,
-                              dsep_c_10kb,
+pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
 pval_dsep$model <- rep(1:num_models, 4)
 pval_dsep$DAG <- 4
-pval_dsep$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
 
@@ -1827,18 +1753,7 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb)
     
-    maps_1kb <- dplyr::select(maps_1kb, data_cols)
-
-    mat=Hmisc::rcorr(as.matrix(filter(maps_1kb, row_number() %% 1000 == 0)),
-                     type="spearman") # to remove auto-correlation
-    tbl_1kb <- mat$r
-    tbl_1kb[upper.tri(tbl_1kb)] <- mat$P[upper.tri(mat$P)]
-    suppressMessages(fwrite(tbl_1kb, 
-                            paste("model_", m, "/rep_", rep, 
-                                  "/pval_upper_spearman_lower_1kb.csv", 
-                                  sep="")))
-
-    mat=Hmisc::rcorr(as.matrix(filter(maps_1kb, row_number() %% 100 == 0)),
+    mat=Hmisc::rcorr(as.matrix(filter(maps_10kb, row_number() %% 100 == 0)),
                      type="spearman") # to remove auto-correlation
     tbl_10kb <- mat$r
     tbl_10kb[upper.tri(tbl_10kb)] <- mat$P[upper.tri(mat$P)]
@@ -1864,56 +1779,47 @@ for(m in 1:num_models) {
                                    sep="")))
     
     # table for storing total R^2 values straight from the lm function ()
-    r2_raw <- as.data.frame(matrix(ncol=1, nrow=4))
+    r2_raw <- as.data.frame(matrix(ncol=1, nrow=3))
     names(r2_raw) <- "r2_typeI"
-    r2_raw$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) # rows are bin sizes
+    r2_raw$scale <- c(1e+4, 1e+5, 1e+6) # rows are bin sizes
     
     # tables for storing correlations with simulated pi (E[pi] + mut. var)
-    corr_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    corr_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
     names(corr_tbl) <- c("u", "B", "Predicted")
-    corr_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) # rows are bin sizes
+    corr_tbl$scale <- c(1e+4, 1e+5, 1e+6) # rows are bin sizes
     
     # table for storing p-values of tests related to lm assumptions
-    tests_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    tests_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
     names(tests_tbl) <- c("DW_test_p", "HMC_test_p", "Shapiro_test_p")
-    tests_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) # rows are bin sizes
+    tests_tbl$scale <- c(1e+4, 1e+5, 1e+6) # rows are bin sizes
     
-    corr_tbl$Predicted[1] <- cor.test(maps_1kb$sim_pi, 
-                                      maps_1kb$pi_exp, 
-                                      method="pearson")$estimate 
-    corr_tbl$Predicted[2] <- cor.test(maps_10kb$sim_pi, 
+    corr_tbl$Predicted[1] <- cor.test(maps_10kb$sim_pi, 
                                       maps_10kb$pi_exp, 
                                       method="pearson")$estimate 
-    corr_tbl$Predicted[3] <- cor.test(maps_100kb$sim_pi, 
+    corr_tbl$Predicted[2] <- cor.test(maps_100kb$sim_pi, 
                                       maps_100kb$pi_exp,
                                       method="pearson")$estimate  
-    corr_tbl$Predicted[4] <- cor.test(maps_1Mb$sim_pi,
+    corr_tbl$Predicted[3] <- cor.test(maps_1Mb$sim_pi,
                                       maps_1Mb$pi_exp, 
                                       method="pearson")$estimate 
     
-    corr_tbl$B[1] <- cor.test(maps_1kb$B, 
-                              maps_1kb$sim_pi,
-                              method="pearson")$estimate 
-    corr_tbl$B[2] <- cor.test(maps_10kb$B, 
+    corr_tbl$B[1] <- cor.test(maps_10kb$B, 
                               maps_10kb$sim_pi, 
                               method="pearson")$estimate 
-    corr_tbl$B[3] <- cor.test(maps_100kb$B,
+    corr_tbl$B[2] <- cor.test(maps_100kb$B,
                               maps_100kb$sim_pi,
                               method="pearson")$estimate  
-    corr_tbl$B[4] <- cor.test(maps_1Mb$B,
+    corr_tbl$B[3] <- cor.test(maps_1Mb$B,
                               maps_1Mb$sim_pi, 
                               method="pearson")$estimate 
     
-    corr_tbl$u[1] <- cor.test(maps_1kb$avg_mut, 
-                              maps_1kb$sim_pi, 
-                              method="pearson")$estimate 
-    corr_tbl$u[2] <- cor.test(maps_10kb$avg_mut, 
+    corr_tbl$u[1] <- cor.test(maps_10kb$avg_mut, 
                               maps_10kb$sim_pi,
                               method="pearson")$estimate 
-    corr_tbl$u[3] <- cor.test(maps_100kb$avg_mut,
+    corr_tbl$u[2] <- cor.test(maps_100kb$avg_mut,
                               maps_100kb$sim_pi, 
                               method="pearson")$estimate  
-    corr_tbl$u[4] <- cor.test(maps_1Mb$avg_mut,
+    corr_tbl$u[3] <- cor.test(maps_1Mb$avg_mut,
                               maps_1Mb$sim_pi,
                               method="pearson")$estimate 
     
@@ -1921,23 +1827,19 @@ for(m in 1:num_models) {
                            "/pearson_sim_pi_tbl.csv", sep=""))
     
     # tables for storing estimates from linear models (rows are bin sizes)
-    coeff_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-    pval_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    coeff_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
+    pval_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
     names(coeff_tbl) <- c("u", "B", "B:u")
     names(pval_tbl) <- c("u", "B", "B:u")
-    coeff_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
-    pval_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    coeff_tbl$scale <- c(1e+4, 1e+5, 1e+6)
+    pval_tbl$scale <- c(1e+4, 1e+5, 1e+6)
     
     # VIFs
-    vif_tbl <- as.data.frame(matrix(ncol=2, nrow=4))
+    vif_tbl <- as.data.frame(matrix(ncol=2, nrow=3))
     names(vif_tbl) <- c("u", "B")
-    vif_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    vif_tbl$scale <- c(1e+4, 1e+5, 1e+6)
     
     # standardizing variables to help interpretation of linear coefficients
-    std_1kb <- as.data.frame(apply(maps_1kb, 2,
-                                   function(x) (x-mean(x)) / sd(x)))
-    std_1kb$bin <- 1:nrow(std_1kb)
-    
     std_10kb <- as.data.frame(apply(maps_10kb, 2,
                                     function(x) (x-mean(x)) / sd(x)))
     std_10kb$bin <- 1:nrow(std_10kb)
@@ -1954,38 +1856,32 @@ for(m in 1:num_models) {
     
     #################################
     # simulated pi
+    # 10 kb, filtering to remove auto-correlation
+    m_10kb <- lm(sim_pi ~ (B + avg_mut) ^ 2,
+                 data=filter(std_10kb, row_number() %% 100 == 0))
+    summary(m_10kb)
+    r2_raw$r2_typeI[1] <- summary(m_10kb)$r.squared * 100
     
-    # 1 kb, filtering to remove auto-correlation
-    m_1kb <- lm(sim_pi ~ (B + avg_mut) ^ 2, 
-                data=filter(std_1kb, row_number() %% 1000 == 0))
-    summary(m_1kb)
-    r2_raw$r2_typeI[1] <- summary(m_1kb)$r.squared * 100
+    v10kb <- suppressMessages(vif(m_10kb, type='predictor'))
+    vif_tbl$B[1] <- v10kb$GVIF[1]
+    vif_tbl$u[1] <- v10kb$GVIF[2]
     
-    v1kb <- suppressMessages(vif(m_1kb, type='predictor'))
-    vif_tbl$B[1] <- v1kb$GVIF[1]
-    vif_tbl$u[1] <- v1kb$GVIF[2]
+    dw_10kb <- dwtest(m_10kb)
+    hmc_10kb <- hmctest(m_10kb)
+    shapiro_10kb <- shapiro.test(resid(m_10kb)) 
+    tests_tbl$DW_test_p[1] <- dw_10kb$p.value
+    tests_tbl$HMC_test_p[1] <- hmc_10kb$p.value
+    tests_tbl$Shapiro_test_p[1] <- shapiro_10kb$p.value
     
-    dw_1kb <- dwtest(m_1kb)
-    hmc_1kb <- hmctest(m_1kb)
+    coeff_tbl$u[1] <- m_10kb$coefficients[3]
+    coeff_tbl$B[1] <- m_10kb$coefficients[2]
+    coeff_tbl$`B:u`[1] <- m_10kb$coefficients[4]
     
-    shapiro_1kb <- shapiro.test(resid(m_1kb)) 
-    tests_tbl$DW_test_p[1] <- dw_1kb$p.value
-    tests_tbl$HMC_test_p[1] <- hmc_1kb$p.value
-    tests_tbl$Shapiro_test_p[1] <- shapiro_1kb$p.value
+    pval_tbl$u[1] <- summary(m_10kb)$coefficients[3,4]
+    pval_tbl$B[1] <- summary(m_10kb)$coefficients[2,4]
+    pval_tbl$`B:u`[1] <- summary(m_10kb)$coefficients[4,4]
     
-    coeff_tbl$u[1] <- m_1kb$coefficients[3]
-    coeff_tbl$B[1] <- m_1kb$coefficients[2]
-    coeff_tbl$`B:u`[1] <- m_1kb$coefficients[4]
-    
-    pval_tbl$u[1] <- summary(m_1kb)$coefficients[3,4]
-    pval_tbl$B[1] <- summary(m_1kb)$coefficients[2,4]
-    pval_tbl$`B:u`[1] <- summary(m_1kb)$coefficients[4,4]
-    
-    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-    names(r2_tbl) <- c("u", "B", "B:u")
-    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) 
-    
-    anova.pi <- Anova(m_1kb)
+    anova.pi <- Anova(m_10kb)
     apiss <- anova.pi$"Sum Sq"
     anova.pi$VarExp <- apiss / sum(apiss)
     
@@ -1993,32 +1889,32 @@ for(m in 1:num_models) {
     r2_tbl$u[1] <- anova.pi$VarExp[2] * 100
     r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
     
-    # 10 kb, filtering to remove auto-correlation
-    m_10kb <- lm(sim_pi ~ (B + avg_mut) ^ 2,
-                 data=filter(std_10kb, row_number() %% 100 == 0))
-    summary(m_10kb)
-    r2_raw$r2_typeI[2] <- summary(m_10kb)$r.squared * 100
+    # 100 kb
+    m_100kb <- lm(sim_pi ~ (B + avg_mut) ^ 2, 
+                  data=filter(std_100kb, row_number() %% 10 == 0))
+    summary(m_100kb)
+    r2_raw$r2_typeI[2] <- summary(m_100kb)$r.squared * 100
     
-    v10kb <- suppressMessages(vif(m_10kb, type='predictor'))
-    vif_tbl$B[2] <- v10kb$GVIF[1]
-    vif_tbl$u[2] <- v10kb$GVIF[2]
+    v100kb <- suppressMessages(vif(m_100kb, type = 'predictor'))
+    vif_tbl$B[2] <- v100kb$GVIF[1]
+    vif_tbl$u[2] <- v100kb$GVIF[2]
     
-    dw_10kb <- dwtest(m_10kb)
-    hmc_10kb <- hmctest(m_10kb)
-    shapiro_10kb <- shapiro.test(resid(m_10kb)) 
-    tests_tbl$DW_test_p[2] <- dw_10kb$p.value
-    tests_tbl$HMC_test_p[2] <- hmc_10kb$p.value
-    tests_tbl$Shapiro_test_p[2] <- shapiro_10kb$p.value
+    dw_100kb <- dwtest(m_100kb)
+    hmc_100kb <- hmctest(m_100kb)
+    shapiro_100kb <- shapiro.test(resid(m_100kb))
+    tests_tbl$DW_test_p[2] <- dw_100kb$p.value
+    tests_tbl$HMC_test_p[2] <- hmc_100kb$p.value
+    tests_tbl$Shapiro_test_p[2] <- shapiro_100kb$p.value
     
-    coeff_tbl$u[2] <- m_10kb$coefficients[3]
-    coeff_tbl$B[2] <- m_10kb$coefficients[2]
-    coeff_tbl$`B:u`[2] <- m_10kb$coefficients[4]
+    coeff_tbl$u[2] <- m_100kb$coefficients[3]
+    coeff_tbl$B[2] <- m_100kb$coefficients[2]
+    coeff_tbl$`B:u`[2] <- m_100kb$coefficients[4]
     
-    pval_tbl$u[2] <- summary(m_10kb)$coefficients[3,4]
-    pval_tbl$B[2] <- summary(m_10kb)$coefficients[2,4]
-    pval_tbl$`B:u`[2] <- summary(m_10kb)$coefficients[4,4]
+    pval_tbl$u[2] <- summary(m_100kb)$coefficients[3,4]
+    pval_tbl$B[2] <- summary(m_100kb)$coefficients[2,4]
+    pval_tbl$`B:u`[2] <- summary(m_100kb)$coefficients[4,4]
     
-    anova.pi <- Anova(m_10kb)
+    anova.pi <- Anova(m_100kb)
     apiss <- anova.pi$"Sum Sq"
     anova.pi$VarExp <- apiss / sum(apiss)
     
@@ -2026,70 +1922,37 @@ for(m in 1:num_models) {
     r2_tbl$u[2] <- anova.pi$VarExp[2] * 100
     r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
     
-    # 100 kb
-    m_100kb <- lm(sim_pi ~ (B + avg_mut) ^ 2, 
-                  data=filter(std_100kb, row_number() %% 10 == 0))
-    summary(m_100kb)
-    r2_raw$r2_typeI[3] <- summary(m_100kb)$r.squared * 100
+    # 1 Mb
+    m_1Mb <- lm(sim_pi ~ (B + avg_mut) ^ 2, data=std_1Mb)
+    summary(m_1Mb)
+    r2_raw$r2_typeI[3] <- summary(m_1Mb)$r.squared * 100
     
-    v100kb <- suppressMessages(vif(m_100kb, type = 'predictor'))
-    vif_tbl$B[3] <- v100kb$GVIF[1]
-    vif_tbl$u[3] <- v100kb$GVIF[2]
+    v1Mb <- suppressMessages(vif(m_1Mb, type = 'predictor'))
+    vif_tbl$B[3] <- v1Mb$GVIF[1]
+    vif_tbl$u[3] <- v1Mb$GVIF[2]
     
-    dw_100kb <- dwtest(m_100kb)
-    hmc_100kb <- hmctest(m_100kb)
-    shapiro_100kb <- shapiro.test(resid(m_100kb))
-    tests_tbl$DW_test_p[3] <- dw_100kb$p.value
-    tests_tbl$HMC_test_p[3] <- hmc_100kb$p.value
-    tests_tbl$Shapiro_test_p[3] <- shapiro_100kb$p.value
+    dw_1Mb <- dwtest(m_1Mb)
+    hmc_1Mb <- hmctest(m_1Mb)
+    shapiro_1Mb <- shapiro.test(resid(m_1Mb))
+    tests_tbl$DW_test_p[3] <- dw_1Mb$p.value
+    tests_tbl$HMC_test_p[3] <- hmc_1Mb$p.value
+    tests_tbl$Shapiro_test_p[3] <- shapiro_1Mb$p.value
     
-    coeff_tbl$u[3] <- m_100kb$coefficients[3]
-    coeff_tbl$B[3] <- m_100kb$coefficients[2]
-    coeff_tbl$`B:u`[3] <- m_100kb$coefficients[4]
+    coeff_tbl$u[3] <- m_1Mb$coefficients[3]
+    coeff_tbl$B[3] <- m_1Mb$coefficients[2]
+    coeff_tbl$`B:u`[3] <- m_1Mb$coefficients[4]
     
-    pval_tbl$u[3] <- summary(m_100kb)$coefficients[3,4]
-    pval_tbl$B[3] <- summary(m_100kb)$coefficients[2,4]
-    pval_tbl$`B:u`[3] <- summary(m_100kb)$coefficients[4,4]
+    pval_tbl$u[3] <- summary(m_1Mb)$coefficients[3,4]
+    pval_tbl$B[3] <- summary(m_1Mb)$coefficients[2,4]
+    pval_tbl$`B:u`[3] <- summary(m_1Mb)$coefficients[4,4]
     
-    anova.pi <- Anova(m_100kb)
+    anova.pi <- Anova(m_1Mb)
     apiss <- anova.pi$"Sum Sq"
     anova.pi$VarExp <- apiss / sum(apiss)
     
     r2_tbl$`B:u`[3] <- anova.pi$VarExp[3] * 100
     r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
     r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
-    
-    # 1 Mb
-    m_1Mb <- lm(sim_pi ~ (B + avg_mut) ^ 2, data=std_1Mb)
-    summary(m_1Mb)
-    r2_raw$r2_typeI[4] <- summary(m_1Mb)$r.squared * 100
-    
-    v1Mb <- suppressMessages(vif(m_1Mb, type = 'predictor'))
-    vif_tbl$B[4] <- v1Mb$GVIF[1]
-    vif_tbl$u[4] <- v1Mb$GVIF[2]
-    
-    dw_1Mb <- dwtest(m_1Mb)
-    hmc_1Mb <- hmctest(m_1Mb)
-    shapiro_1Mb <- shapiro.test(resid(m_1Mb))
-    tests_tbl$DW_test_p[4] <- dw_1Mb$p.value
-    tests_tbl$HMC_test_p[4] <- hmc_1Mb$p.value
-    tests_tbl$Shapiro_test_p[4] <- shapiro_1Mb$p.value
-    
-    coeff_tbl$u[4] <- m_1Mb$coefficients[3]
-    coeff_tbl$B[4] <- m_1Mb$coefficients[2]
-    coeff_tbl$`B:u`[4] <- m_1Mb$coefficients[4]
-    
-    pval_tbl$u[4] <- summary(m_1Mb)$coefficients[3,4]
-    pval_tbl$B[4] <- summary(m_1Mb)$coefficients[2,4]
-    pval_tbl$`B:u`[4] <- summary(m_1Mb)$coefficients[4,4]
-    
-    anova.pi <- Anova(m_1Mb)
-    apiss <- anova.pi$"Sum Sq"
-    anova.pi$VarExp <- apiss / sum(apiss)
-    
-    r2_tbl$`B:u`[4] <- anova.pi$VarExp[3] * 100
-    r2_tbl$u[4] <- anova.pi$VarExp[2] * 100
-    r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
     
     fwrite(r2_raw, paste("model_", m, "/rep_", rep, 
                          "/r2_raw_tbl_simpi.csv", sep=""))
@@ -2104,32 +1967,6 @@ for(m in 1:num_models) {
     fwrite(tests_tbl, paste("model_", m, "/rep_", rep, 
                          "/tests_tbl_simpi.csv", sep=""))
 
-    # 1 kb
-    df_1kb <- cbind.data.frame(resid(m_1kb), fitted(m_1kb))
-    names(df_1kb) <- c("residuals", "fitted")
-    p_1kb <- ggplot(data=df_1kb, aes(x=residuals, y=fitted)) + 
-             geom_point(size=2, shape=1) + 
-             theme_bw() + labs(title="1kb", x=NULL, y="Fitted") +
-             theme(axis.title.x=element_text(size=16),
-                   axis.text.x=element_text(size=12),
-                   axis.text.y=element_text(size=12),
-                   axis.title.y=element_text(size=16),
-                   plot.title=element_text(size=20))
-    
-    q_1kb <- ggplot(data=df_1kb, aes(x=residuals)) + 
-             geom_histogram(aes(y=..density..), bins=50) + 
-             stat_function(fun=dnorm, color="red",
-                           args=list(mean=mean(df_1kb$residuals), 
-                                    sd=sd(df_1kb$residuals))) +
-             theme_bw() + labs(title=NULL, x="Residuals", y="Count") +
-             theme(axis.title.x=element_text(size=16),
-                   axis.text.x=element_text(size=12),
-                   axis.text.y=element_text(size=12),
-                   axis.title.y=element_text(size=16),
-                   plot.title=element_text(size=20)) 
-    
-    lm_1kb <- plot_grid(p_1kb, q_1kb, ncol=1)
-    
     # 10 kb
     df_10kb <- cbind.data.frame(resid(m_10kb), fitted(m_10kb))
     names(df_10kb) <- c("residuals", "fitted")
@@ -2205,7 +2042,7 @@ for(m in 1:num_models) {
     
     lm_1Mb <- plot_grid(p_1Mb, q_1Mb, ncol=1)
     
-    lm_plots <- plot_grid(lm_1kb, lm_10kb, lm_100kb, lm_1Mb, nrow=1)
+    lm_plots <- plot_grid(lm_10kb, lm_100kb, lm_1Mb, nrow=1)
     save_plot(paste("model_", m, 
                     "/rep_", rep,
                     "/lm_plots_simpi.svg", sep=""),
@@ -2213,39 +2050,33 @@ for(m in 1:num_models) {
     
     ################################# 
     # expected pi
+    # 10 kb, filtering to remove auto-correlation
+    m_10kb <- lm(pi_exp ~ (B + avg_mut) ^ 2,
+                 data=filter(std_10kb, row_number() %% 100 == 0))
+    summary(m_10kb)
+    r2_raw$r2_typeI[1] <- summary(m_10kb)$r.squared * 100
     
-    # 1 kb, filtering to remove auto-correlation
-    m_1kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, 
-                data=filter(std_1kb, row_number() %% 1000 == 0))
-    summary(m_1kb)
-    r2_raw$r2_typeI[1] <- summary(m_1kb)$r.squared * 100
+    v10kb <- suppressMessages(vif(m_10kb, type='predictor'))
+    vif_tbl$B[1] <- v10kb$GVIF[1]
+    vif_tbl$u[1] <- v10kb$GVIF[2]
     
-    v1kb <- suppressMessages(vif(m_1kb, type='predictor'))
-    vif_tbl$B[1] <- v1kb$GVIF[1]
-    vif_tbl$u[1] <- v1kb$GVIF[2]
+    dw_10kb <- dwtest(m_10kb)
+    hmc_10kb <- hmctest(m_10kb)
+    shapiro_10kb <- shapiro.test(resid(m_10kb)) 
+    tests_tbl$DW_test_p[1] <- dw_10kb$p.value
+    tests_tbl$HMC_test_p[1] <- hmc_10kb$p.value
+    tests_tbl$Shapiro_test_p[1] <- shapiro_10kb$p.value
     
-    dw_1kb <- dwtest(m_1kb)
-    hmc_1kb <- hmctest(m_1kb)
+    coeff_tbl$u[1] <- m_10kb$coefficients[3]
+    coeff_tbl$B[1] <- m_10kb$coefficients[2]
+    coeff_tbl$`B:u`[1] <- m_10kb$coefficients[4]
     
-    shapiro_1kb <- shapiro.test(resid(m_1kb)) 
-    tests_tbl$DW_test_p[1] <- dw_1kb$p.value
-    tests_tbl$HMC_test_p[1] <- hmc_1kb$p.value
-    tests_tbl$Shapiro_test_p[1] <- shapiro_1kb$p.value
-    
-    coeff_tbl$u[1] <- m_1kb$coefficients[3]
-    coeff_tbl$B[1] <- m_1kb$coefficients[2]
-    coeff_tbl$`B:u`[1] <- m_1kb$coefficients[4]
-    
-    pval_tbl$u[1] <- summary(m_1kb)$coefficients[3,4]
-    pval_tbl$B[1] <- summary(m_1kb)$coefficients[2,4]
-    pval_tbl$`B:u`[1] <- summary(m_1kb)$coefficients[4,4]
-    
-    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
-    names(r2_tbl) <- c("u", "B", "B:u")
-    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) 
+    pval_tbl$u[1] <- summary(m_10kb)$coefficients[3,4]
+    pval_tbl$B[1] <- summary(m_10kb)$coefficients[2,4]
+    pval_tbl$`B:u`[1] <- summary(m_10kb)$coefficients[4,4]
     
     tryCatch({ # to handle residual sum of squares == 0 
-      anova.pi <- Anova(m_1kb)
+      anova.pi <- Anova(m_10kb)
       apiss <- anova.pi$"Sum Sq"
       anova.pi$VarExp <- apiss / sum(apiss)
     
@@ -2254,33 +2085,32 @@ for(m in 1:num_models) {
       r2_tbl$B[1] <- anova.pi$VarExp[1] * 100
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
     
-    # 10 kb, filtering to remove auto-correlation
-    m_10kb <- lm(pi_exp ~ (B + avg_mut) ^ 2,
-                 data=filter(std_10kb, row_number() %% 100 == 0))
-    summary(m_10kb)
-    r2_raw$r2_typeI[2] <- summary(m_10kb)$r.squared * 100
+    # 100 kb
+    m_100kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, std_100kb)
+    summary(m_100kb)
+    r2_raw$r2_typeI[2] <- summary(m_100kb)$r.squared * 100
     
-    v10kb <- suppressMessages(vif(m_10kb, type='predictor'))
-    vif_tbl$B[2] <- v10kb$GVIF[1]
-    vif_tbl$u[2] <- v10kb$GVIF[2]
+    v100kb <- suppressMessages(vif(m_100kb, type = 'predictor'))
+    vif_tbl$B[2] <- v100kb$GVIF[1]
+    vif_tbl$u[2] <- v100kb$GVIF[2]
     
-    dw_10kb <- dwtest(m_10kb)
-    hmc_10kb <- hmctest(m_10kb)
-    shapiro_10kb <- shapiro.test(resid(m_10kb)) 
-    tests_tbl$DW_test_p[2] <- dw_10kb$p.value
-    tests_tbl$HMC_test_p[2] <- hmc_10kb$p.value
-    tests_tbl$Shapiro_test_p[2] <- shapiro_10kb$p.value
+    dw_100kb <- dwtest(m_100kb)
+    hmc_100kb <- hmctest(m_100kb)
+    shapiro_100kb <- shapiro.test(resid(m_100kb))
+    tests_tbl$DW_test_p[2] <- dw_100kb$p.value
+    tests_tbl$HMC_test_p[2] <- hmc_100kb$p.value
+    tests_tbl$Shapiro_test_p[2] <- shapiro_100kb$p.value
     
-    coeff_tbl$u[2] <- m_10kb$coefficients[3]
-    coeff_tbl$B[2] <- m_10kb$coefficients[2]
-    coeff_tbl$`B:u`[2] <- m_10kb$coefficients[4]
+    coeff_tbl$u[2] <- m_100kb$coefficients[3]
+    coeff_tbl$B[2] <- m_100kb$coefficients[2]
+    coeff_tbl$`B:u`[2] <- m_100kb$coefficients[4]
     
-    pval_tbl$u[2] <- summary(m_10kb)$coefficients[3,4]
-    pval_tbl$B[2] <- summary(m_10kb)$coefficients[2,4]
-    pval_tbl$`B:u`[2] <- summary(m_10kb)$coefficients[4,4]
+    pval_tbl$u[2] <- summary(m_100kb)$coefficients[3,4]
+    pval_tbl$B[2] <- summary(m_100kb)$coefficients[2,4]
+    pval_tbl$`B:u`[2] <- summary(m_100kb)$coefficients[4,4]
     
     tryCatch({ # to handle residual sum of squares == 0 
-      anova.pi <- Anova(m_10kb)
+      anova.pi <- Anova(m_100kb)
       apiss <- anova.pi$"Sum Sq"
       anova.pi$VarExp <- apiss / sum(apiss)
     
@@ -2289,72 +2119,38 @@ for(m in 1:num_models) {
       r2_tbl$B[2] <- anova.pi$VarExp[1] * 100
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
     
-    # 100 kb
-    m_100kb <- lm(pi_exp ~ (B + avg_mut) ^ 2, std_100kb)
-    summary(m_100kb)
-    r2_raw$r2_typeI[3] <- summary(m_100kb)$r.squared * 100
-    
-    v100kb <- suppressMessages(vif(m_100kb, type = 'predictor'))
-    vif_tbl$B[3] <- v100kb$GVIF[1]
-    vif_tbl$u[3] <- v100kb$GVIF[2]
-    
-    dw_100kb <- dwtest(m_100kb)
-    hmc_100kb <- hmctest(m_100kb)
-    shapiro_100kb <- shapiro.test(resid(m_100kb))
-    tests_tbl$DW_test_p[3] <- dw_100kb$p.value
-    tests_tbl$HMC_test_p[3] <- hmc_100kb$p.value
-    tests_tbl$Shapiro_test_p[3] <- shapiro_100kb$p.value
-    
-    coeff_tbl$u[3] <- m_100kb$coefficients[3]
-    coeff_tbl$B[3] <- m_100kb$coefficients[2]
-    coeff_tbl$`B:u`[3] <- m_100kb$coefficients[4]
-    
-    pval_tbl$u[3] <- summary(m_100kb)$coefficients[3,4]
-    pval_tbl$B[3] <- summary(m_100kb)$coefficients[2,4]
-    pval_tbl$`B:u`[3] <- summary(m_100kb)$coefficients[4,4]
-    
-    tryCatch({ # to handle residual sum of squares == 0 
-      anova.pi <- Anova(m_100kb)
-      apiss <- anova.pi$"Sum Sq"
-      anova.pi$VarExp <- apiss / sum(apiss)
-    
-      r2_tbl$`B:u`[3] <- anova.pi$VarExp[3] * 100
-      r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
-      r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-    
     # 1 Mb
     m_1Mb <- lm(pi_exp ~ (B + avg_mut) ^ 2, data=std_1Mb)
     summary(m_1Mb)
-    r2_raw$r2_typeI[4] <- summary(m_1Mb)$r.squared * 100
+    r2_raw$r2_typeI[3] <- summary(m_1Mb)$r.squared * 100
     
     v1Mb <- suppressMessages(vif(m_1Mb, type = 'predictor'))
-    vif_tbl$B[4] <- v1Mb$GVIF[1]
-    vif_tbl$u[4] <- v1Mb$GVIF[2]
+    vif_tbl$B[3] <- v1Mb$GVIF[1]
+    vif_tbl$u[3] <- v1Mb$GVIF[2]
     
     dw_1Mb <- dwtest(m_1Mb)
     hmc_1Mb <- hmctest(m_1Mb)
     shapiro_1Mb <- shapiro.test(resid(m_1Mb))
-    tests_tbl$DW_test_p[4] <- dw_1Mb$p.value
-    tests_tbl$HMC_test_p[4] <- hmc_1Mb$p.value
-    tests_tbl$Shapiro_test_p[4] <- shapiro_1Mb$p.value
+    tests_tbl$DW_test_p[3] <- dw_1Mb$p.value
+    tests_tbl$HMC_test_p[3] <- hmc_1Mb$p.value
+    tests_tbl$Shapiro_test_p[3] <- shapiro_1Mb$p.value
     
-    coeff_tbl$u[4] <- m_1Mb$coefficients[3]
-    coeff_tbl$B[4] <- m_1Mb$coefficients[2]
-    coeff_tbl$`B:u`[4] <- m_1Mb$coefficients[4]
+    coeff_tbl$u[3] <- m_1Mb$coefficients[3]
+    coeff_tbl$B[3] <- m_1Mb$coefficients[2]
+    coeff_tbl$`B:u`[3] <- m_1Mb$coefficients[4]
     
-    pval_tbl$u[4] <- summary(m_1Mb)$coefficients[3,4]
-    pval_tbl$B[4] <- summary(m_1Mb)$coefficients[2,4]
-    pval_tbl$`B:u`[4] <- summary(m_1Mb)$coefficients[4,4]
+    pval_tbl$u[3] <- summary(m_1Mb)$coefficients[3,4]
+    pval_tbl$B[3] <- summary(m_1Mb)$coefficients[2,4]
+    pval_tbl$`B:u`[3] <- summary(m_1Mb)$coefficients[4,4]
     
     tryCatch({ # to handle residual sum of squares == 0 
       anova.pi <- Anova(m_1Mb)
       apiss <- anova.pi$"Sum Sq"
       anova.pi$VarExp <- apiss / sum(apiss)
     
-      r2_tbl$`B:u`[4] <- anova.pi$VarExp[3] * 100
-      r2_tbl$u[4] <- anova.pi$VarExp[2] * 100
-      r2_tbl$B[4] <- anova.pi$VarExp[1] * 100
+      r2_tbl$`B:u`[3] <- anova.pi$VarExp[3] * 100
+      r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
+      r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
     
     fwrite(r2_raw, paste("model_", m, "/rep_", rep, 
@@ -2370,32 +2166,6 @@ for(m in 1:num_models) {
     fwrite(tests_tbl, paste("model_", m, "/rep_", rep, 
                          "/tests_tbl_exppi.csv", sep=""))
 
-    # 1 kb
-    df_1kb <- cbind.data.frame(resid(m_1kb), fitted(m_1kb))
-    names(df_1kb) <- c("residuals", "fitted")
-    p_1kb <- ggplot(data=df_1kb, aes(x=residuals, y=fitted)) + 
-             geom_point(size=2, shape=1) + 
-             theme_bw() + labs(title="1kb", x=NULL, y="Fitted") +
-             theme(axis.title.x=element_text(size=16),
-                   axis.text.x=element_text(size=12),
-                   axis.text.y=element_text(size=12),
-                   axis.title.y=element_text(size=16),
-                   plot.title=element_text(size=20))
-    
-    q_1kb <- ggplot(data=df_1kb, aes(x=residuals)) + 
-             geom_histogram(aes(y=..density..), bins=50) + 
-             stat_function(fun=dnorm, color="red",
-                           args=list(mean=mean(df_1kb$residuals), 
-                                    sd=sd(df_1kb$residuals))) +
-             theme_bw() + labs(title=NULL, x="Residuals", y="Count") +
-             theme(axis.title.x=element_text(size=16),
-                   axis.text.x=element_text(size=12),
-                   axis.text.y=element_text(size=12),
-                   axis.title.y=element_text(size=16),
-                   plot.title=element_text(size=20)) 
-    
-    lm_1kb <- plot_grid(p_1kb, q_1kb, ncol=1)
-    
     # 10 kb
     df_10kb <- cbind.data.frame(resid(m_10kb), fitted(m_10kb))
     names(df_10kb) <- c("residuals", "fitted")
@@ -2471,7 +2241,7 @@ for(m in 1:num_models) {
     
     lm_1Mb <- plot_grid(p_1Mb, q_1Mb, ncol=1)
     
-    lm_plots <- plot_grid(lm_1kb, lm_10kb, lm_100kb, lm_1Mb, nrow=1)
+    lm_plots <- plot_grid(lm_10kb, lm_100kb, lm_1Mb, nrow=1)
     save_plot(paste("model_", m, 
                     "/rep_", rep, 
                     "/lm_plots_exppi.svg", sep=""),
@@ -2484,37 +2254,30 @@ Preparing tables with simple correlations
 
 ```{r prep-corrs, include=F, message=F, warning=F}
 
-r_vs_u_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_u_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_u_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_u_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-r_vs_B_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_B_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_B_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_B_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-r_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-u_vs_B_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_B_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_B_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_B_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-u_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-B_vs_exonic_sites_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_exonic_sites_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_exonic_sites_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_exonic_sites_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-B_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -2524,9 +2287,6 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   for(rep in 1:num_reps) {
     # correlations in lower part of triangular matrices, pvalues in upper
-    cors_1kb <- fread(paste("model_", m, "/rep_", rep, 
-                            "/pval_upper_spearman_lower_1kb.csv", sep=""))
-    
     cors_10kb <- fread(paste("model_", m, "/rep_", rep, 
                             "/pval_upper_spearman_lower_10kb.csv", sep=""))
     
@@ -2536,44 +2296,37 @@ for(m in 1:num_models) {
     cors_1Mb <- fread(paste("model_", m, "/rep_", rep, 
                             "/pval_upper_spearman_lower_1Mb.csv", sep=""))
     
-    row <- which(names(cors_1kb) == "avg_mut")
-    r_vs_u_1kb[m, rep] <- cors_1kb[row, "avg_rec"]
+    row <- which(names(cors_10kb) == "avg_mut")
     r_vs_u_10kb[m, rep] <- cors_10kb[row, "avg_rec"]
     r_vs_u_100kb[m, rep] <- cors_100kb[row, "avg_rec"]
     r_vs_u_1Mb[m, rep] <- cors_1Mb[row, "avg_rec"]
     
-    row <- which(names(cors_1kb) == "B")
-    r_vs_B_1kb[m, rep] <- cors_1kb[row, "avg_rec"]
+    row <- which(names(cors_10kb) == "B")
     r_vs_B_10kb[m, rep] <- cors_10kb[row, "avg_rec"]
     r_vs_B_100kb[m, rep] <- cors_100kb[row, "avg_rec"]
     r_vs_B_1Mb[m, rep] <- cors_1Mb[row, "avg_rec"]
     
-    row <- which(names(cors_1kb) == "pi_exp")
-    r_vs_piexp_1kb[m, rep] <- cors_1kb[row, "avg_rec"]
+    row <- which(names(cors_10kb) == "pi_exp")
     r_vs_piexp_10kb[m, rep] <- cors_10kb[row, "avg_rec"]
     r_vs_piexp_100kb[m, rep] <- cors_100kb[row, "avg_rec"]
     r_vs_piexp_1Mb[m, rep] <- cors_1Mb[row, "avg_rec"]
     
-    row <- which(names(cors_1kb) == "B")
-    u_vs_B_1kb[m, rep] <- cors_1kb[row, "avg_mut"]
+    row <- which(names(cors_10kb) == "B")
     u_vs_B_10kb[m, rep] <- cors_10kb[row, "avg_mut"]
     u_vs_B_100kb[m, rep] <- cors_100kb[row, "avg_mut"]
     u_vs_B_1Mb[m, rep] <- cors_1Mb[row, "avg_mut"]
     
-    row <- which(names(cors_1kb) == "pi_exp")
-    u_vs_piexp_1kb[m, rep] <- cors_1kb[row, "avg_mut"]
+    row <- which(names(cors_10kb) == "pi_exp")
     u_vs_piexp_10kb[m, rep] <- cors_10kb[row, "avg_mut"]
     u_vs_piexp_100kb[m, rep] <- cors_100kb[row, "avg_mut"]
     u_vs_piexp_1Mb[m, rep] <- cors_1Mb[row, "avg_mut"]
     
-    row <- which(names(cors_1kb) == "B")
-    B_vs_exonic_sites_1kb[m, rep] <- cors_1kb[row, "exonic_sites"]
+    row <- which(names(cors_10kb) == "B")
     B_vs_exonic_sites_10kb[m, rep] <- cors_10kb[row, "exonic_sites"]
     B_vs_exonic_sites_100kb[m, rep] <- cors_100kb[row, "exonic_sites"]
     B_vs_exonic_sites_1Mb[m, rep] <- cors_1Mb[row, "exonic_sites"]
     
-    row <- which(names(cors_1kb) == "pi_exp")
-    B_vs_piexp_1kb[m, rep] <- cors_1kb[row, "B"]
+    row <- which(names(cors_10kb) == "pi_exp")
     B_vs_piexp_10kb[m, rep] <- cors_10kb[row, "B"]
     B_vs_piexp_100kb[m, rep] <- cors_100kb[row, "B"]
     B_vs_piexp_1Mb[m, rep] <- cors_1Mb[row, "B"]
@@ -2582,10 +2335,6 @@ for(m in 1:num_models) {
 close(pb)
 
 # r vs mu
-names(r_vs_u_1kb) <- paste("rep_", 1:num_reps, sep="")
-r_vs_u_1kb$model <- 1:num_models
-r_vs_u_1kb$scale <- 1e+3
-
 names(r_vs_u_10kb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_u_10kb$model <- 1:num_models
 r_vs_u_10kb$scale <- 1e+4
@@ -2598,17 +2347,12 @@ names(r_vs_u_1Mb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_u_1Mb$model <- 1:num_models
 r_vs_u_1Mb$scale <- 1e+6
 
-r_vs_u <- rbind.data.frame(r_vs_u_1kb,
-                           r_vs_u_10kb,
+r_vs_u <- rbind.data.frame(r_vs_u_10kb,
                            r_vs_u_100kb,
                            r_vs_u_1Mb)
 fwrite(r_vs_u, "corr_r_u.csv")
 
 # r vs B
-names(r_vs_B_1kb) <- paste("rep_", 1:num_reps, sep="")
-r_vs_B_1kb$model <- 1:num_models
-r_vs_B_1kb$scale <- 1e+3
-
 names(r_vs_B_10kb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_B_10kb$model <- 1:num_models
 r_vs_B_10kb$scale <- 1e+4
@@ -2621,17 +2365,12 @@ names(r_vs_B_1Mb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_B_1Mb$model <- 1:num_models
 r_vs_B_1Mb$scale <- 1e+6
 
-r_vs_B <- rbind.data.frame(r_vs_B_1kb,
-                           r_vs_B_10kb,
+r_vs_B <- rbind.data.frame(r_vs_B_10kb,
                            r_vs_B_100kb,
                            r_vs_B_1Mb)
 fwrite(r_vs_B, "corr_r_B.csv")
 
 # r vs pi
-names(r_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
-r_vs_piexp_1kb$model <- 1:num_models
-r_vs_piexp_1kb$scale <- 1e+3
-
 names(r_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_piexp_10kb$model <- 1:num_models
 r_vs_piexp_10kb$scale <- 1e+4
@@ -2644,17 +2383,12 @@ names(r_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_piexp_1Mb$model <- 1:num_models
 r_vs_piexp_1Mb$scale <- 1e+6
 
-r_vs_piexp <- rbind.data.frame(r_vs_piexp_1kb,
-                               r_vs_piexp_10kb,
+r_vs_piexp <- rbind.data.frame(r_vs_piexp_10kb,
                                r_vs_piexp_100kb,
                                r_vs_piexp_1Mb)
 fwrite(r_vs_piexp, "corr_r_piexp.csv")
 
 # mu x B
-names(u_vs_B_1kb) <- paste("rep_", 1:num_reps, sep="")
-u_vs_B_1kb$model <- 1:num_models
-u_vs_B_1kb$scale <- 1e+3
-
 names(u_vs_B_10kb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_B_10kb$model <- 1:num_models
 u_vs_B_10kb$scale <- 1e+4
@@ -2667,17 +2401,12 @@ names(u_vs_B_1Mb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_B_1Mb$model <- 1:num_models
 u_vs_B_1Mb$scale <- 1e+6
 
-u_vs_B <- rbind.data.frame(u_vs_B_1kb,
-                           u_vs_B_10kb,
+u_vs_B <- rbind.data.frame(u_vs_B_10kb,
                            u_vs_B_100kb,
                            u_vs_B_1Mb)
 fwrite(u_vs_B, "corr_u_B.csv")
 
 # mu x pi
-names(u_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
-u_vs_piexp_1kb$model <- 1:num_models
-u_vs_piexp_1kb$scale <- 1e+3
-
 names(u_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_piexp_10kb$model <- 1:num_models
 u_vs_piexp_10kb$scale <- 1e+4
@@ -2690,17 +2419,12 @@ names(u_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_piexp_1Mb$model <- 1:num_models
 u_vs_piexp_1Mb$scale <- 1e+6
 
-u_vs_piexp <- rbind.data.frame(u_vs_piexp_1kb,
-                               u_vs_piexp_10kb,
+u_vs_piexp <- rbind.data.frame(u_vs_piexp_10kb,
                                u_vs_piexp_100kb,
                                u_vs_piexp_1Mb)
 fwrite(u_vs_piexp, "corr_u_piexp.csv")
 
 # B vs pi
-names(B_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_piexp_1kb$model <- 1:num_models
-B_vs_piexp_1kb$scale <- 1e+3
-
 names(B_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_piexp_10kb$model <- 1:num_models
 B_vs_piexp_10kb$scale <- 1e+4
@@ -2713,17 +2437,12 @@ names(B_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_piexp_1Mb$model <- 1:num_models
 B_vs_piexp_1Mb$scale <- 1e+6
 
-B_vs_piexp <- rbind.data.frame(B_vs_piexp_1kb,
-                               B_vs_piexp_10kb,
+B_vs_piexp <- rbind.data.frame(B_vs_piexp_10kb,
                                B_vs_piexp_100kb,
                                B_vs_piexp_1Mb)
 fwrite(B_vs_piexp, "corr_B_piexp.csv")
 
 # B vs E
-names(B_vs_exonic_sites_1kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_1kb$model <- 1:num_models
-B_vs_exonic_sites_1kb$scale <- 1e+3
-
 names(B_vs_exonic_sites_10kb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_exonic_sites_10kb$model <- 1:num_models
 B_vs_exonic_sites_10kb$scale <- 1e+4
@@ -2736,8 +2455,7 @@ names(B_vs_exonic_sites_1Mb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_exonic_sites_1Mb$model <- 1:num_models
 B_vs_exonic_sites_1Mb$scale <- 1e+6
 
-B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_1kb,
-                                      B_vs_exonic_sites_10kb,
+B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_10kb,
                                       B_vs_exonic_sites_100kb,
                                       B_vs_exonic_sites_1Mb)
 fwrite(B_vs_exonic_sites, "corr_B_E.csv")
@@ -2747,37 +2465,30 @@ Preparing tables with p-values
 
 ```{r prep-corrs, include=F, message=F, warning=F}
 
-r_vs_u_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_u_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_u_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_u_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-r_vs_B_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_B_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_B_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_B_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-r_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 r_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-u_vs_B_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_B_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_B_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_B_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-u_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-B_vs_exonic_sites_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_exonic_sites_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_exonic_sites_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_exonic_sites_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-B_vs_piexp_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_piexp_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_piexp_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_piexp_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -2787,9 +2498,6 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   for(rep in 1:num_reps) {
     # correlations in lower part of triangular matrices, pvalues in upper
-    pval_1kb <- fread(paste("model_", m, "/rep_", rep, 
-                            "/pval_upper_spearman_lower_1kb.csv", sep=""))
-    
     pval_10kb <- fread(paste("model_", m, "/rep_", rep, 
                             "/pval_upper_spearman_lower_10kb.csv", sep=""))
     
@@ -2799,44 +2507,37 @@ for(m in 1:num_models) {
     pval_1Mb <- fread(paste("model_", m, "/rep_", rep, 
                             "/pval_upper_spearman_lower_1Mb.csv", sep=""))
     
-    row <- which(names(pval_1kb) == "avg_rec")
-    r_vs_u_1kb[m, rep] <- pval_1kb[row, "avg_mut"]
+    row <- which(names(pval_10kb) == "avg_rec")
     r_vs_u_10kb[m, rep] <- pval_10kb[row, "avg_mut"]
     r_vs_u_100kb[m, rep] <- pval_100kb[row, "avg_mut"]
     r_vs_u_1Mb[m, rep] <- pval_1Mb[row, "avg_mut"]
     
-    row <- which(names(pval_1kb) == "avg_rec")
-    r_vs_B_1kb[m, rep] <- pval_1kb[row, "B"]
+    row <- which(names(pval_10kb) == "avg_rec")
     r_vs_B_10kb[m, rep] <- pval_10kb[row, "B"]
     r_vs_B_100kb[m, rep] <- pval_100kb[row, "B"]
     r_vs_B_1Mb[m, rep] <- pval_1Mb[row, "B"]
     
-    row <- which(names(pval_1kb) == "avg_rec")
-    r_vs_piexp_1kb[m, rep] <- pval_1kb[row, "pi_exp"]
+    row <- which(names(pval_10kb) == "avg_rec")
     r_vs_piexp_10kb[m, rep] <- pval_10kb[row, "pi_exp"]
     r_vs_piexp_100kb[m, rep] <- pval_100kb[row, "pi_exp"]
     r_vs_piexp_1Mb[m, rep] <- pval_1Mb[row, "pi_exp"]
     
-    row <- which(names(pval_1kb) == "avg_mut")
-    u_vs_B_1kb[m, rep] <- pval_1kb[row, "B"]
+    row <- which(names(pval_10kb) == "avg_mut")
     u_vs_B_10kb[m, rep] <- pval_10kb[row, "B"]
     u_vs_B_100kb[m, rep] <- pval_100kb[row, "B"]
     u_vs_B_1Mb[m, rep] <- pval_1Mb[row, "B"]
     
-    row <- which(names(pval_1kb) == "avg_mut")
-    u_vs_piexp_1kb[m, rep] <- pval_1kb[row, "pi_exp"]
+    row <- which(names(pval_10kb) == "avg_mut")
     u_vs_piexp_10kb[m, rep] <- pval_10kb[row, "pi_exp"]
     u_vs_piexp_100kb[m, rep] <- pval_100kb[row, "pi_exp"]
     u_vs_piexp_1Mb[m, rep] <- pval_1Mb[row, "pi_exp"]
     
-    row <- which(names(pval_1kb) == "exonic_sites")
-    B_vs_exonic_sites_1kb[m, rep] <- pval_1kb[row, "B"]
+    row <- which(names(pval_10kb) == "exonic_sites")
     B_vs_exonic_sites_10kb[m, rep] <- pval_10kb[row, "B"]
     B_vs_exonic_sites_100kb[m, rep] <- pval_100kb[row, "B"]
     B_vs_exonic_sites_1Mb[m, rep] <- pval_1Mb[row, "B"]
     
-    row <- which(names(pval_1kb) == "B")
-    B_vs_piexp_1kb[m, rep] <- pval_1kb[row, "pi_exp"]
+    row <- which(names(pval_10kb) == "B")
     B_vs_piexp_10kb[m, rep] <- pval_10kb[row, "pi_exp"]
     B_vs_piexp_100kb[m, rep] <- pval_100kb[row, "pi_exp"]
     B_vs_piexp_1Mb[m, rep] <- pval_1Mb[row, "pi_exp"]
@@ -2845,10 +2546,6 @@ for(m in 1:num_models) {
 close(pb)
 
 # r vs mu
-names(r_vs_u_1kb) <- paste("rep_", 1:num_reps, sep="")
-r_vs_u_1kb$model <- 1:num_models
-r_vs_u_1kb$scale <- 1e+3
-
 names(r_vs_u_10kb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_u_10kb$model <- 1:num_models
 r_vs_u_10kb$scale <- 1e+4
@@ -2861,17 +2558,12 @@ names(r_vs_u_1Mb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_u_1Mb$model <- 1:num_models
 r_vs_u_1Mb$scale <- 1e+6
 
-r_vs_u <- rbind.data.frame(r_vs_u_1kb,
-                           r_vs_u_10kb,
+r_vs_u <- rbind.data.frame(r_vs_u_10kb,
                            r_vs_u_100kb,
                            r_vs_u_1Mb)
 fwrite(r_vs_u, "pval_r_u.csv")
 
 # r vs B
-names(r_vs_B_1kb) <- paste("rep_", 1:num_reps, sep="")
-r_vs_B_1kb$model <- 1:num_models
-r_vs_B_1kb$scale <- 1e+3
-
 names(r_vs_B_10kb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_B_10kb$model <- 1:num_models
 r_vs_B_10kb$scale <- 1e+4
@@ -2884,17 +2576,12 @@ names(r_vs_B_1Mb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_B_1Mb$model <- 1:num_models
 r_vs_B_1Mb$scale <- 1e+6
 
-r_vs_B <- rbind.data.frame(r_vs_B_1kb,
-                           r_vs_B_10kb,
+r_vs_B <- rbind.data.frame(r_vs_B_10kb,
                            r_vs_B_100kb,
                            r_vs_B_1Mb)
 fwrite(r_vs_B, "pval_r_B.csv")
 
 # r vs pi
-names(r_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
-r_vs_piexp_1kb$model <- 1:num_models
-r_vs_piexp_1kb$scale <- 1e+3
-
 names(r_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_piexp_10kb$model <- 1:num_models
 r_vs_piexp_10kb$scale <- 1e+4
@@ -2907,17 +2594,12 @@ names(r_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
 r_vs_piexp_1Mb$model <- 1:num_models
 r_vs_piexp_1Mb$scale <- 1e+6
 
-r_vs_piexp <- rbind.data.frame(r_vs_piexp_1kb,
-                               r_vs_piexp_10kb,
+r_vs_piexp <- rbind.data.frame(r_vs_piexp_10kb,
                                r_vs_piexp_100kb,
                                r_vs_piexp_1Mb)
 fwrite(r_vs_piexp, "pval_r_piexp.csv")
 
 # mu x B
-names(u_vs_B_1kb) <- paste("rep_", 1:num_reps, sep="")
-u_vs_B_1kb$model <- 1:num_models
-u_vs_B_1kb$scale <- 1e+3
-
 names(u_vs_B_10kb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_B_10kb$model <- 1:num_models
 u_vs_B_10kb$scale <- 1e+4
@@ -2930,17 +2612,12 @@ names(u_vs_B_1Mb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_B_1Mb$model <- 1:num_models
 u_vs_B_1Mb$scale <- 1e+6
 
-u_vs_B <- rbind.data.frame(u_vs_B_1kb,
-                           u_vs_B_10kb,
+u_vs_B <- rbind.data.frame(u_vs_B_10kb,
                            u_vs_B_100kb,
                            u_vs_B_1Mb)
 fwrite(u_vs_B, "pval_u_B.csv")
 
 # mu x pi
-names(u_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
-u_vs_piexp_1kb$model <- 1:num_models
-u_vs_piexp_1kb$scale <- 1e+3
-
 names(u_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_piexp_10kb$model <- 1:num_models
 u_vs_piexp_10kb$scale <- 1e+4
@@ -2953,17 +2630,12 @@ names(u_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
 u_vs_piexp_1Mb$model <- 1:num_models
 u_vs_piexp_1Mb$scale <- 1e+6
 
-u_vs_piexp <- rbind.data.frame(u_vs_piexp_1kb,
-                               u_vs_piexp_10kb,
+u_vs_piexp <- rbind.data.frame(u_vs_piexp_10kb,
                                u_vs_piexp_100kb,
                                u_vs_piexp_1Mb)
 fwrite(u_vs_piexp, "pval_u_piexp.csv")
 
 # B vs pi
-names(B_vs_piexp_1kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_piexp_1kb$model <- 1:num_models
-B_vs_piexp_1kb$scale <- 1e+3
-
 names(B_vs_piexp_10kb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_piexp_10kb$model <- 1:num_models
 B_vs_piexp_10kb$scale <- 1e+4
@@ -2976,17 +2648,12 @@ names(B_vs_piexp_1Mb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_piexp_1Mb$model <- 1:num_models
 B_vs_piexp_1Mb$scale <- 1e+6
 
-B_vs_piexp <- rbind.data.frame(B_vs_piexp_1kb,
-                               B_vs_piexp_10kb,
+B_vs_piexp <- rbind.data.frame(B_vs_piexp_10kb,
                                B_vs_piexp_100kb,
                                B_vs_piexp_1Mb)
 fwrite(B_vs_piexp, "pval_B_piexp.csv")
 
 # B vs E
-names(B_vs_exonic_sites_1kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_1kb$model <- 1:num_models
-B_vs_exonic_sites_1kb$scale <- 1e+3
-
 names(B_vs_exonic_sites_10kb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_exonic_sites_10kb$model <- 1:num_models
 B_vs_exonic_sites_10kb$scale <- 1e+4
@@ -2999,8 +2666,7 @@ names(B_vs_exonic_sites_1Mb) <- paste("rep_", 1:num_reps, sep="")
 B_vs_exonic_sites_1Mb$model <- 1:num_models
 B_vs_exonic_sites_1Mb$scale <- 1e+6
 
-B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_1kb,
-                                      B_vs_exonic_sites_10kb,
+B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_10kb,
                                       B_vs_exonic_sites_100kb,
                                       B_vs_exonic_sites_1Mb)
 fwrite(B_vs_exonic_sites, "pval_B_E.csv")
@@ -3363,24 +3029,20 @@ for(i in 1:num_models) {
   
   setTxtProgressBar(pb, i)
   
-  # converts num_rep tables of dim (3 x 4: 1kb, 10kb, 100kb, 1Mb x u, B, B:u)
-  # into 4 tables of dimension num_reps x 3 (u, B, B:u)
-  r2_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
+  # converting num_rep tables (3 x 3: 10kb, 100kb, 1Mb x u, B, B:u)
+  # into 3 tables of dimension num_reps x 3 (u, B, B:u)
   r2_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   r2_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   r2_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   
-  coeff_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   coeff_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   coeff_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   coeff_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=4))
   
-  r2_raw_1kb <- as.data.frame(matrix(nrow=num_reps, ncol=2))
   r2_raw_10kb <- as.data.frame(matrix(nrow=num_reps, ncol=2))
   r2_raw_100kb <- as.data.frame(matrix(nrow=num_reps, ncol=2))
   r2_raw_1Mb <- as.data.frame(matrix(nrow=num_reps, ncol=2))
   
-  names(r2_raw_1kb) <- c("sim_pi", "exp_pi")
   names(r2_raw_10kb) <- c("sim_pi", "exp_pi")
   names(r2_raw_100kb) <- c("sim_pi", "exp_pi")
   names(r2_raw_1Mb) <- c("sim_pi", "exp_pi")
@@ -3391,30 +3053,28 @@ for(i in 1:num_models) {
                        "/rep_", j, 
                        "/r2_typeII_tbl_exppi.csv", sep=""))
     
-    r2_1kb[j,] <- tmp[1,]
-    r2_10kb[j,] <- tmp[2,]
-    r2_100kb[j,] <- tmp[3,]
-    r2_1Mb[j,] <- tmp[4,]
+    r2_10kb[j,] <- tmp[1,]
+    r2_100kb[j,] <- tmp[2,]
+    r2_1Mb[j,] <- tmp[3,]
     
     tmp <- fread(paste("model_", i,
                        "/rep_", j, 
                        "/coeff_tbl_exppi.csv", sep=""))
     
-    coeff_1kb[j,] <- tmp[1,]
-    coeff_10kb[j,] <- tmp[2,]
-    coeff_100kb[j,] <- tmp[3,]
-    coeff_1Mb[j,] <- tmp[4,]
+    coeff_10kb[j,] <- tmp[1,]
+    coeff_100kb[j,] <- tmp[2,]
+    coeff_1Mb[j,] <- tmp[3,]
   }
   
-  tbl_r2 <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb, r2_1Mb)
+  tbl_r2 <- rbind.data.frame(r2_10kb, r2_100kb, r2_1Mb)
   names(tbl_r2) <- c("u", "B", "B:u", "scale")
   tbl_r2$model <- i
-  tbl_r2$rep <- rep(1:10, 4)
+  tbl_r2$rep <- rep(1:10, 3)
   
-  tbl_coeff <- rbind.data.frame(coeff_1kb, coeff_10kb, coeff_100kb, coeff_1Mb)
+  tbl_coeff <- rbind.data.frame(coeff_10kb, coeff_100kb, coeff_1Mb)
   names(tbl_coeff) <- c("u", "B", "B:u", "scale")
   tbl_coeff$model <- i
-  tbl_coeff$rep <- rep(1:10, 4)
+  tbl_coeff$rep <- rep(1:10, 3)
 
   r2_tbl_exp <- rbind.data.frame(r2_tbl_exp, tbl_r2)
   coeff_tbl_exp <- rbind.data.frame(coeff_tbl_exp, tbl_coeff)
@@ -3425,30 +3085,28 @@ for(i in 1:num_models) {
                        "/rep_", j, 
                        "/r2_typeII_tbl_simpi.csv", sep=""))
     
-    r2_1kb[j,] <- tmp[1,]
-    r2_10kb[j,] <- tmp[2,]
-    r2_100kb[j,] <- tmp[3,]
-    r2_1Mb[j,] <- tmp[4,]
+    r2_10kb[j,] <- tmp[1,]
+    r2_100kb[j,] <- tmp[2,]
+    r2_1Mb[j,] <- tmp[3,]
     
     tmp <- fread(paste("model_", i, 
                        "/rep_", j, 
                        "/coeff_tbl_simpi.csv", sep=""))
     
-    coeff_1kb[j,] <- tmp[1,]
-    coeff_10kb[j,] <- tmp[2,]
-    coeff_100kb[j,] <- tmp[3,]
-    coeff_1Mb[j,] <- tmp[4,]
+    coeff_10kb[j,] <- tmp[1,]
+    coeff_100kb[j,] <- tmp[2,]
+    coeff_1Mb[j,] <- tmp[3,]
   }
   
-  tbl_r2 <- rbind.data.frame(r2_1kb, r2_10kb, r2_100kb, r2_1Mb)
+  tbl_r2 <- rbind.data.frame(r2_10kb, r2_100kb, r2_1Mb)
   names(tbl_r2) <- c("u", "B", "B:u", "scale")
   tbl_r2$model <- i
-  tbl_r2$rep <- rep(1:10, 4)
+  tbl_r2$rep <- rep(1:10, 3)
   
-  tbl_coeff <- rbind.data.frame(coeff_1kb, coeff_10kb, coeff_100kb, coeff_1Mb)
+  tbl_coeff <- rbind.data.frame(coeff_10kb, coeff_100kb, coeff_1Mb)
   names(tbl_coeff) <- c("u", "B", "B:u", "scale")
   tbl_coeff$model <- i
-  tbl_coeff$rep <- rep(1:10, 4)
+  tbl_coeff$rep <- rep(1:10, 3)
   
   coeff_tbl_sim <- rbind.data.frame(coeff_tbl_sim, tbl_coeff)
   r2_tbl_sim <- rbind.data.frame(r2_tbl_sim, tbl_r2)
@@ -3460,10 +3118,9 @@ for(i in 1:num_models) {
                        "/rep_", j,
                        "/r2_raw_tbl_simpi.csv", sep=""))
     
-    r2_raw_1kb[j, 1] <- tmp[1, 1]
-    r2_raw_10kb[j, 1] <- tmp[2, 1]
-    r2_raw_100kb[j, 1] <- tmp[3, 1]
-    r2_raw_1Mb[j, 1] <- tmp[4, 1]
+    r2_raw_10kb[j, 1] <- tmp[1, 1]
+    r2_raw_100kb[j, 1] <- tmp[2, 1]
+    r2_raw_1Mb[j, 1] <- tmp[3, 1]
   }
   
   ## exp pi
@@ -3472,24 +3129,21 @@ for(i in 1:num_models) {
                        "/rep_", j,
                        "/r2_raw_tbl_exppi.csv", sep=""))
     
-    r2_raw_1kb[j, 2] <- tmp[1, 1]
-    r2_raw_10kb[j, 2] <- tmp[2, 1]
-    r2_raw_100kb[j, 2] <- tmp[3, 1]
-    r2_raw_1Mb[j, 2] <- tmp[4, 1]
+    r2_raw_10kb[j, 2] <- tmp[1, 1]
+    r2_raw_100kb[j, 2] <- tmp[2, 1]
+    r2_raw_1Mb[j, 2] <- tmp[3, 1]
   }
   
-  r2_raw_1kb$scale <- 1e+3
   r2_raw_10kb$scale <- 1e+4
   r2_raw_100kb$scale <- 1e+5
   r2_raw_1Mb$scale <- 1e+6
   
-  tbl_r2_raw <- rbind.data.frame(r2_raw_1kb, 
-                                 r2_raw_10kb,
+  tbl_r2_raw <- rbind.data.frame(r2_raw_10kb,
                                  r2_raw_100kb,
                                  r2_raw_1Mb)
   names(tbl_r2_raw) <- c("Sim_Pi", "Exp_Pi", "scale")
   tbl_r2_raw$model <- i
-  tbl_r2_raw$rep <- rep(1:10, 4)
+  tbl_r2_raw$rep <- rep(1:10, 3)
   
   r2_tbl_raw <- rbind.data.frame(r2_tbl_raw, tbl_r2_raw)
 }
@@ -4032,30 +3686,6 @@ mu and B on pi.
 ```{r meta-lm, include=F, message=F, warning=F}
 
 # meta linear models (pi exp)
-## 1 kb
-std_r2_1kb <- as.data.frame(r2_exp_models %>% na.omit() %>% # 1 entry is NA (?!)
-                            filter(., scale==1e+3) %>% 
-                            dplyr::select(c(u_avg, B_avg,
-                                            num_exons,
-                                            mult_r_u,
-                                            shapes_rate_u,
-                                            shapes_rate_r,
-                                            avg_mut_spans,
-                                            avg_rec_spans)) %>%
-                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
-
-m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
-                       shapes_rate_r + mult_r_u +
-                       avg_mut_spans + avg_rec_spans)^2,
-              data=std_r2_1kb)
-m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
-                       shapes_rate_r + mult_r_u +
-                       avg_mut_spans + avg_rec_spans)^2,
-              data=std_r2_1kb)
-
-summary(m_u_1kb)
-summary(m_B_1kb)
-
 ## 10 kb
 std_r2_10kb <- as.data.frame(r2_exp_models %>% 
                               filter(., scale==1e+4) %>% 
@@ -4129,11 +3759,10 @@ summary(m_u_1Mb)
 summary(m_B_1Mb)
 
 # mut
-meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
-                              m_u_10kb$coefficients,
+meta_lm_u <- rbind.data.frame(m_u_10kb$coefficients,
                               m_u_100kb$coefficients,
                               m_u_1Mb$coefficients)
-names(meta_lm_u) <- names(m_u_1kb$coefficients)
+names(meta_lm_u) <- names(m_u_10kb$coefficients)
 
 meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "avg_mut_spans",
@@ -4142,18 +3771,17 @@ meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
-meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_u$response <- "Mu"
 
 mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
                         names_to="var", values_to="coeff")
 
 # B-val
-meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
-                              m_B_10kb$coefficients,
+meta_lm_B <- rbind.data.frame(m_B_10kb$coefficients,
                               m_B_100kb$coefficients,
                               m_B_1Mb$coefficients)
-names(meta_lm_B) <- names(m_B_1kb$coefficients)
+names(meta_lm_B) <- names(m_B_10kb$coefficients)
 
 meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "avg_mut_spans",
@@ -4162,7 +3790,7 @@ meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
-meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_B$response <- "B"
 
 mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
@@ -4191,30 +3819,6 @@ meta_lm <- ggplot(data=mmlm_tbl,
 save_plot("meta_lm_pi_exp.png", meta_lm, base_height=8, base_width=10)
 
 # pi sim
-## 1 kb
-std_r2_1kb <- as.data.frame(r2_sim_models %>%
-                            filter(., scale==1e+3) %>% 
-                            dplyr::select(c(u_avg, B_avg,
-                                            num_exons,
-                                            mult_r_u,
-                                            shapes_rate_u,
-                                            shapes_rate_r,
-                                            avg_mut_spans,
-                                            avg_rec_spans)) %>%
-                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
-
-m_u_1kb <- lm(u_avg ~ (num_exons + shapes_rate_u + 
-                       shapes_rate_r + mult_r_u +
-                       avg_mut_spans + avg_rec_spans)^2,
-              data=std_r2_1kb)
-m_B_1kb <- lm(B_avg ~ (num_exons + shapes_rate_u + 
-                       shapes_rate_r + mult_r_u +
-                       avg_mut_spans + avg_rec_spans)^2,
-              data=std_r2_1kb)
-
-summary(m_u_1kb)
-summary(m_B_1kb)
-
 ## 10 kb
 std_r2_10kb <- as.data.frame(r2_sim_models %>% 
                              filter(., scale==1e+4) %>% 
@@ -4288,11 +3892,10 @@ summary(m_u_1Mb)
 summary(m_B_1Mb)
 
 # mut
-meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
-                              m_u_10kb$coefficients,
+meta_lm_u <- rbind.data.frame(m_u_10kb$coefficients,
                               m_u_100kb$coefficients,
                               m_u_1Mb$coefficients)
-names(meta_lm_u) <- names(m_u_1kb$coefficients)
+names(meta_lm_u) <- names(m_u_10kb$coefficients)
 
 meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "avg_mut_spans",
@@ -4300,18 +3903,17 @@ meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
-meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_u$response <- "Mu"
 
 mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
                         names_to="var", values_to="coeff")
 
 # B-val
-meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
-                              m_B_10kb$coefficients,
+meta_lm_B <- rbind.data.frame(m_B_10kb$coefficients,
                               m_B_100kb$coefficients,
                               m_B_1Mb$coefficients)
-names(meta_lm_B) <- names(m_B_1kb$coefficients)
+names(meta_lm_B) <- names(m_B_10kb$coefficients)
 
 meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "avg_mut_spans",
@@ -4319,7 +3921,7 @@ meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "mult_r_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
-meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_B$response <- "B"
 
 mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
@@ -4348,7 +3950,7 @@ meta_lm <- ggplot(data=mmlm_tbl,
 save_plot("meta_lm_pi_sim.png", meta_lm, base_height=8, base_width=10)
 ```
 
-## Path Model
+## Path Models
 
 Specifying the DAGs in lavaan format
 
@@ -4431,22 +4033,18 @@ Fitting SEM models
 ```{r SEM, include=F, message=F, warning=F}
 
 # match DF structure with d-sep Fisher's C p-value
-pval_sem1_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem1_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem1_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem1_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-pval_sem2_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem2_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem2_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem2_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-pval_sem3_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem3_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem3_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem3_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-pval_sem4_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem4_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem4_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem4_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -4478,21 +4076,10 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb)
     
-    maps_1kb <- dplyr::select(maps_1kb, data_cols)
-    
     # MVN tests -- SEM/lavaan is esp. sensitive to this assumption, thus we:
     ## exclude exonic_sites (too far from MVN, can test its corr. to Bvals)
     ## (aggressively) filter regions to avoid auto-correlation
     ## and keep only one pi variable to avoid numerically singular matrices
-    mvn_1kb <- mvn(data=dplyr::select(filter(maps_1kb, 
-                                             sim_pi > 0, # can happen by chance
-                                             row_number() %% 1000==0),
-                        c(avg_rec, avg_mut, B, sim_pi)),
-                   transform="log",
-                   univariatePlot="none",
-                   multivariatePlot="none",
-                   mvnTest="hz")
-    
     mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, 
                                               row_number() %% 100==0),
                          c(avg_rec, avg_mut, B, sim_pi)),
@@ -4517,20 +4104,14 @@ for(m in 1:num_models) {
                     mvnTest="hz",
                     showOutliers=T)
     
-    mvn_tbl <- data.frame(pval=c(mvn_1kb$multivariateNormality$`p value`,
-                                 mvn_10kb$multivariateNormality$`p value`,
+    mvn_tbl <- data.frame(pval=c(mvn_10kb$multivariateNormality$`p value`,
                                  mvn_100kb$multivariateNormality$`p value`,
                                  mvn_1Mb$multivariateNormality$`p value`),
-                           scale=c(1e+3, 1e+4, 1e+5, 1e+6))
+                           scale=c(1e+4, 1e+5, 1e+6))
     
     fwrite(mvn_tbl, paste("model_", m, "/rep_", rep, "/mvn_tests.csv", sep=""))
     
     # log-transforming and standardizing, filtering to remove autocorrelation
-    filt_1kb <- filter(maps_1kb, row_number() %% 1000 == 0, sim_pi > 0) 
-    std_1kb <- as.data.frame(apply(apply(dplyr::select(filt_1kb,
-      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
-      2, function(x) (x-mean(x)) / sd(x)))
-    
     filt_10kb <- filter(maps_10kb, row_number() %% 100 == 0) 
     std_10kb <- as.data.frame(apply(apply(dplyr::select(filt_10kb,
       -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
@@ -4546,11 +4127,6 @@ for(m in 1:num_models) {
       2, function(x) (x-mean(x)) / sd(x)))
     
     # Q-Q plots
-    svg(paste("model_", m, "/rep_", rep, "/qq_1kb.svg", sep=""),
-        width=9, height=7)
-    heplots::cqplot(dplyr::select(std_1kb, c(avg_rec, avg_mut, B, sim_pi)))
-    dev.off()
-    
     svg(paste("model_", m, "/rep_", rep, "/qq_10kb.svg", sep=""), 
         width=9, height=7)
     heplots::cqplot(dplyr::select(std_10kb, c(avg_rec, avg_mut, B, sim_pi)))
@@ -4567,11 +4143,6 @@ for(m in 1:num_models) {
     dev.off()
     
     # pairwise scatter plots
-    svg(paste("model_", m, "/rep_", rep, "/scatter_1kb.svg", sep=""),
-        width=9, height=7)
-    pairs(std_1kb)
-    dev.off()
-    
     svg(paste("model_", m, "/rep_", rep, "/scatter_10kb.svg", sep=""), 
         width=9, height=7)
     pairs(std_10kb)
@@ -4588,7 +4159,6 @@ for(m in 1:num_models) {
     dev.off()
     
     # using lavaan to fit path models, DAG1
-    sem1_1kb <- sem(DAG1, data=std_1kb)
     sem1_10kb <- sem(DAG1, data=std_10kb)
     sem1_100kb <- sem(DAG1, data=std_100kb)
     sem1_1Mb <- sem(DAG1, data=std_1Mb)
@@ -4596,10 +4166,6 @@ for(m in 1:num_models) {
     # storing p-values
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
-    tryCatch({
-      pval_sem1_1kb[m, rep] <- fitMeasures(sem1_1kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-    
     tryCatch({
       pval_sem1_10kb[m, rep] <- fitMeasures(sem1_10kb)[5]
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
@@ -4615,19 +4181,13 @@ for(m in 1:num_models) {
     # r-sqrd of endogenous variables, low for B because
     # (1) its determinants extend beyond the windows
     # (2) we exclude exonic_sites from the SEM (not MVN)
-    sem1_r2 <- rbind.data.frame(inspect(sem1_1kb, "rsquare"),
-                                inspect(sem1_10kb, "rsquare"),
+    sem1_r2 <- rbind.data.frame(inspect(sem1_10kb, "rsquare"),
                                 inspect(sem1_100kb, "rsquare"),
                                 inspect(sem1_1Mb, "rsquare"))
     names(sem1_r2) <- c("pi_exp", "B")
     fwrite(sem1_r2, paste("model_", m, 
                           "/rep_", rep, 
                           "/sem_DAG1_r2.csv", sep=""))
-    
-    fwrite(parameterestimates(sem1_1kb, ci=T), 
-           paste("model_", m, 
-                 "/rep_", rep, 
-                 "/lavaan_DAG1_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem1_10kb, ci=T), 
            paste("model_", m, 
@@ -4645,17 +4205,12 @@ for(m in 1:num_models) {
                  "/lavaan_DAG1_1Mb.csv", sep=""))
     
     # DAG2
-    sem2_1kb <- sem(DAG2, data=std_1kb)
     sem2_10kb <- sem(DAG2, data=std_10kb)
     sem2_100kb <- sem(DAG2, data=std_100kb)
     sem2_1Mb <- sem(DAG2, data=std_1Mb)
     
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
-    tryCatch({
-      pval_sem2_1kb[m, rep] <- fitMeasures(sem2_1kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-    
     tryCatch({
       pval_sem2_10kb[m, rep] <- fitMeasures(sem2_10kb)[5]
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
@@ -4668,19 +4223,13 @@ for(m in 1:num_models) {
       pval_sem2_1Mb[m, rep] <- fitMeasures(sem2_1Mb)[5]
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
     
-    sem2_r2 <- rbind.data.frame(inspect(sem2_1kb, "rsquare"),
-                                inspect(sem2_10kb, "rsquare"),
+    sem2_r2 <- rbind.data.frame(inspect(sem2_10kb, "rsquare"),
                                 inspect(sem2_100kb, "rsquare"),
                                 inspect(sem2_1Mb, "rsquare"))
     names(sem2_r2) <- c("avg_mut", "pi_exp", "B")
     fwrite(sem2_r2, paste("model_", m,
                           "/rep_", rep,
                           "/sem_DAG2_r2.csv", sep=""))
-    
-    fwrite(parameterestimates(sem2_1kb, ci=T), 
-           paste("model_", m, 
-                 "/rep_", rep, 
-                 "/lavaan_DAG2_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem2_10kb, ci=T), 
            paste("model_", m, 
@@ -4703,17 +4252,12 @@ for(m in 1:num_models) {
                  "/lavaan_DAG2_100kb.csv", sep=""))
     
     # DAG3
-    sem3_1kb <- sem(DAG3, data=std_1kb)
     sem3_10kb <- sem(DAG3, data=std_10kb)
     sem3_100kb <- sem(DAG3, data=std_100kb)
     sem3_1Mb <- sem(DAG3, data=std_1Mb)
     
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
-    tryCatch({
-      pval_sem3_1kb[m, rep] <- fitMeasures(sem3_1kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-    
     tryCatch({
       pval_sem3_10kb[m, rep] <- fitMeasures(sem3_10kb)[5]
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
@@ -4726,19 +4270,13 @@ for(m in 1:num_models) {
       pval_sem3_1Mb[m, rep] <- fitMeasures(sem3_1Mb)[5]
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
     
-    sem3_r2 <- rbind.data.frame(inspect(sem3_1kb, "rsquare"),
-                                inspect(sem3_10kb, "rsquare"),
+    sem3_r2 <- rbind.data.frame(inspect(sem3_10kb, "rsquare"),
                                 inspect(sem3_100kb, "rsquare"),
                                 inspect(sem3_1Mb, "rsquare"))
     names(sem3_r2) <- c("pi_exp", "B")
     fwrite(sem3_r2, paste("model_", m,
                           "/rep_", rep,
                           "/sem_DAG3_r2.csv", sep=""))
-    
-    fwrite(parameterestimates(sem3_1kb, ci=T), 
-           paste("model_", m, 
-                 "/rep_", rep, 
-                 "/lavaan_DAG3_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem3_10kb, ci=T), 
            paste("model_", m, 
@@ -4761,17 +4299,12 @@ for(m in 1:num_models) {
                  "/lavaan_DAG3_100kb.csv", sep=""))
     
     # DAG4
-    sem4_1kb <- sem(DAG4, data=std_1kb)
     sem4_10kb <- sem(DAG4, data=std_10kb)
     sem4_100kb <- sem(DAG4, data=std_100kb)
     sem4_1Mb <- sem(DAG4, data=std_1Mb)
     
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
-    tryCatch({
-      pval_sem4_1kb[m, rep] <- fitMeasures(sem4_1kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-    
     tryCatch({
       pval_sem4_10kb[m, rep] <- fitMeasures(sem4_10kb)[5]
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
@@ -4784,19 +4317,13 @@ for(m in 1:num_models) {
       pval_sem4_1Mb[m, rep] <- fitMeasures(sem4_1Mb)[5]
     }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
     
-    sem4_r2 <- rbind.data.frame(inspect(sem4_1kb, "rsquare"),
-                                inspect(sem4_10kb, "rsquare"),
+    sem4_r2 <- rbind.data.frame(inspect(sem4_10kb, "rsquare"),
                                 inspect(sem4_100kb, "rsquare"),
                                 inspect(sem4_1Mb, "rsquare"))
     names(sem4_r2) <- c("avg_mut", "pi_exp", "B")
     fwrite(sem4_r2, paste("model_", m,
                           "/rep_", rep,
                           "/sem_DAG4_r2.csv", sep=""))
-    
-    fwrite(parameterestimates(sem4_1kb, ci=T), 
-           paste("model_", m,
-                 "/rep_", rep, 
-                 "/lavaan_DAG4_1kb.csv", sep=""))
     
     fwrite(parameterestimates(sem4_10kb, ci=T), 
            paste("model_", m, 
@@ -4817,51 +4344,42 @@ for(m in 1:num_models) {
            paste("model_", m,
                  "/rep_", rep, 
                  "/lavaan_DAG4_100kb.csv", sep=""))
-    
   }
 }
 
-pval_sem1 <- rbind.data.frame(pval_sem1_1kb,
-                              pval_sem1_10kb,
+pval_sem1 <- rbind.data.frame(pval_sem1_10kb,
                               pval_sem1_100kb,
                               pval_sem1_1Mb)
 pval_sem1$DAG <- 1
-pval_sem1$model <- rep(1:num_models, 4)
-pval_sem1$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_sem1$model <- rep(1:num_models, 3)
+pval_sem1$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
   
-pval_sem2 <- rbind.data.frame(pval_sem2_1kb,
-                              pval_sem2_10kb,
+pval_sem2 <- rbind.data.frame(pval_sem2_10kb,
                               pval_sem2_100kb,
                               pval_sem2_1Mb)
 pval_sem2$DAG <- 2
-pval_sem2$model <- rep(1:num_models, 4)
-pval_sem2$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_sem2$model <- rep(1:num_models, 3)
+pval_sem2$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
 
-pval_sem3 <- rbind.data.frame(pval_sem3_1kb,
-                              pval_sem3_10kb,
+pval_sem3 <- rbind.data.frame(pval_sem3_10kb,
                               pval_sem3_100kb,
                               pval_sem3_1Mb)
 pval_sem3$DAG <- 3
-pval_sem3$model <- rep(1:num_models, 4)
-pval_sem3$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_sem3$model <- rep(1:num_models, 3)
+pval_sem3$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
 
-pval_sem4 <- rbind.data.frame(pval_sem4_1kb,
-                              pval_sem4_10kb,
+pval_sem4 <- rbind.data.frame(pval_sem4_10kb,
                               pval_sem4_100kb,
                               pval_sem4_1Mb)
 pval_sem4$DAG <- 4
-pval_sem4$model <- rep(1:num_models, 4)
-pval_sem4$scale <- c(rep(1e+3, num_models),
-                     rep(1e+4, num_models),
+pval_sem4$model <- rep(1:num_models, 3)
+pval_sem4$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
                      rep(1e+6, num_models))
 
@@ -4875,12 +4393,10 @@ Manhattan plots matching those obtained with d-separation
 
 ```{r manhattan-plots-SEM, include=F, message=F, warning=F}
 
-mvn_tests_1kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 mvn_tests_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 mvn_tests_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 mvn_tests_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-names(mvn_tests_1kb) <- paste("rep_", 1:num_reps, sep="")
 names(mvn_tests_10kb) <- paste("rep_", 1:num_reps, sep="")
 names(mvn_tests_100kb) <- paste("rep_", 1:num_reps, sep="")
 names(mvn_tests_1Mb) <- paste("rep_", 1:num_reps, sep="")
@@ -4894,26 +4410,22 @@ for(m in 1:num_models) {
                        "/rep_", rep,
                        "/mvn_tests.csv", sep=""))
     
-    mvn_tests_1kb[m, rep] <- mvn$pval[1]
-    mvn_tests_10kb[m, rep] <- mvn$pval[2]
-    mvn_tests_100kb[m, rep] <- mvn$pval[3]
-    mvn_tests_1Mb[m, rep] <- mvn$pval[4]
+    mvn_tests_10kb[m, rep] <- mvn$pval[1]
+    mvn_tests_100kb[m, rep] <- mvn$pval[2]
+    mvn_tests_1Mb[m, rep] <- mvn$pval[3]
   }
 }
 close(pb)
 
-mvn_tests_1kb$scale <- 1e+3
 mvn_tests_10kb$scale <- 1e+4
 mvn_tests_100kb$scale <- 1e+5
 mvn_tests_1Mb$scale <- 1e+6
 
-mvn_tests_1kb$model <- 1:num_models
 mvn_tests_10kb$model <- 1:num_models
 mvn_tests_100kb$model <- 1:num_models
 mvn_tests_1Mb$model <- 1:num_models
 
-mvn_tests <- rbind.data.frame(mvn_tests_1kb, 
-                              mvn_tests_10kb, 
+mvn_tests <- rbind.data.frame(mvn_tests_10kb, 
                               mvn_tests_100kb,
                               mvn_tests_1Mb)
 
@@ -5352,7 +4864,7 @@ for(m in 1:num_models) {
     df$DAG <- 1
     df$model <- m
     df$replicate <- rep
-    df$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    df$scale <- c(1e+4, 1e+5, 1e+6)
     
     r2_reps[[rep]] <- df
   }
@@ -5376,7 +4888,7 @@ for(m in 1:num_models) {
     df$DAG <- 2
     df$model <- m
     df$replicate <- rep
-    df$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    df$scale <- c(1e+4, 1e+5, 1e+6)
     
     r2_reps[[rep]] <- df
   }
@@ -5400,7 +4912,7 @@ for(m in 1:num_models) {
     df$DAG <- 3
     df$model <- m
     df$replicate <- rep
-    df$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    df$scale <- c(1e+4, 1e+5, 1e+6)
     
     r2_reps[[rep]] <- df
   }
@@ -5424,7 +4936,7 @@ for(m in 1:num_models) {
     df$DAG <- 4
     df$model <- m
     df$replicate <- rep
-    df$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+    df$scale <- c(1e+4, 1e+5, 1e+6)
     
     r2_reps[[rep]] <- df
   }
@@ -5567,14 +5079,6 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m,
-                          "/rep_", rep, 
-                          "/lavaan_DAG1_1kb.csv", sep=""))
-    df_1kb$DAG <- 1
-    df_1kb$model <- m
-    df_1kb$replicate <- rep
-    df_1kb$scale <- 1e+3
-    
     df_10kb <- fread(paste("model_", m, 
                            "/rep_", rep, 
                           "/lavaan_DAG1_10kb.csv", sep=""))
@@ -5598,8 +5102,7 @@ for(m in 1:num_models) {
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb, 
-                                       df_10kb,
+    pc_reps[[rep]] <- rbind.data.frame(df_10kb,
                                        df_100kb,
                                        df_1Mb)
   }
@@ -5619,14 +5122,6 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m, 
-                          "/rep_", rep, 
-                          "/lavaan_DAG2_1kb.csv", sep=""))
-    df_1kb$DAG <- 2
-    df_1kb$model <- m
-    df_1kb$replicate <- rep
-    df_1kb$scale <- 1e+3
-    
     df_10kb <- fread(paste("model_", m,
                            "/rep_", rep, 
                           "/lavaan_DAG2_10kb.csv", sep=""))
@@ -5651,8 +5146,7 @@ for(m in 1:num_models) {
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb,
-                                       df_10kb, 
+    pc_reps[[rep]] <- rbind.data.frame(df_10kb, 
                                        df_100kb, 
                                        df_1Mb)
   }
@@ -5672,14 +5166,6 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m,
-                          "/rep_", rep, 
-                          "/lavaan_DAG3_1kb.csv", sep=""))
-    df_1kb$DAG <- 3
-    df_1kb$model <- m
-    df_1kb$replicate <- rep
-    df_1kb$scale <- 1e+3
-    
     df_10kb <- fread(paste("model_", m, 
                            "/rep_", rep, 
                           "/lavaan_DAG3_10kb.csv", sep=""))
@@ -5704,8 +5190,7 @@ for(m in 1:num_models) {
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb,
-                                       df_10kb,
+    pc_reps[[rep]] <- rbind.data.frame(df_10kb,
                                        df_100kb,
                                        df_1Mb)
   }
@@ -5725,14 +5210,6 @@ for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
   pc_reps <- list(length=num_reps)
   for(rep in 1:num_reps) {
-    df_1kb <- fread(paste("model_", m,
-                          "/rep_", rep, 
-                          "/lavaan_DAG4_1kb.csv", sep=""))
-    df_1kb$DAG <- 4
-    df_1kb$model <- m
-    df_1kb$replicate <- rep
-    df_1kb$scale <- 1e+3
-    
     df_10kb <- fread(paste("model_", m, 
                            "/rep_", rep, 
                            "/lavaan_DAG4_10kb.csv", sep=""))
@@ -5757,8 +5234,7 @@ for(m in 1:num_models) {
     df_1Mb$replicate <- rep
     df_1Mb$scale <- 1e+6
     
-    pc_reps[[rep]] <- rbind.data.frame(df_1kb, 
-                                       df_10kb,
+    pc_reps[[rep]] <- rbind.data.frame(df_10kb,
                                        df_100kb, 
                                        df_1Mb)
   }
@@ -6351,7 +5827,6 @@ for(e in unique(m_pc_sem_B$num_exons)) {
     }
   }
 }
-
 ```
 
 Plotting path coefficients from recombination to pi
@@ -6460,30 +5935,6 @@ df <- pivot_wider(dplyr::select(m_pc_sem_p_mutrec, -c(model,
                   values_from=mean_pc)
 names(df)[(ncol(df)-2):ncol(df)] <- c("B", "mut", "mu_B_pi")
 
-std_pc_1kb <- as.data.frame(df %>%
-                            filter(., scale==1e+3) %>% 
-                            dplyr::select(c(B, 
-                                            mut,
-                                            mu_B_pi,
-                                            num_exons,
-                                            mult_r_u,
-                                            shapes_rate_u,
-                                            shapes_rate_r,
-                                            avg_rec_spans,
-                                            avg_mut_spans)) %>%
-                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
-
-m_B_1kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + 
-                   avg_mut_spans + avg_rec_spans + mult_r_u)^2, data=std_pc_1kb)
-m_u_1kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
-                     avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
-m_uBp_1kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
-                           avg_mut_spans + avg_rec_spans)^2, data=std_pc_1kb)
-
-summary(m_B_1kb)
-summary(m_u_1kb)
-summary(m_uBp_1kb)
-
 ## 10 kb
 std_pc_10kb <- as.data.frame(df %>%
                              filter(., scale==1e+4) %>% 
@@ -6548,11 +5999,10 @@ m_uBp_1Mb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u 
                            avg_mut_spans + avg_rec_spans)^2, data=std_pc_1Mb)
 
 # mut
-meta_lm_u <- rbind.data.frame(m_u_1kb$coefficients,
-                              m_u_10kb$coefficients,
+meta_lm_u <- rbind.data.frame(m_u_10kb$coefficients,
                               m_u_100kb$coefficients,
                               m_u_1Mb$coefficients)
-names(meta_lm_u) <- names(m_u_1kb$coefficients)
+names(meta_lm_u) <- names(m_u_10kb$coefficients)
 
 meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "avg_mut_spans",
@@ -6561,18 +6011,17 @@ meta_lm_u <- dplyr::select(meta_lm_u, c("shapes_rate_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
-meta_lm_u$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_u$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_u$response <- "Mu"
 
 mmlm_mu <- pivot_longer(meta_lm_u, cols=names(meta_lm_u)[1:(ncol(meta_lm_u)-2)],
                         names_to="var", values_to="coeff")
 
 # B
-meta_lm_B <- rbind.data.frame(m_B_1kb$coefficients,
-                              m_B_10kb$coefficients,
+meta_lm_B <- rbind.data.frame(m_B_10kb$coefficients,
                               m_B_100kb$coefficients,
                               m_B_1Mb$coefficients)
-names(meta_lm_B) <- names(m_B_1kb$coefficients)
+names(meta_lm_B) <- names(m_B_10kb$coefficients)
 
 meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "avg_mut_spans",
@@ -6581,7 +6030,7 @@ meta_lm_B <- dplyr::select(meta_lm_B, c("shapes_rate_u",
                                         "shapes_rate_r",
                                         "avg_rec_spans"))
 
-meta_lm_B$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+meta_lm_B$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_B$response <- "B"
 
 mmlm_B <- pivot_longer(meta_lm_B, cols=names(meta_lm_B)[1:(ncol(meta_lm_B)-2)],
@@ -6613,13 +6062,12 @@ save_plot("meta_lm_pi_SEM.png", meta_lm, base_height=8, base_width=10)
 
 # mu -> B -> pi
 ## coeffs
-meta_lm_uBp_c <- rbind.data.frame(m_uBp_1kb$coefficients,
-                                  m_uBp_10kb$coefficients,
+meta_lm_uBp_c <- rbind.data.frame(m_uBp_10kb$coefficients,
                                   m_uBp_100kb$coefficients,
                                   m_uBp_1Mb$coefficients)
 
-names(meta_lm_uBp_c) <- names(m_uBp_1kb$coefficients)
-meta_lm_uBp_c$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+names(meta_lm_uBp_c) <- names(m_uBp_10kb$coefficients)
+meta_lm_uBp_c$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_uBp_c$path <- "u->B->pi"
 
 mmlm_uBp_c <- pivot_longer(meta_lm_uBp_c, 
@@ -6627,13 +6075,12 @@ mmlm_uBp_c <- pivot_longer(meta_lm_uBp_c,
                            names_to="var", values_to="coeff")
 
 ## pvals
-meta_lm_uBp_p <- rbind.data.frame(summary(m_uBp_1kb)$coefficients[,4],
-                                  summary(m_uBp_10kb)$coefficients[,4], 
+meta_lm_uBp_p <- rbind.data.frame(summary(m_uBp_10kb)$coefficients[,4], 
                                   summary(m_uBp_100kb)$coefficients[,4], 
                                   summary(m_uBp_1Mb)$coefficients[,4])
 
-names(meta_lm_uBp_p) <- names(m_uBp_1kb$coefficients)
-meta_lm_uBp_p$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+names(meta_lm_uBp_p) <- names(m_uBp_10kb$coefficients)
+meta_lm_uBp_p$bin_size <- c(1e+4, 1e+5, 1e+6)
 meta_lm_uBp_p$path <- "u->B->pi"
 
 mmlm_uBp_p <- pivot_longer(meta_lm_uBp_p, 
@@ -6684,30 +6131,6 @@ df <- pivot_wider(dplyr::select(m_pc_sem_recpi, -c(model,
                                                    replicate)),
                   names_from=label, 
                   values_from=mean_pc)
-
-std_pc_1kb <- as.data.frame(df %>%
-                            filter(., scale==1e+3) %>% 
-                            dplyr::select(c(rec_B_pi, 
-                                            rec_mu_pi,
-                                            num_exons,
-                                            mult_r_u,
-                                            shapes_rate_u,
-                                            shapes_rate_r,
-                                            avg_rec_spans,
-                                            avg_mut_spans)) %>%
-                            apply(., 2, function(x) (x-mean(x)) / sd(x)))
-
-m_rBp_1kb <- lm(rec_B_pi ~ (num_exons + shapes_rate_u + 
-                            shapes_rate_r + mult_r_u +
-                            avg_mut_spans + avg_rec_spans)^2,
-                data=std_pc_1kb)
-m_rup_1kb <- lm(rec_mu_pi ~ (num_exons + shapes_rate_u + 
-                             shapes_rate_r + mult_r_u +
-                             avg_mut_spans + avg_rec_spans)^2, 
-                data=std_pc_1kb)
-
-summary(m_rBp_1kb)
-summary(m_rup_1kb)
 
 ## 10 kb
 std_pc_10kb <- as.data.frame(df %>%
@@ -6785,11 +6208,10 @@ summary(m_rBp_1Mb)
 summary(m_rup_1Mb)
 
 # rec -> B -> pi
-m_rBp <- rbind.data.frame(m_rBp_1kb$coefficients,
-                          m_rBp_10kb$coefficients,
+m_rBp <- rbind.data.frame(m_rBp_10kb$coefficients,
                           m_rBp_100kb$coefficients,
                           m_rBp_1Mb$coefficients)
-names(m_rBp) <- names(m_rBp_1kb$coefficients)
+names(m_rBp) <- names(m_rBp_10kb$coefficients)
 
 m_rBp <- dplyr::select(m_rBp, c("shapes_rate_u",
                                 "avg_mut_spans",
@@ -6798,18 +6220,17 @@ m_rBp <- dplyr::select(m_rBp, c("shapes_rate_u",
                                 "shapes_rate_r",
                                 "avg_rec_spans"))
 
-m_rBp$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+m_rBp$bin_size <- c(1e+4, 1e+5, 1e+6)
 m_rBp$path <- "rec->B->pi"
 
 mmlm_rBp <- pivot_longer(m_rBp, cols=names(m_rBp)[1:(ncol(m_rBp)-2)],
                         names_to="var", values_to="coeff")
 
 # rec > mu > pi
-m_rup <- rbind.data.frame(m_rup_1kb$coefficients,
-                          m_rup_10kb$coefficients,
+m_rup <- rbind.data.frame(m_rup_10kb$coefficients,
                           m_rup_100kb$coefficients,
                           m_rup_1Mb$coefficients)
-names(m_rup) <- names(m_rup_1kb$coefficients)
+names(m_rup) <- names(m_rup_10kb$coefficients)
 
 m_rup <- dplyr::select(m_rup, c("shapes_rate_u",
                                 "avg_mut_spans",
@@ -6818,7 +6239,7 @@ m_rup <- dplyr::select(m_rup, c("shapes_rate_u",
                                 "shapes_rate_r",
                                 "avg_rec_spans"))
 
-m_rup$bin_size <- c(1e+3, 1e+4, 1e+5, 1e+6)
+m_rup$bin_size <- c(1e+4, 1e+5, 1e+6)
 m_rup$path <- "rec->mu->pi"
 
 mmlm_rup <- pivot_longer(m_rup, cols=names(m_rup)[1:(ncol(m_rup)-2)],
@@ -6848,13 +6269,135 @@ p <- ggplot(data=mmlm_tbl,
 save_plot("meta_lm_rec_pi_SEM.png", p, base_height=8, base_width=10)
 ```
 
-TODO
-# Real Data
+# Simulated data with Human maps
+
+Here we use the Roulette mutation maps, Pyrho recombination maps as well as
+a the positions of functionally constrained elements in the human genome
+(build 38 and SFS-based DFEs) to predict B-values and pi along autosomes
+
+Without interference, this follows the lavaan DAGs with pi expected, therefore,
+we can treat the maps as "true" and avoid modeling error in their estimation.
+
+```{r human-maps-piexp, include=F, message=F, warning=F}
+
+human_maps_1kb <- data.frame()
+
+pb <- txtProgressBar(min=0, max=22, style=3)
+for(c in 1:22) {
+  setTxtProgressBar(pb, c)
+  tbl_c <- fread(paste("real_data_maps/equilibrium_human_predictions/",
+                       "functional/no_interf_correction/",
+                       "tbl_YRI_functional_chr", c, "_1kb.csv.gz", sep=""))
+  tbl_c$`#chrom` <- c
+  tbl_c$bin_1kb <- 1:nrow(tbl_c)
+  tbl_c$bin_10kb <- (tbl_c$bin_1kb - 1) %/% 10
+  tbl_c$bin_100kb <- (tbl_c$bin_1kb - 1) %/% 100
+  tbl_c$bin_1Mb <- (tbl_c$bin_1kb - 1) %/% 1000
+    
+  human_maps_1kb <- rbind.data.frame(human_maps_1kb, tbl_c)
+}
+close(pb)
+
+names(human_maps_1kb)[1] <- "chr" # facilitate calling
+
+# 10 kb
+human_maps_10kb <- human_maps_1kb %>% group_by(chr, bin_10kb) %>% 
+                   summarise_at(c("avg_mut", 
+                                  "avg_rec", 
+                                  "B", 
+                                  "neu_pi0",
+                                  "exp_pi",
+                                  "avg_pi",
+                                  "num_sites",
+                                  "del_sites"), mean)
+# for number of sites we want their sum in each bin
+human_maps_10kb$num_sites <- human_maps_10kb$num_sites * 10
+human_maps_10kb$del_sites <- human_maps_10kb$del_sites * 10
+human_filtered_10kb <- dplyr::select(human_maps_10kb, -bin_10kb) %>%
+                       filter(., num_sites > 7500)
+
+# 100 kb
+human_maps_100kb <- human_maps_1kb %>% group_by(chr, bin_100kb) %>% 
+                    summarise_at(c("avg_mut", 
+                                   "avg_rec", 
+                                   "B", 
+                                   "neu_pi0",
+                                   "exp_pi",
+                                   "avg_pi",
+                                   "num_sites",
+                                   "del_sites"), mean)
+# for number of sites we want their sum in each bin
+human_maps_100kb$num_sites <- human_maps_100kb$num_sites * 100
+human_maps_100kb$del_sites <- human_maps_100kb$del_sites * 100
+human_filtered_100kb <- dplyr::select(human_maps_100kb, -bin_100kb) %>%
+                        filter(., num_sites > 75000)
+
+# 1 Mb
+human_maps_1Mb <- human_maps_1kb %>% group_by(chr, bin_1Mb) %>% 
+                  summarise_at(c("avg_mut", 
+                                 "avg_rec", 
+                                 "B", 
+                                 "neu_pi0",
+                                 "exp_pi",
+                                 "avg_pi",
+                                 "num_sites",
+                                 "del_sites"), mean)
+
+# for number of sites we want their sum in each bin
+human_maps_1Mb$num_sites <- human_maps_1Mb$num_sites * 1000
+human_maps_1Mb$del_sites <- human_maps_1Mb$del_sites * 1000
+human_filtered_1Mb <- dplyr::select(human_maps_1Mb, -bin_1Mb) %>%
+                        filter(., num_sites > 750000)
+
+# summarizing in terms of AC and CV
+human_summaries_10kb <- human_filtered_10kb %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+human_summaries_10kb$scale <- 1e+4
+
+human_summaries_100kb <- human_filtered_100kb %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+human_summaries_100kb$scale <- 1e+5
+
+human_summaries_1Mb <- human_filtered_1Mb %>% group_by(chr) %>%
+                       mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                       mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                       mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                           lag=1, 
+                                                           pl=F))[2])) %>%
+                       mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                       distinct(chr, .keep_all=T)
+human_summaries_1Mb$scale <- 1e+6
+
+human_summaries <- rbind.data.frame(human_summaries_10kb,
+                                    human_summaries_100kb,
+                                    human_summaries_1Mb)
+human_summaries$chr <- paste("chr", human_summaries$chr, sep="") # easier viz
+```
 
 Finding the parameter combination which results in maps most similar to the
 real ones 
 
-```{r real-data-desc, include=F, message=F, warning=F}
+Preparing the data
+
+```{r sd-ac-maps, include=F, message=F, warning=F}
 
 # collecting simulated maps
 muts_10kb <- as.data.frame(matrix(nrow=num_models*num_reps, ncol=1e+4))
@@ -6903,22 +6446,28 @@ close(pb)
 # mutation maps
 names(muts_10kb) <- paste("bin", 1:ncol(muts_10kb), sep="_")
 muts_10kb$model <- sort(rep(1:num_models, num_reps))
+muts_10kb$replicate <- rep(1:10, num_models)
 
 names(muts_100kb) <- paste("bin", 1:ncol(muts_100kb), sep="_")
 muts_100kb$model <- sort(rep(1:num_models, num_reps))
+muts_100kb$replicate <- rep(1:10, num_models)
 
 names(muts_1Mb) <- paste("bin", 1:ncol(muts_1Mb), sep="_")
 muts_1Mb$model <- sort(rep(1:num_models, num_reps))
-
+muts_1Mb$replicate <- rep(1:10, num_models)
+  
 # recombination maps
 names(recs_10kb) <- paste("bin", 1:ncol(recs_10kb), sep="_")
 recs_10kb$model <- sort(rep(1:num_models, num_reps))
+recs_10kb$replicate <- rep(1:10, num_models)
 
 names(recs_100kb) <- paste("bin", 1:ncol(recs_100kb), sep="_")
 recs_100kb$model <- sort(rep(1:num_models, num_reps))
+recs_100kb$replicate <- rep(1:10, num_models)
 
 names(recs_1Mb) <- paste("bin", 1:ncol(recs_1Mb), sep="_")
 recs_1Mb$model <- sort(rep(1:num_models, num_reps))
+recs_1Mb$replicate <- rep(1:10, num_models)
 
 fwrite(muts_10kb, "mut_maps_10kb_models.csv.gz")
 fwrite(muts_100kb, "mut_maps_100kb_models.csv.gz")
@@ -6927,64 +6476,273 @@ fwrite(muts_1Mb, "mut_maps_1Mb_models.csv.gz")
 fwrite(recs_10kb, "rec_maps_10kb_models.csv.gz")
 fwrite(recs_100kb, "rec_maps_100kb_models.csv.gz")
 fwrite(recs_1Mb, "rec_maps_1Mb_models.csv.gz")
-
-# 1st order autocorrelation
-ac_mut_100kb <- apply(df, 2, 
-                  function(x) as.numeric(unlist(acf(x, lag=1, pl=FALSE))[2]))
-
-sd_mut_100kb <- apply(df, 1, function(x) fitdistr(x, "normal")$estimate[2])
-
-
-            
-# TODO 2D plot: AC1 x SD of Gaussian, facet by scale
-# see where real maps fall
-
-
-mut_model <- crossing(models$shapes_rate_u, models$avg_mut_spans)
-names(mut_model) <- c("shapes_rate_u", "avg_mut_spans")
-mut_model$mut_model_id <- 1:nrow(mut_model)
-
-mm <- merge(models, mut_model, by=c("shapes_rate_u", "avg_mut_spans"))
-df_mmap_100kb <- merge(muts_100kb, mm, by="model")
-
-dfsub <- dplyr::filter(df_mmap_100kb, mut_model_id < 4) %>%
-         dplyr::select(., c(mut_model_id, starts_with("bin")))
-
-pca_mut_100kb <- PCA(dfsub[,-1])
-fviz_eig(pca_mut_100kb, addlabels=TRUE)
-p <- fviz_pca_ind(pca_mut_100kb,
-                  label = "none", # hide individual labels
-                  habillage = dfsub$mut_model_id, # color by groups
-                  #palette = c("#00AFBB", "#E7B800", "#FC4E07"),
-                  addEllipses = F # Concentration ellipses
-                  )
-#rs <- paste("rep", 1:num_reps, sep="")
-#ms <- paste("m", 1:num_models, sep="")
-#ns <- crossing(ms, rs)
-#ns$order <- as.numeric(format(factor(ns$ms, levels=ms, labels=1:num_models)))
-#ns <- arrange(ns, order)
-#ns$order_reps <- as.numeric(format(factor(ns$rs, levels=rs, labels=1:num_reps)))
-#ns <- arrange(ns, order, order_reps)
-
-names(muts_1kb) <- sort(rep(1:865, 10))
-names(recs_1kb) <- sort(rep(1:865, 10))
-names(exons_1kb) <- sort(rep(1:865, 10))
-
-# adding real data
-
-df <- muts_1kb[, 1:100]
-mut_1kb_pca <- prcomp(t(df), scale=TRUE)
-
-fviz_eig(mut_1kb_pca)
-
-mut_1kb_pca <- PCA(t(df), scale=TRUE)
-
-fviz_pca_ind(mut_1kb_pca,
-             label="none", 
-             habillage=)
-# pca
 ```
 
+Plotting
+
+```{r sd-ac-plots, include=F, message=F, warning=F}
+
+muts_10kb <- fread("mut_maps_10kb_models.csv.gz")
+muts_100kb <- fread("mut_maps_100kb_models.csv.gz")
+muts_1Mb <- fread("mut_maps_1Mb_models.csv.gz")
+  
+recs_10kb <- fread("rec_maps_10kb_models.csv.gz")
+recs_100kb <- fread("rec_maps_100kb_models.csv.gz")
+recs_1Mb <- fread("rec_maps_1Mb_models.csv.gz")
+
+# mutation maps
+## 10 kb
+muts_10kb$replicate <- rep(1:10, num_models)
+muts_10kb_models <- left_join(muts_10kb, models, by="model") %>%
+                    pivot_longer(cols=starts_with("bin"), 
+                                  values_to="mu",
+                                  names_to="bin")
+
+muts_10kb_models <- muts_10kb_models %>% group_by(model, replicate) %>%
+                                         mutate(cv_mut=sd(mu)/mean(mu)) %>%
+                                         distinct(model, replicate, .keep_all=T) %>%
+                                         dplyr::select(., -bin)
+
+muts_10kb_models$ac_mut <- apply(muts_10kb[,1:100], 1, # 1st order autocorrelation
+                       function(x) as.numeric(unlist(acf(x, lag=1, pl=F))[2]))
+muts_10kb_models$scale <- 1e+4
+
+## 100 kb
+muts_100kb$replicate <- rep(1:10, num_models)
+muts_100kb_models <- left_join(muts_100kb, models, by="model") %>%
+                     pivot_longer(cols=starts_with("bin"), 
+                                  values_to="mu",
+                                  names_to="bin")
+
+muts_100kb_models <- muts_100kb_models %>% group_by(model, replicate) %>%
+                                           mutate(cv_mut=sd(mu)/mean(mu)) %>%
+                                           distinct(model, replicate, .keep_all=T) %>%
+                                           dplyr::select(., -bin)
+
+muts_100kb_models$ac_mut <- apply(muts_100kb[,1:100], 1, # 1st order autocorrelation
+                        function(x) as.numeric(unlist(acf(x, lag=1, pl=F))[2]))
+muts_100kb_models$scale <- 1e+5
+
+## 1 Mb
+muts_1Mb$replicate <- rep(1:10, num_models)
+muts_1Mb_models <- left_join(muts_1Mb, models, by="model") %>%
+                   pivot_longer(cols=starts_with("bin"), 
+                                values_to="mu",
+                                names_to="bin")
+
+muts_1Mb_models <- muts_1Mb_models %>% group_by(model, replicate) %>%
+                                       mutate(cv_mut=sd(mu)/mean(mu)) %>%
+                                       distinct(model, replicate, .keep_all=T) %>%
+                                       dplyr::select(., -bin)
+
+muts_1Mb_models$ac_mut <- apply(muts_1Mb[,1:100], 1, # 1st order autocorrelation
+                      function(x) as.numeric(unlist(acf(x, lag=1, pl=F))[2]))
+muts_1Mb_models$scale <- 1e+6
+
+muts <- rbind.data.frame(muts_10kb_models, muts_100kb_models, muts_1Mb_models)
+  
+p <- ggplot(data=muts, 
+            aes(y=cv_mut, 
+                x=ac_mut, 
+                color=as.factor(shapes_rate_u),
+                shape=as.factor(avg_mut_spans))) +
+ geom_point(size=3) + theme_bw() +
+ geom_point(data=human_summaries, 
+            aes(x=ac_mut, y=cv_mut),
+            shape=4, color="black") +
+ #geom_text(data=human_summaries, aes(label=chr), vjust=0.8, size=10) +
+ facet_grid(+scale~mult_r_u, labeller=label_both) +
+ scale_shape_manual(values=c(0, 1, 2), name="Avg. Mut. Spans") + 
+ # https://stats.stackexchange.com/questions/185425/how-to-determine-the-critical-values-of-acf
+ geom_vline(xintercept=-1.96 / sqrt(100-1), color="grey", linetype="dashed") + 
+ geom_vline(xintercept=1.96 / sqrt(100-1), color="grey", linetype="dashed") + 
+ scale_color_manual(values=c("brown1", "green4", "purple3", "cyan3"),
+                    name="Shape=Rate Gamma") + 
+ scale_y_continuous(breaks=pretty_breaks()) +
+ scale_x_continuous(breaks=pretty_breaks()) +
+ labs(title=NULL, x="AC (mutation rates)", y="CV (mutation rates)") +
+ theme(axis.title=element_text(size=16), 
+       axis.text=element_text(size=12), 
+       axis.text.x=element_text(size=12),
+       legend.text=element_text(size=16),
+       legend.title=element_text(size=16),
+       legend.position="bottom")
+save_plot("2D_plot_mut.png", p, base_height=12, base_width=18)
+
+# recombination maps
+## 10 kb
+recs_10kb$replicate <- rep(1:10, num_models)
+recs_10kb_models <- left_join(recs_10kb, models, by="model") %>%
+                    pivot_longer(cols=starts_with("bin"), 
+                                 values_to="rec",
+                                 names_to="bin")
+
+recs_10kb_models <- recs_10kb_models %>% group_by(model, replicate) %>%
+                                         mutate(cv_rec=sd(rec)/mean(rec)) %>%
+                                         distinct(model, replicate, .keep_all=T) %>%
+                                         dplyr::select(., -bin)
+
+recs_10kb_models$ac_rec <- apply(recs_10kb[,1:100], 1, # 1st order autocorrelation
+                       function(x) as.numeric(unlist(acf(x, lag=1, pl=F))[2]))
+recs_10kb_models$scale <- 1e+4
+
+## 100 kb
+recs_100kb$replicate <- rep(1:10, num_models)
+recs_100kb_models <- left_join(recs_100kb, models, by="model") %>%
+                     pivot_longer(cols=starts_with("bin"), 
+                                  values_to="rec",
+                                  names_to="bin")
+
+recs_100kb_models <- recs_100kb_models %>% group_by(model, replicate) %>%
+                                           mutate(cv_rec=sd(rec)/mean(rec)) %>%
+                                           distinct(model, replicate, .keep_all=T) %>%
+                                           dplyr::select(., -bin)
+
+recs_100kb_models$ac_rec <- apply(recs_100kb[,1:100], 1, # 1st order autocorrelation
+                        function(x) as.numeric(unlist(acf(x, lag=1, pl=F))[2]))
+recs_100kb_models$scale <- 1e+5
+
+## 1 Mb
+recs_1Mb$replicate <- rep(1:10, num_models)
+recs_1Mb_models <- left_join(recs_1Mb, models, by="model") %>%
+                   pivot_longer(cols=starts_with("bin"), 
+                                values_to="rec",
+                                names_to="bin")
+
+recs_1Mb_models <- recs_1Mb_models %>% group_by(model, replicate) %>%
+                                       mutate(cv_rec=sd(rec)/mean(rec)) %>%
+                                       distinct(model, replicate, .keep_all=T) %>%
+                                       dplyr::select(., -bin)
+
+recs_1Mb_models$ac_rec <- apply(recs_1Mb[,1:100], 1, # 1st order autocorrelation
+                      function(x) as.numeric(unlist(acf(x, lag=1, pl=F))[2]))
+recs_1Mb_models$scale <- 1e+6
+
+recs <- rbind.data.frame(recs_10kb_models, recs_100kb_models, recs_1Mb_models)
+
+q <- ggplot(data=recs, 
+            aes(y=cv_rec, 
+                x=ac_rec, 
+                color=as.factor(shapes_rate_r),
+                shape=as.factor(avg_rec_spans))) +
+ geom_point(size=3) + theme_bw() +
+ geom_point(data=human_summaries, 
+            aes(x=ac_rec, y=cv_rec),
+            shape=4, color="black") +
+ #geom_text(data=human_summaries, aes(label=chr), vjust=0.8, size=10) +
+ facet_grid(+scale~mult_r_u, labeller=label_both) +
+ scale_shape_manual(values=c(0, 1, 2), name="Avg. Mut. Spans") + 
+ # https://stats.stackexchange.com/questions/185425/how-to-determine-the-critical-values-of-acf
+ geom_vline(xintercept=-1.96 / sqrt(100-1), color="grey", linetype="dashed") + 
+ geom_vline(xintercept=1.96 / sqrt(100-1), color="grey", linetype="dashed") + 
+ scale_color_manual(values=c("brown1", "green4", "purple3", "cyan3"),
+                    name="Shape=Rate Gamma") + 
+ scale_y_continuous(breaks=pretty_breaks()) +
+ scale_x_continuous(breaks=pretty_breaks()) +
+ labs(title=NULL, x="AC (recombination rates)", y="CV (recombination rates)") +
+ theme(axis.title=element_text(size=16), 
+       axis.text=element_text(size=12), 
+       axis.text.x=element_text(size=12),
+       legend.text=element_text(size=16),
+       legend.title=element_text(size=16),
+       legend.position="bottom")
+save_plot("2D_plot_rec.png", q, base_height=12, base_width=18)
+```
+
+d-Sep in humans
+NOTE auto-correlation is a problem at large scales as well
+
+```{r d-sep-DAG1-humanmaps, include=F, message=F, warning=F}
+
+basis_set <- bs1
+weights <- rep(1, length=length(basis_set))
+
+dsep_dag1_human_maps <- as.data.frame(matrix(nrow=3, ncol=22))
+
+# match column names with DAG labels
+# NOTE testing
+names(human_filtered_10kb)[which(names(human_filtered_10kb)=="exp_pi")] <- "pi_neu_exp"
+names(human_filtered_100kb)[which(names(human_filtered_100kb)=="exp_pi")] <- "pi_neu_exp"
+names(human_filtered_1Mb)[which(names(human_filtered_1Mb)=="exp_pi")] <- "pi_neu_exp"
+
+names(human_filtered_10kb)[which(names(human_filtered_10kb)=="del_sites")] <- "exonic_sites"
+names(human_filtered_100kb)[which(names(human_filtered_100kb)=="del_sites")] <- "exonic_sites"
+names(human_filtered_1Mb)[which(names(human_filtered_1Mb)=="del_sites")] <- "exonic_sites"
+
+for(c in 1:22) {
+  
+  human_c_10kb <- filter(human_filtered_10kb, chr==c) %>% as.data.table()
+  human_c_100kb <- filter(human_filtered_100kb, chr==c) %>% as.data.table()
+  human_c_1Mb <- filter(human_filtered_1Mb, chr==c) %>% as.data.table()
+
+  pvals_10kb <- numeric(length=length(basis_set))
+  pvals_100kb <- numeric(length=length(basis_set))
+  pvals_1Mb <- numeric(length=length(basis_set))
+      
+  for(i in 1:length(basis_set)) {
+    
+    var1 <- basis_set[[i]][1]
+    var2 <- basis_set[[i]][2]
+    
+    cond <- NULL
+    if(length(basis_set[[i]]) > 2) {
+      cond <- basis_set[[i]][3:length(basis_set[[i]])]
+    }
+    
+    stopifnot(dSep(D1g, var1, var2, cond))
+    
+    # pcor.test requires matrix inversions which can potentially cause errors
+    # we let these cases remain NA in the pval vectors
+    if(length(basis_set[[i]]) > 2) {
+      tryCatch({
+        pvals_10kb[i] <- ppcor::pcor.test(human_c_10kb[, ..var1], 
+                                          human_c_10kb[, ..var2], 
+                                          human_c_10kb[, ..cond],
+                                          method="spearman")$p.value
+      }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+      tryCatch({
+        pvals_100kb[i] <- ppcor::pcor.test(human_c_100kb[, ..var1], 
+                                           human_c_100kb[, ..var2], 
+                                           human_c_100kb[, ..cond],
+                                           method="spearman")$p.value
+      }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+      tryCatch({
+        pvals_1Mb[i] <- ppcor::pcor.test(human_c_1Mb[, ..var1], 
+                                         human_c_1Mb[, ..var2], 
+                                         human_c_1Mb[, ..cond],
+                                         method="spearman")$p.value
+      }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    } else {
+      pvals_10kb[i] <- cor.test(human_c_10kb[, ..var1][[1]],
+                                human_c_10kb[, ..var2][[1]],
+                                method="spearman")$p.value
+      
+      pvals_100kb[i] <- cor.test(human_c_100kb[, ..var1][[1]],
+                                 human_c_100kb[, ..var2][[1]],
+                                 method="spearman")$p.value
+      
+      pvals_1Mb[i] <- cor.test(human_c_1Mb[, ..var1][[1]],
+                               human_c_1Mb[, ..var2][[1]],
+                               method="spearman")$p.value
+    }
+  }
+  
+  dsep_dag1_human_maps[1, c] <- combine.test(pvals_10kb, 
+                                             weights, 
+                                             "fisher", 
+                                             na.rm=T)
+  dsep_dag1_human_maps[2, c] <- combine.test(pvals_100kb, 
+                                             weights, 
+                                             "fisher",
+                                             na.rm=T)
+  dsep_dag1_human_maps[3, c] <- combine.test(pvals_1Mb, 
+                                             weights, 
+                                             "fisher",
+                                             na.rm=T)
+}
+```
+
+# Real Data
 
 ```{r real-data, include=F, message=F, warning=F}
 
