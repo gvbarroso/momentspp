@@ -28,8 +28,7 @@ library(ppcor)
 library(Hmisc)
 library(MVN)
 library(heplots)
-library(factoextra) # PCA
-library(FactoMineR) # PCA
+library(parallel) # mcapply
 
 library(survcomp) # for fisher's C test, combine.test()
 library(piecewiseSEM)
@@ -3953,6 +3952,7 @@ save_plot("meta_lm_pi_sim.png", meta_lm, base_height=8, base_width=10)
 ## Path Models
 
 Specifying the DAGs in lavaan format
+NOTE: del_sites, a weighted verion of exonic_sites, is computed later on
 
 ```{r DAGs-lavaan, include=F, message=F, warning=F}
 
@@ -3961,11 +3961,13 @@ DAG1 <- "
 pi_exp ~ start(0.5)*c1*B
 pi_exp ~ start(0.5)*c2*avg_mut
 B ~ start(-0.1)*c3*avg_mut
+B ~ start(-0.1)*c6*del_sites
 B ~ start(0.1)*c4*avg_rec
 avg_mut ~~ 0*avg_rec
 # fixing exogenous residual variances since we standardize variables?
 avg_mut ~~ 1*avg_mut
 avg_rec ~~ 1*avg_rec
+del_sites ~~ 1*del_sites
 # st
 # defining indirect and total effects
 rec_B_pi:=c1*c4
@@ -3978,10 +3980,12 @@ DAG2 <- "
 pi_exp ~ start(0.5)*c1*B
 pi_exp ~ start(0.5)*c2*avg_mut
 B ~ start(-0.1)*c3*avg_mut
+B ~ start(-0.1)*c6*del_sites
 B ~ start(0.1)*c4*avg_rec
 avg_mut ~ start(0.1)*c5*avg_rec
 # fixing exogenous residual variance since we standardize variables?
 avg_mut ~~ 1*avg_mut
+del_sites ~~ 1*del_sites
 # defining indirect and total effects
 mu_B_pi:=c1*c3
 rec_mu_B:=c3*c5
@@ -3997,11 +4001,13 @@ DAG3 <- "
 sim_pi ~ start(0.5)*c1*B
 sim_pi ~ start(0.5)*c2*avg_mut
 B ~ start(-0.1)*c3*avg_mut
+B ~ start(-0.1)*c6*del_sites
 B ~ start(0.1)*c4*avg_rec
 avg_mut ~~ 0*avg_rec
 # fixing exogenous residual variances since we standardize variables?
 avg_mut ~~ 1*avg_mut
 avg_rec ~~ 1*avg_rec
+del_sites ~~ 1*del_sites
 # defining indirect and total effects
 rec_B_pi:=c1*c4
 mu_B_pi:=c1*c3
@@ -4013,10 +4019,12 @@ DAG4 <- "
 sim_pi ~ start(0.5)*c1*B
 sim_pi ~ start(0.5)*c2*avg_mut
 B ~ start(-0.1)*c3*avg_mut
+B ~ start(-0.1)*c6*del_sites
 B ~ start(0.1)*c4*avg_rec
 avg_mut ~ start(0.1)*c5*avg_rec
 # fixing exogenous residual variance since we standardize variables?
 avg_mut ~~ 1*avg_mut
+del_sites ~~ 1*del_sites
 # defining indirect and total effects
 mu_B_pi:=c1*c3
 rec_mu_B:=c3*c5
@@ -4076,28 +4084,81 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb)
     
-    # MVN tests -- SEM/lavaan is esp. sensitive to this assumption, thus we:
-    ## exclude exonic_sites (too far from MVN, can test its corr. to Bvals)
-    ## (aggressively) filter regions to avoid auto-correlation
+    # gets sum of relevant deleterious elements, weighted by inverse rec rate
+    ## 10 kb
+    maps_10kb$cum_rec <- cumsum(maps_10kb$avg_rec * 1e+4)
+    # matrix with pairwise recombination distances
+    prd <- as.data.frame(abs(outer(maps_10kb$cum_rec, 
+                                   maps_10kb$cum_rec, 
+                                   "-")))
+    names(prd) <- 1:ncol(prd)
+    for(d in 1:nrow(prd)) {
+      prd[d, d] <- maps_10kb$avg_rec[d] * 1e+4 # filling in diagonal
+    }
+    
+    # here a threshold of 1e-2 is used otherwise memory explodes
+    relevant_exons <- apply(prd, 2, function(x) x < 1e-2)
+    exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
+    maps_10kb$del_sites <- unlist(mclapply(mc.cores=16, exons_per_bin,
+                           function(x) 
+                           return(sum(maps_10kb$exonic_sites[x] * 1/prd[x, x]))))
+    
+    ## 100 kb
+    maps_100kb$cum_rec <- cumsum(maps_100kb$avg_rec * 1e+5)
+    # matrix with pairwise recombination distances
+    prd <- as.data.frame(abs(outer(maps_100kb$cum_rec, 
+                                   maps_100kb$cum_rec, 
+                                   "-")))
+    names(prd) <- 1:ncol(prd)
+    for(d in 1:nrow(prd)) {
+      prd[d, d] <- maps_100kb$avg_rec[d] * 1e+5 # filling in diagonal
+    }
+    
+    relevant_exons <- apply(prd, 2, function(x) x < 5e-2)
+    exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
+    maps_100kb$del_sites <- unlist(mclapply(mc.cores=16, exons_per_bin,
+                         function(x) 
+                         return(sum(maps_100kb$exonic_sites[x] * 1/prd[x, x]))))
+    
+    ## 1 Mb
+    maps_1Mb$cum_rec <- cumsum(maps_1Mb$avg_rec * 1e+6)
+    # matrix with pairwise recombination distances
+    prd <- as.data.frame(abs(outer(maps_1Mb$cum_rec, 
+                                   maps_1Mb$cum_rec, 
+                                   "-")))
+    names(prd) <- 1:ncol(prd)
+    for(d in 1:nrow(prd)) {
+      prd[d, d] <- maps_1Mb$avg_rec[d] * 1e+6 # filling in diagonal
+    }
+    
+    relevant_exons <- apply(prd, 2, function(x) x < 5e-2)
+    exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
+    maps_1Mb$del_sites <- unlist(lapply(exons_per_bin, function(x) 
+                          return(sum(maps_1Mb$exonic_sites[x] * 1/prd[x, x]))))
+           
+    # MVN tests -- only include endogenous variables (mu, B, pi) (Bolen, 1989)
+    ## filter bins to avoid auto-correlation
     ## and keep only one pi variable to avoid numerically singular matrices
     mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, 
-                                              row_number() %% 100==0),
-                         c(avg_rec, avg_mut, B, sim_pi)),
+                                              row_number() %% 100==0,
+                                              del_sites > 0),
+                         c(avg_mut, B, sim_pi)),
                     transform="log",
                     univariatePlot="none",
                     multivariatePlot="none",
                     mvnTest="hz")
     
     mvn_100kb <- mvn(data=dplyr::select(filter(maps_100kb, 
-                                               row_number() %% 10==0),
-                          c(avg_rec, avg_mut, B, sim_pi)),
+                                               row_number() %% 10==0,
+                                               del_sites > 0),
+                          c(avg_mut, B, sim_pi)),
                      transform="log",
                      univariatePlot="none",
                      multivariatePlot="none",
                      mvnTest="hz")
     
-    mvn_1Mb <- mvn(data=dplyr::select(maps_1Mb,
-                         c(avg_rec, avg_mut, B, sim_pi)),
+    mvn_1Mb <- mvn(data=dplyr::select(filter(maps_1Mb, del_sites > 0),
+                         c(avg_mut, B, sim_pi)),
                     transform="log",
                     univariatePlot="none",
                     multivariatePlot="none",
@@ -4107,39 +4168,47 @@ for(m in 1:num_models) {
     mvn_tbl <- data.frame(pval=c(mvn_10kb$multivariateNormality$`p value`,
                                  mvn_100kb$multivariateNormality$`p value`,
                                  mvn_1Mb$multivariateNormality$`p value`),
-                           scale=c(1e+4, 1e+5, 1e+6))
+                          scale=c(1e+4, 1e+5, 1e+6))
     
     fwrite(mvn_tbl, paste("model_", m, "/rep_", rep, "/mvn_tests.csv", sep=""))
     
-    # log-transforming and standardizing, filtering to remove autocorrelation
-    filt_10kb <- filter(maps_10kb, row_number() %% 100 == 0) 
+    # log-transforming and standardizing as well as
+    # filtering to remove autocorrelation and outliers (del_sites > 0)
+    filt_10kb <- filter(maps_10kb, del_sites > 0, row_number() %% 100 == 0) 
     std_10kb <- as.data.frame(apply(apply(dplyr::select(filt_10kb,
-      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      -c(exonic_sites, cum_rec, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
       2, function(x) (x-mean(x)) / sd(x)))
     
-    filt_100kb <- filter(maps_100kb, row_number() %% 4 == 0) 
+    filt_100kb <- filter(maps_100kb, del_sites > 0, row_number() %% 10 == 0) 
     std_100kb <- as.data.frame(apply(apply(dplyr::select(filt_100kb,
-      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      -c(exonic_sites, cum_rec, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
       2, function(x) (x-mean(x)) / sd(x)))
     
+    filt_100kb <- filter(std_1Mb, del_sites > 0) 
     std_1Mb <- as.data.frame(apply(apply(dplyr::select(maps_1Mb,
-      -c(exonic_sites, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      -c(exonic_sites, cum_rec, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
       2, function(x) (x-mean(x)) / sd(x)))
     
-    # Q-Q plots
+    # Q-Q plots, also keeping only endogenous variales (Bolen, 1989 apud Shipley)
     svg(paste("model_", m, "/rep_", rep, "/qq_10kb.svg", sep=""), 
         width=9, height=7)
-    heplots::cqplot(dplyr::select(std_10kb, c(avg_rec, avg_mut, B, sim_pi)))
+    heplots::cqplot(dplyr::select(std_10kb, c(avg_mut, 
+                                              B, 
+                                              sim_pi)))
     dev.off()
     
     svg(paste("model_", m, "/rep_", rep, "/qq_100kb.svg", sep=""),
         width=9, height=7)
-    heplots::cqplot(dplyr::select(std_100kb, c(avg_rec, avg_mut, B, sim_pi)))
+    heplots::cqplot(dplyr::select(std_100kb, c(avg_mut, 
+                                               B, 
+                                               sim_pi)))
     dev.off()
     
     svg(paste("model_", m, "/rep_", rep, "/qq_1Mb.svg", sep=""),
         width=9, height=7)
-    heplots::cqplot(dplyr::select(std_1Mb, c(avg_rec , avg_mut, B, sim_pi)))
+    heplots::cqplot(dplyr::select(std_1Mb, c(avg_mut,
+                                             B, 
+                                             sim_pi)))
     dev.off()
     
     # pairwise scatter plots
@@ -4159,24 +4228,24 @@ for(m in 1:num_models) {
     dev.off()
     
     # using lavaan to fit path models, DAG1
-    sem1_10kb <- sem(DAG1, data=std_10kb)
-    sem1_100kb <- sem(DAG1, data=std_100kb)
-    sem1_1Mb <- sem(DAG1, data=std_1Mb)
+    sem1_10kb <- sem(DAG1, data=std_10kb, estimator="GLS")
+    sem1_100kb <- sem(DAG1, data=std_100kb, estimator="GLS")
+    sem1_1Mb <- sem(DAG1, data=std_1Mb, estimator="GLS")
     
     # storing p-values
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
     tryCatch({
       pval_sem1_10kb[m, rep] <- fitMeasures(sem1_10kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
       pval_sem1_100kb[m, rep] <- fitMeasures(sem1_100kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
       pval_sem1_1Mb[m, rep] <- fitMeasures(sem1_1Mb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     # r-sqrd of endogenous variables, low for B because
     # (1) its determinants extend beyond the windows
@@ -4205,9 +4274,9 @@ for(m in 1:num_models) {
                  "/lavaan_DAG1_1Mb.csv", sep=""))
     
     # DAG2
-    sem2_10kb <- sem(DAG2, data=std_10kb)
-    sem2_100kb <- sem(DAG2, data=std_100kb)
-    sem2_1Mb <- sem(DAG2, data=std_1Mb)
+    sem2_10kb <- sem(DAG2, data=std_10kb, estimator="GLS")
+    sem2_100kb <- sem(DAG2, data=std_100kb, estimator="GLS")
+    sem2_1Mb <- sem(DAG2, data=std_1Mb, estimator="GLS")
     
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
@@ -4252,23 +4321,23 @@ for(m in 1:num_models) {
                  "/lavaan_DAG2_100kb.csv", sep=""))
     
     # DAG3
-    sem3_10kb <- sem(DAG3, data=std_10kb)
-    sem3_100kb <- sem(DAG3, data=std_100kb)
-    sem3_1Mb <- sem(DAG3, data=std_1Mb)
+    sem3_10kb <- sem(DAG3, data=std_10kb, estimator="GLS")
+    sem3_100kb <- sem(DAG3, data=std_100kb, estimator="GLS")
+    sem3_1Mb <- sem(DAG3, data=std_1Mb, estimator="GLS")
     
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
     tryCatch({
       pval_sem3_10kb[m, rep] <- fitMeasures(sem3_10kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
       pval_sem3_100kb[m, rep] <- fitMeasures(sem3_100kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
       pval_sem3_1Mb[m, rep] <- fitMeasures(sem3_1Mb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     sem3_r2 <- rbind.data.frame(inspect(sem3_10kb, "rsquare"),
                                 inspect(sem3_100kb, "rsquare"),
@@ -4299,23 +4368,23 @@ for(m in 1:num_models) {
                  "/lavaan_DAG3_100kb.csv", sep=""))
     
     # DAG4
-    sem4_10kb <- sem(DAG4, data=std_10kb)
-    sem4_100kb <- sem(DAG4, data=std_100kb)
-    sem4_1Mb <- sem(DAG4, data=std_1Mb)
+    sem4_10kb <- sem(DAG4, data=std_10kb, estimator="GLS")
+    sem4_100kb <- sem(DAG4, data=std_100kb, estimator="GLS")
+    sem4_1Mb <- sem(DAG4, data=std_1Mb, estimator="GLS")
     
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
     tryCatch({
       pval_sem4_10kb[m, rep] <- fitMeasures(sem4_10kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
       pval_sem4_100kb[m, rep] <- fitMeasures(sem4_100kb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
       pval_sem4_1Mb[m, rep] <- fitMeasures(sem4_1Mb)[5]
-    }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+    }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     sem4_r2 <- rbind.data.frame(inspect(sem4_10kb, "rsquare"),
                                 inspect(sem4_100kb, "rsquare"),
