@@ -496,7 +496,7 @@ scale = 562.1 / 2 / Ne
 weights = bgshr.Util.weights_gamma_dfe(s_vals, shape, scale)
 weights[len(weights)-1] = 1 - sum(weights[0:len(weights)-2])
 
-spacing = 1000 # evaluate B's every 1 kb
+spacing = 1000 # predict Bs every 1 kb
 xs = np.arange(500, L, spacing) # xs may not contemplate fine-scale LMRs
 Bs = bgshr.Predict.Bvals(xs, s_vals[:-1], splines, L=L, u=mus_exons, rmap=rmap, 
                          elements=elements, max_r=0.5)
@@ -514,7 +514,7 @@ for s in s_vals:
     hls.append(bgshr.ClassicBGS._get_Hl(s, Ne, u_avg))
 
 pi0_ns = np.sum([h * w * ns_fac for h, w in zip(hls, weights)], axis=0) # pi_del
-pi0_syn = 2 * Ne * u_avg * syn_fac
+pi0_syn = 2 * Ne * u_avg * syn_fac # synonymous
 
 pi0_exons = np.array(pi0_ns + pi0_syn)
 
@@ -580,7 +580,6 @@ do
   done
   cd ..
 done
-
 ```
 
 # Specifying causal models
@@ -1252,7 +1251,7 @@ close(pb)
 pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
-pval_dsep$model <- rep(1:num_models, 4)
+pval_dsep$model <- rep(1:num_models, 3)
 pval_dsep$DAG <- 1
 pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
@@ -1366,7 +1365,7 @@ close(pb)
 pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
-pval_dsep$model <- rep(1:num_models, 4)
+pval_dsep$model <- rep(1:num_models, 3)
 pval_dsep$DAG <- 2
 pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
@@ -1480,7 +1479,7 @@ close(pb)
 pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
-pval_dsep$model <- rep(1:num_models, 4)
+pval_dsep$model <- rep(1:num_models, 3)
 pval_dsep$DAG <- 3
 pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
@@ -1594,7 +1593,7 @@ close(pb)
 pval_dsep <- rbind.data.frame(dsep_c_10kb,
                               dsep_c_100kb,
                               dsep_c_1Mb)
-pval_dsep$model <- rep(1:num_models, 4)
+pval_dsep$model <- rep(1:num_models, 3)
 pval_dsep$DAG <- 4
 pval_dsep$scale <- c(rep(1e+4, num_models),
                      rep(1e+5, num_models),
@@ -1620,19 +1619,19 @@ m_dsep1 <- pivot_longer(merge(pval_dsep1, models, by="model"),
 p1 <- ggplot(data=m_dsep1, 
              aes(x=model, 
                  y=-log(pval), 
-                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 shape=as.factor(shapes_rate_u), 
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="H0: data fits DAG 1 (non-mutagenic rec., Pi Neu.)",
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
+      labs(title="H0: data fits DAG 1 (non-mutagenic rec., Pi neu.)",
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density (%)", color="Mutagenic Rec.") +
+           shape="Shape=Rate Mut. Gamma", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -1649,19 +1648,19 @@ m_dsep2 <- pivot_longer(merge(pval_dsep2, models, by="model"),
 p2 <- ggplot(data=m_dsep2, 
              aes(x=model, 
                  y=-log(pval), 
-                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 shape=as.factor(shapes_rate_u), 
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="H0: data fits DAG 2 (mutagenic rec., Pi Neu.)", 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
+      labs(title="H0: data fits DAG 2 (mutagenic rec., Pi neu.)", 
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density", color="Mutagenic Rec.") +
+           shape="Shape=Rate Mut. Gamma", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -1678,19 +1677,19 @@ m_dsep3 <- pivot_longer(merge(pval_dsep3, models, by="model"),
 p3 <- ggplot(data=m_dsep3, 
              aes(x=model, 
                  y=-log(pval), 
-                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 shape=as.factor(shapes_rate_u), 
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="H0: data fits DAG 3 (non-mutagenic rec., Pi Tot.)",
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
+      labs(title="H0: data fits DAG 3 (non-mutagenic rec., Pi total (neu+del))",
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density", color="Mutagenic Rec.") +
+           shape="Shape=Rate Mut. Gamma", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -1707,19 +1706,19 @@ m_dsep4 <- pivot_longer(merge(pval_dsep4, models, by="model"),
 p4 <- ggplot(data=m_dsep4, 
              aes(x=model, 
                  y=-log(pval), 
-                 shape=as.factor(100* exon_lengths * num_exons / L), 
+                 shape=as.factor(shapes_rate_u), 
                  color=as.factor(mult_r_u))) +
       geom_hline(aes(yintercept=-log10(0.05/num_reps)), 
                  linetype="dashed", color="grey1") +
       geom_point(size=1.5) + theme_bw() + 
       facet_wrap(~scale, ncol=1, labeller=label_both) +
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
-      labs(title="H0: data fits DAG 4 (mutagenic rec., Pi Tot.)",
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
+      labs(title="H0: data fits DAG 4 (mutagenic rec., Pi total (neu+del))",
            x="Model ID", y="-log10(p-value)",
-           shape="Exon Density", color="Mutagenic Rec.") +
+           shape="Shape=Rate Mut. Gamma", color="Mutagenic Rec.") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -1882,9 +1881,9 @@ for(m in 1:num_models) {
     pval_tbl$B[1] <- summary(m_10kb)$coefficients[2,4]
     pval_tbl$`B:u`[1] <- summary(m_10kb)$coefficients[4,4]
     
-    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
     names(r2_tbl) <- c("u", "B", "B:u")
-    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) 
+    r2_tbl$scale <- c(1e+4, 1e+5, 1e+6) 
     
     anova.pi <- Anova(m_10kb)
     apiss <- anova.pi$"Sum Sq"
@@ -2076,13 +2075,13 @@ for(m in 1:num_models) {
     coeff_tbl$B[1] <- m_10kb$coefficients[2]
     coeff_tbl$`B:u`[1] <- m_10kb$coefficients[4]
     
-    pval_tbl$u[1] <- summary(m_10kb)$coefficients[3,4]
-    pval_tbl$B[1] <- summary(m_10kb)$coefficients[2,4]
-    pval_tbl$`B:u`[1] <- summary(m_10kb)$coefficients[4,4]
+    pval_tbl$u[1] <- summary(m_10kb)$coefficients[3, 4]
+    pval_tbl$B[1] <- summary(m_10kb)$coefficients[2, 4]
+    pval_tbl$`B:u`[1] <- summary(m_10kb)$coefficients[4, 4]
     
-    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=4))
+    r2_tbl <- as.data.frame(matrix(ncol=3, nrow=3))
     names(r2_tbl) <- c("u", "B", "B:u")
-    r2_tbl$scale <- c(1e+3, 1e+4, 1e+5, 1e+6) 
+    r2_tbl$scale <- c(1e+4, 1e+5, 1e+6) 
     
     tryCatch({ # to handle residual sum of squares == 0 
       anova.pi <- Anova(m_10kb)
@@ -2721,7 +2720,7 @@ p <- ggplot(data=filter(m_B_vs_E, pval < 0.01),
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Simple Spearman correlations between",
                        "B and % Exonic, pval < 1%"),
            x="Model ID", y="Spearman's rho",
@@ -2768,7 +2767,7 @@ p <- ggplot(data=filter(m_B_vs_pi, pval < 0.01),
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Simple Spearman correlations between",
                        "B and pi, pval < 1%"),
            x="Model ID", y="Spearman's rho",
@@ -2816,7 +2815,7 @@ p <- ggplot(data=filter(m_u_vs_pi, pval < 0.01),
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Simple Spearman correlations between",
                        "mutation rate and pi, pval < 1%"),
            x="Model ID", y="Spearman's rho",
@@ -2863,7 +2862,7 @@ p <- ggplot(data=filter(m_u_vs_B, pval < 0.01),
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Simple Spearman correlations between",
                        "mu and B, pval < 1%"),
            x="Model ID", y="Spearman's rho",
@@ -2912,7 +2911,7 @@ p <- ggplot(data=filter(m_r_vs_B, pval < 0.01),
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Simple Spearman correlations between",
                        "recombination and B, pval < 1%"),
            x="Model ID", y="Spearman's rho",
@@ -2959,7 +2958,7 @@ p <- ggplot(data=filter(m_r_vs_pi, pval < 0.01),
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Simple Spearman correlations between",
                        "recombination and pi, pval < 1%"),
            x="Model ID", y="Spearman's rho",
@@ -3007,7 +3006,7 @@ p <- ggplot(data=filter(m_r_vs_u, pval < 0.01),
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Simple Spearman correlations between",
                        "recombination and mutation, pval < 1%"),
            x="Model ID", y="Spearman's rho",
@@ -3204,7 +3203,7 @@ r2s_raw_f <- dplyr::select(r2s_raw, -starts_with("B:u")) %>%
 
 r2_raw_models <- merge(models, r2s_raw_f, by="model")
 m_r2_raw_models <- pivot_longer(r2_raw_models,
-                                cols=ends_with("Pi_avg"), 
+                                cols=starts_with("Pi_"), 
                                 names_to="var")
 
 for(ars in unique(m_r2_raw_models$avg_rec_spans)) {
@@ -3962,7 +3961,8 @@ save_plot("meta_lm_pi_sim.png", meta_lm, base_height=8, base_width=10)
 ## Path Models
 
 Specifying the DAGs in lavaan format
-NOTE: 'del_sites', a transformation of exonic_sites, is computed later on
+Variable names should match those in the data frames
+NOTE: 'del_sites', a transformation of 'exonic_sites,' is computed later on
 
 ```{r DAGs-lavaan, include=F, message=F, warning=F}
 
@@ -4086,10 +4086,12 @@ total_rec_pi:=rec_B_pi + rec_mu_pi + rec_mu_B_pi
 ```
 
 Fitting SEM models
+Since data are simulated, there is no error in the maps and 
+SEM reduces to path models
 
 ```{r SEM, include=F, message=F, warning=F}
 
-# match DF structure with d-sep Fisher's C p-value
+# matching data frame structure with d-sep Fisher's C p-value
 pval_sem1_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem1_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pval_sem1_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -4109,7 +4111,6 @@ pval_sem4_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 for(m in 1:num_models) {
   print(paste(m, Sys.Date(), Sys.time()), sep="\t")
   for(rep in 1:num_reps) {
-    # reload
     maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
                             "/tbl_1kb.csv.gz", sep=""))
     data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
@@ -4187,8 +4188,8 @@ for(m in 1:num_models) {
                           return(sum(maps_1Mb$exonic_sites[x]))))# * 1/prd[x, x]))))
            
     # MVN tests -- only include endogenous variables (mu, B, pi) (Bolen, 1989)
-    ## filter bins to avoid auto-correlation
-    ## and keep only one pi variable to avoid numerically singular matrices
+    ## Filtering bins to avoid auto-correlation
+    ## and keeping only one pi variable to avoid numerically singular matrices
     mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, 
                                               row_number() %% 100==0,
                                               del_sites > 0),
@@ -4226,17 +4227,17 @@ for(m in 1:num_models) {
     # filtering to remove autocorrelation and outliers (del_sites > 0)
     filt_10kb <- filter(maps_10kb, del_sites > 0, row_number() %% 100 == 0) 
     std_10kb <- as.data.frame(apply(apply(dplyr::select(filt_10kb,
-      -c(exonic_sites, cum_rec, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      c(B, avg_rec, del_sites, avg_mut, pi_neu_sim, sim_pi)), 2, log),
       2, function(x) (x-mean(x)) / sd(x)))
     
     filt_100kb <- filter(maps_100kb, del_sites > 0, row_number() %% 10 == 0) 
     std_100kb <- as.data.frame(apply(apply(dplyr::select(filt_100kb,
-      -c(exonic_sites, cum_rec, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      c(B, avg_rec, del_sites, avg_mut, pi_neu_sim, sim_pi)), 2, log),
       2, function(x) (x-mean(x)) / sd(x)))
     
     filt_1Mb <- filter(maps_1Mb, del_sites > 0) 
     std_1Mb <- as.data.frame(apply(apply(dplyr::select(filt_1Mb,
-      -c(exonic_sites, cum_rec, pi_del_exp, pi_neu_exp, pi_neu_sim)), 2, log),
+      c(B, avg_rec, del_sites, avg_mut, pi_neu_sim, sim_pi)), 2, log),
       2, function(x) (x-mean(x)) / sd(x)))
     
     # Q-Q plots, also keeping only endogenous variales (Bolen, 1989 apud Shipley)
@@ -4298,8 +4299,7 @@ for(m in 1:num_models) {
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     # r-sqrd of endogenous variables, low for B because
-    # (1) its determinants extend beyond the windows
-    # (2) we exclude exonic_sites from the SEM (not MVN)
+    # its determinants extend beyond the focal window
     sem1_r2 <- rbind.data.frame(inspect(sem1_10kb, "rsquare"),
                                 inspect(sem1_100kb, "rsquare"),
                                 inspect(sem1_1Mb, "rsquare"))
@@ -4323,7 +4323,7 @@ for(m in 1:num_models) {
                  "/rep_", rep, 
                  "/lavaan_DAG1_1Mb.csv", sep=""))
     
-    # DAG2
+    # DAG 2
     sem2_10kb <- sem(DAG2, data=std_10kb, estimator="GLS")
     sem2_100kb <- sem(DAG2, data=std_100kb, estimator="GLS")
     sem2_1Mb <- sem(DAG2, data=std_1Mb, estimator="GLS")
@@ -4365,7 +4365,7 @@ for(m in 1:num_models) {
                  "/rep_", rep, 
                  "/lavaan_DAG2_1Mb.csv", sep=""))
     
-    # DAG3
+    # DAG 3
     sem3_10kb <- sem(DAG3, data=std_10kb, estimator="GLS")
     sem3_100kb <- sem(DAG3, data=std_100kb, estimator="GLS")
     sem3_1Mb <- sem(DAG3, data=std_1Mb, estimator="GLS")
@@ -4407,7 +4407,7 @@ for(m in 1:num_models) {
                  "/rep_", rep, 
                  "/lavaan_DAG3_1Mb.csv", sep=""))
     
-    # DAG4
+    # DAG 4
     sem4_10kb <- sem(DAG4, data=std_10kb, estimator="GLS")
     sem4_100kb <- sem(DAG4, data=std_100kb, estimator="GLS")
     sem4_1Mb <- sem(DAG4, data=std_1Mb, estimator="GLS")
@@ -4557,7 +4557,7 @@ p1 <- ggplot(data=filter(df, DAG==1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 1 (non-mutagenic rec., Pi Neu.)",
            x="Model ID", y="-log10(p-value)",
            shape="MVN p-val > 1%", color="Mutagenic Rec.") +
@@ -4582,7 +4582,7 @@ p2 <- ggplot(data=filter(df, DAG==2),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 2 (mutagenic rec., Pi Neu.)",
            x="Model ID", y="-log10(p-value)",
            shape="MVN p-val > 1%", color="Mutagenic Rec.") +
@@ -4607,7 +4607,7 @@ p3 <- ggplot(data=filter(df, DAG==3),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 3 (non-mutagenic rec., Pi Tot.)",
            x="Model ID", y="-log10(p-value)",
            shape="MVN p-val > 1%", color="Mutagenic Rec.") +
@@ -4632,7 +4632,7 @@ p4 <- ggplot(data=filter(df, DAG==4),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 4 (mutagenic rec., Pi Tot.)",
            x="Model ID", y="-log10(p-value)",
            shape="MVN p-val > 1%", color="Mutagenic Rec.") +
@@ -4658,7 +4658,7 @@ p5 <- ggplot(data=filter(df, DAG==1, mvn_p < 1e-2),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 1 (non-mutagenic rec., Pi Neu.) | MVN p < 1%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4683,7 +4683,7 @@ p6 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-2 & mvn_p < 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("H0: data fits DAG 1 (non-mutagenic rec., Pi Neu.)",
                        "| 10% < MVN p > 1%"),
            x="Model ID", y="-log10(p-value)",
@@ -4709,7 +4709,7 @@ p7 <- ggplot(data=filter(df, DAG==1, mvn_p > 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 1 (non-mutagenic rec., Pi Neu.) | MVN p > 10%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4735,7 +4735,7 @@ p8 <- ggplot(data=filter(df, DAG==2, mvn_p < 1e-2),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 2 (mutagenic rec., Pi Neu.) | MVN p < 1%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4760,7 +4760,7 @@ p9 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-2 & mvn_p < 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 2 (mutagenic rec., Pi Neu.) | 10% < MVN p > 1%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4785,7 +4785,7 @@ p10 <- ggplot(data=filter(df, DAG==2, mvn_p > 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 2 (mutagenic rec., Pi Neu.) | MVN p > 10%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4811,7 +4811,7 @@ p11 <- ggplot(data=filter(df, DAG==3, mvn_p < 1e-2),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 3 (non-mutagenic rec., Pi Tot.) | MVN p < 1%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4836,7 +4836,7 @@ p12 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-2 & mvn_p < 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 3 (non-mutagenic rec., Pi Tot.) | 10% < MVN p > 1%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4861,7 +4861,7 @@ p13 <- ggplot(data=filter(df, DAG==3, mvn_p > 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 3 (non-mutagenic rec., Pi Tot.) | MVN p > 10%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4887,7 +4887,7 @@ p14 <- ggplot(data=filter(df, DAG==4, mvn_p < 1e-2),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 4 (mutagenic rec., Pi Tot.) | MVN p < 1%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4912,7 +4912,7 @@ p15 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-2 & mvn_p < 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 4 (mutagenic rec., Pi Tot.) | 10% < MVN p > 1%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -4937,7 +4937,7 @@ p16 <- ggplot(data=filter(df, DAG==4, mvn_p > 1e-1),
       scale_shape_manual(values=c(1, 4)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title="H0: data fits DAG 4 (mutagenic rec., Pi Tot.) | MVN p > 10%",
            x="Model ID", y="-log10(p-value)",
            color="Mutagenic Rec.") +
@@ -5438,7 +5438,7 @@ fwrite(m_pc_sem_B_nonmutrec, "pc_sem_B_nonmutrec.csv.gz")
 
 ########################################################
 # focusing on the indirect effects of rec on pi 
-# (mutagenic rec only, assessing the Przeworksi regime)
+# (mutagenic rec only, assessing the Przeworski's regime)
 pc_rec_pi <- filter(pc_mut_rec, lhs=="rec_B_pi" | lhs=="rec_mu_pi")
 
 # combinig pvalues across replicates to plot significance later on
@@ -5481,7 +5481,7 @@ p1 <- ggplot(data=filter(m_pc_sem_p_mutrec,
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 2 (mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient B->pi",
@@ -5509,7 +5509,7 @@ p2 <- ggplot(data=filter(m_pc_sem_p_mutrec,
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 2 (mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient mu->pi",
@@ -5538,7 +5538,7 @@ p3 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 1 (non-mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient mu->B->pi",
@@ -5566,7 +5566,7 @@ q1 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 1 (non-mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient B->pi",
@@ -5594,7 +5594,7 @@ q2 <- ggplot(data=filter(m_pc_sem_p_mutrec,
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 1 (non-mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient mu->pi",
@@ -5622,7 +5622,7 @@ q3 <- ggplot(data=filter(m_pc_sem_p_nonmutrec,
       scale_shape_manual(values=c(0, 1, 2, 3)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 1 (non-mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient mu->B->pi",
@@ -5794,9 +5794,8 @@ df <- pivot_wider(dplyr::select(pc_sem_mutrec_cv_models, # mutagenic rec models
 names(df)[(ncol(df)-2):ncol(df)] <- c("B", "mut", "mu_B_pi")
 df$ratio <- df$mut / df$B
   
-# plotting ratios of std. linear coefficients
-p <- ggplot(data=filter(df,
-                        DAG==2), # neu pi
+# plotting ratios of path coefficients (standardized log-transformed variables)
+p <- ggplot(data=filter(df, DAG==2), # neutral pi
                      aes(x=cv_u_cv_B, 
                          y=ratio, 
                          color=as.factor(100*num_exons*exon_lengths/L),
@@ -5842,7 +5841,7 @@ p1 <- ggplot(data=filter(m_pc_sem_B_mutrec,
       scale_shape_manual(values=c(0, 1)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 2 (mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient to B",
@@ -5869,7 +5868,7 @@ q1 <- ggplot(data=filter(m_pc_sem_B_nonmutrec,
       scale_shape_manual(values=c(0, 1)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 4 (non-mutagenic rec.)",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient to B",
@@ -5954,7 +5953,7 @@ p1 <- ggplot(data=filter(m_pc_sem_recpi,
       scale_shape_manual(values=c(0, 1)) +
       scale_color_manual(values=c("brown1", "purple3", "green4", "cyan3")) +
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(0, 432, 864)) + 
+      scale_x_continuous(breaks=c(0, 432, 864, 1296)) + 
       labs(title=paste("Structural Equation Modeling, DAG 2 (mutagenic rec.),",
                        "average PC across 10 replicates"),
            x="Model ID", y="Path Coefficient to pi",
@@ -6382,6 +6381,8 @@ a the positions of functionally constrained elements in the human genome
 Without interference, we can treat the maps as "true" and 
 avoid modeling error in their estimation.
 
+Preparing the data
+
 ```{r human-maps, include=F, message=F, warning=F}
 
 human_maps_1kb <- data.frame()
@@ -6405,6 +6406,7 @@ close(pb)
 names(human_maps_1kb)[1] <- "chr" # facilitate calling
 # NOTE: there are some strong outliers in pred. with build_B_table.py
 human_maps_1kb <- filter(human_maps_1kb, exp_pi < 3e-3) 
+TODO implement the alternative filtering/binning scheme where 1kb windows w/ less than 75% sites are filtered out first, then averages are computed
 
 # 10 kb
 human_maps_10kb <- human_maps_1kb %>% group_by(chr, bin_10kb) %>% 
@@ -6532,7 +6534,7 @@ human_summaries$chr <- paste("chr", human_summaries$chr, sep="") # easier viz
 Finding the parameter combination which results in maps most similar to the
 real ones 
 
-Preparing the data
+Preparing the simulated maps
 
 ```{r sd-ac-maps, include=F, message=F, warning=F}
 
@@ -6876,9 +6878,9 @@ for(c in 1:22) { # for each autosome
   dev.off()
   
   # DAG3
-  sem3_10kb <- sem(DAG3, data=std_10kb, estimator="GLS")
-  sem3_100kb <- sem(DAG3, data=std_100kb, estimator="GLS")
-  sem3_1Mb <- sem(DAG3, data=std_1Mb, estimator="GLS")
+  sem3_10kb <- sem(DAG3, data=std_10kb, estimator="GLS", se="boot", test="boot")
+  sem3_100kb <- sem(DAG3, data=std_100kb, estimator="GLS", se="boot", test="boot")
+  sem3_1Mb <- sem(DAG3, data=std_1Mb, estimator="GLS", se="boot", test="boot")
   
   # error handling to bypass cases where lavaan fails to converge the optim
   # such cases can be identified as NA entries in the pval table
@@ -6910,9 +6912,9 @@ for(c in 1:22) { # for each autosome
          paste("real_data_maps/lavaan_DAG3_chr", c, "_1Mb.csv", sep=""))
   
   # DAG4
-  sem4_10kb <- sem(DAG4, data=std_10kb, estimator="GLS")
-  sem4_100kb <- sem(DAG4, data=std_100kb, estimator="GLS")
-  sem4_1Mb <- sem(DAG4, data=std_1Mb, estimator="GLS")
+  sem4_10kb <- sem(DAG4, data=std_10kb, estimator="GLS", se="boot", test="boot")
+  sem4_100kb <- sem(DAG4, data=std_100kb, estimator="GLS", se="boot", test="boot")
+  sem4_1Mb <- sem(DAG4, data=std_1Mb, estimator="GLS", se="boot", test="boot")
   
   # error handling to bypass cases where lavaan fails to converge the optim
   # such cases can be identified as NA entries in the pval table
@@ -6944,9 +6946,9 @@ for(c in 1:22) { # for each autosome
          paste("real_data_maps/lavaan_DAG4_chr", c, "_1Mb.csv", sep=""))
   
   # DAG5
-  sem5_10kb <- sem(DAG5, data=std_10kb, estimator="GLS")
-  sem5_100kb <- sem(DAG5, data=std_100kb, estimator="GLS")
-  sem5_1Mb <- sem(DAG5, data=std_1Mb, estimator="GLS")
+  sem5_10kb <- sem(DAG5, data=std_10kb, estimator="GLS", se="boot", test="boot")
+  sem5_100kb <- sem(DAG5, data=std_100kb, estimator="GLS", se="boot", test="boot")
+  sem5_1Mb <- sem(DAG5, data=std_1Mb, estimator="GLS", se="boot", test="boot")
   
   # error handling to bypass cases where lavaan fails to converge the optim
   # such cases can be identified as NA entries in the pval table
@@ -6978,9 +6980,9 @@ for(c in 1:22) { # for each autosome
          paste("real_data_maps/lavaan_DAG5_chr", c, "_1Mb.csv", sep=""))
   
   # DAG6
-  sem6_10kb <- sem(DAG6, data=std_10kb, estimator="GLS")
-  sem6_100kb <- sem(DAG6, data=std_100kb, estimator="GLS")
-  sem6_1Mb <- sem(DAG6, data=std_1Mb, estimator="GLS")
+  sem6_10kb <- sem(DAG6, data=std_10kb, estimator="GLS", se="boot", test="boot")
+  sem6_100kb <- sem(DAG6, data=std_100kb, estimator="GLS", se="boot", test="boot")
+  sem6_1Mb <- sem(DAG6, data=std_1Mb, estimator="GLS", se="boot", test="boot")
   
   # error handling to bypass cases where lavaan fails to converge the optim
   # such cases can be identified as NA entries in the pval table
@@ -7205,9 +7207,9 @@ cp1 <- plot_grid(p1, p2, p3, p4, nrow=2)
 save_plot("cor_r_u.svg", cp1)
 save_plot("cor_r_u.pdf", cp1)
 
-tbl_mut_rec <- as.data.frame(matrix(ncol=4, nrow=4))
+tbl_mut_rec <- as.data.frame(matrix(ncol=4, nrow=3))
 names(tbl_mut_rec) <- c("pearson", "spearman", "kendall", "scale")
-tbl_mut_rec$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+tbl_mut_rec$scale <- c(1e+4, 1e+5, 1e+6)
 
 tbl_mut_rec[1, 1] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$avg_mut, method="pearson")$estimate
 tbl_mut_rec[2, 1] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$avg_mut, method="pearson")$estimate
@@ -7229,7 +7231,7 @@ m_cor <- pivot_longer(tbl_mut_rec, cols=c("pearson", "spearman"), names_to="meth
 q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
   geom_point(size=3) + geom_line() + theme_bw() +
   scale_y_continuous(breaks=pretty_breaks(), limits=c(0, 1)) +
-  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
   labs(title="Correlation mut x rec", x="scale", y="coeff.") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
@@ -7238,9 +7240,9 @@ q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
         legend.title=element_text(size=16),
         legend.position="bottom")
 
-tbl_B_rec <- as.data.frame(matrix(ncol=4, nrow=4))
+tbl_B_rec <- as.data.frame(matrix(ncol=4, nrow=3))
 names(tbl_B_rec) <- c("pearson", "spearman", "kendall", "scale")
-tbl_B_rec$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+tbl_B_rec$scale <- c(1e+4, 1e+5, 1e+6)
 
 tbl_B_rec[1, 1] <- cor.test(big_tbl_1kb$avg_rec, big_tbl_1kb$B, method="pearson")$estimate
 tbl_B_rec[2, 1] <- cor.test(big_tbl_10kb$avg_rec, big_tbl_10kb$B, method="pearson")$estimate
@@ -7262,7 +7264,7 @@ m_cor <- pivot_longer(tbl_B_rec, cols=c("pearson", "spearman"), names_to="method
 q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
   geom_point(size=3) + geom_line() + theme_bw() +
   scale_y_continuous(breaks=pretty_breaks(), limits=c(0, 1)) +
-  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
   labs(title="Correlation B x rec", x="scale", y="coeff.") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
@@ -7272,9 +7274,9 @@ q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
         legend.position="bottom")
 
 
-tbl_B_mut <- as.data.frame(matrix(ncol=4, nrow=4))
+tbl_B_mut <- as.data.frame(matrix(ncol=4, nrow==3))
 names(tbl_B_mut) <- c("pearson", "spearman", "kendall", "scale")
-tbl_B_mut$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+tbl_B_mut$scale <- c(1e+4, 1e+5, 1e+6)
 
 tbl_B_mut[1, 1] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$B, method="pearson")$estimate
 tbl_B_mut[2, 1] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$B, method="pearson")$estimate
@@ -7342,9 +7344,9 @@ p4 <- ggplot(data=big_tbl_1Mb, aes(y=del_sites, x=avg_mut, alpha=0.25)) +
 ggsave("u_delsites.svg", p1, dpi=1000)
 
 # u x del sites
-tbl_del_sites_mut <- as.data.frame(matrix(ncol=4, nrow=4))
+tbl_del_sites_mut <- as.data.frame(matrix(ncol=4, nrow=3))
 names(tbl_del_sites_mut) <- c("pearson", "spearman", "kendall", "scale")
-tbl_del_sites_mut$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+tbl_del_sites_mut$scale <- c(1e+4, 1e+5, 1e+6)
 
 tbl_del_sites_mut[1, 1] <- cor.test(big_tbl_1kb$avg_mut, big_tbl_1kb$del_sites, method="pearson")$estimate
 tbl_del_sites_mut[2, 1] <- cor.test(big_tbl_10kb$avg_mut, big_tbl_10kb$del_sites, method="pearson")$estimate
@@ -7366,7 +7368,7 @@ m_cor <- pivot_longer(tbl_del_sites_mut, cols=c("pearson", "spearman"), names_to
 q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
   geom_point(size=3) + geom_line() + theme_bw() +
   scale_y_continuous(breaks=pretty_breaks()) +
-  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
   labs(title="Correlation u x # del sites", x="scale", y="coeff.") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
@@ -7376,9 +7378,9 @@ q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
         legend.position="bottom")
 
 # B x del sites
-tbl_del_sites_B <- as.data.frame(matrix(ncol=4, nrow=4))
+tbl_del_sites_B <- as.data.frame(matrix(ncol=4, nrow=3))
 names(tbl_del_sites_B) <- c("pearson", "spearman", "kendall", "scale")
-tbl_del_sites_B$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+tbl_del_sites_B$scale <- c(1e+4, 1e+5, 1e+6)
 
 tbl_del_sites_B[1, 1] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="pearson")$estimate
 tbl_del_sites_B[2, 1] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="pearson")$estimate
@@ -7400,7 +7402,7 @@ m_cor <- pivot_longer(tbl_del_sites_B, cols=c("pearson", "spearman"), names_to="
 q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
   geom_point(size=3) + geom_line() + theme_bw() +
   scale_y_continuous(breaks=pretty_breaks()) +
-  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
   labs(title="Correlation B x # del sites", x="scale", y="coeff.") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
@@ -7411,9 +7413,9 @@ q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
 q1
 
 # B x del pi0
-tbl_del_sites_B <- as.data.frame(matrix(ncol=4, nrow=4))
+tbl_del_sites_B <- as.data.frame(matrix(ncol=4, nrow=3))
 names(tbl_del_sites_B) <- c("pearson", "spearman", "kendall", "scale")
-tbl_del_sites_B$scale <- c(1e+3, 1e+4, 1e+5, 1e+6)
+tbl_del_sites_B$scale <- c(1e+4, 1e+5, 1e+6)
 
 tbl_del_sites_B[1, 1] <- cor.test(big_tbl_1kb$B, big_tbl_1kb$del_sites, method="pearson")$estimate
 tbl_del_sites_B[2, 1] <- cor.test(big_tbl_10kb$B, big_tbl_10kb$del_sites, method="pearson")$estimate
@@ -7435,7 +7437,7 @@ m_cor <- pivot_longer(tbl_del_sites_B, cols=c("pearson", "spearman"), names_to="
 q1 <- ggplot(data=m_cor, aes(y=cor, x=scale, color=method)) +
   geom_point(size=3) + geom_line() + theme_bw() +
   scale_y_continuous(breaks=pretty_breaks()) +
-  scale_x_log10(breaks=c(1e+3, 1e+4, 1e+5, 1e+6)) +
+  scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
   labs(title="Correlation B x # del sites", x="scale", y="coeff.") +
   theme(axis.title=element_text(size=16), 
         axis.text=element_text(size=12), 
