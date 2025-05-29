@@ -6540,7 +6540,7 @@ save_plot("meta_lm_rec_pi_SEM.png", p, base_height=8, base_width=10)
 
 # Human maps
 
-Here we use the Roulette mutation maps, Pyrho recombination maps as well as
+Here we use the Roulette mutation maps, pyrho recombination maps as well as
 a the positions of functionally constrained elements in the human genome
 (build 38 and SFS-based DFEs) to predict B-values and pi along autosomes
 
@@ -6610,6 +6610,8 @@ for(i in 1:S) {
 human_maps_10kb$pi_sim_tot <- pi_sim / S
 human_maps_10kb$pi_sim_neu <- pi_sim_neu / S
 human_maps_10kb$pi_sim_del <- pi_sim_del / S
+
+human_maps_10kb$coverage <- human_maps_10kb$num_sites / 1e+4
 human_maps_10kb$prop_del_sites <- human_maps_10kb$del_sites / human_maps_10kb$num_sites
 fwrite(human_maps_10kb, "real_data_maps/human_maps_10kb.csv.gz")
 
@@ -6634,6 +6636,8 @@ for(i in 1:S) {
 human_maps_100kb$pi_sim_tot <- pi_sim / S
 human_maps_100kb$pi_sim_neu <- pi_sim_neu / S
 human_maps_100kb$pi_sim_del <- pi_sim_del / S
+
+human_maps_100kb$coverage <- human_maps_100kb$num_sites / 1e+5
 human_maps_100kb$prop_del_sites <- human_maps_100kb$del_sites / human_maps_100kb$num_sites
 fwrite(human_maps_100kb, "real_data_maps/human_maps_100kb.csv.gz")
 
@@ -6658,6 +6662,8 @@ for(i in 1:S) {
 human_maps_1Mb$pi_sim_tot <- pi_sim / S
 human_maps_1Mb$pi_sim_neu <- pi_sim_neu / S
 human_maps_1Mb$pi_sim_del <- pi_sim_del / S
+
+human_maps_1Mb$coverage <- human_maps_1Mb$num_sites / 1e+6
 human_maps_1Mb$prop_del_sites <- human_maps_1Mb$del_sites / human_maps_1Mb$num_sites
 
 fwrite(human_maps_1Mb, "real_data_maps/human_maps_1Mb.csv.gz")
@@ -6705,8 +6711,8 @@ human_summaries <- rbind.data.frame(human_summaries_10kb,
 human_summaries$chr <- paste("chr", human_summaries$chr, sep="") # easier viz
 ```
 
-Finding the parameter combination which results in maps most similar to the
-real ones 
+Finding the parameter combination which results in simulated maps
+most similar to the real ones 
 
 Preparing the simulated maps
 
@@ -6970,18 +6976,48 @@ Basic visualization
 
 ```{r sd-ac-plots, include=F, message=F, warning=F}
 
-for(c in 1:22) {
-  dt_1Mb <- filter(human_maps_1Mb, chr==c) %>% 
-            dplyr::select(., c(prop_del,
+for(chrom in c(1:18, 20:22)) {
+  dt_1Mb <- filter(human_maps_1Mb, chr==chrom, coverage > 0.75) %>% 
+            dplyr::select(., c(prop_del_sites,
                                avg_mut,
                                avg_rec,
                                B,
                                exp_pi,
                                avg_pi,
-                               coverage)) 
+                               num_sites)) 
             
   p <- ggpairs(dt_1Mb)
-  save_plot(paste("Correlations/pairs_chr", c, ".png", sep=""), p,
+  save_plot(paste("Correlations/pairs_1Mb_chr", chrom, ".png", sep=""), p,
+            base_height=10, base_width=12)
+}
+
+for(chrom in c(1:18, 20:22)) {
+  dt_100kb <- filter(human_maps_100kb, chr==chrom, coverage > 0.75) %>% 
+            dplyr::select(., c(prop_del_sites,
+                               avg_mut,
+                               avg_rec,
+                               B,
+                               exp_pi,
+                               avg_pi,
+                               num_sites)) 
+            
+  p <- ggpairs(dt_100kb)
+  save_plot(paste("Correlations/pairs_100kb_chr", chrom, ".png", sep=""), p,
+            base_height=10, base_width=12)
+}
+
+for(chrom in c(1:18, 20:22)) {
+  dt_10kb <- filter(human_maps_10kb, chr==chrom, coverage > 0.75) %>% 
+             dplyr::select(., c(prop_del_sites,
+                                avg_mut,
+                                avg_rec,
+                                B,
+                                exp_pi,
+                                avg_pi,
+                                num_sites)) 
+            
+  p <- ggpairs(dt_10kb)
+  save_plot(paste("Correlations/pairs_10kb_chr", chrom, ".png", sep=""), p,
             base_height=10, base_width=12)
 }
 ```
@@ -6993,9 +7029,9 @@ for(c in 1:22) {
 NOTES:
 We filter for missing (obs) data and coverage to match real data tests
 
-Testing model 1
+Specifying the models with sim_pi
 
-```{r dsep-humans, include=F, eval=T}
+```{r dags-human-maps, include=F, eval=T}
 
 D1 <- DAG(
   pi_sim_tot~B,
@@ -7003,60 +7039,6 @@ D1 <- DAG(
   B~avg_mut,
   B~avg_rec
 )
-
-basis_set <- basiSet(D1)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(r in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[r, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_pisim_m1.csv.gz")
-```
-
-Testing model 2
-
-```{r dsep-humans, include=F, eval=T}
 
 D2 <- DAG(
   pi_sim_tot~B,
@@ -7066,60 +7048,6 @@ D2 <- DAG(
   B~prop_del_sites
 )
 
-basis_set <- basiSet(D2)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(rep in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[rep, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_pisim_m2.csv.gz")
-```
-
-Testing model 3
-
-```{r dsep-humans, include=F, eval=T}
-
 D3 <- DAG(
   pi_sim_tot~B,
   pi_sim_tot~avg_mut,
@@ -7128,60 +7056,6 @@ D3 <- DAG(
   B~prop_del_sites,
   avg_mut~avg_rec
 )
-
-basis_set <- basiSet(D3)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(rep in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[rep, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_pisim_m3.csv.gz")
-```
-
-Testing model 4
-
-```{r dsep-humans, include=F, eval=T}
 
 D4 <- DAG(
   pi_sim_tot~B,
@@ -7193,60 +7067,6 @@ D4 <- DAG(
   # 2nd order selection on the mutation landscape
   avg_mut~prop_del_sites
 )
-
-basis_set <- basiSet(D4)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(rep in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[rep, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_pisim_m4.csv.gz")
-```
-
-Testing model 5
-
-```{r dsep-humans, include=F, eval=T}
 
 D5 <- DAG(
   pi_sim_tot~B,
@@ -7260,449 +7080,415 @@ D5 <- DAG(
   avg_rec~prop_del_sites
 )
 
-basis_set <- basiSet(D5)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-# NOTE: using Kendall's (tau-b) correlation to handle ties
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(rep in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[rep, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_pisim_m5.csv.gz")
+models_list <- list(length=5)
+models_list[[1]] <- D1
+models_list[[2]] <- D2
+models_list[[3]] <- D3
+models_list[[4]] <- D4
+models_list[[5]] <- D5
 ```
 
-Writing to file
+Testing the models
+
+```{r dsep-humans, include=F, eval=T}
+
+num_chrom <- 22
+nboot <- 1e+3 # sampling the dataframe for reducing autocorrelation
+  
+for(m in 1:length(models_list)) {
+  
+  basis_set <- basiSet(models_list[[m]])
+  weights <- rep(1, length=length(basis_set))
+
+  #dsep_c_10kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  dsep_c_100kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  dsep_c_1Mb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  
+  #names(dsep_c_10kb) <-  paste("chr_", 1:num_chrom, sep="")
+  names(dsep_c_100kb) <- paste("chr_", 1:num_chrom, sep="")
+  names(dsep_c_1Mb) <-  paste("chr_", 1:num_chrom, sep="")
+   
+  for(c in 1:num_chrom) {
+    
+    cat(paste("DAG", m, "chromosome", c))
+    
+    #df_10kb <- filter(human_maps_10kb, 
+    #                  chr==c,
+    #                  coverage > 0.75, 
+    #                  !is.na(avg_pi)) 
+    df_100kb <- filter(human_maps_100kb,
+                       chr==c, 
+                       coverage > 0.75, 
+                       !is.na(avg_pi)) 
+    df_1Mb <- filter(human_maps_1Mb, 
+                     chr==c,
+                     coverage > 0.5, 
+                     !is.na(avg_pi)) 
+    
+    pb <- txtProgressBar(min=0, max=nboot, style=3) 
+    for(b in 1:nboot) {
+      
+      setTxtProgressBar(pb, b)
+  
+      #samp_10kb <- sample_n(df_10kb, nrow(df_10kb), replace=T)
+      samp_100kb <- sample_n(df_100kb, nrow(df_100kb), replace=T)
+      samp_1Mb <- sample_n(df_1Mb, nrow(df_1Mb), replace=T)
+      
+      #pvals_10kb <- rep(NA, length(basis_set))
+      pvals_100kb <- rep(NA, length(basis_set))
+      pvals_1Mb <- rep(NA, length(basis_set))
+  
+      for(i in 1:length(basis_set)) {
+        
+        var1 <- basis_set[[i]][1]
+        var2 <- basis_set[[i]][2]
+        
+        cond <- NULL
+        if(length(basis_set[[i]]) > 2) {
+          cond <- basis_set[[i]][3:length(basis_set[[i]])]
+        }
+        
+        if(length(basis_set[[i]]) > 2) {
+            #pvals_10kb[i] <- ppcor::pcor.test(samp_10kb[, ..var1], 
+            #                                  samp_10kb[, ..var2], 
+            #                                  samp_10kb[, ..cond],
+            #                                  method="kendall")$p.value
+            
+            pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
+                                               samp_100kb[, ..var2], 
+                                               samp_100kb[, ..cond],
+                                               method="kendall")$p.value
+            
+            pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
+                                             samp_1Mb[, ..var2], 
+                                             samp_1Mb[, ..cond],
+                                             method="kendall")$p.value
+        } else {
+          #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
+          #                          samp_10kb[, ..var2][[1]],
+          #                          method="kendall",
+          #                          exact=F)$p.value
+          
+          pvals_100kb[i] <- cor.test(samp_100kb[, ..var1][[1]],
+                                     samp_100kb[, ..var2][[1]],
+                                     method="kendall",
+                                     exact=F)$p.value
+          
+          pvals_1Mb[i] <- cor.test(samp_1Mb[, ..var1][[1]],
+                                   samp_1Mb[, ..var2][[1]],
+                                   method="kendall",
+                                   exact=F)$p.value
+        }
+      }
+      close(pb)
+      
+      #dsep_c_10kb[b, c] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
+      dsep_c_100kb[b, c] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
+      dsep_c_1Mb[b, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
+    }
+  }
+  
+  #fwrite(dsep_c_10kb, paste("real_data_maps/dsep_10kb_pisim_m",
+  #                          i, ".csv.gz", sep=""))
+  fwrite(dsep_c_100kb, paste("real_data_maps/dsep_100kb_pisim_m",
+                             m, ".csv.gz", sep=""))
+  fwrite(dsep_c_1Mb, paste("real_data_maps/dsep_1Mb_pisim_m",
+                            m, ".csv.gz", sep=""))
+}
+```
+
+Processing files
 
 ```{r d-sep-plot, include=F, message=F, warning=F}
 
-# combines tables from previous chunks.
-pval_dsep1 <- fread("real_data_maps/dsep_1Mb_pisim_m1.csv.gz") 
-pval_dsep2 <- fread("real_data_maps/dsep_1Mb_pisim_m2.csv.gz") 
-pval_dsep3 <- fread("real_data_maps/dsep_1Mb_pisim_m3.csv.gz") 
-pval_dsep4 <- fread("real_data_maps/dsep_1Mb_pisim_m4.csv.gz") 
-pval_dsep5 <- fread("real_data_maps/dsep_1Mb_pisim_m5.csv.gz") 
+# combines tables from previous chunks
+## 100 kb
+pval_dsep1_100kb <- fread("real_data_maps/dsep_100kb_pisim_m1.csv.gz") 
+pval_dsep2_100kb <- fread("real_data_maps/dsep_100kb_pisim_m2.csv.gz") 
+pval_dsep3_100kb <- fread("real_data_maps/dsep_100kb_pisim_m3.csv.gz") 
+pval_dsep4_100kb <- fread("real_data_maps/dsep_100kb_pisim_m4.csv.gz") 
+pval_dsep5_100kb <- fread("real_data_maps/dsep_100kb_pisim_m5.csv.gz") 
 
-pval_dsep1$DAG <- 1
-pval_dsep2$DAG <- 2
-pval_dsep3$DAG <- 3
-pval_dsep4$DAG <- 4
-pval_dsep5$DAG <- 5
+pval_dsep1_100kb$DAG <- 1
+pval_dsep2_100kb$DAG <- 2
+pval_dsep3_100kb$DAG <- 3
+pval_dsep4_100kb$DAG <- 4
+pval_dsep5_100kb$DAG <- 5
 
-pval_dsep1$boot <- 1:nrow(pval_dsep1)
-pval_dsep2$boot <- 1:nrow(pval_dsep2)
-pval_dsep3$boot <- 1:nrow(pval_dsep3)
-pval_dsep4$boot <- 1:nrow(pval_dsep4)
-pval_dsep5$boot <- 1:nrow(pval_dsep5)
+pval_dsep1_100kb$boot <- 1:nrow(pval_dsep1_100kb)
+pval_dsep2_100kb$boot <- 1:nrow(pval_dsep2_100kb)
+pval_dsep3_100kb$boot <- 1:nrow(pval_dsep3_100kb)
+pval_dsep4_100kb$boot <- 1:nrow(pval_dsep4_100kb)
+pval_dsep5_100kb$boot <- 1:nrow(pval_dsep5_100kb)
 
-dsep_human_maps_1Mb <- rbind.data.frame(pval_dsep1,
-                                        pval_dsep2,
-                                        pval_dsep3,
-                                        pval_dsep4,
-                                        pval_dsep5)
+dsep_human_maps_100kb <- rbind.data.frame(pval_dsep1_100kb,
+                                        pval_dsep2_100kb,
+                                        pval_dsep3_100kb,
+                                        pval_dsep4_100kb,
+                                        pval_dsep5_100kb)
+names(dsep_human_maps_100kb) <- c(as.character(1:22), "DAG", "boot")
+fwrite(dsep_human_maps_100kb,
+       "real_data_maps/dsep_human_maps_100kb_pisim.csv.gz")
+
+## 1 Mb
+pval_dsep1_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m1.csv.gz") 
+pval_dsep2_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m2.csv.gz") 
+pval_dsep3_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m3.csv.gz") 
+pval_dsep4_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m4.csv.gz") 
+pval_dsep5_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m5.csv.gz") 
+
+pval_dsep1_1Mb$DAG <- 1
+pval_dsep2_1Mb$DAG <- 2
+pval_dsep3_1Mb$DAG <- 3
+pval_dsep4_1Mb$DAG <- 4
+pval_dsep5_1Mb$DAG <- 5
+
+pval_dsep1_1Mb$boot <- 1:nrow(pval_dsep1_1Mb)
+pval_dsep2_1Mb$boot <- 1:nrow(pval_dsep2_1Mb)
+pval_dsep3_1Mb$boot <- 1:nrow(pval_dsep3_1Mb)
+pval_dsep4_1Mb$boot <- 1:nrow(pval_dsep4_1Mb)
+pval_dsep5_1Mb$boot <- 1:nrow(pval_dsep5_1Mb)
+
+dsep_human_maps_1Mb <- rbind.data.frame(pval_dsep1_1Mb,
+                                        pval_dsep2_1Mb,
+                                        pval_dsep3_1Mb,
+                                        pval_dsep4_1Mb,
+                                        pval_dsep5_1Mb)
 names(dsep_human_maps_1Mb) <- c(as.character(1:22), "DAG", "boot")
-fwrite(dsep_human_maps_1Mb, "real_data_maps/dsep_human_maps_1Mb_pisim.csv.gz")
+fwrite(dsep_human_maps_1Mb,
+       "real_data_maps/dsep_human_maps_1Mb_pisim.csv.gz")
 ```
 
 ### Observed pi
 
-Testing model 1
+Specifying the models with sim_pi
 
-```{r dsep-humans, include=F, eval=T}
+```{r dags-human-maps, include=F, eval=T}
 
 D1 <- DAG(
-  avg_pi~B,
-  avg_pi~avg_mut,
+  pi_avg~B,
+  pi_avg~avg_mut,
   B~avg_mut,
   B~avg_rec
 )
 
-basis_set <- basiSet(D1)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(r in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-        tryCatch({
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-        }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[r, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_piobs_m1.csv.gz")
-```
-
-Testing model 2
-
-```{r dsep-humans, include=F, eval=T}
-
 D2 <- DAG(
-  avg_pi~B,
-  avg_pi~avg_mut,
+  pi_avg~B,
+  pi_avg~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites
 )
 
-basis_set <- basiSet(D2)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(rep in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-        tryCatch({
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-        }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[rep, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_piobs_m2.csv.gz")
-```
-
-Testing model 3
-
-```{r dsep-humans, include=F, eval=T}
-
 D3 <- DAG(
-  avg_pi~B,
-  avg_pi~avg_mut,
+  pi_avg~B,
+  pi_avg~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites,
   avg_mut~avg_rec
 )
 
-basis_set <- basiSet(D3)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(rep in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-        tryCatch({
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-        }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[rep, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_piobs_m3.csv.gz")
-```
-
-Testing model 4
-
-```{r dsep-humans, include=F, eval=T}
-
 D4 <- DAG(
-  avg_pi~B,
-  avg_pi~avg_mut,
+  pi_avg~B,
+  pi_avg~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites,
   avg_mut~avg_rec,
-  # 2nd order selection on the mutation landscape?
+  # 2nd order selection on the mutation landscape
   avg_mut~prop_del_sites
 )
 
-basis_set <- basiSet(D4)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(r in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-        tryCatch({
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-        }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[r, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_piobs_m4.csv.gz")
-```
-
-Testing model 5
-
-```{r dsep-humans, include=F, eval=T}
-
 D5 <- DAG(
-  avg_pi~B,
-  avg_pi~avg_mut,
+  pi_avg~B,
+  pi_avg~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites,
   avg_mut~avg_rec,
-  # 2nd order selection on the mutation and recombination landscapes?
+  # 2nd order selection on the mutation landscape
   avg_mut~prop_del_sites,
   avg_rec~prop_del_sites
 )
 
-basis_set <- basiSet(D5)
-weights <- rep(1, length=length(basis_set))
-    
-num_chrom <- 22
-num_reps <- 1e+3 # sampling the dataframe for reducing autocorrelation
-
-dsep_c_1Mb <- as.data.frame(matrix(ncol=num_chrom, nrow=num_reps))
-names(dsep_c_1Mb) <- paste("chr_", 1:num_chrom, sep="")
-
-# NOTE: using Kendall's (tau-b) correlation to handle ties
-pb <- txtProgressBar(min=0, max=num_chrom, style=3)  
-for(c in 1:num_chrom) {
-  setTxtProgressBar(pb, c)
-  df <- filter(human_maps_1Mb, chr==c, num_sites > 5e+5, !is.na(avg_pi)) 
-  for(rep in 1:num_reps) {
-
-    samp <- sample_n(df, nrow(df), replace=T)
-    pvals_1Mb <- rep(NA, length(basis_set))
-    
-    for(i in 1:length(basis_set)) {
-      
-      var1 <- basis_set[[i]][1]
-      var2 <- basis_set[[i]][2]
-      
-      cond <- NULL
-      if(length(basis_set[[i]]) > 2) {
-        cond <- basis_set[[i]][3:length(basis_set[[i]])]
-      }
-      
-      # pcor.test requires matrix inversions which can potentially cause errors
-      # we let these cases remain NA in the pval vectors
-      if(length(basis_set[[i]]) > 2) {
-        tryCatch({
-          pvals_1Mb[i] <- ppcor::pcor.test(samp[, ..var1], 
-                                           samp[, ..var2], 
-                                           samp[, ..cond],
-                                           method="kendall")$p.value
-        }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-      } else {
-        pvals_1Mb[i] <- cor.test(samp[, ..var1][[1]],
-                                 samp[, ..var2][[1]],
-                                 method="kendall",
-                                 exact=F)$p.value
-      }
-    }
-    dsep_c_1Mb[rep, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
-  }
-}
-close(pb)
-
-fwrite(dsep_c_1Mb, "real_data_maps/dsep_1Mb_piobs_m5.csv.gz")
+models_list <- list(length=5)
+models_list[[1]] <- D1
+models_list[[2]] <- D2
+models_list[[3]] <- D3
+models_list[[4]] <- D4
+models_list[[5]] <- D5
 ```
 
-Writing to file 
+Testing the models
 
-```{r d-sep-plot-piobs, include=F, message=F, warning=F}
+```{r dsep-humans, include=F, eval=T}
 
-# combines tables from previous chunks.
-pval_dsep1 <- fread("real_data_maps/dsep_1Mb_piobs_m1.csv.gz") 
-pval_dsep2 <- fread("real_data_maps/dsep_1Mb_piobs_m2.csv.gz") 
-pval_dsep3 <- fread("real_data_maps/dsep_1Mb_piobs_m3.csv.gz") 
-pval_dsep4 <- fread("real_data_maps/dsep_1Mb_piobs_m4.csv.gz") 
-pval_dsep5 <- fread("real_data_maps/dsep_1Mb_piobs_m5.csv.gz") 
+num_chrom <- 22
+nboot <- 1e+3 # sampling the dataframe for reducing autocorrelation
+  
+for(m in 1:length(models_list)) {
+  
+  basis_set <- basiSet(models_list[[m]])
+  weights <- rep(1, length=length(basis_set))
 
-pval_dsep1$DAG <- 1
-pval_dsep2$DAG <- 2
-pval_dsep3$DAG <- 3
-pval_dsep4$DAG <- 4
-pval_dsep5$DAG <- 5
+  #dsep_c_10kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  dsep_c_100kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  dsep_c_1Mb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  
+  #names(dsep_c_10kb) <-  paste("chr_", 1:num_chrom, sep="")
+  names(dsep_c_100kb) <- paste("chr_", 1:num_chrom, sep="")
+  names(dsep_c_1Mb) <-  paste("chr_", 1:num_chrom, sep="")
+   
+  for(c in 1:num_chrom) {
+    
+    cat(paste("DAG", m, "chromosome", c))
+    
+    #df_10kb <- filter(human_maps_10kb, 
+    #                  chr==c,
+    #                  coverage > 0.75, 
+    #                  !is.na(avg_pi)) 
+    df_100kb <- filter(human_maps_100kb,
+                       chr==c, 
+                       coverage > 0.75, 
+                       !is.na(avg_pi)) 
+    df_1Mb <- filter(human_maps_1Mb, 
+                     chr==c,
+                     coverage > 0.5, 
+                     !is.na(avg_pi)) 
+    
+    pb <- txtProgressBar(min=0, max=nboot, style=3) 
+    for(b in 1:nboot) {
+      
+      setTxtProgressBar(pb, b)
+  
+      #samp_10kb <- sample_n(df_10kb, nrow(df_10kb), replace=T)
+      samp_100kb <- sample_n(df_100kb, nrow(df_100kb), replace=T)
+      samp_1Mb <- sample_n(df_1Mb, nrow(df_1Mb), replace=T)
+      
+      #pvals_10kb <- rep(NA, length(basis_set))
+      pvals_100kb <- rep(NA, length(basis_set))
+      pvals_1Mb <- rep(NA, length(basis_set))
+  
+      for(i in 1:length(basis_set)) {
+        
+        var1 <- basis_set[[i]][1]
+        var2 <- basis_set[[i]][2]
+        
+        cond <- NULL
+        if(length(basis_set[[i]]) > 2) {
+          cond <- basis_set[[i]][3:length(basis_set[[i]])]
+        }
+        
+        if(length(basis_set[[i]]) > 2) {
+            #pvals_10kb[i] <- ppcor::pcor.test(samp_10kb[, ..var1], 
+            #                                  samp_10kb[, ..var2], 
+            #                                  samp_10kb[, ..cond],
+            #                                  method="kendall")$p.value
+            
+            pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
+                                               samp_100kb[, ..var2], 
+                                               samp_100kb[, ..cond],
+                                               method="kendall")$p.value
+            
+            pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
+                                             samp_1Mb[, ..var2], 
+                                             samp_1Mb[, ..cond],
+                                             method="kendall")$p.value
+        } else {
+          #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
+          #                          samp_10kb[, ..var2][[1]],
+          #                          method="kendall",
+          #                          exact=F)$p.value
+          
+          pvals_100kb[i] <- cor.test(samp_100kb[, ..var1][[1]],
+                                     samp_100kb[, ..var2][[1]],
+                                     method="kendall",
+                                     exact=F)$p.value
+          
+          pvals_1Mb[i] <- cor.test(samp_1Mb[, ..var1][[1]],
+                                   samp_1Mb[, ..var2][[1]],
+                                   method="kendall",
+                                   exact=F)$p.value
+        }
+      }
+      close(pb)
+      
+      #dsep_c_10kb[b, c] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
+      dsep_c_100kb[b, c] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
+      dsep_c_1Mb[b, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
+    }
+  }
+  
+  #fwrite(dsep_c_10kb, paste("real_data_maps/dsep_10kb_piobs_m",
+  #                          i, ".csv.gz", sep=""))
+  fwrite(dsep_c_100kb, paste("real_data_maps/dsep_100kb_piobs_m",
+                             m, ".csv.gz", sep=""))
+  fwrite(dsep_c_1Mb, paste("real_data_maps/dsep_1Mb_piobs_m",
+                            m, ".csv.gz", sep=""))
+}
+```
 
-pval_dsep1$boot <- 1:nrow(pval_dsep1)
-pval_dsep2$boot <- 1:nrow(pval_dsep2)
-pval_dsep3$boot <- 1:nrow(pval_dsep3)
-pval_dsep4$boot <- 1:nrow(pval_dsep4)
-pval_dsep5$boot <- 1:nrow(pval_dsep5)
+Processing files
 
-dsep_human_maps_1Mb <- rbind.data.frame(pval_dsep1,
-                                        pval_dsep2,
-                                        pval_dsep3,
-                                        pval_dsep4,
-                                        pval_dsep5)
+```{r d-sep-plot, include=F, message=F, warning=F}
+
+# combines tables from previous chunks
+## 100 kb
+pval_dsep1_100kb <- fread("real_data_maps/dsep_100kb_piobs_m1.csv.gz") 
+pval_dsep2_100kb <- fread("real_data_maps/dsep_100kb_piobs_m2.csv.gz") 
+pval_dsep3_100kb <- fread("real_data_maps/dsep_100kb_piobs_m3.csv.gz") 
+pval_dsep4_100kb <- fread("real_data_maps/dsep_100kb_piobs_m4.csv.gz") 
+pval_dsep5_100kb <- fread("real_data_maps/dsep_100kb_piobs_m5.csv.gz") 
+
+pval_dsep1_100kb$DAG <- 1
+pval_dsep2_100kb$DAG <- 2
+pval_dsep3_100kb$DAG <- 3
+pval_dsep4_100kb$DAG <- 4
+pval_dsep5_100kb$DAG <- 5
+
+pval_dsep1_100kb$boot <- 1:nrow(pval_dsep1_100kb)
+pval_dsep2_100kb$boot <- 1:nrow(pval_dsep2_100kb)
+pval_dsep3_100kb$boot <- 1:nrow(pval_dsep3_100kb)
+pval_dsep4_100kb$boot <- 1:nrow(pval_dsep4_100kb)
+pval_dsep5_100kb$boot <- 1:nrow(pval_dsep5_100kb)
+
+dsep_human_maps_100kb <- rbind.data.frame(pval_dsep1_100kb,
+                                        pval_dsep2_100kb,
+                                        pval_dsep3_100kb,
+                                        pval_dsep4_100kb,
+                                        pval_dsep5_100kb)
+names(dsep_human_maps_100kb) <- c(as.character(1:22), "DAG", "boot")
+fwrite(dsep_human_maps_100kb,
+       "real_data_maps/dsep_human_maps_100kb_piobs.csv.gz")
+
+## 1 Mb
+pval_dsep1_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m1.csv.gz") 
+pval_dsep2_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m2.csv.gz") 
+pval_dsep3_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m3.csv.gz") 
+pval_dsep4_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m4.csv.gz") 
+pval_dsep5_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m5.csv.gz") 
+
+pval_dsep1_1Mb$DAG <- 1
+pval_dsep2_1Mb$DAG <- 2
+pval_dsep3_1Mb$DAG <- 3
+pval_dsep4_1Mb$DAG <- 4
+pval_dsep5_1Mb$DAG <- 5
+
+pval_dsep1_1Mb$boot <- 1:nrow(pval_dsep1_1Mb)
+pval_dsep2_1Mb$boot <- 1:nrow(pval_dsep2_1Mb)
+pval_dsep3_1Mb$boot <- 1:nrow(pval_dsep3_1Mb)
+pval_dsep4_1Mb$boot <- 1:nrow(pval_dsep4_1Mb)
+pval_dsep5_1Mb$boot <- 1:nrow(pval_dsep5_1Mb)
+
+dsep_human_maps_1Mb <- rbind.data.frame(pval_dsep1_1Mb,
+                                        pval_dsep2_1Mb,
+                                        pval_dsep3_1Mb,
+                                        pval_dsep4_1Mb,
+                                        pval_dsep5_1Mb)
 names(dsep_human_maps_1Mb) <- c(as.character(1:22), "DAG", "boot")
-fwrite(dsep_human_maps_1Mb, "real_data_maps/dsep_human_maps_1Mb_piobs.csv.gz")
+fwrite(dsep_human_maps_1Mb,
+       "real_data_maps/dsep_human_maps_1Mb_piobs.csv.gz")
 ```
 
 Combining simulated and observed pi, then plotting
@@ -7831,9 +7617,13 @@ We later relax these assumptions with latent variables.
 Testing model fitting at the 1 Mb scale, keeping 1 in every w windows to
 reduce auto-correlation.
 
-```{r SEM-human-maps-F1w, include=F, message=F, warning=F}
+TODO: use modIndices()
+
+```{r SEM-human-maps-fw, include=F, message=F, warning=F}
 
 human_maps_1Mb$coverage <- human_maps_1Mb$num_sites / 1e+6 
+human_maps_1Mb$prop_del_sites <- human_maps_1Mb$del_sites / 
+  human_maps_1Mb$num_sites
 
 for(w in 1:5) {
   cat(paste("fitting SEMs with filter w = ", w, sep=""))
@@ -8049,8 +7839,8 @@ for(w in 1:5) {
   avg_pi ~ start(0.75)*c2*avg_mut
   B ~ start(-0.25)*c3*avg_mut
   B ~ start(-0.1)*c4*prop_del_sites
+  avg_mut ~ start(0.25)*c6*avg_rec
   avg_mut ~~ prop_del_sites
-  avg_mut ~~ B
   "
   
   m5gls <- sem(model_5,
@@ -8102,6 +7892,7 @@ for(w in 1:5) {
   B ~ start(0.25)*c5*avg_rec
   avg_mut ~ start(0.25)*c6*avg_rec
   avg_mut ~~ prop_del_sites
+  avg_mut ~~ B
   "
   
   m6gls <- sem(model_6,
@@ -8145,6 +7936,210 @@ for(w in 1:5) {
                                                           w,
                                                           ".csv", sep="")) 
 }
+```
+
+
+## Measurement models
+
+```{r measure-mut, include=F, message=F, warning=F}
+
+num_chrom <- 22
+
+# roulette
+roulette <- list(length=num_chrom)
+for(c in 1:num_chrom) {
+  roulette[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
+                               "mutation_tables/roulette_tbls/",
+                               "roulette_tbl_chr", c, ".csv.gz", sep=""))
+}
+roulette_1kb <- do.call(rbind.data.frame, roulette)
+
+names(roulette_1kb)[4:ncol(roulette_1kb)] <- paste(names(roulette_1kb)[4:ncol(roulette_1kb)],
+                                                   "roulette", sep="_")
+
+# Carlson et al 2018
+carlson <- list(length=num_chrom)
+for(c in 1:num_chrom) {
+  carlson[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
+                              "mutation_tables/carlson_tbls/",
+                              "carlson_tbl_chr", c, ".csv.gz", sep=""))
+}
+carlson_1kb <- do.call(rbind.data.frame, carlson)
+
+names(carlson_1kb)[4:ncol(carlson_1kb)] <- paste(names(carlson_1kb)[4:ncol(carlson_1kb)],
+                                               "carlson", sep="_")
+
+# gnomad
+gnomad <- list(length=num_chrom)
+for(c in 1:num_chrom) {
+  gnomad[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
+                             "mutation_tables/gnomad_tbls/",
+                             "gnomad_tbl_chr", c, ".csv.gz", sep=""))
+}
+gnomad_1kb <- do.call(rbind.data.frame, gnomad)
+
+names(gnomad_1kb)[4:ncol(gnomad_1kb)] <- paste(names(gnomad_1kb)[4:ncol(gnomad_1kb)],
+                                               "gnomad", sep="_")
+
+maps_1kb <- cbind.data.frame(roulette_1kb,
+                             carlson_1kb[,4:ncol(carlson_1kb)],
+                             gnomad_1kb[,4:ncol(gnomad_1kb)])
+
+maps_1kb <- maps_1kb %>% group_by(chrom) %>% 
+                         mutate(bin_10kb=(1:n() - 1) %/% 10,
+                                bin_100kb=(1:n() - 1) %/% 100,
+                                bin_1Mb=(1:n() - 1) %/% 1000)
+
+
+maps_10kb <- maps_1kb %>%
+             group_by(chrom, bin_10kb) %>% 
+             mutate(mean_mut_roulette=mean(avg_mut_roulette),
+                    mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
+                    mean_mut_carlson=mean(avg_mut_carlson),
+                    mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
+                    mean_mut_gnomad=mean(avg_mut_gnomad),
+                    mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
+                    sum_sites_roulette=sum(num_sites_roulette),
+                    sum_sites_masked_roulette=sum(num_sites_masked_roulette),
+                    sum_sites_carlson=sum(num_sites_carlson),
+                    sum_sites_masked_carlson=sum(num_sites_masked_carlson),
+                    sum_sites_gnomad=sum(num_sites_gnomad),
+                    sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                    chromStart=min(chromStart),
+                    chromEnd=max(chromEnd)) %>%
+             distinct(bin_10kb, .keep_all=T) %>%
+             ungroup() %>%
+             dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                mean_mut_roulette,
+                                mean_mut_masked_roulette,
+                                mean_mut_masked_roulette,
+                                mean_mut_carlson,
+                                mean_mut_masked_carlson,
+                                mean_mut_gnomad,
+                                mean_mut_masked_gnomad,
+                                sum_sites_roulette,
+                                sum_sites_masked_roulette,
+                                sum_sites_carlson,
+                                sum_sites_masked_carlson,
+                                sum_sites_gnomad,
+                                sum_sites_masked_gnomad))
+    
+maps_100kb <- maps_1kb %>%
+             group_by(chrom, bin_100kb) %>% 
+             mutate(mean_mut_roulette=mean(avg_mut_roulette),
+                    mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
+                    mean_mut_carlson=mean(avg_mut_carlson),
+                    mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
+                    mean_mut_gnomad=mean(avg_mut_gnomad),
+                    mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
+                    sum_sites_roulette=sum(num_sites_roulette),
+                    sum_sites_masked_roulette=sum(num_sites_masked_roulette),
+                    sum_sites_carlson=sum(num_sites_carlson),
+                    sum_sites_masked_carlson=sum(num_sites_masked_carlson),
+                    sum_sites_gnomad=sum(num_sites_gnomad),
+                    sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                    chromStart=min(chromStart),
+                    chromEnd=max(chromEnd)) %>%
+             distinct(bin_100kb, .keep_all=T) %>%
+             ungroup() %>%
+             dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                mean_mut_roulette,
+                                mean_mut_masked_roulette,
+                                mean_mut_masked_roulette,
+                                mean_mut_carlson,
+                                mean_mut_masked_carlson,
+                                mean_mut_gnomad,
+                                mean_mut_masked_gnomad,
+                                sum_sites_roulette,
+                                sum_sites_masked_roulette,
+                                sum_sites_carlson,
+                                sum_sites_masked_carlson,
+                                sum_sites_gnomad,
+                                sum_sites_masked_gnomad))
+
+maps_1Mb <- maps_1kb %>%
+             group_by(chrom, bin_1Mb) %>% 
+             mutate(mean_mut_roulette=mean(avg_mut_roulette),
+                    mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
+                    mean_mut_carlson=mean(avg_mut_carlson),
+                    mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
+                    mean_mut_gnomad=mean(avg_mut_gnomad),
+                    mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
+                    sum_sites_roulette=sum(num_sites_roulette),
+                    sum_sites_masked_roulette=sum(num_sites_masked_roulette),
+                    sum_sites_carlson=sum(num_sites_carlson),
+                    sum_sites_masked_carlson=sum(num_sites_masked_carlson),
+                    sum_sites_gnomad=sum(num_sites_gnomad),
+                    sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                    chromStart=min(chromStart),
+                    chromEnd=max(chromEnd)) %>%
+             distinct(bin_1Mb, .keep_all=T) %>%
+             ungroup() %>%
+             dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                mean_mut_roulette,
+                                mean_mut_masked_roulette,
+                                mean_mut_masked_roulette,
+                                mean_mut_carlson,
+                                mean_mut_masked_carlson,
+                                mean_mut_gnomad,
+                                mean_mut_masked_gnomad,
+                                sum_sites_roulette,
+                                sum_sites_masked_roulette,
+                                sum_sites_carlson,
+                                sum_sites_masked_carlson,
+                                sum_sites_gnomad,
+                                sum_sites_masked_gnomad))
+
+maps_10kb$mean_mut_roulette[which(maps_10kb$mean_mut_roulette==0)] <- NA
+maps_10kb$mean_mut_masked_roulette[which(maps_10kb$mean_mut_masked_roulette==0)] <- NA
+maps_10kb$mean_mut_carlson[which(maps_10kb$mean_mut_carlson==0)] <- NA
+maps_10kb$mean_mut_masked_carlson[which(maps_10kb$mean_mut_masked_carlson==0)] <- NA
+maps_10kb$mean_mut_gnomad[which(maps_10kb$mean_mut_gnomad==0)] <- NA
+maps_10kb$mean_mut_masked_gnomad[which(maps_10kb$mean_mut_masked_gnomad==0)] <- NA
+
+maps_100kb$mean_mut_roulette[which(maps_100kb$mean_mut_roulette==0)] <- NA
+maps_100kb$mean_mut_masked_roulette[which(maps_100kb$mean_mut_masked_roulette==0)] <- NA
+maps_100kb$mean_mut_carlson[which(maps_100kb$mean_mut_carlson==0)] <- NA
+maps_100kb$mean_mut_masked_carlson[which(maps_100kb$mean_mut_masked_carlson==0)] <- NA
+maps_100kb$mean_mut_gnomad[which(maps_100kb$mean_mut_gnomad==0)] <- NA
+maps_100kb$mean_mut_masked_gnomad[which(maps_100kb$mean_mut_masked_gnomad==0)] <- NA
+
+maps_1Mb$mean_mut_roulette[which(maps_1Mb$mean_mut_roulette==0)] <- NA
+maps_1Mb$mean_mut_masked_roulette[which(maps_1Mb$mean_mut_masked_roulette==0)] <- NA
+maps_1Mb$mean_mut_carlson[which(maps_1Mb$mean_mut_carlson==0)] <- NA
+maps_1Mb$mean_mut_masked_carlson[which(maps_1Mb$mean_mut_masked_carlson==0)] <- NA
+maps_1Mb$mean_mut_gnomad[which(maps_1Mb$mean_mut_gnomad==0)] <- NA
+maps_1Mb$mean_mut_masked_gnomad[which(maps_1Mb$mean_mut_masked_gnomad==0)] <- NA
+
+# testing measurement model 1 Mb
+names(human_maps_1Mb)[1] <- "chrom"
+df_1Mb <- left_join(maps_1Mb, human_maps_1Mb, by=c("chrom",
+                                                   "chromStart",
+                                                   "chromEnd"))
+tbl_1Mb <- filter(df_1Mb, 
+                  coverage > 0.75,
+                  chrom != 19,
+                  mean_mut_masked_carlson > 1e-8) # removes one weird outlier
+
+p <- ggpairs(dplyr::select(tbl_1Mb, c(mean_mut_masked_carlson,
+                                      mean_mut_masked_roulette,
+                                      mean_mut_masked_gnomad,
+                                      avg_pi)))
+
+mm_model <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + avg_pi
+"
+
+fit <- sem(model=mm_model,
+           data=tbl_1Mb,
+           std.ov=T,
+           group="chrom")
+
+summary(fit)
+predict(fit)
+inspect(fit, "r2")
+parameterEstimates(fit)
+modificationIndices(fit)
 ```
 
 # Real Data
