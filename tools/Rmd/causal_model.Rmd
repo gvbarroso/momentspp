@@ -6976,7 +6976,7 @@ Basic visualization
 
 ```{r sd-ac-plots, include=F, message=F, warning=F}
 
-for(chrom in c(1:18, 20:22)) {
+for(chrom in c(1:18, 20:22)) { # chr19 doesn't have enough data w/ 75% threshold
   dt_1Mb <- filter(human_maps_1Mb, chr==chrom, coverage > 0.75) %>% 
             dplyr::select(., c(prop_del_sites,
                                avg_mut,
@@ -7064,7 +7064,7 @@ D4 <- DAG(
   B~avg_rec,
   B~prop_del_sites,
   avg_mut~avg_rec,
-  # 2nd order selection on the mutation landscape
+  # 2nd order selection on the mutation landscape?
   avg_mut~prop_del_sites
 )
 
@@ -7075,7 +7075,7 @@ D5 <- DAG(
   B~avg_rec,
   B~prop_del_sites,
   avg_mut~avg_rec,
-  # 2nd order selection on the mutation landscape
+  # 2nd order selection on the mutation and recombination landscape?
   avg_mut~prop_del_sites,
   avg_rec~prop_del_sites
 )
@@ -7111,6 +7111,7 @@ for(m in 1:length(models_list)) {
   for(c in 1:num_chrom) {
     
     cat(paste("DAG", m, "chromosome", c))
+    cat("\n")
     
     #df_10kb <- filter(human_maps_10kb, 
     #                  chr==c,
@@ -7261,28 +7262,28 @@ fwrite(dsep_human_maps_1Mb,
 
 ### Observed pi
 
-Specifying the models with sim_pi
+Specifying the models with avg_pi
 
 ```{r dags-human-maps, include=F, eval=T}
 
 D1 <- DAG(
-  pi_avg~B,
-  pi_avg~avg_mut,
+  avg_pi~B,
+  avg_pi~avg_mut,
   B~avg_mut,
   B~avg_rec
 )
 
 D2 <- DAG(
-  pi_avg~B,
-  pi_avg~avg_mut,
+  avg_pi~B,
+  avg_pi~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites
 )
 
 D3 <- DAG(
-  pi_avg~B,
-  pi_avg~avg_mut,
+  avg_pi~B,
+  avg_pi~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites,
@@ -7290,8 +7291,8 @@ D3 <- DAG(
 )
 
 D4 <- DAG(
-  pi_avg~B,
-  pi_avg~avg_mut,
+  avg_pi~B,
+  avg_pi~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites,
@@ -7301,8 +7302,8 @@ D4 <- DAG(
 )
 
 D5 <- DAG(
-  pi_avg~B,
-  pi_avg~avg_mut,
+  avg_pi~B,
+  avg_pi~avg_mut,
   B~avg_mut,
   B~avg_rec,
   B~prop_del_sites,
@@ -7343,6 +7344,7 @@ for(m in 1:length(models_list)) {
   for(c in 1:num_chrom) {
     
     cat(paste("DAG", m, "chromosome", c))
+    cat("\n")
     
     #df_10kb <- filter(human_maps_10kb, 
     #                  chr==c,
@@ -7495,6 +7497,122 @@ Combining simulated and observed pi, then plotting
 
 ```{r d-sep-plot, include=F, message=F, warning=F}
 
+# 100 kb
+# combines tables from previous chunks
+pval_dsep_pisim <- fread("real_data_maps/dsep_human_maps_100kb_pisim.csv.gz") 
+pval_dsep_piobs <- fread("real_data_maps/dsep_human_maps_100kb_piobs.csv.gz") 
+
+pval_dsep_pisim$pi <- "sim"
+pval_dsep_piobs$pi <- "obs"
+
+dsep_human_maps_100kb <- rbind.data.frame(pval_dsep_pisim,
+                                        pval_dsep_piobs)
+
+m_dsep_human_100kb <- pivot_longer(dsep_human_maps_100kb,
+                                 cols=1:num_chrom,
+                                 names_to="chr", values_to="pval")
+m_dsep_human_100kb$chr <- as.numeric(m_dsep_human_100kb$chr)
+
+# testing the trend of avg pvalue vs chromosome id (~inverse of chr size)
+x <- m_dsep_human_100kb %>% group_by(DAG, pi, chr) %>% 
+                          mutate(avg_p=mean(pval)) %>%
+                          distinct(DAG, pi, chr, .keep_all=T) %>%
+                          dplyr::select(DAG, pi, chr, avg_p)
+y <- x %>% group_by(DAG, pi) %>% 
+           mutate(cor_pval_chrID_est=cor.test(avg_p, 
+                                              chr, 
+                                              method="kendall")$estimate,
+                  cor_pval_chrID_pval=cor.test(avg_p, 
+                                               chr,
+                                               method="kendall")$p.value) %>% 
+           distinct(DAG, pi, .keep_all=T) %>%
+           dplyr::select(., c(DAG, pi, cor_pval_chrID_est, cor_pval_chrID_pval))
+
+# helping viz
+xsim <- filter(m_dsep_human_100kb, pi=="sim") %>% mutate(chr_p=chr - 0.1)  
+xobs <- filter(m_dsep_human_100kb, pi=="obs") %>% mutate(chr_p=chr + 0.1)  
+
+m_dsep_human_100kb <- rbind.data.frame(xsim, xobs)
+m_dsep_human_100kb$chr_p <- as.factor(m_dsep_human_100kb$chr_p)
+levels(m_dsep_human_100kb$chr_p) <- as.character(sort(rep(1:22, 2)))
+
+num_boot <- max(m_dsep_human_100kb$boot)
+p1 <- ggplot(data=filter(m_dsep_human_100kb), 
+             aes(x=chr_p, 
+                 y=-log10(pval), 
+                 color=pi)) +
+      geom_hline(aes(yintercept=-log10(0.05/(num_boot * num_chrom))), 
+                 linetype="dashed", color="red") +
+      #geom_violin(trim=FALSE, fill="white") + # gets misaligned by levels() <-
+      geom_boxplot(width=0.25, fill="white", alpha=0.25)+
+      facet_wrap(~DAG, ncol=1, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_discrete(breaks=as.character(sort(rep(1:22, 2)))) + 
+      scale_color_manual(values=c("purple3", "seagreen4")) +
+      guides(color=guide_legend(override.aes=list(alpha=1, shape=16, size=1))) +
+      labs(title=paste("d-separation tests => H0: data based on human maps", 
+                       "(100kb) fits DAG model (1000 bootstrap samples)"),
+           x="Chromosome", y="-log10(p-value)") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("Manhattan/manhattan_d-sep_human_100kb.png", p1, 
+          base_height=10, base_width=15)
+
+m_dsep_human_100kb$minuslog10pval <- -log10(m_dsep_human_100kb$pval)
+
+pisim_tbl=filter(m_dsep_human_100kb, pi=="sim")
+compare_means(pval ~ DAG,  data=pisim_tbl)
+my_comparisons <- list(c("1", "2"),
+                       c("2", "3"),
+                       c("3", "4"),
+                       c("4", "5"))
+
+p2 <- ggpubr::ggboxplot(data=pisim_tbl,
+                x="DAG", 
+                y="minuslog10pval",
+                legend="bottom",
+                ylab="-log10(pval)",
+                title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
+                       "between pairs of increasingly complex DAGs (sim. pi)")) +
+      facet_wrap(~chr, nrow=4, labeller=label_both) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
+      theme(plot.title=element_text(size=26),
+            axis.title=element_text(size=24), 
+            axis.text=element_text(size=16),
+            strip.text.x=element_text(size=14))
+save_plot("pairwise_d-sep_human_DAGs_pisim_100kb.png", p2, 
+          base_height=20, base_width=30)
+
+piobs_tbl=filter(m_dsep_human_100kb, pi=="obs")
+compare_means(pval ~ DAG,  data=piobs_tbl)
+my_comparisons <- list(c("1", "2"),
+                       c("2", "3"),
+                       c("3", "4"),
+                       c("4", "5"))
+
+p3 <- ggpubr::ggboxplot(data=piobs_tbl,
+                x="DAG", 
+                y="minuslog10pval",
+                legend="bottom",
+                ylab="-log10(pval)",
+                title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
+                       "between pairs of increasingly complex DAGs (obs. pi)")) +
+      facet_wrap(~chr, nrow=4, labeller=label_both) +
+      scale_y_continuous(breaks=pretty_breaks()) +
+      stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
+      theme(plot.title=element_text(size=26),
+            axis.title=element_text(size=24), 
+            axis.text=element_text(size=16),
+            strip.text.x=element_text(size=14))
+save_plot("pairwise_d-sep_human_DAGs_piobs_100kb.png", p3, 
+          base_height=20, base_width=30)
+
+# 1 Mb
 # combines tables from previous chunks
 pval_dsep_pisim <- fread("real_data_maps/dsep_human_maps_1Mb_pisim.csv.gz") 
 pval_dsep_piobs <- fread("real_data_maps/dsep_human_maps_1Mb_piobs.csv.gz") 
@@ -7516,8 +7634,12 @@ x <- m_dsep_human_1Mb %>% group_by(DAG, pi, chr) %>%
                           distinct(DAG, pi, chr, .keep_all=T) %>%
                           dplyr::select(DAG, pi, chr, avg_p)
 y <- x %>% group_by(DAG, pi) %>% 
-           mutate(cor_pval_chrID_est=cor.test(avg_p, chr, method="kendall")$estimate,
-                  cor_pval_chrID_pval=cor.test(avg_p, chr, method="kendall")$p.value) %>% 
+           mutate(cor_pval_chrID_est=cor.test(avg_p, 
+                                              chr, 
+                                              method="kendall")$estimate,
+                  cor_pval_chrID_pval=cor.test(avg_p, 
+                                               chr,
+                                               method="kendall")$p.value) %>% 
            distinct(DAG, pi, .keep_all=T) %>%
            dplyr::select(., c(DAG, pi, cor_pval_chrID_est, cor_pval_chrID_pval))
 
@@ -7626,7 +7748,9 @@ human_maps_1Mb$prop_del_sites <- human_maps_1Mb$del_sites /
   human_maps_1Mb$num_sites
 
 for(w in 1:5) {
+  Sys.time()
   cat(paste("fitting SEMs with filter w = ", w, sep=""))
+  cat("\n")
   
   human_maps_1Mb$bin <- human_maps_1Mb$chromStart %/% w * 1e+6 
   dat_1Mb <- human_maps_1Mb %>% 
@@ -7670,7 +7794,7 @@ for(w in 1:5) {
                 test="boot",
                 se="boot",
                 group="chr", 
-                group.equal="none")
+                group.equal="regressions")
   
   fwrite(parameterestimates(m1boot,
                             boot.ci.type="norm",
@@ -7748,7 +7872,7 @@ for(w in 1:5) {
                std.ov=T,
                estimator="GLS",
                group="chr", 
-               group.equal="none")
+               group.equal="regressions")
   
   fwrite(parameterestimates(m3gls, ci=F), paste("SEM/m3gls_est_w", 
                                                 w, 
@@ -7799,7 +7923,7 @@ for(w in 1:5) {
                std.ov=T,
                estimator="GLS",
                group="chr", 
-               group.equal="none")
+               group.equal="regressions")
   
   fwrite(parameterestimates(m4gls, ci=F), paste("SEM/m4gls_est_w", 
                                                 w, 
@@ -7849,7 +7973,7 @@ for(w in 1:5) {
                std.ov=T,
                estimator="GLS",
                group="chr", 
-               group.equal="none")
+               group.equal="regressions")
   
   fwrite(parameterestimates(m5gls, ci=F), paste("SEM/m5gls_est_w", 
                                                 w, 
@@ -7901,7 +8025,7 @@ for(w in 1:5) {
                std.ov=T,
                estimator="GLS",
                group="chr", 
-               group.equal="none")
+               group.equal="regressions")
   
   fwrite(parameterestimates(m6gls, ci=F), paste("SEM/m6gls_est_w", 
                                                 w, 
@@ -7921,7 +8045,7 @@ for(w in 1:5) {
                test="boot",
                se="boot",
                group="chr", 
-               group.equal="none")
+               group.equal="regressions")
   
   fwrite(parameterestimates(m6boot,
                             boot.ci.type="norm",
@@ -7936,10 +8060,38 @@ for(w in 1:5) {
                                                           w,
                                                           ".csv", sep="")) 
 }
+
+modificationIndices(m6gls)
+
+model_7 <- "
+avg_pi ~ start(0.25)*c1*B
+avg_pi ~ start(0.25)*c2*avg_mut
+avg_pi ~ prop_del_sites
+avg_pi ~ avg_rec
+B ~ start(-0.25)*c3*avg_mut
+B ~ start(-0.1)*c4*prop_del_sites
+B ~ start(0.25)*c5*avg_rec
+avg_mut ~ start(0.25)*c6*avg_rec
+prop_del_sites ~ avg_mut
+prop_del_sites ~ avg_rec
+avg_mut ~~ B
+"
+
+m7gls <- sem(model_7,
+             data=dat_1Mb,
+             fixed.x=F,
+             std.ov=T,
+             estimator="GLS",
+             group="chr", 
+             group.equal="regressions")
+
+modificationindices(m7gls)
+fitmeasures(m7gls)
 ```
 
-
 ## Measurement models
+
+Mutation rate/map
 
 ```{r measure-mut, include=F, message=F, warning=F}
 
@@ -8090,56 +8242,418 @@ maps_1Mb <- maps_1kb %>%
                                 sum_sites_gnomad,
                                 sum_sites_masked_gnomad))
 
-maps_10kb$mean_mut_roulette[which(maps_10kb$mean_mut_roulette==0)] <- NA
-maps_10kb$mean_mut_masked_roulette[which(maps_10kb$mean_mut_masked_roulette==0)] <- NA
-maps_10kb$mean_mut_carlson[which(maps_10kb$mean_mut_carlson==0)] <- NA
-maps_10kb$mean_mut_masked_carlson[which(maps_10kb$mean_mut_masked_carlson==0)] <- NA
-maps_10kb$mean_mut_gnomad[which(maps_10kb$mean_mut_gnomad==0)] <- NA
-maps_10kb$mean_mut_masked_gnomad[which(maps_10kb$mean_mut_masked_gnomad==0)] <- NA
+maps_10kb$mean_mut_roulette[which(maps_10kb$sum_sites_roulette < 7.5e+3)] <- NA
+maps_10kb$mean_mut_masked_roulette[which(maps_10kb$sum_sites_masked_roulette < 7.5e+3)] <- NA
+maps_10kb$mean_mut_carlson[which(maps_10kb$sum_sites_carlson < 5.5e+3)] <- NA
+maps_10kb$mean_mut_masked_carlson[which(maps_10kb$sum_sites_masked_carlson < 7.5e+3)] <- NA
+maps_10kb$mean_mut_gnomad[which(maps_10kb$sum_sites_gnomad < 7.5e+3)] <- NA
+maps_10kb$mean_mut_masked_gnomad[which(maps_10kb$sum_sites_masked_gnomad < 7.5e+3)] <- NA
 
-maps_100kb$mean_mut_roulette[which(maps_100kb$mean_mut_roulette==0)] <- NA
-maps_100kb$mean_mut_masked_roulette[which(maps_100kb$mean_mut_masked_roulette==0)] <- NA
-maps_100kb$mean_mut_carlson[which(maps_100kb$mean_mut_carlson==0)] <- NA
-maps_100kb$mean_mut_masked_carlson[which(maps_100kb$mean_mut_masked_carlson==0)] <- NA
-maps_100kb$mean_mut_gnomad[which(maps_100kb$mean_mut_gnomad==0)] <- NA
-maps_100kb$mean_mut_masked_gnomad[which(maps_100kb$mean_mut_masked_gnomad==0)] <- NA
+maps_100kb$mean_mut_roulette[which(maps_100kb$sum_sites_roulette < 7.5e+4)] <- NA
+maps_100kb$mean_mut_masked_roulette[which(maps_100kb$sum_sites_masked_roulette < 7.5e+4)] <- NA
+maps_100kb$mean_mut_carlson[which(maps_100kb$sum_sites_carlson < 7.5e+4)] <- NA
+maps_100kb$mean_mut_masked_carlson[which(maps_100kb$sum_sites_masked_carlson < 7.5e+4)] <- NA
+maps_100kb$mean_mut_gnomad[which(maps_100kb$sum_sites_gnomad < 7.5e+4)] <- NA
+maps_100kb$mean_mut_masked_gnomad[which(maps_100kb$sum_sites_masked_gnomad < 7.5e+4)] <- NA
 
-maps_1Mb$mean_mut_roulette[which(maps_1Mb$mean_mut_roulette==0)] <- NA
-maps_1Mb$mean_mut_masked_roulette[which(maps_1Mb$mean_mut_masked_roulette==0)] <- NA
-maps_1Mb$mean_mut_carlson[which(maps_1Mb$mean_mut_carlson==0)] <- NA
-maps_1Mb$mean_mut_masked_carlson[which(maps_1Mb$mean_mut_masked_carlson==0)] <- NA
-maps_1Mb$mean_mut_gnomad[which(maps_1Mb$mean_mut_gnomad==0)] <- NA
-maps_1Mb$mean_mut_masked_gnomad[which(maps_1Mb$mean_mut_masked_gnomad==0)] <- NA
+maps_1Mb$mean_mut_roulette[which(maps_1Mb$sum_sites_roulette < 7.5e+5)] <- NA
+maps_1Mb$mean_mut_masked_roulette[which(maps_1Mb$sum_sites_masked_roulette < 7.5e+5)] <- NA
+maps_1Mb$mean_mut_carlson[which(maps_1Mb$sum_sites_carlson < 7.5e+5)] <- NA
+maps_1Mb$mean_mut_masked_carlson[which(maps_1Mb$sum_sites_masked_carlson < 7.5e+5)] <- NA
+maps_1Mb$mean_mut_gnomad[which(maps_1Mb$sum_sites_gnomad < 7.5e+5)] <- NA
+maps_1Mb$mean_mut_masked_gnomad[which(maps_1Mb$sum_sites_masked_gnomad < 7.5e+5)] <- NA
 
-# testing measurement model 1 Mb
+# testing measurement model on chr1, 1 Mb scale
 names(human_maps_1Mb)[1] <- "chrom"
 df_1Mb <- left_join(maps_1Mb, human_maps_1Mb, by=c("chrom",
                                                    "chromStart",
                                                    "chromEnd"))
-tbl_1Mb <- filter(df_1Mb, 
-                  coverage > 0.75,
-                  chrom != 19,
-                  mean_mut_masked_carlson > 1e-8) # removes one weird outlier
 
-p <- ggpairs(dplyr::select(tbl_1Mb, c(mean_mut_masked_carlson,
-                                      mean_mut_masked_roulette,
-                                      mean_mut_masked_gnomad,
-                                      avg_pi)))
+# ismc chr 1, from the book chapter Barroso & Dutheil 2025/6
+ismc_chr1 <- fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.theta.1Mb.bedgraph")
+ismc_chr1$chrom <- 1
+ismc_chr1$chrom <- as.integer(ismc_chr1$chrom)
+names(ismc_chr1)[4:9] <- c(paste("ismc", 1:4, sep="_"), "ismc_mean", "ismc_joint")
 
-mm_model <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + avg_pi
+ismc_measurement_1 <- "
+ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4
 "
 
-fit <- sem(model=mm_model,
-           data=tbl_1Mb,
-           std.ov=T,
-           group="chrom")
+m1 <- sem(model=ismc_measurement_1,
+          data=ismc_chr1,
+          std.ov=T,
+          std.lv=T)
 
-summary(fit)
-predict(fit)
-inspect(fit, "r2")
-parameterEstimates(fit)
-modificationIndices(fit)
+summary(m1)
+inspect(m1, "r2")
+parameterEstimates(m1)
+fitMeasures(m1)
+
+ismc_measurement_2 <- "
+ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4 + ismc_joint
+"
+
+m2 <- sem(model=ismc_measurement_2,
+          data=ismc_chr1,
+          std.ov=T,
+          std.lv=T)
+
+anova(m1, m2)
+
+ismc_chr1$ismc_latent <- as.numeric(predict(m1))
+
+q <- ggpairs(ismc_chr1[,4:ncol(ismc_chr1)])
+                              
+df_chr1_1Mb <- left_join(filter(df_1Mb, chrom==1),
+                         ismc_chr1,
+                         by=c("chrom", "chromStart", "chromEnd"))
+
+tbl_chr1_1Mb <-  filter(df_chr1_1Mb, coverage > 0.5)
+
+p1 <- ggpairs(dplyr::select(tbl_chr1_1Mb, c(mean_mut_masked_carlson,
+                                            mean_mut_masked_roulette,
+                                            mean_mut_masked_gnomad,
+                                            ismc_1,
+                                            ismc_2,
+                                            ismc_3,
+                                            ismc_4,
+                                            ismc_mean,
+                                            ismc_latent,
+                                            avg_pi)))
+
+tbl_chr1_1Mb_log <- cbind.data.frame(tbl_chr1_1Mb[,1:3],
+                                     apply(tbl_chr1_1Mb[,4:ncol(tbl_chr1_1Mb)-1],
+                                           2, log))
+tbl_chr1_1Mb_log$ismc_latent <- tbl_chr1_1Mb$ismc_latent
+
+mut_measurement_1 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
+"
+
+m3 <- sem(model=mut_measurement_1,
+                data=tbl_chr1_1Mb_log,
+                std.ov=T,
+                std.lv=T,
+                missing="fiml")
+
+modificationIndices(m3)
+
+mut_measurement_2 <- "
+mu=~NA*mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
+mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+" 
+
+m4 <- sem(model=mut_measurement_2,
+          data=tbl_chr1_1Mb_log,
+          std.ov=T,
+          std.lv=T,
+          missing="fiml")
+
+summary(m4)
+inspect(m4, "r2")
+parameterEstimates(m4)
+lavInspect(m4, what="free")
+vcov(m4)
+
+
+mut_measurement_3 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean
+mean_mut_masked_roulette ~~ ismc_mean
+"
+
+m5 <- sem(model=mut_measurement_3,
+          data=tbl_chr1_1Mb_log,
+          std.ov=T,
+          std.lv=T,
+          missing="fiml")
+
+modificationindices(m5)
+
+```
+
+Adding recombination
+
+```{r measure-mut, include=F, message=F, warning=F}
+
+#devtools::install_github("PeteHaitch/SparseSummarizedExperiment")
+
+num_chrom <- 22
+
+# pyrho YRI
+pyrho <- list(length=num_chrom)
+for(c in 1:num_chrom) {
+  pyrho[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
+                               "recombination_tables/pyrho/",
+                               "pyrho_YRI_tbl_chr", c, ".csv.gz", sep=""))
+}
+pyrho_YRI_1kb <- do.call(rbind.data.frame, pyrho)
+
+# pyrho CEU
+pyrho <- list(length=num_chrom)
+for(c in 1:num_chrom) {
+  pyrho[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
+                               "recombination_tables/pyrho/",
+                               "pyrho_CEU_tbl_chr", c, ".csv.gz", sep=""))
+}
+pyrho_CEU_1kb <- do.call(rbind.data.frame, pyrho)
+
+# decode
+decode <- list(length=num_chrom)
+for(c in 1:num_chrom) {
+  decode[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
+                               "recombination_tables/deCODE/",
+                               "deCODE_tbl_chr", c, ".csv.gz", sep=""))
+}
+decode_1kb <- do.call(rbind.data.frame, decode)
+
+pyrho_CEU_1kb$rate[pyrho_CEU_1kb$num_sites_map==0] <- NA
+pyrho_YRI_1kb$rate[pyrho_YRI_1kb$num_sites_map==0] <- NA
+decode_1kb$rate[decode_1kb$num_sites_map==0] <- NA
+
+names(pyrho_CEU_1kb)[5] <- "pyrho_CEU"
+names(pyrho_YRI_1kb)[5] <- "pyrho_YRI"
+names(decode_1kb)[5] <- "deCODE"
+
+pyrho_CEU_gr <- makeGRangesFromDataFrame(dplyr::select(pyrho_CEU_1kb,
+                                                       -num_sites_map),
+                                         keep.extra.columns=T)
+pyrho_YRI_gr <- makeGRangesFromDataFrame(dplyr::select(pyrho_YRI_1kb,
+                                                       -num_sites_map),
+                                         keep.extra.columns=T)
+decode_gr <- makeGRangesFromDataFrame(dplyr::select(decode_1kb,
+                                                    -num_sites_map),
+                                      keep.extra.columns=T)
+
+maps_1kb <- SparseSummarizedExperiment::combine(pyrho_CEU_gr, 
+                                                pyrho_YRI_gr,
+                                                decode_gr)
+
+maps_1kb <- as.data.table(maps_1kb) %>% dplyr::select(., c(seqnames,
+                                                           start, 
+                                                           end, 
+                                                           pyrho_CEU,
+                                                           pyrho_YRI,
+                                                           deCODE))
+names(maps_1kb)[1:3] <- c("chrom", "chromStart", "chromEnd")
+
+maps_1kb <- maps_1kb %>% group_by(chrom) %>% 
+                         mutate(bin_1Mb=chromStart %/% 1e+6)
+
+maps_1Mb <- maps_1kb %>%
+            group_by(chrom, bin_1Mb) %>% 
+            mutate(mean_pyrho_CEU=mean(pyrho_CEU),
+                   mean_pyrho_YRI=mean(pyrho_YRI),
+                   mean_deCODE=mean(deCODE),
+                   chromStart=min(chromStart),
+                   chromEnd=max(chromEnd)) %>%
+             distinct(bin_1Mb, .keep_all=T) %>%
+             ungroup() %>%
+             dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                mean_pyrho_CEU,
+                                mean_pyrho_YRI,
+                                mean_deCODE))
+
+# ismc chr 1, from the book chapter Barroso & Dutheil 2025/6
+ismc_chr1 <- fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.rho.1Mb.bedgraph")
+names(ismc_chr1)[4:9] <- c(paste("ismc", 1:4, sep="_"), "ismc_mean", "ismc_joint")
+
+# w/ rec we must filter by hand since there's no "coverage" info in the tables
+ismc_missing <-  fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.missing.prop.1Mb.bedgraph")
+
+ismc_chr1$missing_prop <- ismc_missing$`LP6005441-DNA_A08`
+ismc_chr1$ismc_1[ismc_chr1$missing_prop > 0.25] <- NA
+ismc_chr1$ismc_2[ismc_chr1$missing_prop > 0.25] <- NA
+ismc_chr1$ismc_3[ismc_chr1$missing_prop > 0.25] <- NA
+ismc_chr1$ismc_4[ismc_chr1$missing_prop > 0.25] <- NA
+ismc_chr1$ismc_mean[ismc_chr1$missing_prop > 0.25] <- NA
+ismc_chr1$ismc_joint[ismc_chr1$missing_prop > 0.25] <- NA
+
+ismc_measurement_1 <- "
+ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4
+"
+
+m1 <- sem(model=ismc_measurement_1,
+          data=ismc_chr1,
+          std.ov=T,
+          std.lv=T,
+          missing="fiml")
+
+summary(m1, fit.measures = TRUE)
+inspect(m1, "r2")
+parameterEstimates(m1)
+fitMeasures(m1)
+
+ismc_measurement_2 <- "
+ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4 + ismc_joint
+"
+
+m2 <- sem(model=ismc_measurement_2,
+          data=ismc_chr1,
+          std.ov=T,
+          std.lv=T,
+          missing="fiml")
+
+anova(m1, m2)
+
+ismc_chr1$ismc_latent <- as.numeric(predict(m1))
+
+q <- ggpairs(ismc_chr1[,4:ncol(ismc_chr1)])
+
+df_chr1_1Mb <- left_join(filter(maps_1Mb, chrom=="chr1"),
+                         ismc_chr1,
+                         by=c("chrom", "chromStart", "chromEnd"))
+
+p1 <- ggpairs(dplyr::select(df_chr1_1Mb, c(mean_pyrho_CEU,
+                                           mean_pyrho_YRI,
+                                           mean_deCODE,
+                                           ismc_1,
+                                           ismc_2,
+                                           ismc_3,
+                                           ismc_4,
+                                           ismc_mean,
+                                           ismc_latent)))
+
+tbl_chr1_1Mb_log <- cbind.data.frame(df_chr1_1Mb[,1:3],
+                                     apply(df_chr1_1Mb[,4:ncol(df_chr1_1Mb)-1],
+                                           2, log))
+tbl_chr1_1Mb_log$ismc_latent <- df_chr1_1Mb$ismc_latent
+
+rec_measurement_1 <- "
+rec=~mean_pyrho_CEU + mean_pyrho_YRI + mean_deCODE + ismc_latent 
+"
+
+m3 <- sem(model=rec_measurement_1,
+                data=tbl_chr1_1Mb_log,
+                std.ov=T,
+                std.lv=T,
+                missing="fiml")
+
+modificationIndices(m3)
+
+rec_measurement_2 <- "
+rec=~mean_pyrho_CEU + mean_pyrho_YRI + mean_deCODE + ismc_latent 
+mean_pyrho_CEU ~~ ismc_latent
+" 
+
+m4 <- sem(model=rec_measurement_2,
+          data=tbl_chr1_1Mb_log,
+          std.ov=T,
+          std.lv=T,
+          missing="fiml")
+
+summary(m4)
+inspect(m4, "r2")
+parameterEstimates(m4)
+lavInspect(m4, what="free")
+vcov(m4)
+```
+
+Putting it together (chr 1, 1Mb scale)
+
+```{r real-data, include=F, message=F, warning=F}
+
+# adjusting rec tbl
+rec_chr1_1Mb <- filter(maps_1Mb, chrom=="chr1")
+rec_chr1_1Mb$chrom <- 1
+rec_chr1_1Mb$chrom <- as.integer(rec_chr1_1Mb$chrom)
+
+df_chr1_1Mb <- left_join(tbl_chr1_1Mb, rec_chr1_1Mb,
+                         by=c("chrom", "chromStart", "chromEnd"))
+          
+tbl_chr1_1Mb_log <- cbind.data.frame(df_chr1_1Mb[,1:3],
+                                     apply(df_chr1_1Mb[,4:ncol(df_chr1_1Mb)],
+                                           2, log))
+model_0 <- "
+# latent variables
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
+# regressions
+avg_pi ~ start(0.25)*c1*B
+avg_pi ~ start(0.25)*c2*mu
+B ~ start(-0.25)*c3*mean_mut_masked_roulette
+B ~ start(-0.25)*c4*prop_del_sites
+B ~ start(-0.25)*c5*mean_pyrho_YRI
+"
+
+m0gls <- sem(model_0,
+             data=na.omit(tbl_chr1_1Mb_log),
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+modificationindices(m0gls)
+
+
+model_1 <- "
+# latent variables
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
+# regressions
+avg_pi ~ start(0.25)*c1*B
+avg_pi ~ start(0.25)*c2*mu
+B ~ start(-0.25)*c3*mean_mut_masked_roulette
+B ~ start(-0.25)*c4*prop_del_sites
+B ~ start(-0.25)*c5*mean_pyrho_YRI
+mean_pyrho_YRI~~avg_pi
+"
+
+
+TODO try using the latent mu directly to reduce % missing data (imputation?)
+m1gls <- sem(model_1,
+             data=na.omit(tbl_chr1_1Mb_log),
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+modificationindices(m1gls)
+summary(m1gls, fit.measures=T)
+fitMeasures(m1gls)
+
+model_1 <- "
+# latent variables
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
+rec=~mean_pyrho_YRI + mean_deCODE 
+# regressions
+avg_pi ~ start(0.25)*c1*B
+avg_pi ~ start(0.25)*c2*mu
+B ~ start(-0.25)*c3*mean_mut_masked_roulette
+B ~ start(-0.1)*c4*prop_del_sites
+B ~ start(0.25)*c5*rec
+mu ~ start(0.25)*c6*rec
+"
+
+m1gls <- sem(model_1,
+             data=na.omit(df_chr1_1Mb),
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+modificationindices(m1gls)
+
+model_2 <- "
+# latent variables
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
+mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+rec=~mean_pyrho_YRI + mean_deCODE 
+# regressions
+avg_pi ~ start(0.25)*c1*B
+avg_pi ~ start(0.25)*c2*mu
+B ~ start(-0.25)*c3*mu
+B ~ start(-0.1)*c4*prop_del_sites
+B ~ start(0.25)*c5*mean_pyrho_YRI
+mu ~ start(0.25)*c6*rec
+"
+
+m2gls <- sem(model_2,
+             data=na.omit(df_chr1_1Mb),
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+modificationindices(m2gls)
+
 ```
 
 # Real Data
