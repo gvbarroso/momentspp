@@ -47,8 +47,15 @@ use_python("/usr/bin/python3")
 
 scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
 
-knitr::opts_knit$set(root.dir="~/Desktop/sim_data")
-#knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/sim_data")
+knitr::opts_knit$set(root.dir="~/Desktop/causal_inference")
+#knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/causal_inference")
+
+# custom function to mutate a subset of rows (a few chunks use it)
+mutate_cond <- function(.data, condition, ..., envir = parent.frame()) {
+  condition <- eval(substitute(condition), .data, envir)
+  .data[condition, ] <- .data[condition, ] %>% mutate(...)
+  .data
+}
 ```
 
 # Building chromosome models
@@ -82,6 +89,9 @@ models <- setDT(crossing(L, p_stay, num_exons, exon_lengths, mult_r_u,
                          mean_r, mean_u, shapes_rate_u, shapes_rate_r,
                          avg_rec_spans, avg_mut_spans))
 models$model <- 1:nrow(models)
+
+num_models <- nrow(models)
+num_reps <- 10
 
 Sys.setenv(num_models=nrow(models))
 Sys.setenv(num_reps=10)
@@ -440,10 +450,11 @@ elements$start == models$exon_lengths[m])
 }
 ```
 
-NOTE: we used predict_B.py, a script that emplys bgshr functionality to output
-a table of predictions in 1 kb windows.
+We made predictions using the bgshr suite of tools:
+https://github.com/gvbarroso/bgshr
 
 For reference, the HTC condor submission script used (submitted on May 19 2025):
+
 ```{bash, chtc-sub, engine.opts='-i', include=F, eval=F}
 
 log = reports/job_$(Cluster)_$(Process).log
@@ -457,7 +468,7 @@ container_image = file:///staging/valadaresbar/bgshr.sif
 
 executable = ../../predict_B.sh
 
-
+# equilibrium demography
 arguments = \ 
     --cores 32 \
     --block_size 5000 \ 
@@ -470,11 +481,11 @@ arguments = \
     --p_neus \
         0.302 \
     -a elements.csv.gz \
-    -t lookup_tbl_equilibrium.csv.gz \
+    -t lookup_tbl_equilibrium.csv.gz \ 
     -r rec_map.csv.gz \
     -u mut_map.csv.gz \
     -o tbl_1kb.csv.gz \
-    -Ne 10000
+    -Ne 10000 
     
 
 transfer_input_files = \
@@ -494,7 +505,7 @@ request_memory = 32GB
 request_disk = 2GB
 ```
 
-# Specifying causal models
+Specifying causal models
 
 ```{r dags-viz, include=F, message=F, warning=F}
 
@@ -708,74 +719,13 @@ save_plot("DAGs/DAG_7.svg", DD7p)
 save_plot("DAGs/DAG_7.png", DD7p)
 ```
 
-The DAGs that we will test with the data via d-sep (based on DD6p and DD7p).
-NOTE: '~' operator means 'is a affected by'
-Selection is constant across exons.
-We set variable names to match column names in the output of the python chunk.
-
-```{r dags-models, include=F, message=F, warning=F}
-# neutral pi
-## non-mutagenic rec
-D1g <- DAG(
-  B~avg_rec,
-  B~exonic_sites,
-  B~avg_mut,
-  pi_neu_sim~B,
-  pi_neu_sim~avg_mut
-)
-
-## mutagenic rec
-D2g <- DAG(
-  avg_mut~avg_rec,
-  B~avg_rec,
-  B~exonic_sites,
-  B~avg_mut,
-  pi_neu_sim~B,
-  pi_neu_sim~avg_mut
-)
-
-# sim_pi == total pi (neutral + simulated)
-## non-mutagenic rec
-D3g <- DAG(
-  B~avg_rec,
-  B~exonic_sites,
-  B~avg_mut,
-  sim_pi~B,
-  sim_pi~avg_mut
-)
-
-## mutagenic rec
-D4g <- DAG(
-  avg_mut~avg_rec,
-  B~avg_rec,
-  B~exonic_sites,
-  B~avg_mut,
-  sim_pi~B,
-  sim_pi~avg_mut
-)
-
-bs1 <- basiSet(D1g)
-bs2 <- basiSet(D2g)
-bs3 <- basiSet(D3g)
-bs4 <- basiSet(D4g)
-```
-
 # Simulated data
 
-These simulations are based purely on (naive) moments++ predictions using 
-artificially constructed maps.
+These simulations are based on moments++ predictions using artificially 
+constructed maps.
 
-Therefore, there is no interference in these data.
-
-TODO: adapt script to interference iterations and to introduce mut noise in expectations of pi total, neu and del
-eg
-S = 100 # diploid sample size
-pi_sim <- numeric(length=nrow(human_filtered_10kb))
-for(i in 1:S) { 
-    pi_sim <- pi_sim + rbinom(size=1e+4, 
-                              n=nrow(human_filtered_10kb),
-                              prob=human_filtered_10kb$exp_pi) / 1e+4
-}
+We can obtain predictions with (final B iteration) and without (1st iteration)
+interference.
 
 ## Setting up
 
@@ -795,13 +745,33 @@ for(m in 1:num_models) {
   cv_u_cv_B_100kb <- 0
   cv_u_cv_B_1Mb <- 0
   
-  for(rep in 1:num_reps) {
+  for(r in 1:num_reps) {
     
-    cat(paste("Rep. ", rep, "\n"))
+    cat(paste("Rep. ", r, "\n"))
     
     # (unlike in the SEM chunk,) here we keep all cols in the maps
     # because it helps with plotting
-    m1kb <- fread(paste("model_", m, "/rep_", rep, "/tbl_1kb.csv.gz", sep=""))
+    m1kb <- fread(paste("model_", m, "/rep_", r, "/tbl_1kb.csv.gz", sep=""))
+    # forcing expected pi neutral at windows without neutral sites to B*4Ne*u
+    # (these are the synonymous sites in the exon model of constrain elements)
+    m1kb <- m1kb %>% mutate_cond(., del_sites==1000, exp_neu_pi=B*4*1e+4*avg_mut)
+    
+    S <- 100 # diploid sample size
+    sim_pi <- numeric(length=nrow(m1kb))
+    pi_neu_sim <- numeric(length=nrow(m1kb))
+    for(i in 1:S) { 
+      sim_pi <- sim_pi + rbinom(size=1e+3, 
+                                n=nrow(m1kb),
+                                prob=m1kb$exp_pi) / 1e+3
+      
+      pi_neu_sim <- pi_neu_sim + rbinom(size=1e+3, 
+                                        n=nrow(m1kb),
+                                        prob=m1kb$exp_neu_pi) / 1e+3
+    }
+    
+    m1kb$sim_pi <- sim_pi / S
+    m1kb$pi_neu_sim <- pi_neu_sim 
+    
     data_cols <- names(m1kb)[4:ncol(m1kb)]
     
     m1kb$bin_10kb <- (1:nrow(m1kb) - 1) %/% 10
@@ -1036,7 +1006,7 @@ for(m in 1:num_models) {
                            align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
 
     lands_scales <- plot_grid(lands_10kb, lands_100kb, lands_1Mb, nrow=1)
-    #save_plot(paste("model_", m, "/rep_", rep, "/maps.png", sep=""),
+    #save_plot(paste("model_", m, "/rep_", r, "/maps.png", sep=""),
     #          lands_scales, base_height=12, base_width=24)
   }
   
@@ -1060,12 +1030,30 @@ fwrite(cv_models, "cv_models.csv")
 
 First we evaluate the goodness of fit of DAGs 1-4 via d-separation.
 Unlike the SEM approach from later chunks, these tests include the number of
-exonic sites in the DAG, because they are more flexible (Spearman pcors).
+exonic sites in the DAG, because they are more flexible w.r.t to assumptions
+(since they are based on Spearman partial correlations).
+
+### Without interference:
+
+TODO?
+
+### With interference:
+
+Here we are using predictions from the final iteration of B-values.
 
 DAG 1: non-mutagenic recombination, pi neutral
 ```{r d-sep-DAG1, include=F, message=F, warning=F}
 
-basis_set <- bs1
+# neutral pi, non-mutagenic rec
+D1g <- DAG(
+  B~avg_rec,
+  B~del_sites,
+  B~avg_mut,
+  pi_neu_sim~B,
+  pi_neu_sim~avg_mut
+)
+
+basis_set <- basiSet(D1g)
 weights <- rep(1, length=length(basis_set))
     
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -1081,15 +1069,40 @@ names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
 pb <- txtProgressBar(min=0, max=num_models, style=3)  
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
-  for(rep in 1:num_reps) {
+  for(r in 1:num_reps) {
     
-    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    maps_1kb <- fread(paste("model_", m, "/rep_", r, 
                             "/tbl_1kb.csv.gz", sep=""))
+    
+    # forcing expected pi neutral at windows without neutral sites to B*4Ne*u
+    # (these are the synonymous sites in the exon model of constrain elements)
+    maps_1kb <- maps_1kb %>% mutate_cond(., del_sites==1000,
+                                         exp_neu_pi=B*4*1e+4*avg_mut)
+    
+    S <- 100 # diploid sample size
+    sim_pi <- numeric(length=nrow(maps_1kb))
+    pi_neu_sim <- numeric(length=nrow(maps_1kb))
+    for(i in 1:S) { 
+      sim_pi <- sim_pi + rbinom(size=1e+3, 
+                                n=nrow(maps_1kb),
+                                prob=maps_1kb$exp_pi) / 1e+3
+      
+      pi_neu_sim <- pi_neu_sim + rbinom(size=1e+3, 
+                                        n=nrow(maps_1kb),
+                                        prob=maps_1kb$exp_neu_pi) / 1e+3
+    }
+    
+    maps_1kb$sim_pi <- sim_pi / S
+    maps_1kb$pi_neu_sim <- pi_neu_sim / S
+    
     data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
     
     maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
     maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
     maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    
+    # NOTE: at larger windows, del_sites are averaged instead of summed up,
+    # but this is irrelevant as here we only care about correlations
     
     maps_10kb <- maps_1kb %>%
                  group_by(bin_10kb) %>% 
@@ -1163,9 +1176,9 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
-    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
-    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
+    dsep_c_10kb[m, r] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
+    dsep_c_100kb[m, r] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
+    dsep_c_1Mb[m, r] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
   }
 }
 close(pb)
@@ -1185,7 +1198,17 @@ fwrite(pval_dsep, "pval_dsep1.csv")
 DAG 2: mutagenic recombination, pi neutral
 ```{r d-sep-DAG2, include=F, message=F, warning=F}
 
-basis_set <- bs2
+# neutral pi, mutagenic rec
+D2g <- DAG(
+  avg_mut~avg_rec,
+  B~avg_rec,
+  B~del_sites,
+  B~avg_mut,
+  pi_neu_sim~B,
+  pi_neu_sim~avg_mut
+)
+
+basis_set <- basiSet(D2g)
 weights <- rep(1, length=length(basis_set))
     
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -1201,15 +1224,40 @@ names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
 pb <- txtProgressBar(min=0, max=num_models, style=3)  
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
-  for(rep in 1:num_reps) {
+  for(r in 1:num_reps) {
     
-    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    maps_1kb <- fread(paste("model_", m, "/rep_", r, 
                             "/tbl_1kb.csv.gz", sep=""))
+    
+    # forcing expected pi neutral at windows without neutral sites to B*4Ne*u
+    # (these are the synonymous sites in the exon model of constrain elements)
+    maps_1kb <- maps_1kb %>% mutate_cond(., del_sites==1000,
+                                         exp_neu_pi=B*4*1e+4*avg_mut)
+    
+    S <- 100 # diploid sample size
+    sim_pi <- numeric(length=nrow(maps_1kb))
+    pi_neu_sim <- numeric(length=nrow(maps_1kb))
+    for(i in 1:S) { 
+      sim_pi <- sim_pi + rbinom(size=1e+3, 
+                                n=nrow(maps_1kb),
+                                prob=maps_1kb$exp_pi) / 1e+3
+      
+      pi_neu_sim <- pi_neu_sim + rbinom(size=1e+3, 
+                                        n=nrow(maps_1kb),
+                                        prob=maps_1kb$exp_neu_pi) / 1e+3
+    }
+    
+    maps_1kb$sim_pi <- sim_pi / S
+    maps_1kb$pi_neu_sim <- pi_neu_sim / S
+    
     data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
     
     maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
     maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
     maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    
+    # NOTE: at larger windows, del_sites are averaged instead of summed up,
+    # but this is irrelevant as here we only care about correlations
     
     maps_10kb <- maps_1kb %>%
                  group_by(bin_10kb) %>% 
@@ -1277,9 +1325,9 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
-    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
-    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
+    dsep_c_10kb[m, r] <- combine.test(pvals_10kb, weights, "fisher")
+    dsep_c_100kb[m, r] <- combine.test(pvals_100kb, weights, "fisher")
+    dsep_c_1Mb[m, r] <- combine.test(pvals_1Mb, weights, "fisher")
   }
 }
 close(pb)
@@ -1299,7 +1347,17 @@ fwrite(pval_dsep, "pval_dsep2.csv")
 DAG 3: non-mutagenic recombination, simulated pi (mutational variance)
 ```{r d-sep-DAG3, include=F, message=F, warning=F}
 
-basis_set <- bs3
+# sim_pi == total pi (neul + del), non-mutagenic rec
+D3g <- DAG(
+  B~avg_rec,
+  B~del_sites,
+  B~avg_mut,
+  sim_pi~B,
+  sim_pi~avg_mut,
+  sim_pi~del_sites
+)
+
+basis_set <- basiSet(D3g)
 weights <- rep(1, length=length(basis_set))
     
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -1315,15 +1373,40 @@ names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
 pb <- txtProgressBar(min=0, max=num_models, style=3)  
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
-  for(rep in 1:num_reps) {
+  for(r in 1:num_reps) {
     
-    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    maps_1kb <- fread(paste("model_", m, "/rep_", r, 
                             "/tbl_1kb.csv.gz", sep=""))
+    
+    # forcing expected pi neutral at windows without neutral sites to B*4Ne*u
+    # (these are the synonymous sites in the exon model of constrain elements)
+    maps_1kb <- maps_1kb %>% mutate_cond(., del_sites==1000,
+                                         exp_neu_pi=B*4*1e+4*avg_mut)
+    
+    S <- 100 # diploid sample size
+    sim_pi <- numeric(length=nrow(maps_1kb))
+    pi_neu_sim <- numeric(length=nrow(maps_1kb))
+    for(i in 1:S) { 
+      sim_pi <- sim_pi + rbinom(size=1e+3, 
+                                n=nrow(maps_1kb),
+                                prob=maps_1kb$exp_pi) / 1e+3
+      
+      pi_neu_sim <- pi_neu_sim + rbinom(size=1e+3, 
+                                        n=nrow(maps_1kb),
+                                        prob=maps_1kb$exp_neu_pi) / 1e+3
+    }
+    
+    maps_1kb$sim_pi <- sim_pi / S
+    maps_1kb$pi_neu_sim <- pi_neu_sim / S
+    
     data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
     
     maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
     maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
     maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    
+    # NOTE: at larger windows, del_sites are averaged instead of summed up,
+    # but this is irrelevant as here we only care about correlations
     
     maps_10kb <- maps_1kb %>%
                  group_by(bin_10kb) %>% 
@@ -1391,9 +1474,9 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
-    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
-    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
+    dsep_c_10kb[m, r] <- combine.test(pvals_10kb, weights, "fisher")
+    dsep_c_100kb[m, r] <- combine.test(pvals_100kb, weights, "fisher")
+    dsep_c_1Mb[m, r] <- combine.test(pvals_1Mb, weights, "fisher")
   }
 }
 close(pb)
@@ -1413,7 +1496,18 @@ fwrite(pval_dsep, "pval_dsep3.csv")
 DAG 4: mutagenic recombination, simulated pi (mutational variance)
 ```{r d-sep-DAG4, include=F, message=F, warning=F}
 
-basis_set <- bs4
+# sim_pi == total pi (neul + del), mutagenic rec
+D4g <- DAG(
+  avg_mut~avg_rec,
+  B~avg_rec,
+  B~del_sites,
+  B~avg_mut,
+  sim_pi~B,
+  sim_pi~avg_mut,
+  sim_pi~del_sites
+)
+
+basis_set <- basiSet(D4g)
 weights <- rep(1, length=length(basis_set))
     
 dsep_c_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -1429,15 +1523,40 @@ names(dsep_c_1Mb) <- paste("rep_", 1:num_reps, sep="")
 pb <- txtProgressBar(min=0, max=num_models, style=3)  
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
-  for(rep in 1:num_reps) {
+  for(r in 1:num_reps) {
     
-    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    maps_1kb <- fread(paste("model_", m, "/rep_", r, 
                             "/tbl_1kb.csv.gz", sep=""))
+    
+    # forcing expected pi neutral at windows without neutral sites to B*4Ne*u
+    # (these are the synonymous sites in the exon model of constrain elements)
+    maps_1kb <- maps_1kb %>% mutate_cond(., del_sites==1000,
+                                         exp_neu_pi=B*4*1e+4*avg_mut)
+    
+    S <- 100 # diploid sample size
+    sim_pi <- numeric(length=nrow(maps_1kb))
+    pi_neu_sim <- numeric(length=nrow(maps_1kb))
+    for(i in 1:S) { 
+      sim_pi <- sim_pi + rbinom(size=1e+3, 
+                                n=nrow(maps_1kb),
+                                prob=maps_1kb$exp_pi) / 1e+3
+      
+      pi_neu_sim <- pi_neu_sim + rbinom(size=1e+3, 
+                                        n=nrow(maps_1kb),
+                                        prob=maps_1kb$exp_neu_pi) / 1e+3
+    }
+    
+    maps_1kb$sim_pi <- sim_pi / S
+    maps_1kb$pi_neu_sim <- pi_neu_sim / S
+    
     data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
     
     maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
     maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
     maps_1kb$bin_1Mb <- (1:nrow(maps_1kb) - 1) %/% 1000
+    
+    # NOTE: at larger windows, del_sites are averaged instead of summed up,
+    # but this is irrelevant as here we only care about correlations
     
     maps_10kb <- maps_1kb %>%
                  group_by(bin_10kb) %>% 
@@ -1505,9 +1624,9 @@ for(m in 1:num_models) {
       }
     }
 
-    dsep_c_10kb[m, rep] <- combine.test(pvals_10kb, weights, "fisher")
-    dsep_c_100kb[m, rep] <- combine.test(pvals_100kb, weights, "fisher")
-    dsep_c_1Mb[m, rep] <- combine.test(pvals_1Mb, weights, "fisher")
+    dsep_c_10kb[m, r] <- combine.test(pvals_10kb, weights, "fisher")
+    dsep_c_100kb[m, r] <- combine.test(pvals_100kb, weights, "fisher")
+    dsep_c_1Mb[m, r] <- combine.test(pvals_1Mb, weights, "fisher")
   }
 }
 close(pb)
@@ -1659,10 +1778,27 @@ Computing simple correlations and fitting linear regression models
 
 for(m in 1:num_models) {
   print(paste(m, Sys.Date(), Sys.time()), sep="\t")
-  for(rep in 1:num_reps) {
+  for(r in 1:num_reps) {
     
-    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+    maps_1kb <- fread(paste("model_", m, "/rep_", r, 
                             "/tbl_1kb.csv.gz", sep=""))
+    
+    S <- 100 # diploid sample size
+    sim_pi <- numeric(length=nrow(maps_1kb))
+    pi_neu_sim <- numeric(length=nrow(maps_1kb))
+    for(i in 1:S) { 
+      sim_pi <- sim_pi + rbinom(size=1e+3, 
+                                n=nrow(maps_1kb),
+                                prob=maps_1kb$exp_pi) / 1e+3
+      
+      pi_neu_sim <- pi_neu_sim + rbinom(size=1e+3, 
+                                        n=nrow(maps_1kb),
+                                        prob=maps_1kb$exp_neu_pi) / 1e+3
+    }
+    
+    maps_1kb$sim_pi <- sim_pi / S
+    maps_1kb$pi_neu_sim <- pi_neu_sim / S
+    
     data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
     
     maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
@@ -1672,17 +1808,17 @@ for(m in 1:num_models) {
     maps_10kb <- maps_1kb %>%
                  group_by(bin_10kb) %>% 
                  summarise_at(data_cols, mean) %>%
-                 dplyr::select(., -bin_10kb)
+                 dplyr::select(., -c(bin_10kb, num_sites))
     
     maps_100kb <- maps_1kb %>%
                   group_by(bin_100kb) %>% 
                   summarise_at(data_cols, mean) %>%
-                  dplyr::select(., -bin_100kb)
+                  dplyr::select(., -c(bin_100kb, num_sites))
     
     maps_1Mb <- maps_1kb %>%
                 group_by(bin_1Mb) %>% 
                 summarise_at(data_cols, mean) %>%
-                dplyr::select(., -bin_1Mb)
+                dplyr::select(., -c(bin_1Mb, num_sites))
     
     # correlation matrices, filtering to reduce auto-correlation
     mat=Hmisc::rcorr(as.matrix(filter(maps_10kb, row_number() %% 100 == 0)),
@@ -1690,7 +1826,7 @@ for(m in 1:num_models) {
     tbl_10kb <- mat$r
     tbl_10kb[upper.tri(tbl_10kb)] <- mat$P[upper.tri(mat$P)]
     suppressMessages(fwrite(tbl_10kb, 
-                            paste("model_", m, "/rep_", rep, 
+                            paste("model_", m, "/rep_", r, 
                                   "/pval_upper_spearman_lower_10kb.csv", 
                                   sep="")))
 
@@ -1698,7 +1834,7 @@ for(m in 1:num_models) {
     tbl_100kb <- mat$r
     tbl_100kb[upper.tri(tbl_100kb)] <- mat$P[upper.tri(mat$P)]
     suppressMessages(fwrite(tbl_100kb, 
-                            paste("model_", m, "/rep_", rep, 
+                            paste("model_", m, "/rep_", r, 
                                   "/pval_upper_spearman_lower_100kb.csv", 
                                   sep="")))
 
@@ -1706,7 +1842,7 @@ for(m in 1:num_models) {
     tbl_1Mb <- mat$r
     tbl_1Mb[upper.tri(tbl_1Mb)] <- mat$P[upper.tri(mat$P)]
     suppressMessages(fwrite(tbl_1Mb,
-                            paste("model_", m, "/rep_", rep, 
+                            paste("model_", m, "/rep_", r, 
                                    "/pval_upper_spearman_lower_1Mb.csv", 
                                    sep="")))
     
@@ -1745,7 +1881,7 @@ for(m in 1:num_models) {
                               maps_1Mb$sim_pi,
                               method="pearson")$estimate 
     
-    fwrite(corr_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(corr_tbl, paste("model_", m, "/rep_", r, 
                            "/pearson_pi_tbl.csv", sep=""))
     
     # tables for storing estimates from linear models (rows are bin sizes)
@@ -1880,17 +2016,17 @@ for(m in 1:num_models) {
     r2_tbl$u[3] <- anova.pi$VarExp[2] * 100
     r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
     
-    fwrite(r2_raw, paste("model_", m, "/rep_", rep, 
+    fwrite(r2_raw, paste("model_", m, "/rep_", r, 
                          "/r2_raw_tbl_pi_total.csv", sep=""))
-    fwrite(coeff_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(coeff_tbl, paste("model_", m, "/rep_", r, 
                          "/coeff_tbl_pi_total.csv", sep=""))
-    fwrite(pval_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(pval_tbl, paste("model_", m, "/rep_", r, 
                          "/pval_tbl_pi_total.csv", sep=""))
-    fwrite(r2_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(r2_tbl, paste("model_", m, "/rep_", r, 
                          "/r2_typeII_tbl_pi_total.csv", sep=""))
-    fwrite(vif_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(vif_tbl, paste("model_", m, "/rep_", r, 
                          "/vif_tbl.csv", sep=""))
-    fwrite(tests_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(tests_tbl, paste("model_", m, "/rep_", r, 
                          "/tests_tbl_pi_total.csv", sep=""))
 
     # 10 kb
@@ -1970,7 +2106,7 @@ for(m in 1:num_models) {
     
     lm_plots <- plot_grid(lm_10kb, lm_100kb, lm_1Mb, nrow=1)
     save_plot(paste("model_", m, 
-                    "/rep_", rep,
+                    "/rep_", r,
                     "/lm_plots_pi_total.svg", sep=""),
               lm_plots, base_height=10, base_width=20)
     
@@ -2083,17 +2219,17 @@ for(m in 1:num_models) {
       r2_tbl$B[3] <- anova.pi$VarExp[1] * 100
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
-    fwrite(r2_raw, paste("model_", m, "/rep_", rep, 
+    fwrite(r2_raw, paste("model_", m, "/rep_", r, 
                          "/r2_raw_tbl_pi_neu.csv", sep=""))
-    fwrite(coeff_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(coeff_tbl, paste("model_", m, "/rep_", r, 
                          "/coeff_tbl_pi_neu.csv", sep=""))
-    fwrite(pval_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(pval_tbl, paste("model_", m, "/rep_", r, 
                          "/pval_tbl_pi_neu.csv", sep=""))
-    fwrite(r2_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(r2_tbl, paste("model_", m, "/rep_", r, 
                          "/r2_typeII_tbl_pi_neu.csv", sep=""))
-    fwrite(vif_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(vif_tbl, paste("model_", m, "/rep_", r, 
                          "/vif_tbl.csv", sep=""))
-    fwrite(tests_tbl, paste("model_", m, "/rep_", rep, 
+    fwrite(tests_tbl, paste("model_", m, "/rep_", r, 
                          "/tests_tbl_pi_neu.csv", sep=""))
 
     # 10 kb
@@ -2173,7 +2309,7 @@ for(m in 1:num_models) {
     
     lm_plots <- plot_grid(lm_10kb, lm_100kb, lm_1Mb, nrow=1)
     save_plot(paste("model_", m, 
-                    "/rep_", rep, 
+                    "/rep_", r, 
                     "/lm_plots_pi_neu.svg", sep=""),
               lm_plots, base_height=10, base_width=20)
   }
@@ -2218,10 +2354,10 @@ for(m in 1:num_models) {
   for(rep in 1:num_reps) {
     # correlations in lower part of triangular matrices, pvalues in upper
     cors_10kb <- fread(paste("model_", m, "/rep_", rep, 
-                            "/pval_upper_spearman_lower_10kb.csv", sep=""))
+                             "/pval_upper_spearman_lower_10kb.csv", sep=""))
     
     cors_100kb <- fread(paste("model_", m, "/rep_", rep, 
-                            "/pval_upper_spearman_lower_100kb.csv", sep=""))
+                              "/pval_upper_spearman_lower_100kb.csv", sep=""))
     
     cors_1Mb <- fread(paste("model_", m, "/rep_", rep, 
                             "/pval_upper_spearman_lower_1Mb.csv", sep=""))
@@ -2252,9 +2388,9 @@ for(m in 1:num_models) {
     u_vs_sim_pi_1Mb[m, rep] <- cors_1Mb[row, "avg_mut"]
     
     row <- which(names(cors_10kb) == "B")
-    B_vs_exonic_sites_10kb[m, rep] <- cors_10kb[row, "exonic_sites"]
-    B_vs_exonic_sites_100kb[m, rep] <- cors_100kb[row, "exonic_sites"]
-    B_vs_exonic_sites_1Mb[m, rep] <- cors_1Mb[row, "exonic_sites"]
+    B_vs_exonic_sites_10kb[m, rep] <- cors_10kb[row, "del_sites"]
+    B_vs_exonic_sites_100kb[m, rep] <- cors_100kb[row, "del_sites"]
+    B_vs_exonic_sites_1Mb[m, rep] <- cors_1Mb[row, "del_sites"]
     
     row <- which(names(cors_10kb) == "sim_pi")
     B_vs_sim_pi_10kb[m, rep] <- cors_10kb[row, "B"]
@@ -2525,8 +2661,8 @@ r_vs_sim_pi_1Mb$model <- 1:num_models
 r_vs_sim_pi_1Mb$scale <- 1e+6
 
 r_vs_sim_pi <- rbind.data.frame(r_vs_sim_pi_10kb,
-                               r_vs_sim_pi_100kb,
-                               r_vs_sim_pi_1Mb)
+                                r_vs_sim_pi_100kb,
+                                r_vs_sim_pi_1Mb)
 fwrite(r_vs_sim_pi, "pval_r_sim_pi.csv")
 
 # mu x B
@@ -2561,8 +2697,8 @@ u_vs_sim_pi_1Mb$model <- 1:num_models
 u_vs_sim_pi_1Mb$scale <- 1e+6
 
 u_vs_sim_pi <- rbind.data.frame(u_vs_sim_pi_10kb,
-                               u_vs_sim_pi_100kb,
-                               u_vs_sim_pi_1Mb)
+                                u_vs_sim_pi_100kb,
+                                u_vs_sim_pi_1Mb)
 fwrite(u_vs_sim_pi, "pval_u_sim_pi.csv")
 
 # B vs pi
@@ -2579,8 +2715,8 @@ B_vs_sim_pi_1Mb$model <- 1:num_models
 B_vs_sim_pi_1Mb$scale <- 1e+6
 
 B_vs_sim_pi <- rbind.data.frame(B_vs_sim_pi_10kb,
-                               B_vs_sim_pi_100kb,
-                               B_vs_sim_pi_1Mb)
+                                B_vs_sim_pi_100kb,
+                                B_vs_sim_pi_1Mb)
 fwrite(B_vs_sim_pi, "pval_B_sim_pi.csv")
 
 # B vs E
@@ -3930,28 +4066,30 @@ total_mu_pi:=c2 + mu_B_pi
 total_rec_pi:=rec_B_pi + rec_mu_pi + rec_mu_B_pi
 "
 
-# non-mutagenic recomb., pi sim
+# non-mutagenic recomb., pi sim total
 DAG3 <- "
 sim_pi ~ start(0.5)*c1*B
 sim_pi ~ start(0.5)*c2*avg_mut
-B ~ start(-0.25)*c3*avg_mut
-B ~ start(-0.5)*c6*del_sites
-B ~ start(0.2)*c4*avg_rec
+sim_pi ~ start(-0.5)*c3*del_sites
+B ~ start(-0.25)*c4*avg_mut
+B ~ start(-0.5)*c5*del_sites
+B ~ start(0.2)*c6*avg_rec
 avg_mut ~~ 0*avg_rec
 # fixing exogenous residual variances since we standardize variables?
 avg_mut ~~ 1*avg_mut
 avg_rec ~~ 1*avg_rec
 del_sites ~~ 1*del_sites
 # defining indirect and total effects
-rec_B_pi:=c1*c4
-mu_B_pi:=c1*c3
+rec_B_pi:=c1*c6
+mu_B_pi:=c1*c4
 total_mu_pi:=c2 + mu_B_pi
 "
 
-# mutagenic recomb., pi sim
+# mutagenic recomb., pi sim total
 DAG4 <- "
 sim_pi ~ start(0.5)*c1*B
 sim_pi ~ start(0.5)*c2*avg_mut
+sim_pi ~ start(-0.5)*c3*avg_mut
 B ~ start(-0.25)*c3*avg_mut
 B ~ start(-0.5)*c6*del_sites
 B ~ start(0.2)*c4*avg_rec
@@ -4034,10 +4172,32 @@ pval_sem4_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 for(m in 1:num_models) {
   print(paste(m, Sys.Date(), Sys.time()), sep="\t")
-  for(rep in 1:num_reps) {
-    maps_1kb <- fread(paste("model_", m, "/rep_", rep, 
+  for(r in 1:num_reps) {
+    maps_1kb <- fread(paste("model_", m, "/rep_", r, 
                             "/tbl_1kb.csv.gz", sep=""))
-    data_cols <- names(maps_1kb)[4:ncol(maps_1kb)]
+    
+    # forcing expected pi neutral at windows without neutral sites to B*4Ne*u
+    # (these are the synonymous sites in the exon model of constrain elements)
+    maps_1kb <- maps_1kb %>% mutate_cond(., del_sites==1000,
+                                         exp_neu_pi=B*4*1e+4*avg_mut)
+    # introducing mutational variance
+    S <- 100 # diploid sample size
+    sim_pi <- numeric(length=nrow(maps_1kb))
+    pi_neu_sim <- numeric(length=nrow(maps_1kb))
+    for(i in 1:S) { 
+      sim_pi <- sim_pi + rbinom(size=1e+3, 
+                                n=nrow(maps_1kb),
+                                prob=maps_1kb$exp_pi) / 1e+3
+      
+      pi_neu_sim <- pi_neu_sim + rbinom(size=1e+3, 
+                                        n=nrow(maps_1kb),
+                                        prob=maps_1kb$exp_neu_pi) / 1e+3
+    }
+    
+    maps_1kb$sim_pi <- sim_pi / S
+    maps_1kb$pi_neu_sim <- pi_neu_sim / S
+    
+    data_cols <- names(maps_1kb)[5:ncol(maps_1kb)]
     
     maps_1kb$bin_10kb <- (1:nrow(maps_1kb) - 1) %/% 10
     maps_1kb$bin_100kb <- (1:nrow(maps_1kb) - 1) %/% 100
@@ -4074,9 +4234,9 @@ for(m in 1:num_models) {
     # here a threshold of 1e-2 is used otherwise memory explodes
     relevant_exons <- apply(prd, 2, function(x) x < 1e-2)
     exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
-    maps_10kb$del_sites <- unlist(mclapply(mc.cores=16, exons_per_bin,
-                           function(x) 
-                           return(sum(maps_10kb$exonic_sites[x]))))# * 1/prd[x, x]))))
+    maps_10kb$del_sites_around <- unlist(mclapply(mc.cores=16, exons_per_bin,
+                                  function(x) 
+                                  return(sum(maps_10kb$del_sites[x]))))# * 1/prd[x, x]))))
     
     ## 100 kb
     maps_100kb$cum_rec <- cumsum(maps_100kb$avg_rec * 1e+5)
@@ -4091,9 +4251,9 @@ for(m in 1:num_models) {
     
     relevant_exons <- apply(prd, 2, function(x) x < 1e-2)
     exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
-    maps_100kb$del_sites <- unlist(mclapply(mc.cores=16, exons_per_bin,
-                         function(x) 
-                         return(sum(maps_100kb$exonic_sites[x]))))# * 1/prd[x, x]))))
+    maps_100kb$del_sites_around <- unlist(mclapply(mc.cores=16, exons_per_bin,
+                                   function(x) 
+                                   return(sum(maps_100kb$del_sites[x]))))# * 1/prd[x, x]))))
     
     ## 1 Mb
     maps_1Mb$cum_rec <- cumsum(maps_1Mb$avg_rec * 1e+6)
@@ -4108,44 +4268,38 @@ for(m in 1:num_models) {
     
     relevant_exons <- apply(prd, 2, function(x) x < 2.5e-2)
     exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
-    maps_1Mb$del_sites <- unlist(lapply(exons_per_bin, function(x) 
-                          return(sum(maps_1Mb$exonic_sites[x]))))# * 1/prd[x, x]))))
+    maps_1Mb$del_sites_around <- unlist(lapply(exons_per_bin, function(x) 
+                                 return(sum(maps_1Mb$del_sites[x]))))# * 1/prd[x, x]))))
            
     # MVN tests -- only include endogenous variables (mu, B, pi) (Bolen, 1989)
     ## Filtering bins to avoid auto-correlation
     ## and keeping only one pi variable to avoid numerically singular matrices
-    mvn_10kb <- mvn(data=dplyr::select(filter(maps_10kb, 
-                                              row_number() %% 100==0,
-                                              del_sites > 0),
+    mvn_10kb <- MVN::mvn(data=dplyr::select(filter(maps_10kb, 
+                                            row_number() %% 100==0,
+                                            del_sites > 0),
                          c(avg_mut, B, sim_pi)),
-                    transform="log",
-                    univariatePlot="none",
-                    multivariatePlot="none",
-                    mvnTest="hz")
+                         transform="log",
+                         mvn_test="hz")
     
     mvn_100kb <- mvn(data=dplyr::select(filter(maps_100kb, 
                                                row_number() %% 10==0,
                                                del_sites > 0),
                           c(avg_mut, B, sim_pi)),
-                     transform="log",
-                     univariatePlot="none",
-                     multivariatePlot="none",
-                     mvnTest="hz")
+                          transform="log",
+                          mvn_test="hz")
     
-    mvn_1Mb <- mvn(data=dplyr::select(filter(maps_1Mb, del_sites > 0),
+    mvn_1Mb <- mvn(data=dplyr::select(filter(maps_1Mb, 
+                                             del_sites > 0),
                          c(avg_mut, B, sim_pi)),
-                    transform="log",
-                    univariatePlot="none",
-                    multivariatePlot="none",
-                    mvnTest="hz",
-                    showOutliers=T)
+                         transform="log",
+                         mvn_test="hz")
     
-    mvn_tbl <- data.frame(pval=c(mvn_10kb$multivariateNormality$`p value`,
-                                 mvn_100kb$multivariateNormality$`p value`,
-                                 mvn_1Mb$multivariateNormality$`p value`),
+    mvn_tbl <- data.frame(pval=c(mvn_10kb$multivariate_normality$p.value,
+                                 mvn_100kb$multivariate_normality$p.value,
+                                 mvn_1Mb$multivariate_normality$p.value),
                           scale=c(1e+4, 1e+5, 1e+6))
     
-    fwrite(mvn_tbl, paste("model_", m, "/rep_", rep, "/mvn_tests.csv", sep=""))
+    fwrite(mvn_tbl, paste("model_", m, "/rep_", r, "/mvn_tests.csv", sep=""))
     
     # log-transforming and standardizing as well as
     # filtering to remove autocorrelation and outliers (del_sites > 0)
@@ -4165,21 +4319,21 @@ for(m in 1:num_models) {
       2, function(x) (x-mean(x)) / sd(x)))
     
     # Q-Q plots, also keeping only endogenous variales (Bolen, 1989 apud Shipley)
-    svg(paste("model_", m, "/rep_", rep, "/qq_10kb.svg", sep=""), 
+    svg(paste("model_", m, "/rep_", r, "/qq_10kb.svg", sep=""), 
         width=9, height=7)
     heplots::cqplot(dplyr::select(std_10kb, c(avg_mut, 
                                               B, 
                                               sim_pi)))
     dev.off()
     
-    svg(paste("model_", m, "/rep_", rep, "/qq_100kb.svg", sep=""),
+    svg(paste("model_", m, "/rep_", r, "/qq_100kb.svg", sep=""),
         width=9, height=7)
     heplots::cqplot(dplyr::select(std_100kb, c(avg_mut, 
                                                B, 
                                                sim_pi)))
     dev.off()
     
-    svg(paste("model_", m, "/rep_", rep, "/qq_1Mb.svg", sep=""),
+    svg(paste("model_", m, "/rep_", r, "/qq_1Mb.svg", sep=""),
         width=9, height=7)
     heplots::cqplot(dplyr::select(std_1Mb, c(avg_mut,
                                              B, 
@@ -4187,17 +4341,17 @@ for(m in 1:num_models) {
     dev.off()
     
     # pairwise scatter plots
-    svg(paste("model_", m, "/rep_", rep, "/scatter_10kb.svg", sep=""), 
+    svg(paste("model_", m, "/rep_", r, "/scatter_10kb.svg", sep=""), 
         width=9, height=7)
     pairs(std_10kb)
     dev.off()
     
-    svg(paste("model_", m, "/rep_", rep, "/scatter_100kb.svg", sep=""),
+    svg(paste("model_", m, "/rep_", r, "/scatter_100kb.svg", sep=""),
         width=9, height=7)
     pairs(std_100kb)
     dev.off()
     
-    svg(paste("model_", m, "/rep_", rep, "/scatter_1Mb.svg", sep=""),
+    svg(paste("model_", m, "/rep_", r, "/scatter_1Mb.svg", sep=""),
         width=9, height=7)
     pairs(std_1Mb)
     dev.off()
@@ -4211,15 +4365,15 @@ for(m in 1:num_models) {
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
     tryCatch({
-      pval_sem1_10kb[m, rep] <- fitMeasures(sem1_10kb)[5]
+      pval_sem1_10kb[m, r] <- fitMeasures(sem1_10kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem1_100kb[m, rep] <- fitMeasures(sem1_100kb)[5]
+      pval_sem1_100kb[m, r] <- fitMeasures(sem1_100kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem1_1Mb[m, rep] <- fitMeasures(sem1_1Mb)[5]
+      pval_sem1_1Mb[m, r] <- fitMeasures(sem1_1Mb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     # r-sqrd of endogenous variables, low for B because
@@ -4229,22 +4383,22 @@ for(m in 1:num_models) {
                                 inspect(sem1_1Mb, "rsquare"))
     names(sem1_r2) <- c("pi_neu_sim", "B")
     fwrite(sem1_r2, paste("model_", m, 
-                          "/rep_", rep, 
+                          "/rep_", r, 
                           "/sem_DAG1_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem1_10kb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG1_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem1_100kb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep,
+                 "/rep_", r,
                  "/lavaan_DAG1_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem1_1Mb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG1_1Mb.csv", sep=""))
     
     # DAG 2
@@ -4255,15 +4409,15 @@ for(m in 1:num_models) {
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
     tryCatch({
-      pval_sem2_10kb[m, rep] <- fitMeasures(sem2_10kb)[5]
+      pval_sem2_10kb[m, r] <- fitMeasures(sem2_10kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem2_100kb[m, rep] <- fitMeasures(sem2_100kb)[5]
+      pval_sem2_100kb[m, r] <- fitMeasures(sem2_100kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem2_1Mb[m, rep] <- fitMeasures(sem2_1Mb)[5]
+      pval_sem2_1Mb[m, r] <- fitMeasures(sem2_1Mb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     sem2_r2 <- rbind.data.frame(inspect(sem2_10kb, "rsquare"),
@@ -4271,22 +4425,22 @@ for(m in 1:num_models) {
                                 inspect(sem2_1Mb, "rsquare"))
     names(sem2_r2) <- c("pi_neu_sim", "B", "avg_mut")
     fwrite(sem2_r2, paste("model_", m,
-                          "/rep_", rep,
+                          "/rep_", r,
                           "/sem_DAG2_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem2_10kb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG2_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem2_100kb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG2_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem2_1Mb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG2_1Mb.csv", sep=""))
     
     # DAG 3
@@ -4297,15 +4451,15 @@ for(m in 1:num_models) {
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
     tryCatch({
-      pval_sem3_10kb[m, rep] <- fitMeasures(sem3_10kb)[5]
+      pval_sem3_10kb[m, r] <- fitMeasures(sem3_10kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem3_100kb[m, rep] <- fitMeasures(sem3_100kb)[5]
+      pval_sem3_100kb[m, r] <- fitMeasures(sem3_100kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem3_1Mb[m, rep] <- fitMeasures(sem3_1Mb)[5]
+      pval_sem3_1Mb[m, r] <- fitMeasures(sem3_1Mb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     sem3_r2 <- rbind.data.frame(inspect(sem3_10kb, "rsquare"),
@@ -4313,22 +4467,22 @@ for(m in 1:num_models) {
                                 inspect(sem3_1Mb, "rsquare"))
     names(sem3_r2) <- c("pi_sim", "B")
     fwrite(sem3_r2, paste("model_", m,
-                          "/rep_", rep,
+                          "/rep_", r,
                           "/sem_DAG3_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem3_10kb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG3_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem3_100kb, ci=T), 
            paste("model_", m,
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG3_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem3_1Mb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG3_1Mb.csv", sep=""))
     
     # DAG 4
@@ -4339,15 +4493,15 @@ for(m in 1:num_models) {
     # error handling to bypass cases where lavaan fails to converge the optim
     # such cases can be identified as NA entries in the pval table
     tryCatch({
-      pval_sem4_10kb[m, rep] <- fitMeasures(sem4_10kb)[5]
+      pval_sem4_10kb[m, r] <- fitMeasures(sem4_10kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem4_100kb[m, rep] <- fitMeasures(sem4_100kb)[5]
+      pval_sem4_100kb[m, r] <- fitMeasures(sem4_100kb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     tryCatch({
-      pval_sem4_1Mb[m, rep] <- fitMeasures(sem4_1Mb)[5]
+      pval_sem4_1Mb[m, r] <- fitMeasures(sem4_1Mb)[5]
     }, error=function(e){cat("WARNING :", conditionMessage(e), "\n")})
     
     sem4_r2 <- rbind.data.frame(inspect(sem4_10kb, "rsquare"),
@@ -4355,22 +4509,22 @@ for(m in 1:num_models) {
                                 inspect(sem4_1Mb, "rsquare"))
     names(sem4_r2) <- c("pi_sim", "B", "avg_mut")
     fwrite(sem4_r2, paste("model_", m,
-                          "/rep_", rep,
+                          "/rep_", r,
                           "/sem_DAG4_r2.csv", sep=""))
     
     fwrite(parameterestimates(sem4_10kb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG4_10kb.csv", sep=""))
     
     fwrite(parameterestimates(sem4_100kb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep,
+                 "/rep_", r,
                  "/lavaan_DAG4_100kb.csv", sep=""))
     
     fwrite(parameterestimates(sem4_1Mb, ci=T), 
            paste("model_", m, 
-                 "/rep_", rep, 
+                 "/rep_", r, 
                  "/lavaan_DAG4_1Mb.csv", sep=""))
   }
 }
@@ -7739,8 +7893,6 @@ We later relax these assumptions with latent variables.
 Testing model fitting at the 1 Mb scale, keeping 1 in every w windows to
 reduce auto-correlation.
 
-TODO: use modIndices()
-
 ```{r SEM-human-maps-fw, include=F, message=F, warning=F}
 
 human_maps_1Mb$coverage <- human_maps_1Mb$num_sites / 1e+6 
@@ -8106,8 +8258,8 @@ for(c in 1:num_chrom) {
 }
 roulette_1kb <- do.call(rbind.data.frame, roulette)
 
-names(roulette_1kb)[4:ncol(roulette_1kb)] <- paste(names(roulette_1kb)[4:ncol(roulette_1kb)],
-                                                   "roulette", sep="_")
+names(roulette_1kb)[4:ncol(roulette_1kb)] <-
+  paste(names(roulette_1kb)[4:ncol(roulette_1kb)],"roulette", sep="_")
 
 # Carlson et al 2018
 carlson <- list(length=num_chrom)
@@ -8118,8 +8270,8 @@ for(c in 1:num_chrom) {
 }
 carlson_1kb <- do.call(rbind.data.frame, carlson)
 
-names(carlson_1kb)[4:ncol(carlson_1kb)] <- paste(names(carlson_1kb)[4:ncol(carlson_1kb)],
-                                               "carlson", sep="_")
+names(carlson_1kb)[4:ncol(carlson_1kb)] <- 
+  paste(names(carlson_1kb)[4:ncol(carlson_1kb)], "carlson", sep="_")
 
 # gnomad
 gnomad <- list(length=num_chrom)
@@ -8130,144 +8282,143 @@ for(c in 1:num_chrom) {
 }
 gnomad_1kb <- do.call(rbind.data.frame, gnomad)
 
-names(gnomad_1kb)[4:ncol(gnomad_1kb)] <- paste(names(gnomad_1kb)[4:ncol(gnomad_1kb)],
-                                               "gnomad", sep="_")
+names(gnomad_1kb)[4:ncol(gnomad_1kb)] <- 
+  paste(names(gnomad_1kb)[4:ncol(gnomad_1kb)], "gnomad", sep="_")
 
-maps_1kb <- cbind.data.frame(roulette_1kb,
-                             carlson_1kb[,4:ncol(carlson_1kb)],
-                             gnomad_1kb[,4:ncol(gnomad_1kb)])
+mut_maps_1kb <- cbind.data.frame(roulette_1kb,
+                                 carlson_1kb[,4:ncol(carlson_1kb)],
+                                 gnomad_1kb[,4:ncol(gnomad_1kb)])
 
-maps_1kb <- maps_1kb %>% group_by(chrom) %>% 
-                         mutate(bin_10kb=(1:n() - 1) %/% 10,
-                                bin_100kb=(1:n() - 1) %/% 100,
-                                bin_1Mb=(1:n() - 1) %/% 1000)
+mut_maps_1kb <- mut_maps_1kb %>% group_by(chrom) %>% 
+                                 mutate(bin_10kb=(1:n() - 1) %/% 10,
+                                        bin_100kb=(1:n() - 1) %/% 100,
+                                        bin_1Mb=(1:n() - 1) %/% 1000)
 
-
-maps_10kb <- maps_1kb %>%
-             group_by(chrom, bin_10kb) %>% 
-             mutate(mean_mut_roulette=mean(avg_mut_roulette),
-                    mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
-                    mean_mut_carlson=mean(avg_mut_carlson),
-                    mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
-                    mean_mut_gnomad=mean(avg_mut_gnomad),
-                    mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
-                    sum_sites_roulette=sum(num_sites_roulette),
-                    sum_sites_masked_roulette=sum(num_sites_masked_roulette),
-                    sum_sites_carlson=sum(num_sites_carlson),
-                    sum_sites_masked_carlson=sum(num_sites_masked_carlson),
-                    sum_sites_gnomad=sum(num_sites_gnomad),
-                    sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
-                    chromStart=min(chromStart),
-                    chromEnd=max(chromEnd)) %>%
-             distinct(bin_10kb, .keep_all=T) %>%
-             ungroup() %>%
-             dplyr::select(., c(chrom, chromStart, chromEnd, 
-                                mean_mut_roulette,
-                                mean_mut_masked_roulette,
-                                mean_mut_masked_roulette,
-                                mean_mut_carlson,
-                                mean_mut_masked_carlson,
-                                mean_mut_gnomad,
-                                mean_mut_masked_gnomad,
-                                sum_sites_roulette,
-                                sum_sites_masked_roulette,
-                                sum_sites_carlson,
-                                sum_sites_masked_carlson,
-                                sum_sites_gnomad,
-                                sum_sites_masked_gnomad))
+mut_maps_10kb <- mut_maps_1kb %>%
+                 group_by(chrom, bin_10kb) %>% 
+                 mutate(mean_mut_roulette=mean(avg_mut_roulette),
+                        mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
+                        mean_mut_carlson=mean(avg_mut_carlson),
+                        mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
+                        mean_mut_gnomad=mean(avg_mut_gnomad),
+                        mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
+                        sum_sites_roulette=sum(num_sites_roulette),
+                        sum_sites_masked_roulette=sum(num_sites_masked_roulette),
+                        sum_sites_carlson=sum(num_sites_carlson),
+                        sum_sites_masked_carlson=sum(num_sites_masked_carlson),
+                        sum_sites_gnomad=sum(num_sites_gnomad),
+                        sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                        chromStart=min(chromStart),
+                        chromEnd=max(chromEnd)) %>%
+                 distinct(bin_10kb, .keep_all=T) %>%
+                 ungroup() %>%
+                 dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                    mean_mut_roulette,
+                                    mean_mut_masked_roulette,
+                                    mean_mut_masked_roulette,
+                                    mean_mut_carlson,
+                                    mean_mut_masked_carlson,
+                                    mean_mut_gnomad,
+                                    mean_mut_masked_gnomad,
+                                    sum_sites_roulette,
+                                    sum_sites_masked_roulette,
+                                    sum_sites_carlson,
+                                    sum_sites_masked_carlson,
+                                    sum_sites_gnomad,
+                                    sum_sites_masked_gnomad))
     
-maps_100kb <- maps_1kb %>%
-             group_by(chrom, bin_100kb) %>% 
-             mutate(mean_mut_roulette=mean(avg_mut_roulette),
-                    mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
-                    mean_mut_carlson=mean(avg_mut_carlson),
-                    mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
-                    mean_mut_gnomad=mean(avg_mut_gnomad),
-                    mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
-                    sum_sites_roulette=sum(num_sites_roulette),
-                    sum_sites_masked_roulette=sum(num_sites_masked_roulette),
-                    sum_sites_carlson=sum(num_sites_carlson),
-                    sum_sites_masked_carlson=sum(num_sites_masked_carlson),
-                    sum_sites_gnomad=sum(num_sites_gnomad),
-                    sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
-                    chromStart=min(chromStart),
-                    chromEnd=max(chromEnd)) %>%
-             distinct(bin_100kb, .keep_all=T) %>%
-             ungroup() %>%
-             dplyr::select(., c(chrom, chromStart, chromEnd, 
-                                mean_mut_roulette,
-                                mean_mut_masked_roulette,
-                                mean_mut_masked_roulette,
-                                mean_mut_carlson,
-                                mean_mut_masked_carlson,
-                                mean_mut_gnomad,
-                                mean_mut_masked_gnomad,
-                                sum_sites_roulette,
-                                sum_sites_masked_roulette,
-                                sum_sites_carlson,
-                                sum_sites_masked_carlson,
-                                sum_sites_gnomad,
-                                sum_sites_masked_gnomad))
+mut_maps_100kb <- mut_maps_1kb %>%
+                  group_by(chrom, bin_100kb) %>% 
+                  mutate(mean_mut_roulette=mean(avg_mut_roulette),
+                         mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
+                         mean_mut_carlson=mean(avg_mut_carlson),
+                         mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
+                         mean_mut_gnomad=mean(avg_mut_gnomad),
+                         mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
+                         sum_sites_roulette=sum(num_sites_roulette),
+                         sum_sites_masked_roulette=sum(num_sites_masked_roulette),
+                         sum_sites_carlson=sum(num_sites_carlson),
+                         sum_sites_masked_carlson=sum(num_sites_masked_carlson),
+                         sum_sites_gnomad=sum(num_sites_gnomad),
+                         sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                         chromStart=min(chromStart),
+                         chromEnd=max(chromEnd)) %>%
+                  distinct(bin_100kb, .keep_all=T) %>%
+                  ungroup() %>%
+                  dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                     mean_mut_roulette,
+                                     mean_mut_masked_roulette,
+                                     mean_mut_masked_roulette,
+                                     mean_mut_carlson,
+                                     mean_mut_masked_carlson,
+                                     mean_mut_gnomad,
+                                     mean_mut_masked_gnomad,
+                                     sum_sites_roulette,
+                                     sum_sites_masked_roulette,
+                                     sum_sites_carlson,
+                                     sum_sites_masked_carlson,
+                                     sum_sites_gnomad,
+                                     sum_sites_masked_gnomad))
 
-maps_1Mb <- maps_1kb %>%
-             group_by(chrom, bin_1Mb) %>% 
-             mutate(mean_mut_roulette=mean(avg_mut_roulette),
-                    mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
-                    mean_mut_carlson=mean(avg_mut_carlson),
-                    mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
-                    mean_mut_gnomad=mean(avg_mut_gnomad),
-                    mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
-                    sum_sites_roulette=sum(num_sites_roulette),
-                    sum_sites_masked_roulette=sum(num_sites_masked_roulette),
-                    sum_sites_carlson=sum(num_sites_carlson),
-                    sum_sites_masked_carlson=sum(num_sites_masked_carlson),
-                    sum_sites_gnomad=sum(num_sites_gnomad),
-                    sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
-                    chromStart=min(chromStart),
-                    chromEnd=max(chromEnd)) %>%
-             distinct(bin_1Mb, .keep_all=T) %>%
-             ungroup() %>%
-             dplyr::select(., c(chrom, chromStart, chromEnd, 
-                                mean_mut_roulette,
-                                mean_mut_masked_roulette,
-                                mean_mut_masked_roulette,
-                                mean_mut_carlson,
-                                mean_mut_masked_carlson,
-                                mean_mut_gnomad,
-                                mean_mut_masked_gnomad,
-                                sum_sites_roulette,
-                                sum_sites_masked_roulette,
-                                sum_sites_carlson,
-                                sum_sites_masked_carlson,
-                                sum_sites_gnomad,
-                                sum_sites_masked_gnomad))
+mut_maps_1Mb <- mut_maps_1kb %>%
+                 group_by(chrom, bin_1Mb) %>% 
+                 mutate(mean_mut_roulette=mean(avg_mut_roulette),
+                        mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
+                        mean_mut_carlson=mean(avg_mut_carlson),
+                        mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
+                        mean_mut_gnomad=mean(avg_mut_gnomad),
+                        mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
+                        sum_sites_roulette=sum(num_sites_roulette),
+                        sum_sites_masked_roulette=sum(num_sites_masked_roulette),
+                        sum_sites_carlson=sum(num_sites_carlson),
+                        sum_sites_masked_carlson=sum(num_sites_masked_carlson),
+                        sum_sites_gnomad=sum(num_sites_gnomad),
+                        sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                        chromStart=min(chromStart),
+                        chromEnd=max(chromEnd)) %>%
+                 distinct(bin_1Mb, .keep_all=T) %>%
+                 ungroup() %>%
+                 dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                    mean_mut_roulette,
+                                    mean_mut_masked_roulette,
+                                    mean_mut_masked_roulette,
+                                    mean_mut_carlson,
+                                    mean_mut_masked_carlson,
+                                    mean_mut_gnomad,
+                                    mean_mut_masked_gnomad,
+                                    sum_sites_roulette,
+                                    sum_sites_masked_roulette,
+                                    sum_sites_carlson,
+                                    sum_sites_masked_carlson,
+                                    sum_sites_gnomad,
+                                    sum_sites_masked_gnomad))
 
-maps_10kb$mean_mut_roulette[which(maps_10kb$sum_sites_roulette < 7.5e+3)] <- NA
-maps_10kb$mean_mut_masked_roulette[which(maps_10kb$sum_sites_masked_roulette < 7.5e+3)] <- NA
-maps_10kb$mean_mut_carlson[which(maps_10kb$sum_sites_carlson < 5.5e+3)] <- NA
-maps_10kb$mean_mut_masked_carlson[which(maps_10kb$sum_sites_masked_carlson < 7.5e+3)] <- NA
-maps_10kb$mean_mut_gnomad[which(maps_10kb$sum_sites_gnomad < 7.5e+3)] <- NA
-maps_10kb$mean_mut_masked_gnomad[which(maps_10kb$sum_sites_masked_gnomad < 7.5e+3)] <- NA
+mut_maps_10kb$mean_mut_roulette[which(mut_maps_10kb$sum_sites_roulette < 7.5e+3)] <- NA
+mut_maps_10kb$mean_mut_masked_roulette[which(mut_maps_10kb$sum_sites_masked_roulette < 7.5e+3)] <- NA
+mut_maps_10kb$mean_mut_carlson[which(mut_maps_10kb$sum_sites_carlson < 5.5e+3)] <- NA
+mut_maps_10kb$mean_mut_masked_carlson[which(mut_maps_10kb$sum_sites_masked_carlson < 7.5e+3)] <- NA
+mut_maps_10kb$mean_mut_gnomad[which(mut_maps_10kb$sum_sites_gnomad < 7.5e+3)] <- NA
+mut_maps_10kb$mean_mut_masked_gnomad[which(mut_maps_10kb$sum_sites_masked_gnomad < 7.5e+3)] <- NA
 
-maps_100kb$mean_mut_roulette[which(maps_100kb$sum_sites_roulette < 7.5e+4)] <- NA
-maps_100kb$mean_mut_masked_roulette[which(maps_100kb$sum_sites_masked_roulette < 7.5e+4)] <- NA
-maps_100kb$mean_mut_carlson[which(maps_100kb$sum_sites_carlson < 7.5e+4)] <- NA
-maps_100kb$mean_mut_masked_carlson[which(maps_100kb$sum_sites_masked_carlson < 7.5e+4)] <- NA
-maps_100kb$mean_mut_gnomad[which(maps_100kb$sum_sites_gnomad < 7.5e+4)] <- NA
-maps_100kb$mean_mut_masked_gnomad[which(maps_100kb$sum_sites_masked_gnomad < 7.5e+4)] <- NA
+mut_maps_100kb$mean_mut_roulette[which(mut_maps_100kb$sum_sites_roulette < 7.5e+4)] <- NA
+mut_maps_100kb$mean_mut_masked_roulette[which(mut_maps_100kb$sum_sites_masked_roulette < 7.5e+4)] <- NA
+mut_maps_100kb$mean_mut_carlson[which(mut_maps_100kb$sum_sites_carlson < 7.5e+4)] <- NA
+mut_maps_100kb$mean_mut_masked_carlson[which(mut_maps_100kb$sum_sites_masked_carlson < 7.5e+4)] <- NA
+mut_maps_100kb$mean_mut_gnomad[which(mut_maps_100kb$sum_sites_gnomad < 7.5e+4)] <- NA
+mut_maps_100kb$mean_mut_masked_gnomad[which(mut_maps_100kb$sum_sites_masked_gnomad < 7.5e+4)] <- NA
 
-maps_1Mb$mean_mut_roulette[which(maps_1Mb$sum_sites_roulette < 7.5e+5)] <- NA
-maps_1Mb$mean_mut_masked_roulette[which(maps_1Mb$sum_sites_masked_roulette < 7.5e+5)] <- NA
-maps_1Mb$mean_mut_carlson[which(maps_1Mb$sum_sites_carlson < 7.5e+5)] <- NA
-maps_1Mb$mean_mut_masked_carlson[which(maps_1Mb$sum_sites_masked_carlson < 7.5e+5)] <- NA
-maps_1Mb$mean_mut_gnomad[which(maps_1Mb$sum_sites_gnomad < 7.5e+5)] <- NA
-maps_1Mb$mean_mut_masked_gnomad[which(maps_1Mb$sum_sites_masked_gnomad < 7.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_roulette[which(mut_maps_1Mb$sum_sites_roulette < 7.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_roulette[which(mut_maps_1Mb$sum_sites_masked_roulette < 7.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_carlson[which(mut_maps_1Mb$sum_sites_carlson < 7.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_carlson[which(mut_maps_1Mb$sum_sites_masked_carlson < 7.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_gnomad[which(mut_maps_1Mb$sum_sites_gnomad < 7.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_gnomad[which(mut_maps_1Mb$sum_sites_masked_gnomad < 7.5e+5)] <- NA
 
 # testing measurement model on chr1, 1 Mb scale
-names(human_maps_1Mb)[1] <- "chrom"
-df_1Mb <- left_join(maps_1Mb, human_maps_1Mb, by=c("chrom",
-                                                   "chromStart",
-                                                   "chromEnd"))
+names(mut_maps_1Mb)[1] <- "chrom"
+df_1Mb <- left_join(mut_maps_1Mb, human_maps_1Mb, by=c("chrom",
+                                                       "chromStart",
+                                                       "chromEnd"))
 
 # ismc chr 1, from the book chapter Barroso & Dutheil 2025/6
 ismc_chr1 <- fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.theta.1Mb.bedgraph")
@@ -8305,33 +8456,33 @@ ismc_chr1$ismc_latent <- as.numeric(predict(m1))
 q <- ggpairs(ismc_chr1[,4:ncol(ismc_chr1)])
                               
 df_chr1_1Mb <- left_join(filter(df_1Mb, chrom==1),
-                         ismc_chr1,
-                         by=c("chrom", "chromStart", "chromEnd"))
+                                ismc_chr1,
+                                by=c("chrom", "chromStart", "chromEnd"))
 
-tbl_chr1_1Mb <-  filter(df_chr1_1Mb, coverage > 0.5)
+mut_chr1_1Mb <-  filter(df_chr1_1Mb, coverage > 0.5)
 
-p1 <- ggpairs(dplyr::select(tbl_chr1_1Mb, c(mean_mut_masked_carlson,
+p1 <- ggpairs(dplyr::select(mut_chr1_1Mb, c(mean_mut_masked_carlson,
                                             mean_mut_masked_roulette,
                                             mean_mut_masked_gnomad,
-                                            ismc_1,
-                                            ismc_2,
-                                            ismc_3,
-                                            ismc_4,
-                                            ismc_mean,
+                                            #ismc_1,
+                                            #ismc_2,
+                                            #ismc_3,
+                                            #ismc_4,
+                                            #ismc_mean,
                                             ismc_latent,
                                             avg_pi)))
 
-tbl_chr1_1Mb_log <- cbind.data.frame(tbl_chr1_1Mb[,1:3],
-                                     apply(tbl_chr1_1Mb[,4:ncol(tbl_chr1_1Mb)-1],
+mut_chr1_1Mb_log <- cbind.data.frame(mut_chr1_1Mb[,1:3],
+                                     apply(mut_chr1_1Mb[,4:(ncol(mut_chr1_1Mb)-1)],
                                            2, log))
-tbl_chr1_1Mb_log$ismc_latent <- tbl_chr1_1Mb$ismc_latent
+mut_chr1_1Mb_log$ismc_latent <- mut_chr1_1Mb$ismc_latent
 
 mut_measurement_1 <- "
 mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
 "
 
 m3 <- sem(model=mut_measurement_1,
-                data=tbl_chr1_1Mb_log,
+                data=mut_chr1_1Mb_log,
                 std.ov=T,
                 std.lv=T,
                 missing="fiml")
@@ -8339,12 +8490,12 @@ m3 <- sem(model=mut_measurement_1,
 modificationIndices(m3)
 
 mut_measurement_2 <- "
-mu=~NA*mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
-mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
+mean_mut_masked_carlson ~~ ismc_mean
 " 
 
 m4 <- sem(model=mut_measurement_2,
-          data=tbl_chr1_1Mb_log,
+          data=mut_chr1_1Mb_log,
           std.ov=T,
           std.lv=T,
           missing="fiml")
@@ -8355,6 +8506,7 @@ parameterEstimates(m4)
 lavInspect(m4, what="free")
 vcov(m4)
 
+mut_chr1_1Mb_log$mut_latent <- as.numeric(predict(m4))
 
 mut_measurement_3 <- "
 mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean
@@ -8362,21 +8514,19 @@ mean_mut_masked_roulette ~~ ismc_mean
 "
 
 m5 <- sem(model=mut_measurement_3,
-          data=tbl_chr1_1Mb_log,
+          data=mut_chr1_1Mb_log,
           std.ov=T,
           std.lv=T,
           missing="fiml")
 
 modificationindices(m5)
-
 ```
 
-Adding recombination
+Recombination
 
-```{r measure-mut, include=F, message=F, warning=F}
+```{r measure-rec, include=F, message=F, warning=F}
 
 #devtools::install_github("PeteHaitch/SparseSummarizedExperiment")
-
 num_chrom <- 22
 
 # pyrho YRI
@@ -8424,34 +8574,34 @@ decode_gr <- makeGRangesFromDataFrame(dplyr::select(decode_1kb,
                                                     -num_sites_map),
                                       keep.extra.columns=T)
 
-maps_1kb <- SparseSummarizedExperiment::combine(pyrho_CEU_gr, 
-                                                pyrho_YRI_gr,
-                                                decode_gr)
+rec_maps_1kb <- SparseSummarizedExperiment::combine(pyrho_CEU_gr, 
+                                                    pyrho_YRI_gr,
+                                                    decode_gr)
 
-maps_1kb <- as.data.table(maps_1kb) %>% dplyr::select(., c(seqnames,
-                                                           start, 
-                                                           end, 
-                                                           pyrho_CEU,
-                                                           pyrho_YRI,
-                                                           deCODE))
-names(maps_1kb)[1:3] <- c("chrom", "chromStart", "chromEnd")
+rec_maps_1kb <- as.data.table(rec_maps_1kb) %>% dplyr::select(., c(seqnames,
+                                                                   start, 
+                                                                   end, 
+                                                                   pyrho_CEU,
+                                                                   pyrho_YRI,
+                                                                   deCODE))
+names(rec_maps_1kb)[1:3] <- c("chrom", "chromStart", "chromEnd")
 
-maps_1kb <- maps_1kb %>% group_by(chrom) %>% 
-                         mutate(bin_1Mb=chromStart %/% 1e+6)
+rec_maps_1kb <- rec_maps_1kb %>% group_by(chrom) %>% 
+                                 mutate(bin_1Mb=chromStart %/% 1e+6)
 
-maps_1Mb <- maps_1kb %>%
-            group_by(chrom, bin_1Mb) %>% 
-            mutate(mean_pyrho_CEU=mean(pyrho_CEU),
-                   mean_pyrho_YRI=mean(pyrho_YRI),
-                   mean_deCODE=mean(deCODE),
-                   chromStart=min(chromStart),
-                   chromEnd=max(chromEnd)) %>%
-             distinct(bin_1Mb, .keep_all=T) %>%
-             ungroup() %>%
-             dplyr::select(., c(chrom, chromStart, chromEnd, 
-                                mean_pyrho_CEU,
-                                mean_pyrho_YRI,
-                                mean_deCODE))
+rec_maps_1Mb <- rec_maps_1kb %>%
+                group_by(chrom, bin_1Mb) %>% 
+                mutate(mean_pyrho_CEU=mean(pyrho_CEU),
+                       mean_pyrho_YRI=mean(pyrho_YRI),
+                       mean_deCODE=mean(deCODE),
+                       chromStart=min(chromStart),
+                       chromEnd=max(chromEnd)) %>%
+                 distinct(bin_1Mb, .keep_all=T) %>%
+                 ungroup() %>%
+                 dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                    mean_pyrho_CEU,
+                                    mean_pyrho_YRI,
+                                    mean_deCODE))
 
 # ismc chr 1, from the book chapter Barroso & Dutheil 2025/6
 ismc_chr1 <- fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.rho.1Mb.bedgraph")
@@ -8498,8 +8648,10 @@ anova(m1, m2)
 ismc_chr1$ismc_latent <- as.numeric(predict(m1))
 
 q <- ggpairs(ismc_chr1[,4:ncol(ismc_chr1)])
+save_plot("real_data_maps/ismc_rec_pairs_chr1_1Mb.png", q, 
+          base_height=10, base_width=12)
 
-df_chr1_1Mb <- left_join(filter(maps_1Mb, chrom=="chr1"),
+df_chr1_1Mb <- left_join(filter(rec_maps_1Mb, chrom=="chr1"),
                          ismc_chr1,
                          by=c("chrom", "chromStart", "chromEnd"))
 
@@ -8513,147 +8665,291 @@ p1 <- ggpairs(dplyr::select(df_chr1_1Mb, c(mean_pyrho_CEU,
                                            ismc_mean,
                                            ismc_latent)))
 
-tbl_chr1_1Mb_log <- cbind.data.frame(df_chr1_1Mb[,1:3],
-                                     apply(df_chr1_1Mb[,4:ncol(df_chr1_1Mb)-1],
-                                           2, log))
-tbl_chr1_1Mb_log$ismc_latent <- df_chr1_1Mb$ismc_latent
+save_plot("real_data_maps/rec_pairs_chr1_1Mb.png", p1,
+          base_width=12, base_height=10)
+
+rec_chr1_log <- cbind.data.frame(rec_chr1_1Mb[,1:3],
+                                 apply(rec_chr1_1Mb[,4:ncol(rec_chr1_1Mb)],
+                                       2, log))
+rec_chr1_log$ismc_latent <- ismc_chr1$ismc_latent
 
 rec_measurement_1 <- "
 rec=~mean_pyrho_CEU + mean_pyrho_YRI + mean_deCODE + ismc_latent 
 "
 
 m3 <- sem(model=rec_measurement_1,
-                data=tbl_chr1_1Mb_log,
+                data=rec_chr1_log,
                 std.ov=T,
                 std.lv=T,
                 missing="fiml")
 
-modificationIndices(m3)
+summary(m3)
+inspect(m3, "r2")
+parameterEstimates(m4)
+lavInspect(m4, what="free")
+vcov(m4)
 
-rec_measurement_2 <- "
-rec=~mean_pyrho_CEU + mean_pyrho_YRI + mean_deCODE + ismc_latent 
-mean_pyrho_CEU ~~ ismc_latent
-" 
-
-m4 <- sem(model=rec_measurement_2,
-          data=tbl_chr1_1Mb_log,
+m4 <- sem(model=rec_measurement_1,
+          data=na.omit(rec_chr1_log),
           std.ov=T,
           std.lv=T,
-          missing="fiml")
+          estimator="GLS")
 
 summary(m4)
 inspect(m4, "r2")
 parameterEstimates(m4)
 lavInspect(m4, what="free")
 vcov(m4)
+
+rec_chr1_log$rec_latent <- as.numeric(predict(m3))
 ```
 
-Putting it together (chr 1, 1Mb scale)
+## SEM
 
-```{r real-data, include=F, message=F, warning=F}
+chr 1, 1Mb scale
 
-# adjusting rec tbl
-rec_chr1_1Mb <- filter(maps_1Mb, chrom=="chr1")
-rec_chr1_1Mb$chrom <- 1
-rec_chr1_1Mb$chrom <- as.integer(rec_chr1_1Mb$chrom)
+```{r SEM-chr1, include=F, message=F, warning=F}
 
-df_chr1_1Mb <- left_join(tbl_chr1_1Mb, rec_chr1_1Mb,
-                         by=c("chrom", "chromStart", "chromEnd"))
-          
-tbl_chr1_1Mb_log <- cbind.data.frame(df_chr1_1Mb[,1:3],
-                                     apply(df_chr1_1Mb[,4:ncol(df_chr1_1Mb)],
-                                           2, log))
-model_0 <- "
-# latent variables
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
-# regressions
-avg_pi ~ start(0.25)*c1*B
-avg_pi ~ start(0.25)*c2*mu
-B ~ start(-0.25)*c3*mean_mut_masked_roulette
-B ~ start(-0.25)*c4*prop_del_sites
-B ~ start(-0.25)*c5*mean_pyrho_YRI
-"
+rec_chr1_log$chromEnd[nrow(rec_chr1_log)] <- 249000000
+names(mut_chr1_1Mb_log)[which(names(mut_chr1_1Mb_log)=="ismc_latent")] <- "ismc_mut_latent"
+names(rec_chr1_log)[which(names(rec_chr1_log)=="ismc_latent")] <- "ismc_rec_latent"
 
-m0gls <- sem(model_0,
-             data=na.omit(tbl_chr1_1Mb_log),
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             estimator="GLS")
+tbl_chr1_1Mb <- left_join(mut_chr1_1Mb_log, rec_chr1_log,
+                          by=c("chrom", "chromStart", "chromEnd"))
 
-modificationindices(m0gls)
+df <- dplyr::select(tbl_chr1_1Mb, c(exp_pi, 
+                                    avg_pi, 
+                                    mean_mut_masked_roulette,
+                                    mean_pyrho_YRI,
+                                    prop_del_sites,
+                                    mut_latent,
+                                    rec_latent,
+                                    B))
 
+names(df)[c(3, 4)] <- c("roulette", "pyrho")
+cor.test(tbl_chr1_1Mb$avg_pi, tbl_chr1_1Mb$mut_latent, method="pearson")
+cor.test(tbl_chr1_1Mb$avg_pi, tbl_chr1_1Mb$mean_mut_masked_roulette)
+
+ggpairs(df)
 
 model_1 <- "
-# latent variables
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
-# regressions
-avg_pi ~ start(0.25)*c1*B
-avg_pi ~ start(0.25)*c2*mu
-B ~ start(-0.25)*c3*mean_mut_masked_roulette
-B ~ start(-0.25)*c4*prop_del_sites
-B ~ start(-0.25)*c5*mean_pyrho_YRI
-mean_pyrho_YRI~~avg_pi
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
+avg_pi ~ start(0.25)*c1*mu
 "
 
-
-TODO try using the latent mu directly to reduce % missing data (imputation?)
 m1gls <- sem(model_1,
-             data=na.omit(tbl_chr1_1Mb_log),
+             data=tbl_chr1_1Mb,
              fixed.x=F,
              std.ov=T,
              std.lv=T,
              estimator="GLS")
 
+modificationindices(m1gls)
+fitMeasures(m1gls)
+
+model_2 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
+avg_pi ~ start(0.25)*c1*mu
+mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+"
+
+m2gls <- sem(model_2,
+             data=tbl_chr1_1Mb,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+summary(m2gls)
+inspect(m2gls, "r2")
+modificationindices(m2gls)
+
+model_3 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
+avg_pi ~ start(0.25)*c1*mu
+avg_pi ~ start(0.25)*c2*B
+mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+"
+
+m3gls <- sem(model_3,
+             data=tbl_chr1_1Mb,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+modificationindices(m3gls)
+
+model_4 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
+avg_pi ~ start(0.25)*c1*mu
+avg_pi ~ start(0.25)*c2*B
+B ~ start(-0.25)*c3*mu
+mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+"
+
+m4gls <- sem(model_4,
+             data=tbl_chr1_1Mb,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+modificationindices(m4gls)
+
+model_5 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
+rec=~mean_pyrho_YRI + mean_deCODE
+avg_pi ~ start(0.25)*c1*mu
+avg_pi ~ start(0.25)*c2*B
+B ~ start(-0.25)*c3*prop_del_sites
+B ~ start(0.25)*c4*rec
+B ~ start(-0.25)*c5*mu
+mu ~ start(0.25)*c6*rec
+mu ~~ prop_del_sites
+mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+"
+
+m5gls <- sem(model_5,
+             data=tbl_chr1_1Mb,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             estimator="GLS")
+
+parameterestimates(m5gls)
+inspect(m1gls, "r2")
 modificationindices(m1gls)
 summary(m1gls, fit.measures=T)
 fitMeasures(m1gls)
 
-model_1 <- "
-# latent variables
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
-rec=~mean_pyrho_YRI + mean_deCODE 
-# regressions
-avg_pi ~ start(0.25)*c1*B
-avg_pi ~ start(0.25)*c2*mu
-B ~ start(-0.25)*c3*mean_mut_masked_roulette
-B ~ start(-0.1)*c4*prop_del_sites
-B ~ start(0.25)*c5*rec
-mu ~ start(0.25)*c6*rec
+###
+model_0 <- "
+rec=~mean_pyrho_YRI + mean_deCODE + mean_pyrho_CEU
+avg_pi ~ start(0.25)*c1*rec
 "
 
-m1gls <- sem(model_1,
-             data=na.omit(df_chr1_1Mb),
+m0gls <- sem(model_0,
+             data=tbl_chr1_1Mb,
              fixed.x=F,
              std.ov=T,
              std.lv=T,
+             estimator="GLS")
+
+inspect(m0gls, "r2")
+parameterEstimates(m0gls)
+modificationindices(m0gls)
+fitMeasures(m1gls)
+
+```
+
+Other chromosomes
+
+```{r real-data, include=F, message=F, warning=F}
+
+rec_maps_1Mb$chrom <- as.character(rec_maps_1Mb$chrom)
+for(i in 1:22) {
+  rec_maps_1Mb$chrom[rec_maps_1Mb$chrom==paste("chr", i, sep="")] <- i
+}
+rec_maps_1Mb$chrom <- as.integer(rec_maps_1Mb$chrom)
+
+all_maps_1Mb <- left_join(rec_maps_1Mb, df_1Mb, by=c("chrom",
+                                                     "chromStart",
+                                                     "chromEnd"))
+
+all_maps_1Mb <- filter(all_maps_1Mb, coverage > 0.75, chrom!=19)
+
+all_maps_chr_log <- cbind.data.frame(all_maps_1Mb[,1:3],
+                                     apply(all_maps_1Mb[,4:ncol(all_maps_1Mb)],
+                                           2, log))
+
+model_0 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
+avg_pi ~ start(0.25)*c1*mu
+"
+
+m0gls <- sem(model_0,
+             data=all_maps_chr_log,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             group="chrom",
+             estimator="GLS")
+
+modificationindices(m0gls)
+
+model_1 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
+avg_pi ~ start(0.25)*c1*mu
+mean_mut_masked_roulette ~~ mean_mut_masked_carlson
+mean_mut_masked_gnomad ~~ avg_pi
+"
+
+m1gls <- sem(model_1,
+             data=all_maps_chr_log,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             group="chrom",
              estimator="GLS")
 
 modificationindices(m1gls)
 
+parameterestimates(m1gls)
+summary(m1gls, fit.measures=T)
+fitMeasures(m1gls)
+
 model_2 <- "
-# latent variables
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean 
-mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
-rec=~mean_pyrho_YRI + mean_deCODE 
-# regressions
-avg_pi ~ start(0.25)*c1*B
-avg_pi ~ start(0.25)*c2*mu
-B ~ start(-0.25)*c3*mu
-B ~ start(-0.1)*c4*prop_del_sites
-B ~ start(0.25)*c5*mean_pyrho_YRI
-mu ~ start(0.25)*c6*rec
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
+avg_pi ~ start(0.25)*c1*mu
+avg_pi ~ start(0.25)*c2*B
+mean_mut_masked_roulette ~~ mean_mut_masked_carlson
+mean_mut_masked_gnomad ~~ avg_pi
 "
 
 m2gls <- sem(model_2,
-             data=na.omit(df_chr1_1Mb),
+             data=all_maps_chr_log,
              fixed.x=F,
              std.ov=T,
              std.lv=T,
+             group="chrom",
              estimator="GLS")
 
 modificationindices(m2gls)
 
+model_3 <- "
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
+rec=~mean_pyrho_YRI + mean_deCODE
+avg_pi ~ start(0.25)*c1*mu
+avg_pi ~ start(0.25)*c2*B
+B ~ start(-0.25)*c3*prop_del_sites
+B ~ start(0.25)*c4*rec
+B ~ start(-0.25)*c5*mu
+mu ~ start(0.25)*c6*rec
+mu ~~ prop_del_sites
+mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
+"
+
+m3gls <- sem(model_3,
+             data=all_maps_chr_log,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             group="chrom",
+             group.equal="regressions",
+             estimator="GLS")
+
+m4gls <- sem(model_3,
+             data=all_maps_chr_log,
+             fixed.x=F,
+             std.ov=T,
+             std.lv=T,
+             group="chrom",
+             group.equal=c("loadings", "intercepts"),
+             group.partial = c("visual=~x2", "x7~1"),
+             estimator="GLS")
+
+anova(m3gls, m4gls)
 ```
 
 # Real Data
