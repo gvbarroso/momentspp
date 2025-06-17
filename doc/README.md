@@ -11,7 +11,7 @@ The options file for `moments++ v0.1` is quite simple. Although under the hood t
 
 ## number of computing threads
 
-The number of threads that `moments++` is allowed to use (INTEGER). This allows the Eigen3 libraries to paralellize the linear algebra computations. By default, `moments++` will use all threads available in the machine.
+The number of threads that `moments++` can use (INTEGER). This allows the Eigen3 libraries to paralellize the linear algebra computations. By default, `moments++` will use all threads available in the machine.
 
 ```
 number_threads = 4
@@ -19,7 +19,7 @@ number_threads = 4
 
 ## time steps to sample temporal heterozigosity values
 
-In a non-equilibrum model, this specifies the periodicity (in units of generations) with which `moments++` outputs values of $p(1-p)$ and $q(1-q)$ (after the first population size change, forwards-in-time). The default value is zero, meaning these temporal dynamics of diversity are NOT recorded. Specify this periodicity with e.g. (INTEGER):
+In a non-equilibrum model, this specifies the periodicity (in units of generations) with which `moments++` outputs values of $p(1-p)$ and $q(1-q)$ (after the first population size change, forwards-in-time). The default value is zero, meaning these temporal dynamics of diversity are NOT recorded. Specify this with e.g. (INTEGER):
 
 ```
 time_steps = 1000
@@ -27,7 +27,7 @@ time_steps = 1000
 
 ## order of 1-2p factors
 
-The count of $1-2p$ factors to be included in the basis **v**. As discussed in the original publication of `moments++` (Barroso & Ragsdale, 2025), this is mainly a function of the strength of selection, but it also depends on demography ($N[t]$) and on the mutation rate $\mu$. It is therefore tricky to suggest a rule of thumb, but a good starting value is something between 2 and 4 times $N_e \times s$. (The example given in 'two_locus_time.Rmd' suggests how to adjust the order as such). Specify this option in opt.bpp with e.g. (INTEGER):
+The count of $1-2p$ factors to be included in the basis **v**. As discussed in the original publication of `moments++` (Barroso & Ragsdale, 2025), this is mainly a function of the strength of selection, but it also depends on the demography ($N[t]$) and the mutation rate $\mu$. It is therefore tricky to suggest a rule of thumb, but a good starting value is something between 2 and 4 times $N_e \times s$. (The example given in 'two_locus_time.Rmd' suggests how to adjust the order as such). Specify this option in opt.bpp with e.g. (INTEGER):
 
 ```
 factor_order = 50

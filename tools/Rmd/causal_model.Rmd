@@ -2340,9 +2340,9 @@ u_vs_sim_pi_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_sim_pi_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_sim_pi_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-B_vs_exonic_sites_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-B_vs_exonic_sites_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-B_vs_exonic_sites_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_del_sites_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_del_sites_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_del_sites_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 B_vs_sim_pi_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_sim_pi_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -2388,9 +2388,9 @@ for(m in 1:num_models) {
     u_vs_sim_pi_1Mb[m, rep] <- cors_1Mb[row, "avg_mut"]
     
     row <- which(names(cors_10kb) == "B")
-    B_vs_exonic_sites_10kb[m, rep] <- cors_10kb[row, "del_sites"]
-    B_vs_exonic_sites_100kb[m, rep] <- cors_100kb[row, "del_sites"]
-    B_vs_exonic_sites_1Mb[m, rep] <- cors_1Mb[row, "del_sites"]
+    B_vs_del_sites_10kb[m, rep] <- cors_10kb[row, "del_sites"]
+    B_vs_del_sites_100kb[m, rep] <- cors_100kb[row, "del_sites"]
+    B_vs_del_sites_1Mb[m, rep] <- cors_1Mb[row, "del_sites"]
     
     row <- which(names(cors_10kb) == "sim_pi")
     B_vs_sim_pi_10kb[m, rep] <- cors_10kb[row, "B"]
@@ -2486,8 +2486,8 @@ u_vs_sim_pi_1Mb$model <- 1:num_models
 u_vs_sim_pi_1Mb$scale <- 1e+6
 
 u_vs_sim_pi <- rbind.data.frame(u_vs_sim_pi_10kb,
-                               u_vs_sim_pi_100kb,
-                               u_vs_sim_pi_1Mb)
+                                u_vs_sim_pi_100kb,
+                                u_vs_sim_pi_1Mb)
 fwrite(u_vs_sim_pi, "corr_u_sim_pi.csv")
 
 # B vs pi
@@ -2504,27 +2504,27 @@ B_vs_sim_pi_1Mb$model <- 1:num_models
 B_vs_sim_pi_1Mb$scale <- 1e+6
 
 B_vs_sim_pi <- rbind.data.frame(B_vs_sim_pi_10kb,
-                               B_vs_sim_pi_100kb,
-                               B_vs_sim_pi_1Mb)
+                                B_vs_sim_pi_100kb,
+                                B_vs_sim_pi_1Mb)
 fwrite(B_vs_sim_pi, "corr_B_sim_pi.csv")
 
 # B vs E
-names(B_vs_exonic_sites_10kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_10kb$model <- 1:num_models
-B_vs_exonic_sites_10kb$scale <- 1e+4
+names(B_vs_del_sites_10kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_del_sites_10kb$model <- 1:num_models
+B_vs_del_sites_10kb$scale <- 1e+4
 
-names(B_vs_exonic_sites_100kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_100kb$model <- 1:num_models
-B_vs_exonic_sites_100kb$scale <- 1e+5
+names(B_vs_del_sites_100kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_del_sites_100kb$model <- 1:num_models
+B_vs_del_sites_100kb$scale <- 1e+5
 
-names(B_vs_exonic_sites_1Mb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_1Mb$model <- 1:num_models
-B_vs_exonic_sites_1Mb$scale <- 1e+6
+names(B_vs_del_sites_1Mb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_del_sites_1Mb$model <- 1:num_models
+B_vs_del_sites_1Mb$scale <- 1e+6
 
-B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_10kb,
-                                      B_vs_exonic_sites_100kb,
-                                      B_vs_exonic_sites_1Mb)
-fwrite(B_vs_exonic_sites, "corr_B_E.csv")
+B_vs_del_sites <- rbind.data.frame(B_vs_del_sites_10kb,
+                                   B_vs_del_sites_100kb,
+                                   B_vs_del_sites_1Mb)
+fwrite(B_vs_del_sites, "corr_B_E.csv")
 ```
 
 Preparing tables with p-values
@@ -2551,9 +2551,9 @@ u_vs_sim_pi_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_sim_pi_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 u_vs_sim_pi_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
-B_vs_exonic_sites_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-B_vs_exonic_sites_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
-B_vs_exonic_sites_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_del_sites_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_del_sites_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
+B_vs_del_sites_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 
 B_vs_sim_pi_10kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 B_vs_sim_pi_100kb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
@@ -2562,51 +2562,51 @@ B_vs_sim_pi_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pb <- txtProgressBar(min=0, max=num_models, style=3)
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
-  for(rep in 1:num_reps) {
-    # correlations in lower part of triangular matrices, pvalues in upper
-    pval_10kb <- fread(paste("model_", m, "/rep_", rep, 
-                            "/pval_upper_spearman_lower_10kb.csv", sep=""))
+  for(r in 1:num_reps) {
+    # correlations in lower part of triangular matrices, p-values in upper
+    pval_10kb <- fread(paste("model_", m, "/rep_", r, 
+                             "/pval_upper_spearman_lower_10kb.csv", sep=""))
     
-    pval_100kb <- fread(paste("model_", m, "/rep_", rep, 
-                            "/pval_upper_spearman_lower_100kb.csv", sep=""))
+    pval_100kb <- fread(paste("model_", m, "/rep_", r, 
+                              "/pval_upper_spearman_lower_100kb.csv", sep=""))
     
-    pval_1Mb <- fread(paste("model_", m, "/rep_", rep, 
+    pval_1Mb <- fread(paste("model_", m, "/rep_", r, 
                             "/pval_upper_spearman_lower_1Mb.csv", sep=""))
     
-    row <- which(names(pval_10kb) == "avg_rec")
-    r_vs_u_10kb[m, rep] <- pval_10kb[row, "avg_mut"]
-    r_vs_u_100kb[m, rep] <- pval_100kb[row, "avg_mut"]
-    r_vs_u_1Mb[m, rep] <- pval_1Mb[row, "avg_mut"]
+    row <- which(names(pval_10kb) == "avg_mut")
+    r_vs_u_10kb[m, r] <- pval_10kb[row, "avg_rec"]
+    r_vs_u_100kb[m, r] <- pval_100kb[row, "avg_rec"]
+    r_vs_u_1Mb[m, r] <- pval_1Mb[row, "avg_rec"]
     
     row <- which(names(pval_10kb) == "avg_rec")
-    r_vs_B_10kb[m, rep] <- pval_10kb[row, "B"]
-    r_vs_B_100kb[m, rep] <- pval_100kb[row, "B"]
-    r_vs_B_1Mb[m, rep] <- pval_1Mb[row, "B"]
+    r_vs_B_10kb[m, r] <- pval_10kb[row, "B"]
+    r_vs_B_100kb[m, r] <- pval_100kb[row, "B"]
+    r_vs_B_1Mb[m, r] <- pval_1Mb[row, "B"]
     
     row <- which(names(pval_10kb) == "avg_rec")
-    r_vs_sim_pi_10kb[m, rep] <- pval_10kb[row, "sim_pi"]
-    r_vs_sim_pi_100kb[m, rep] <- pval_100kb[row, "sim_pi"]
-    r_vs_sim_pi_1Mb[m, rep] <- pval_1Mb[row, "sim_pi"]
+    r_vs_sim_pi_10kb[m, r] <- pval_10kb[row, "sim_pi"]
+    r_vs_sim_pi_100kb[m, r] <- pval_100kb[row, "sim_pi"]
+    r_vs_sim_pi_1Mb[m, r] <- pval_1Mb[row, "sim_pi"]
     
     row <- which(names(pval_10kb) == "avg_mut")
-    u_vs_B_10kb[m, rep] <- pval_10kb[row, "B"]
-    u_vs_B_100kb[m, rep] <- pval_100kb[row, "B"]
-    u_vs_B_1Mb[m, rep] <- pval_1Mb[row, "B"]
+    u_vs_B_10kb[m, r] <- pval_10kb[row, "B"]
+    u_vs_B_100kb[m, r] <- pval_100kb[row, "B"]
+    u_vs_B_1Mb[m, r] <- pval_1Mb[row, "B"]
     
     row <- which(names(pval_10kb) == "avg_mut")
-    u_vs_sim_pi_10kb[m, rep] <- pval_10kb[row, "sim_pi"]
-    u_vs_sim_pi_100kb[m, rep] <- pval_100kb[row, "sim_pi"]
-    u_vs_sim_pi_1Mb[m, rep] <- pval_1Mb[row, "sim_pi"]
+    u_vs_sim_pi_10kb[m, r] <- pval_10kb[row, "sim_pi"]
+    u_vs_sim_pi_100kb[m, r] <- pval_100kb[row, "sim_pi"]
+    u_vs_sim_pi_1Mb[m, r] <- pval_1Mb[row, "sim_pi"]
     
-    row <- which(names(pval_10kb) == "exonic_sites")
-    B_vs_exonic_sites_10kb[m, rep] <- pval_10kb[row, "B"]
-    B_vs_exonic_sites_100kb[m, rep] <- pval_100kb[row, "B"]
-    B_vs_exonic_sites_1Mb[m, rep] <- pval_1Mb[row, "B"]
+    row <- which(names(pval_10kb) == "del_sites")
+    B_vs_del_sites_10kb[m, r] <- pval_10kb[row, "B"]
+    B_vs_del_sites_100kb[m, r] <- pval_100kb[row, "B"]
+    B_vs_del_sites_1Mb[m, r] <- pval_1Mb[row, "B"]
     
     row <- which(names(pval_10kb) == "B")
-    B_vs_sim_pi_10kb[m, rep] <- pval_10kb[row, "sim_pi"]
-    B_vs_sim_pi_100kb[m, rep] <- pval_100kb[row, "sim_pi"]
-    B_vs_sim_pi_1Mb[m, rep] <- pval_1Mb[row, "sim_pi"]
+    B_vs_sim_pi_10kb[m, r] <- pval_10kb[row, "sim_pi"]
+    B_vs_sim_pi_100kb[m, r] <- pval_100kb[row, "sim_pi"]
+    B_vs_sim_pi_1Mb[m, r] <- pval_1Mb[row, "sim_pi"]
   }
 }
 close(pb)
@@ -2720,22 +2720,22 @@ B_vs_sim_pi <- rbind.data.frame(B_vs_sim_pi_10kb,
 fwrite(B_vs_sim_pi, "pval_B_sim_pi.csv")
 
 # B vs E
-names(B_vs_exonic_sites_10kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_10kb$model <- 1:num_models
-B_vs_exonic_sites_10kb$scale <- 1e+4
+names(B_vs_del_sites_10kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_del_sites_10kb$model <- 1:num_models
+B_vs_del_sites_10kb$scale <- 1e+4
 
-names(B_vs_exonic_sites_100kb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_100kb$model <- 1:num_models
-B_vs_exonic_sites_100kb$scale <- 1e+5
+names(B_vs_del_sites_100kb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_del_sites_100kb$model <- 1:num_models
+B_vs_del_sites_100kb$scale <- 1e+5
 
-names(B_vs_exonic_sites_1Mb) <- paste("rep_", 1:num_reps, sep="")
-B_vs_exonic_sites_1Mb$model <- 1:num_models
-B_vs_exonic_sites_1Mb$scale <- 1e+6
+names(B_vs_del_sites_1Mb) <- paste("rep_", 1:num_reps, sep="")
+B_vs_del_sites_1Mb$model <- 1:num_models
+B_vs_del_sites_1Mb$scale <- 1e+6
 
-B_vs_exonic_sites <- rbind.data.frame(B_vs_exonic_sites_10kb,
-                                      B_vs_exonic_sites_100kb,
-                                      B_vs_exonic_sites_1Mb)
-fwrite(B_vs_exonic_sites, "pval_B_E.csv")
+B_vs_del_sites <- rbind.data.frame(B_vs_del_sites_10kb,
+                                   B_vs_del_sites_100kb,
+                                   B_vs_del_sites_1Mb)
+fwrite(B_vs_del_sites, "pval_B_E.csv")
 ```
 
 Plotting the simple correlations
