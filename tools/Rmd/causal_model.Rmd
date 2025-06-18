@@ -2351,51 +2351,51 @@ B_vs_sim_pi_1Mb <- as.data.frame(matrix(nrow=num_models, ncol=num_reps))
 pb <- txtProgressBar(min=0, max=num_models, style=3)
 for(m in 1:num_models) {
   setTxtProgressBar(pb, m)
-  for(rep in 1:num_reps) {
+  for(r in 1:num_reps) {
     # correlations in lower part of triangular matrices, pvalues in upper
-    cors_10kb <- fread(paste("model_", m, "/rep_", rep, 
+    cors_10kb <- fread(paste("model_", m, "/rep_", r, 
                              "/pval_upper_spearman_lower_10kb.csv", sep=""))
     
-    cors_100kb <- fread(paste("model_", m, "/rep_", rep, 
+    cors_100kb <- fread(paste("model_", m, "/rep_", r, 
                               "/pval_upper_spearman_lower_100kb.csv", sep=""))
     
-    cors_1Mb <- fread(paste("model_", m, "/rep_", rep, 
+    cors_1Mb <- fread(paste("model_", m, "/rep_", r, 
                             "/pval_upper_spearman_lower_1Mb.csv", sep=""))
     
-    row <- which(names(cors_10kb) == "avg_mut")
-    r_vs_u_10kb[m, rep] <- cors_10kb[row, "avg_rec"]
-    r_vs_u_100kb[m, rep] <- cors_100kb[row, "avg_rec"]
-    r_vs_u_1Mb[m, rep] <- cors_1Mb[row, "avg_rec"]
+    row <- which(names(cors_10kb) == "avg_rec")
+    r_vs_u_10kb[m, r] <- cors_10kb[row, "avg_mut"]
+    r_vs_u_100kb[m, r] <- cors_100kb[row, "avg_mut"]
+    r_vs_u_1Mb[m, r] <- cors_1Mb[row, "avg_mut"]
     
     row <- which(names(cors_10kb) == "B")
-    r_vs_B_10kb[m, rep] <- cors_10kb[row, "avg_rec"]
-    r_vs_B_100kb[m, rep] <- cors_100kb[row, "avg_rec"]
-    r_vs_B_1Mb[m, rep] <- cors_1Mb[row, "avg_rec"]
+    r_vs_B_10kb[m, r] <- cors_10kb[row, "avg_rec"]
+    r_vs_B_100kb[m, r] <- cors_100kb[row, "avg_rec"]
+    r_vs_B_1Mb[m, r] <- cors_1Mb[row, "avg_rec"]
     
     row <- which(names(cors_10kb) == "sim_pi")
-    r_vs_sim_pi_10kb[m, rep] <- cors_10kb[row, "avg_rec"]
-    r_vs_sim_pi_100kb[m, rep] <- cors_100kb[row, "avg_rec"]
-    r_vs_sim_pi_1Mb[m, rep] <- cors_1Mb[row, "avg_rec"]
+    r_vs_sim_pi_10kb[m, r] <- cors_10kb[row, "avg_rec"]
+    r_vs_sim_pi_100kb[m, r] <- cors_100kb[row, "avg_rec"]
+    r_vs_sim_pi_1Mb[m, r] <- cors_1Mb[row, "avg_rec"]
     
     row <- which(names(cors_10kb) == "B")
-    u_vs_B_10kb[m, rep] <- cors_10kb[row, "avg_mut"]
-    u_vs_B_100kb[m, rep] <- cors_100kb[row, "avg_mut"]
-    u_vs_B_1Mb[m, rep] <- cors_1Mb[row, "avg_mut"]
+    u_vs_B_10kb[m, r] <- cors_10kb[row, "avg_mut"]
+    u_vs_B_100kb[m, r] <- cors_100kb[row, "avg_mut"]
+    u_vs_B_1Mb[m, r] <- cors_1Mb[row, "avg_mut"]
     
     row <- which(names(cors_10kb) == "sim_pi")
-    u_vs_sim_pi_10kb[m, rep] <- cors_10kb[row, "avg_mut"]
-    u_vs_sim_pi_100kb[m, rep] <- cors_100kb[row, "avg_mut"]
-    u_vs_sim_pi_1Mb[m, rep] <- cors_1Mb[row, "avg_mut"]
+    u_vs_sim_pi_10kb[m, r] <- cors_10kb[row, "avg_mut"]
+    u_vs_sim_pi_100kb[m, r] <- cors_100kb[row, "avg_mut"]
+    u_vs_sim_pi_1Mb[m, r] <- cors_1Mb[row, "avg_mut"]
     
     row <- which(names(cors_10kb) == "B")
-    B_vs_del_sites_10kb[m, rep] <- cors_10kb[row, "del_sites"]
-    B_vs_del_sites_100kb[m, rep] <- cors_100kb[row, "del_sites"]
-    B_vs_del_sites_1Mb[m, rep] <- cors_1Mb[row, "del_sites"]
+    B_vs_del_sites_10kb[m, r] <- cors_10kb[row, "del_sites"]
+    B_vs_del_sites_100kb[m, r] <- cors_100kb[row, "del_sites"]
+    B_vs_del_sites_1Mb[m, r] <- cors_1Mb[row, "del_sites"]
     
     row <- which(names(cors_10kb) == "sim_pi")
-    B_vs_sim_pi_10kb[m, rep] <- cors_10kb[row, "B"]
-    B_vs_sim_pi_100kb[m, rep] <- cors_100kb[row, "B"]
-    B_vs_sim_pi_1Mb[m, rep] <- cors_1Mb[row, "B"]
+    B_vs_sim_pi_10kb[m, r] <- cors_10kb[row, "B"]
+    B_vs_sim_pi_100kb[m, r] <- cors_100kb[row, "B"]
+    B_vs_sim_pi_1Mb[m, r] <- cors_1Mb[row, "B"]
   }
 }
 close(pb)
@@ -3243,8 +3243,8 @@ fwrite(cs_neu, "coeff_neu_tbl_models.csv")
 fwrite(cs_sim, "coeff_sim_tbl_models.csv")
 ```
 
-Plotting coefficients and R^2 arising from linear regression
-We want to compare them to those obtained with SEM
+Plotting coefficients and R^2 arising from linear regression.
+We want to compare them to those obtained with SEM.
 
 ```{r plot-lm-1, include=F, message=F, warning=F}
 
@@ -4089,20 +4089,20 @@ total_mu_pi:=c2 + mu_B_pi
 DAG4 <- "
 sim_pi ~ start(0.5)*c1*B
 sim_pi ~ start(0.5)*c2*avg_mut
-sim_pi ~ start(-0.5)*c3*avg_mut
-B ~ start(-0.25)*c3*avg_mut
-B ~ start(-0.5)*c6*del_sites
-B ~ start(0.2)*c4*avg_rec
-avg_mut ~ start(0.3)*c5*avg_rec
+sim_pi ~ start(-0.5)*c3*del_sites
+B ~ start(-0.25)*c4*avg_mut
+B ~ start(-0.5)*c5*del_sites
+B ~ start(0.2)*c6*avg_rec
+avg_mut ~ start(0.3)*c7*avg_rec
 # fixing exogenous residual variance since we standardize variables?
 avg_rec ~~ 1*avg_rec
 del_sites ~~ 1*del_sites
 # defining indirect and total effects
-mu_B_pi:=c1*c3
-rec_mu_B:=c3*c5
-rec_B_pi:=c1*c4
-rec_mu_pi:=c2*c5
-rec_mu_B_pi:=mu_B_pi*c5
+mu_B_pi:=c1*c4
+rec_mu_B:=c4*c7
+rec_B_pi:=c1*c6
+rec_mu_pi:=c2*c7
+rec_mu_B_pi:=mu_B_pi*c7
 total_mu_pi:=c2 + mu_B_pi
 total_rec_pi:=rec_B_pi + rec_mu_pi + rec_mu_B_pi
 "
@@ -4111,37 +4111,39 @@ total_rec_pi:=rec_B_pi + rec_mu_pi + rec_mu_B_pi
 DAG5 <- "
 avg_pi ~ start(0.5)*c1*B
 avg_pi ~ start(0.5)*c2*avg_mut
-B ~ start(-0.25)*c3*avg_mut
-B ~ start(-0.5)*c6*del_sites
-B ~ start(0.2)*c4*avg_rec
+avg_pi ~ start(-0.5)*c3*del_sites
+B ~ start(-0.25)*c4*avg_mut
+B ~ start(-0.5)*c5*del_sites
+B ~ start(0.2)*c6*avg_rec
 avg_mut ~~ 0*avg_rec
 # fixing exogenous residual variances since we standardize variables?
 avg_mut ~~ 1*avg_mut
 avg_rec ~~ 1*avg_rec
 del_sites ~~ 1*del_sites
 # defining indirect and total effects
-rec_B_pi:=c1*c4
-mu_B_pi:=c1*c3
+rec_B_pi:=c1*c6
+mu_B_pi:=c1*c4
 total_mu_pi:=c2 + mu_B_pi
 "
 
-# mutagenic recomb., pi sim
+# mutagenic recomb.
 DAG6 <- "
 avg_pi ~ start(0.5)*c1*B
 avg_pi ~ start(0.5)*c2*avg_mut
-B ~ start(-0.25)*c3*avg_mut
-B ~ start(-0.5)*c6*del_sites
-B ~ start(0.2)*c4*avg_rec
-avg_mut ~ start(0.3)*c5*avg_rec
+avg_pi ~ start(-0.5)*c3*del_sites
+B ~ start(-0.25)*c4*avg_mut
+B ~ start(-0.5)*c5*del_sites
+B ~ start(0.2)*c6*avg_rec
+avg_mut ~ start(0.3)*c7*avg_rec
 # fixing exogenous residual variance since we standardize variables?
 avg_rec ~~ 1*avg_rec
 del_sites ~~ 1*del_sites
 # defining indirect and total effects
-mu_B_pi:=c1*c3
-rec_mu_B:=c3*c5
-rec_B_pi:=c1*c4
-rec_mu_pi:=c2*c5
-rec_mu_B_pi:=mu_B_pi*c5
+mu_B_pi:=c1*c4
+rec_mu_B:=c4*c7
+rec_B_pi:=c1*c6
+rec_mu_pi:=c2*c7
+rec_mu_B_pi:=mu_B_pi*c7
 total_mu_pi:=c2 + mu_B_pi
 total_rec_pi:=rec_B_pi + rec_mu_pi + rec_mu_B_pi
 "
@@ -4218,59 +4220,64 @@ for(m in 1:num_models) {
                 summarise_at(data_cols, mean) %>%
                 dplyr::select(., -bin_1Mb)
     
+    
+    ######################################################################
+    # NOTE: excluded now because del sites per window is easier to interpret
     # gets sum of relevant deleterious sites (around each genomic window)
     # we will use it as a more "meaningful" measure of local deleterious sites
     ## 10 kb
-    maps_10kb$cum_rec <- cumsum(maps_10kb$avg_rec * 1e+4)
+    #maps_10kb$cum_rec <- cumsum(maps_10kb$avg_rec * 1e+4)
     # matrix with pairwise recombination distances
-    prd <- as.data.frame(abs(outer(maps_10kb$cum_rec, 
-                                   maps_10kb$cum_rec, 
-                                   "-")))
-    names(prd) <- 1:ncol(prd)
-    for(d in 1:nrow(prd)) {
-      prd[d, d] <- maps_10kb$avg_rec[d] * 1e+4 # filling in main diagonal
-    }
+    #prd <- as.data.frame(abs(outer(maps_10kb$cum_rec, 
+    #                               maps_10kb$cum_rec, 
+    #                               "-")))
+    #names(prd) <- 1:ncol(prd)
+    #for(d in 1:nrow(prd)) {
+    #  prd[d, d] <- maps_10kb$avg_rec[d] * 1e+4 # filling in main diagonal
+    #}
     
     # here a threshold of 1e-2 is used otherwise memory explodes
-    relevant_exons <- apply(prd, 2, function(x) x < 1e-2)
-    exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
-    maps_10kb$del_sites_around <- unlist(mclapply(mc.cores=16, exons_per_bin,
-                                  function(x) 
-                                  return(sum(maps_10kb$del_sites[x]))))# * 1/prd[x, x]))))
+    #relevant_exons <- apply(prd, 2, function(x) x < 1e-2)
+    #exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
+    #maps_10kb$del_sites_around <- unlist(mclapply(mc.cores=16, exons_per_bin,
+    #                              function(x) 
+    #                              return(sum(maps_10kb$del_sites[x]))))# * 1/prd[x, x]))))
     
     ## 100 kb
-    maps_100kb$cum_rec <- cumsum(maps_100kb$avg_rec * 1e+5)
+    #maps_100kb$cum_rec <- cumsum(maps_100kb$avg_rec * 1e+5)
     # matrix with pairwise recombination distances
-    prd <- as.data.frame(abs(outer(maps_100kb$cum_rec, 
-                                   maps_100kb$cum_rec, 
-                                   "-")))
-    names(prd) <- 1:ncol(prd)
-    for(d in 1:nrow(prd)) {
-      prd[d, d] <- maps_100kb$avg_rec[d] * 1e+5 # filling in diagonal
-    }
+    #prd <- as.data.frame(abs(outer(maps_100kb$cum_rec, 
+    #                               maps_100kb$cum_rec, 
+    #                               "-")))
+    #names(prd) <- 1:ncol(prd)
+    #for(d in 1:nrow(prd)) {
+    #  prd[d, d] <- maps_100kb$avg_rec[d] * 1e+5 # filling in diagonal
+    #}
     
-    relevant_exons <- apply(prd, 2, function(x) x < 1e-2)
-    exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
-    maps_100kb$del_sites_around <- unlist(mclapply(mc.cores=16, exons_per_bin,
-                                   function(x) 
-                                   return(sum(maps_100kb$del_sites[x]))))# * 1/prd[x, x]))))
+    #relevant_exons <- apply(prd, 2, function(x) x < 1e-2)
+    #exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
+    #maps_100kb$del_sites_around <- unlist(mclapply(mc.cores=16, exons_per_bin,
+    #                               function(x) 
+    #                               return(sum(maps_100kb$del_sites[x]))))# * 1/prd[x, x]))))
     
     ## 1 Mb
-    maps_1Mb$cum_rec <- cumsum(maps_1Mb$avg_rec * 1e+6)
+    #maps_1Mb$cum_rec <- cumsum(maps_1Mb$avg_rec * 1e+6)
     # matrix with pairwise recombination distances
-    prd <- as.data.frame(abs(outer(maps_1Mb$cum_rec, 
-                                   maps_1Mb$cum_rec, 
-                                   "-")))
-    names(prd) <- 1:ncol(prd)
-    for(d in 1:nrow(prd)) {
-      prd[d, d] <- maps_1Mb$avg_rec[d] * 1e+6 # filling in diagonal
-    }
+    #prd <- as.data.frame(abs(outer(maps_1Mb$cum_rec, 
+    #                               maps_1Mb$cum_rec, 
+    #                               "-")))
+    #names(prd) <- 1:ncol(prd)
+    #for(d in 1:nrow(prd)) {
+    #  prd[d, d] <- maps_1Mb$avg_rec[d] * 1e+6 # filling in diagonal
+    #}
     
-    relevant_exons <- apply(prd, 2, function(x) x < 2.5e-2)
-    exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
-    maps_1Mb$del_sites_around <- unlist(lapply(exons_per_bin, function(x) 
-                                 return(sum(maps_1Mb$del_sites[x]))))# * 1/prd[x, x]))))
-           
+    #relevant_exons <- apply(prd, 2, function(x) x < 2.5e-2)
+    #exons_per_bin <- apply(relevant_exons, 1, function(x) which(x))
+    #maps_1Mb$del_sites_around <- unlist(lapply(exons_per_bin, function(x) 
+    #                             return(sum(maps_1Mb$del_sites[x]))))# * 1/prd[x, x]))))
+    ###################################################################### 
+    
+    
     # MVN tests -- only include endogenous variables (mu, B, pi) (Bolen, 1989)
     ## Filtering bins to avoid auto-correlation
     ## and keeping only one pi variable to avoid numerically singular matrices
