@@ -19,7 +19,7 @@ number_threads = 4
 
 ## time steps to sample temporal heterozigosity values
 
-In a non-equilibrum model, this specifies the periodicity (in units of generations) with which `moments++` outputs values of $p(1-p)$ and $q(1-q)$ (after the first population size change, forwards-in-time). The default value is zero, meaning these temporal dynamics of diversity are NOT recorded. Specify this with e.g. (INTEGER):
+In a non-equilibrum model, this specifies the periodicity (in units of generations) with which `moments++` outputs values of $p(1-p)$ and $q(1-q)$ (after the first population size change, forwards-in-time). The default value is zero, meaning these temporal dynamics of diversity are NOT recorded and only the statistics at the most recent time are written to \*\_expectations.txt. Specify this with e.g. (INTEGER):
 
 ```
 time_steps = 1000

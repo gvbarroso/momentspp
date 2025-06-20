@@ -4631,6 +4631,7 @@ m_pval_sem <- pivot_longer(merge(pval_sem, models, by="model"),
 
 fwrite(m_pval_sem, "m_pval_sem.csv.gz")
 df <- merge(m_pval_sem, m_mvn, by=c("model", "replicate", "scale"))
+df$mvn_p <- as.numeric(df$mvn_p)
 
 # manhattan plots with shape of points indicating significance (NAs are dropped)
 p1 <- ggplot(data=filter(df, DAG==1),
@@ -5140,6 +5141,16 @@ close(pb)
 r2_sem_dag4 <- do.call(rbind.data.frame, r2_dag4)
 
 # putting it together
+r2_sem_dag1$pi_source <- "neu"
+r2_sem_dag2$pi_source <- "neu"
+r2_sem_dag3$pi_source <- "tot"
+r2_sem_dag4$pi_source <- "tot"
+
+names(r2_sem_dag1)[1] <- "pi"
+names(r2_sem_dag2)[1] <- "pi"
+names(r2_sem_dag3)[1] <- "pi"
+names(r2_sem_dag4)[1] <- "pi"
+
 r2_nonmut_rec <- rbind.data.frame(r2_sem_dag1, r2_sem_dag3) # B, pi endogenous
 r2_mut_rec <- rbind.data.frame(r2_sem_dag2, r2_sem_dag4) # u, B, pi endogenous
 
@@ -5169,10 +5180,6 @@ m_r2_sem_2 <- merge(r2_nonmut_rec, models, by="model") %>%
               pivot_longer(., cols=c("mean_rsqrd_B", 
                                      "mean_rsqrd_pi"),
                            names_to="variable", values_to="mean_rsqrd")
-
-# adding "indicator" variable for source of pi
-m_r2_sem_1$pi_source <- ifelse(m_r2_sem_1$DAG == 2, "neu", "tot")
-m_r2_sem_2$pi_source <- ifelse(m_r2_sem_2$DAG == 1, "neu", "tot")
 
 # plotting mutagenic rec data
 for(e in unique(m_r2_sem_1$num_exons)) {
@@ -5977,15 +5984,21 @@ for(e in unique(m_pc_sem_p_mutrec$num_exons)) {
              aes(x=scale, 
                  y=mean_pc, 
                  shape=as.factor(pi_source), 
-                 color=rhs,
+                 color=label,
                  label=ifelse(fisher_c < 0.05, "*", ""))) +
              geom_text(vjust=0.8, size=10) +
              geom_point(size=3) + geom_line() + theme_bw() + 
              geom_hline(aes(yintercept=0), linetype="dashed", color="grey1") +
              facet_grid(shapes_rate_u~avg_mut_spans, labeller=label_both) +
-             scale_shape_manual(values=c(0, 1, 2)) +
-             scale_color_manual(values=c("brown1", "green4", "purple3"),
-                                labels=c(expression(mu), "B", "u>B>pi")) +
+             scale_shape_manual(values=c(0, 1)) +
+             scale_color_manual(values=c("brown1", 
+                                         "green4", 
+                                         "purple3",
+                                         "cyan3"),
+                                labels=c(expression(mu), 
+                                         "B", 
+                                         "u>B>pi", 
+                                         "#del_sites")) +
              scale_x_log10() + scale_y_continuous(breaks=pretty_breaks()) +
              labs(title="Path coefficients (effects on pi, mutagenic DAG)",
                   x="Scale (window size)", y="Path Coefficient",
@@ -6021,13 +6034,19 @@ for(e in unique(m_pc_sem_p_nonmutrec$num_exons)) {
              aes(x=scale, 
                  y=mean_pc, 
                  shape=as.factor(pi_source), 
-                 color=rhs)) +
+                 color=label)) +
              geom_point(size=3) + geom_line() + theme_bw() + 
              geom_hline(aes(yintercept=0), linetype="dashed", color="grey1") +
              facet_grid(shapes_rate_u~avg_mut_spans, labeller=label_both) +
              scale_shape_manual(values=c(0, 1, 2)) +
-             scale_color_manual(values=c("brown1", "green4", "purple3"),
-                                labels=c(expression(mu), "B", "u>B>pi")) +
+             scale_color_manual(values=c("brown1", 
+                                         "green4", 
+                                         "purple3",
+                                         "cyan3"),
+                                labels=c(expression(mu),
+                                         "B",
+                                         "u>B>pi",
+                                         "#del_sites")) +
              scale_y_continuous(breaks=pretty_breaks()) +
              scale_x_log10() + 
              labs(title=paste("Path coefficients",
@@ -6067,7 +6086,7 @@ for(e in unique(pc_sem_mutrec_cv_models$num_exons)) {
                                 mult_r_u==mru),
                      aes(x=cv_u_cv_B, 
                          y=mean_pc, 
-                         color=rhs,
+                         color=label,
                          shape=pi_source,
                          label=ifelse(fisher_c < 0.05, "*", ""))) +
           geom_text(vjust=0.8, size=10) +
@@ -6075,8 +6094,11 @@ for(e in unique(pc_sem_mutrec_cv_models$num_exons)) {
           facet_grid(avg_mut_spans~scale, labeller=label_both) +
           geom_hline(aes(yintercept=0), linetype="dashed", color="grey1") +
           scale_shape_manual(values=c(0, 1, 2), name="pi")+
-          scale_color_discrete(name=NULL, labels=c("u", "B", "u>B>pi"), 
-                               type=c("brown1", "green4", "purple3")) +
+          scale_color_discrete(name=NULL, labels=c("u", 
+                                                   "B", 
+                                                   "u>B>pi",
+                                                   "#del_sites"), 
+                               type=c("brown1", "green4", "purple3", "cyan3")) +
           scale_x_continuous(breaks=c(1, 10, 100), trans="log10") +
           scale_y_continuous(breaks=pretty_breaks()) +
           labs(title=paste("Path coefficients",
@@ -6363,7 +6385,7 @@ df <- pivot_wider(dplyr::select(m_pc_sem_p_mutrec, -c(model,
                                                       replicate)),
                   names_from=label, 
                   values_from=mean_pc)
-names(df)[(ncol(df)-2):ncol(df)] <- c("B", "mut", "mu_B_pi")
+names(df)[(ncol(df)-3):ncol(df)] <- c("B", "mut", "mu_B_pi", "#del_sites")
 
 ## 10 kb
 std_pc_10kb <- as.data.frame(df %>%
@@ -6380,11 +6402,11 @@ std_pc_10kb <- as.data.frame(df %>%
                             apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
 m_B_10kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
-                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
+                    avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
 m_u_10kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
-                     avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
+                      avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
 m_uBp_10kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
-                           avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
+                            avg_mut_spans + avg_rec_spans)^2, data=std_pc_10kb)
 
 ## 100 kb
 std_pc_100kb <- as.data.frame(df %>%
@@ -6401,11 +6423,11 @@ std_pc_100kb <- as.data.frame(df %>%
                               apply(., 2, function(x) (x-mean(x)) / sd(x)))
 
 m_B_100kb <- lm(B ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
-                   avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
-m_u_100kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
                      avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
+m_u_100kb <- lm(mut ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
+                       avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
 m_uBp_100kb <- lm(mu_B_pi ~ (num_exons + shapes_rate_u + shapes_rate_r + mult_r_u +
-                           avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
+                             avg_mut_spans + avg_rec_spans)^2, data=std_pc_100kb)
 
 ## 1 Mb
 std_pc_1Mb <- as.data.frame(df %>%
@@ -6535,6 +6557,7 @@ p <- ggplot(data=filter(mmlm_uBp, pval < 0.01),
         legend.text=element_text(size=16),
         legend.title=element_text(size=16),
         legend.position="bottom")
+save_plot("meta_lm_muBpi_SEM.png", p, base_height=8, base_width=10)
 ```
 
 Building a linear regression that models SEM path coefficients (rec. to pi)
@@ -6708,129 +6731,508 @@ a the positions of functionally constrained elements in the human genome
 Without interference, we can treat the maps as "true" and 
 avoid modeling error in their estimation.
 
-Preparing the data
+Preparing the data (Functional model with split exons)
 
 ```{r human-maps, include=F, message=F, warning=F}
 
-human_maps_10kb <- data.frame()
-human_maps_100kb <- data.frame()
-human_maps_1Mb <- data.frame()
+human_maps_10kb_uniform <- data.frame()
+human_maps_10kb_roulette <- data.frame()
+human_maps_10kb_carlson <- data.frame()
+human_maps_10kb_gnomad <- data.frame()
 
 pb <- txtProgressBar(min=0, max=22, style=3)
 for(c in 1:22) {
   setTxtProgressBar(pb, c)
-  tbl_10kb <- fread(paste("real_data_maps/equilibrium_human_predictions/",
-                          "functional/no_interf_correction/",
-                          "B_raw_functional_YRI_chr", c,
-                          "_10kb.csv.gz", sep=""))
-  tbl_10kb$chrom <- c
-  human_maps_10kb <- rbind.data.frame(human_maps_10kb, tbl_10kb)
+  roulette_10kb <- fread(paste("~/Data/bgs_lmr/human_data/current_models/",
+                          "equilibrium/functional_split_exons/roulette/",
+                          "B_tbl_YRI_chr", c, "_10kb.csv.gz", sep=""))
+  roulette_10kb$chr <- c
+  human_maps_10kb_roulette <- rbind.data.frame(human_maps_10kb_roulette, 
+                                               roulette_10kb)
   
-  tbl_100kb <- fread(paste("real_data_maps/equilibrium_human_predictions/",
-                           "functional/no_interf_correction/",
-                           "B_raw_functional_YRI_chr", c,
-                           "_100kb.csv.gz", sep=""))
-  tbl_100kb$chrom <- c
-  human_maps_100kb <- rbind.data.frame(human_maps_100kb, tbl_100kb)
+  carlson_10kb <- fread(paste("~/Data/bgs_lmr/human_data/current_models/",
+                          "equilibrium/functional_split_exons/carlson/",
+                          "B_tbl_YRI_chr", c, "_10kb.csv.gz", sep=""))
+  carlson_10kb$chr <- c
+  human_maps_10kb_carlson <- rbind.data.frame(human_maps_10kb_carlson, 
+                                              carlson_10kb)
   
-  tbl_1Mb <- fread(paste("real_data_maps/equilibrium_human_predictions/",
-                         "functional/no_interf_correction/",
-                         "B_raw_functional_YRI_chr", c,
-                         "_1Mb.csv.gz", sep=""))
-  tbl_1Mb$chrom <- c
-  human_maps_1Mb <- rbind.data.frame(human_maps_1Mb, tbl_1Mb)
+  gnomad_10kb <- fread(paste("~/Data/bgs_lmr/human_data/current_models/",
+                          "equilibrium/functional_split_exons/gnomad/",
+                          "B_tbl_YRI_chr", c, "_10kb.csv.gz", sep=""))
+  gnomad_10kb$chr <- c
+  human_maps_10kb_gnomad <- rbind.data.frame(human_maps_10kb_gnomad, 
+                                             gnomad_10kb)
+  
+  uniform_10kb <- fread(paste("~/Data/bgs_lmr/human_data/current_models/",
+                          "equilibrium/functional_split_exons/uniform/",
+                          "B_tbl_YRI_chr", c, "_10kb.csv.gz", sep=""))
+  uniform_10kb$chr <- c
+  human_maps_10kb_uniform <- rbind.data.frame(human_maps_10kb_uniform, 
+                                              uniform_10kb)
 }
 close(pb)
-
-# facilitates calling
-names(human_maps_10kb)[1] <- "chr" 
-names(human_maps_100kb)[1] <- "chr" 
-names(human_maps_1Mb)[1] <- "chr" 
-
+  
 # introducing mutation noise in expected pi
-S = 100 # diploid sample size
+## roulette
+S <- 100 # diploid sample size
 
-## 10 kb
-pi_sim <- numeric(length=nrow(human_maps_10kb))
-pi_sim_neu <- numeric(length=nrow(human_maps_10kb))
-pi_sim_del <- numeric(length=nrow(human_maps_10kb))
+pi_sim <- numeric(length=nrow(human_maps_10kb_roulette))
+pi_sim_neu <- numeric(length=nrow(human_maps_10kb_roulette))
+pi_sim_del <- numeric(length=nrow(human_maps_10kb_roulette))
 for(i in 1:S) { 
     pi_sim <- pi_sim + rbinom(size=1e+4, 
-                              n=nrow(human_maps_10kb),
-                              prob=human_maps_10kb$exp_pi) / 1e+4
+                              n=nrow(human_maps_10kb_roulette),
+                              prob=human_maps_10kb_roulette$exp_pi) / 1e+4
     
     pi_sim_neu <- pi_sim_neu + rbinom(size=1e+4, 
-                                      n=nrow(human_maps_10kb),
-                                      prob=human_maps_10kb$exp_neu_pi) / 1e+4
+                                      n=nrow(human_maps_10kb_roulette),
+                                      prob=human_maps_10kb_roulette$exp_neu_pi) / 1e+4
     
     pi_sim_del <- pi_sim_del + rbinom(size=1e+4, 
-                                      n=nrow(human_maps_10kb),
-                                      prob=human_maps_10kb$exp_del_pi) / 1e+4
+                                      n=nrow(human_maps_10kb_roulette),
+                                      prob=human_maps_10kb_roulette$exp_del_pi) / 1e+4
 }
      
-human_maps_10kb$pi_sim_tot <- pi_sim / S
-human_maps_10kb$pi_sim_neu <- pi_sim_neu / S
-human_maps_10kb$pi_sim_del <- pi_sim_del / S
+human_maps_10kb_roulette$pi_sim_tot <- pi_sim / S
+human_maps_10kb_roulette$pi_sim_neu <- pi_sim_neu / S
+human_maps_10kb_roulette$pi_sim_del <- pi_sim_del / S
 
-human_maps_10kb$coverage <- human_maps_10kb$num_sites / 1e+4
-human_maps_10kb$prop_del_sites <- human_maps_10kb$del_sites / human_maps_10kb$num_sites
-fwrite(human_maps_10kb, "real_data_maps/human_maps_10kb.csv.gz")
+human_maps_10kb_roulette$coverage <- human_maps_10kb_roulette$num_sites / 1e+4
+human_maps_10kb_roulette$prop_del_sites <- human_maps_10kb_roulette$del_sites / 
+  human_maps_10kb_roulette$num_sites
 
-## 100kb
-pi_sim <- numeric(length=nrow(human_maps_100kb))
-pi_sim_neu <- numeric(length=nrow(human_maps_100kb))
-pi_sim_del <- numeric(length=nrow(human_maps_100kb))
+## carlson
+S <- 100 # diploid sample size
+
+pi_sim <- numeric(length=nrow(human_maps_10kb_carlson))
+pi_sim_neu <- numeric(length=nrow(human_maps_10kb_carlson))
+pi_sim_del <- numeric(length=nrow(human_maps_10kb_carlson))
 for(i in 1:S) { 
-    pi_sim <- pi_sim + rbinom(size=1e+5, 
-                              n=nrow(human_maps_100kb),
-                              prob=human_maps_100kb$exp_pi) / 1e+5
+    pi_sim <- pi_sim + rbinom(size=1e+4, 
+                              n=nrow(human_maps_10kb_carlson),
+                              prob=human_maps_10kb_carlson$exp_pi) / 1e+4
     
-    pi_sim_neu <- pi_sim_neu + rbinom(size=1e+5, 
-                                      n=nrow(human_maps_100kb),
-                                      prob=human_maps_100kb$exp_neu_pi) / 1e+5
+    pi_sim_neu <- pi_sim_neu + rbinom(size=1e+4, 
+                                      n=nrow(human_maps_10kb_carlson),
+                                      prob=human_maps_10kb_carlson$exp_neu_pi) / 1e+4
     
-    pi_sim_del <- pi_sim_del + rbinom(size=1e+5, 
-                                      n=nrow(human_maps_100kb),
-                                      prob=human_maps_100kb$exp_del_pi) / 1e+5
+    pi_sim_del <- pi_sim_del + rbinom(size=1e+4, 
+                                      n=nrow(human_maps_10kb_carlson),
+                                      prob=human_maps_10kb_carlson$exp_del_pi) / 1e+4
 }
      
-human_maps_100kb$pi_sim_tot <- pi_sim / S
-human_maps_100kb$pi_sim_neu <- pi_sim_neu / S
-human_maps_100kb$pi_sim_del <- pi_sim_del / S
+human_maps_10kb_carlson$pi_sim_tot <- pi_sim / S
+human_maps_10kb_carlson$pi_sim_neu <- pi_sim_neu / S
+human_maps_10kb_carlson$pi_sim_del <- pi_sim_del / S
 
-human_maps_100kb$coverage <- human_maps_100kb$num_sites / 1e+5
-human_maps_100kb$prop_del_sites <- human_maps_100kb$del_sites / human_maps_100kb$num_sites
-fwrite(human_maps_100kb, "real_data_maps/human_maps_100kb.csv.gz")
+human_maps_10kb_carlson$coverage <- human_maps_10kb_carlson$num_sites / 1e+4
+human_maps_10kb_carlson$prop_del_sites <- human_maps_10kb_carlson$del_sites / 
+  human_maps_10kb_carlson$num_sites
+
+## gnomad
+S <- 100 # diploid sample size
+
+pi_sim <- numeric(length=nrow(human_maps_10kb_gnomad))
+pi_sim_neu <- numeric(length=nrow(human_maps_10kb_gnomad))
+pi_sim_del <- numeric(length=nrow(human_maps_10kb_gnomad))
+for(i in 1:S) { 
+    pi_sim <- pi_sim + rbinom(size=1e+4, 
+                              n=nrow(human_maps_10kb_gnomad),
+                              prob=human_maps_10kb_gnomad$exp_pi) / 1e+4
+    
+    pi_sim_neu <- pi_sim_neu + rbinom(size=1e+4, 
+                                      n=nrow(human_maps_10kb_gnomad),
+                                      prob=human_maps_10kb_gnomad$exp_neu_pi) / 1e+4
+    
+    pi_sim_del <- pi_sim_del + rbinom(size=1e+4, 
+                                      n=nrow(human_maps_10kb_gnomad),
+                                      prob=human_maps_10kb_gnomad$exp_del_pi) / 1e+4
+}
+     
+human_maps_10kb_gnomad$pi_sim_tot <- pi_sim / S
+human_maps_10kb_gnomad$pi_sim_neu <- pi_sim_neu / S
+human_maps_10kb_gnomad$pi_sim_del <- pi_sim_del / S
+
+human_maps_10kb_gnomad$coverage <- human_maps_10kb_gnomad$num_sites / 1e+4
+human_maps_10kb_gnomad$prop_del_sites <- human_maps_10kb_gnomad$del_sites / 
+  human_maps_10kb_gnomad$num_sites
+
+## uniform
+S <- 100 # diploid sample size
+
+pi_sim <- numeric(length=nrow(human_maps_10kb_uniform))
+pi_sim_neu <- numeric(length=nrow(human_maps_10kb_uniform))
+pi_sim_del <- numeric(length=nrow(human_maps_10kb_uniform))
+for(i in 1:S) { 
+    pi_sim <- pi_sim + rbinom(size=1e+4, 
+                              n=nrow(human_maps_10kb_uniform),
+                              prob=human_maps_10kb_uniform$exp_pi) / 1e+4
+    
+    pi_sim_neu <- pi_sim_neu + rbinom(size=1e+4, 
+                                      n=nrow(human_maps_10kb_uniform),
+                                      prob=human_maps_10kb_uniform$exp_neu_pi) / 1e+4
+    
+    pi_sim_del <- pi_sim_del + rbinom(size=1e+4, 
+                                      n=nrow(human_maps_10kb_uniform),
+                                      prob=human_maps_10kb_uniform$exp_del_pi) / 1e+4
+}
+     
+human_maps_10kb_uniform$pi_sim_tot <- pi_sim / S
+human_maps_10kb_uniform$pi_sim_neu <- pi_sim_neu / S
+human_maps_10kb_uniform$pi_sim_del <- pi_sim_del / S
+
+human_maps_10kb_uniform$coverage <- human_maps_10kb_uniform$num_sites / 1e+4
+human_maps_10kb_uniform$prop_del_sites <- human_maps_10kb_uniform$del_sites / 
+  human_maps_10kb_uniform$num_sites
+
+# filtering based on coverage
+human_maps_10kb_roulette <- filter(human_maps_10kb_roulette, coverage > 0.75)
+human_maps_10kb_carlson <- filter(human_maps_10kb_carlson, coverage > 0.75)
+human_maps_10kb_gnomad <- filter(human_maps_10kb_gnomad, coverage > 0.75)
+human_maps_10kb_uniform <- filter(human_maps_10kb_uniform, coverage > 0.75)
+
+human_maps_10kb_roulette <- human_maps_10kb_roulette %>% group_by(chr) %>%
+                            mutate(bin_100kb=chromEnd %/% 1e+5,
+                                   bin_1Mb=chromEnd %/% 1e+6)
+human_maps_10kb_carlson <- human_maps_10kb_carlson %>% group_by(chr) %>%
+                           mutate(bin_100kb=chromEnd %/% 1e+5,
+                                  bin_1Mb=chromEnd %/% 1e+6)
+human_maps_10kb_gnomad <- human_maps_10kb_gnomad %>% group_by(chr) %>%
+                           mutate(bin_100kb=chromEnd %/% 1e+5,
+                                  bin_1Mb=chromEnd %/% 1e+6)
+human_maps_10kb_uniform <- human_maps_10kb_uniform %>% group_by(chr) %>%
+                           mutate(bin_100kb=chromEnd %/% 1e+5,
+                                  bin_1Mb=chromEnd %/% 1e+6)
+
+human_maps_10kb_roulette$mut_map <- "roulette"
+human_maps_10kb_carlson$mut_map <- "roulette"
+human_maps_10kb_gnomad$mut_map <- "gnomad"
+human_maps_10kb_uniform$mut_map <- "uniform"
+
+human_maps_10kb <- rbind.data.frame(human_maps_10kb_roulette,
+                                   human_maps_10kb_carlson,
+                                   human_maps_10kb_gnomad,
+                                   human_maps_10kb_uniform)
+
+# 100 kb binning
+human_maps_100kb_roulette <- human_maps_10kb_roulette %>%
+                  group_by(chrom, bin_100kb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_100kb, .keep_all=T)
+
+human_maps_100kb_roulette$chromStart <- human_maps_100kb_roulette$bin_100kb * 1e+5
+human_maps_100kb_roulette$chromEnd <- (human_maps_100kb_roulette$bin_100kb + 1) * 1e+5
+
+human_maps_100kb_carlson <- human_maps_10kb_carlson %>%
+                  group_by(chrom, bin_100kb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_100kb, .keep_all=T)
+
+human_maps_100kb_carlson$chromStart <- human_maps_100kb_carlson$bin_100kb * 1e+5
+human_maps_100kb_carlson$chromEnd <- (human_maps_100kb_carlson$bin_100kb + 1) * 1e+5
+
+human_maps_100kb_gnomad <- human_maps_10kb_gnomad %>%
+                  group_by(chrom, bin_100kb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_100kb, .keep_all=T)
+
+human_maps_100kb_gnomad$chromStart <- human_maps_100kb_gnomad$bin_100kb * 1e+5
+human_maps_100kb_gnomad$chromEnd <- (human_maps_100kb_gnomad$bin_100kb + 1) * 1e+5
+
+human_maps_100kb_uniform <- human_maps_10kb_uniform %>%
+                  group_by(chrom, bin_100kb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_100kb, .keep_all=T)
+
+human_maps_100kb_uniform$chromStart <- human_maps_100kb_uniform$bin_100kb * 1e+5
+human_maps_100kb_uniform$chromEnd <- (human_maps_100kb_uniform$bin_100kb + 1) * 1e+5
+
+human_maps_100kb_roulette$mut_map <- "roulette"
+human_maps_100kb_carlson$mut_map <- "carlson"
+human_maps_100kb_gnomad$mut_map <- "gnomad"
+human_maps_100kb_uniform$mut_map <- "uniform"
+
+human_maps_100kb <- rbind.data.frame(human_maps_100kb_roulette,
+                                     human_maps_100kb_carlson,
+                                     human_maps_100kb_gnomad,
+                                     human_maps_100kb_uniform)
+
+
+# 1 Mb binning
+human_maps_1Mb_roulette <- human_maps_10kb_roulette %>%
+                  group_by(chrom, bin_1Mb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_1Mb, .keep_all=T)
+
+human_maps_1Mb_roulette$chromStart <- human_maps_1Mb_roulette$bin_1Mb * 1e+6
+human_maps_1Mb_roulette$chromEnd <- (human_maps_1Mb_roulette$bin_1Mb + 1) * 1e+6
+
+human_maps_1Mb_carlson <- human_maps_10kb_carlson %>%
+                  group_by(chrom, bin_1Mb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_1Mb, .keep_all=T)
+
+human_maps_1Mb_carlson$chromStart <- human_maps_1Mb_carlson$bin_1Mb * 1e+6
+human_maps_1Mb_carlson$chromEnd <- (human_maps_1Mb_carlson$bin_1Mb + 1) * 1e+6
+
+human_maps_1Mb_gnomad <- human_maps_10kb_gnomad %>%
+                  group_by(chrom, bin_1Mb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_1Mb, .keep_all=T)
+
+human_maps_1Mb_gnomad$chromStart <- human_maps_1Mb_gnomad$bin_1Mb * 1e+6
+human_maps_1Mb_gnomad$chromEnd <- (human_maps_1Mb_gnomad$bin_1Mb + 1) * 1e+6
+
+human_maps_1Mb_uniform <- human_maps_10kb_uniform %>%
+                  group_by(chrom, bin_1Mb) %>% 
+                  mutate(num_sites=sum(num_sites),
+                         del_sites=sum(del_sites),
+                         avg_mut=mean(avg_mut),
+                         avg_rec=mean(avg_rec),
+                         B=mean(B),
+                         exp_del_pi=mean(exp_del_pi),
+                         exp_neu_pi=mean(exp_neu_pi),
+                         exp_pi=mean(exp_pi),
+                         B_iter0=mean(B_iter0),
+                         B_iter1=mean(B_iter1),
+                         B_iter2=mean(B_iter2),
+                         B_iter3=mean(B_iter3),
+                         B_iter4=mean(B_iter4),
+                         B_iter5=mean(B_iter5),
+                         B_iter6=mean(B_iter6),
+                         avg_pi=mean(avg_pi),
+                         pi_sim_tot=mean(pi_sim_tot),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         pi_sim_neu=mean(pi_sim_neu),
+                         prop_del_sites=mean(prop_del_sites)) %>%
+                  distinct(bin_1Mb, .keep_all=T)
+
+human_maps_1Mb_uniform$chromStart <- human_maps_1Mb_uniform$bin_1Mb * 1e+6
+human_maps_1Mb_uniform$chromEnd <- (human_maps_1Mb_uniform$bin_1Mb + 1) * 1e+6
+
+human_maps_1Mb_roulette$mut_map <- "roulette"
+human_maps_1Mb_carlson$mut_map <- "carlson"
+human_maps_1Mb_gnomad$mut_map <- "gnomad"
+human_maps_1Mb_uniform$mut_map <- "uniform"
+
+human_maps_1Mb <- rbind.data.frame(human_maps_1Mb_roulette,
+                                   human_maps_1Mb_carlson,
+                                   human_maps_1Mb_gnomad,
+                                   human_maps_1Mb_uniform)
+
+# summarizing in terms of AC and CV (not for uniform mut maps as they are flat)
+## 10 kb
+human_summaries_10kb_roulette <- human_maps_10kb_roulette %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+
+human_summaries_10kb_carlson <- human_maps_10kb_carlson %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+
+human_summaries_10kb_gnomad <- human_maps_10kb_gnomad %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+
+human_summaries_10kb_roulette$scale <- 1e+4
+human_summaries_10kb_carlson$scale <- 1e+4
+human_summaries_10kb_gnomad$scale <- 1e+4
+
+## 100 kb
+human_summaries_100kb_roulette <- human_maps_100kb_roulette %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+
+human_summaries_100kb_carlson <- human_maps_100kb_carlson %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+
+human_summaries_100kb_gnomad <- human_maps_100kb_gnomad %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
+
+human_summaries_100kb_roulette$scale <- 1e+5
+human_summaries_100kb_carlson$scale <- 1e+5
+human_summaries_100kb_gnomad$scale <- 1e+5
 
 ## 1 Mb
-pi_sim <- numeric(length=nrow(human_maps_1Mb))
-pi_sim_neu <- numeric(length=nrow(human_maps_1Mb))
-pi_sim_del <- numeric(length=nrow(human_maps_1Mb))
-for(i in 1:S) { 
-    pi_sim <- pi_sim + rbinom(size=1e+6, 
-                              n=nrow(human_maps_1Mb),
-                              prob=human_maps_1Mb$exp_pi) / 1e+6
-    
-    pi_sim_neu <- pi_sim_neu + rbinom(size=1e+6, 
-                                      n=nrow(human_maps_1Mb),
-                                      prob=human_maps_1Mb$exp_neu_pi) / 1e+6
-    
-    pi_sim_del <- pi_sim_del + rbinom(size=1e+6, 
-                                      n=nrow(human_maps_1Mb),
-                                      prob=human_maps_1Mb$exp_del_pi) / 1e+6
-}
-     
-human_maps_1Mb$pi_sim_tot <- pi_sim / S
-human_maps_1Mb$pi_sim_neu <- pi_sim_neu / S
-human_maps_1Mb$pi_sim_del <- pi_sim_del / S
-
-human_maps_1Mb$coverage <- human_maps_1Mb$num_sites / 1e+6
-human_maps_1Mb$prop_del_sites <- human_maps_1Mb$del_sites / human_maps_1Mb$num_sites
-
-fwrite(human_maps_1Mb, "real_data_maps/human_maps_1Mb.csv.gz")
-
-# summarizing in terms of AC and CV
-human_summaries_10kb <- human_maps_10kb %>% group_by(chr) %>%
+human_summaries_1Mb_roulette <- human_maps_1Mb_roulette %>% group_by(chr) %>%
                             mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
                             mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
                             mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
@@ -6840,9 +7242,8 @@ human_summaries_10kb <- human_maps_10kb %>% group_by(chr) %>%
                                                                 lag=1, 
                                                                 pl=F))[2])) %>%
                             distinct(chr, .keep_all=T)
-human_summaries_10kb$scale <- 1e+4
 
-human_summaries_100kb <- human_maps_100kb %>% group_by(chr) %>%
+human_summaries_1Mb_carlson <- human_maps_1Mb_carlson %>% group_by(chr) %>%
                             mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
                             mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
                             mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
@@ -6852,24 +7253,53 @@ human_summaries_100kb <- human_maps_100kb %>% group_by(chr) %>%
                                                                 lag=1, 
                                                                 pl=F))[2])) %>%
                             distinct(chr, .keep_all=T)
-human_summaries_100kb$scale <- 1e+5
 
-human_summaries_1Mb <- human_maps_1Mb %>% group_by(chr) %>%
-                       mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
-                       mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
-                       mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
-                                                           lag=1, 
-                                                           pl=F))[2])) %>%
-                       mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+human_summaries_1Mb_gnomad <- human_maps_1Mb_gnomad %>% group_by(chr) %>%
+                            mutate(cv_mut=sd(avg_mut)/mean(avg_mut)) %>%
+                            mutate(cv_rec=sd(avg_rec)/mean(avg_rec)) %>%
+                            mutate(ac_mut=as.numeric(unlist(acf(avg_mut,
                                                                 lag=1, 
                                                                 pl=F))[2])) %>%
-                       distinct(chr, .keep_all=T)
-human_summaries_1Mb$scale <- 1e+6
+                            mutate(ac_rec=as.numeric(unlist(acf(avg_rec,
+                                                                lag=1, 
+                                                                pl=F))[2])) %>%
+                            distinct(chr, .keep_all=T)
 
-human_summaries <- rbind.data.frame(human_summaries_10kb,
-                                    human_summaries_100kb,
-                                    human_summaries_1Mb)
-human_summaries$chr <- paste("chr", human_summaries$chr, sep="") # easier viz
+human_summaries_1Mb_roulette$scale <- 1e+6
+human_summaries_1Mb_carlson$scale <- 1e+6
+human_summaries_1Mb_gnomad$scale <- 1e+6
+
+human_summaries_roulette <- rbind.data.frame(human_summaries_10kb_roulette,
+                                             human_summaries_100kb_roulette,
+                                             human_summaries_1Mb_roulette)
+
+human_summaries_carlson <- rbind.data.frame(human_summaries_10kb_carlson,
+                                            human_summaries_100kb_carlson,
+                                            human_summaries_1Mb_carlson)
+
+human_summaries_gnomad <- rbind.data.frame(human_summaries_10kb_gnomad,
+                                           human_summaries_100kb_gnomad,
+                                           human_summaries_1Mb_gnomad)
+
+# easier viz
+human_summaries_roulette$chr <- paste("chr", human_summaries_roulette$chr, sep="") 
+human_summaries_carlson$chr <- paste("chr", human_summaries_carlson$chr, sep="") 
+human_summaries_gnomad$chr <- paste("chr", human_summaries_gnomad$chr, sep="") 
+
+human_summaries_roulette$mut_map <- "roulette"
+human_summaries_carlson$mut_map <- "carlson"
+human_summaries_gnomad$mut_map <- "gnomad"
+
+human_summaries <- rbind.data.frame(human_summaries_roulette,
+                                    human_summaries_carlson,
+                                    human_summaries_gnomad) %>%
+                   dplyr::select(., c(chr,
+                                      cv_mut,
+                                      cv_rec,
+                                      ac_mut,
+                                      ac_rec,
+                                      scale,
+                                      mut_map))
 ```
 
 Finding the parameter combination which results in simulated maps
@@ -7032,15 +7462,16 @@ p <- ggplot(data=muts,
                 shape=as.factor(avg_mut_spans))) +
  geom_point(size=3) + theme_bw() +
  geom_point(data=human_summaries, 
-            aes(x=ac_mut, y=cv_mut),
-            shape=4, color="black") +
+            aes(x=ac_mut, y=cv_mut, color=mut_map),
+            shape=4) +
  #geom_text(data=human_summaries, aes(label=chr), vjust=0.8, size=10) +
  facet_grid(scale~mult_r_u, labeller=label_both) +
  scale_shape_manual(values=c(0, 1, 2), name="Avg. Mut. Spans") + 
  # https://stats.stackexchange.com/questions/185425/how-to-determine-the-critical-values-of-acf
  geom_vline(xintercept=-1.96 / sqrt(100-1), color="grey", linetype="dashed") + 
  geom_vline(xintercept=1.96 / sqrt(100-1), color="grey", linetype="dashed") + 
- scale_color_manual(values=c("brown1", "green4", "purple3", "cyan3"),
+ scale_color_manual(values=c("brown1", "green4", "purple3", "cyan3", 
+                             "grey1", "blue", "orange"),
                     name="Shape=Rate Gamma") + 
  scale_y_continuous(breaks=pretty_breaks()) +
  scale_x_continuous(breaks=pretty_breaks()) +
@@ -7137,8 +7568,8 @@ Basic visualization
 
 ```{r sd-ac-plots, include=F, message=F, warning=F}
 
-for(chrom in c(1:18, 20:22)) { # chr19 doesn't have enough data w/ 75% threshold
-  dt_1Mb <- filter(human_maps_1Mb, chr==chrom, coverage > 0.75) %>% 
+for(c in c(1:18, 20:22)) { # chr19 doesn't have enough data w/ 75% threshold
+  dt_1Mb <- dplyr::filter(human_maps_1Mb, chrom==c, num_sites > 5e+5) %>% 
             dplyr::select(., c(prop_del_sites,
                                avg_mut,
                                avg_rec,
@@ -7152,8 +7583,8 @@ for(chrom in c(1:18, 20:22)) { # chr19 doesn't have enough data w/ 75% threshold
             base_height=10, base_width=12)
 }
 
-for(chrom in c(1:18, 20:22)) {
-  dt_100kb <- filter(human_maps_100kb, chr==chrom, coverage > 0.75) %>% 
+for(c in c(1:18, 20:22)) {
+  dt_100kb <- filter(human_maps_100kb, chrom==c, num_sites > 7.5e+4) %>% 
             dplyr::select(., c(prop_del_sites,
                                avg_mut,
                                avg_rec,
@@ -7167,8 +7598,8 @@ for(chrom in c(1:18, 20:22)) {
             base_height=10, base_width=12)
 }
 
-for(chrom in c(1:18, 20:22)) {
-  dt_10kb <- filter(human_maps_10kb, chr==chrom, coverage > 0.75) %>% 
+for(c in c(1:18, 20:22)) {
+  dt_10kb <- filter(human_maps_10kb, chrom==c, num_sites > 7.5e+3) %>% 
              dplyr::select(., c(prop_del_sites,
                                 avg_mut,
                                 avg_rec,
@@ -7195,6 +7626,7 @@ Specifying the models with sim_pi
 ```{r dags-human-maps, include=F, eval=T}
 
 D1 <- DAG(
+  pi_sim_tot~prop_del_sites,
   pi_sim_tot~B,
   pi_sim_tot~avg_mut,
   B~avg_mut,
@@ -7202,6 +7634,7 @@ D1 <- DAG(
 )
 
 D2 <- DAG(
+  pi_sim_tot~prop_del_sites,
   pi_sim_tot~B,
   pi_sim_tot~avg_mut,
   B~avg_mut,
@@ -7210,6 +7643,7 @@ D2 <- DAG(
 )
 
 D3 <- DAG(
+  pi_sim_tot~prop_del_sites,
   pi_sim_tot~B,
   pi_sim_tot~avg_mut,
   B~avg_mut,
@@ -7219,6 +7653,7 @@ D3 <- DAG(
 )
 
 D4 <- DAG(
+  pi_sim_tot~prop_del_sites,
   pi_sim_tot~B,
   pi_sim_tot~avg_mut,
   B~avg_mut,
@@ -7230,6 +7665,7 @@ D4 <- DAG(
 )
 
 D5 <- DAG(
+  pi_sim_tot~prop_del_sites,
   pi_sim_tot~B,
   pi_sim_tot~avg_mut,
   B~avg_mut,
@@ -7254,108 +7690,115 @@ Testing the models
 ```{r dsep-humans, include=F, eval=T}
 
 num_chrom <- 22
-nboot <- 1e+3 # sampling the dataframe for reducing autocorrelation
+nboot <- 1e+3 # resampling the dataframe for reducing autocorrelation
   
-for(m in 1:length(models_list)) {
+# skipping 10kb scale because resampling is too expensive
+for(u in unique(human_maps_100kb$mut_map)) {
   
-  basis_set <- basiSet(models_list[[m]])
-  weights <- rep(1, length=length(basis_set))
+  tbl_100kb <- filter(human_maps_100kb, mut_map==u)
+  tbl_1Mb <- filter(human_maps_1Mb, mut_map==u)
 
-  #dsep_c_10kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
-  dsep_c_100kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
-  dsep_c_1Mb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  for(m in 1:length(models_list)) {
+    
+    basis_set <- basiSet(models_list[[m]])
+    weights <- rep(1, length=length(basis_set))
   
-  #names(dsep_c_10kb) <-  paste("chr_", 1:num_chrom, sep="")
-  names(dsep_c_100kb) <- paste("chr_", 1:num_chrom, sep="")
-  names(dsep_c_1Mb) <-  paste("chr_", 1:num_chrom, sep="")
-   
-  for(c in 1:num_chrom) {
+    #dsep_c_10kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+    dsep_c_100kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+    dsep_c_1Mb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
     
-    cat(paste("DAG", m, "chromosome", c))
-    cat("\n")
-    
-    #df_10kb <- filter(human_maps_10kb, 
-    #                  chr==c,
-    #                  coverage > 0.75, 
-    #                  !is.na(avg_pi)) 
-    df_100kb <- filter(human_maps_100kb,
-                       chr==c, 
-                       coverage > 0.75, 
+    #names(dsep_c_10kb) <-  paste("chr_", 1:num_chrom, sep="")
+    names(dsep_c_100kb) <- paste("chr_", 1:num_chrom, sep="")
+    names(dsep_c_1Mb) <-  paste("chr_", 1:num_chrom, sep="")
+     
+    for(c in 1:num_chrom) {
+      
+      cat(paste("DAG", m, "chromosome", c))
+      cat("\n")
+      
+      #df_10kb <- filter(human_maps_10kb, 
+      #                  chr==c,
+      #                  coverage > 0.75, 
+      #                  !is.na(avg_pi)) 
+      df_100kb <- filter(tbl_100kb,
+                         chr==c, 
+                         num_sites > 7.5e+4, 
+                         !is.na(avg_pi)) 
+      df_1Mb <- filter(tbl_1Mb, 
+                       chr==c,
+                       coverage > 5e+5, 
                        !is.na(avg_pi)) 
-    df_1Mb <- filter(human_maps_1Mb, 
-                     chr==c,
-                     coverage > 0.5, 
-                     !is.na(avg_pi)) 
+      
+      pb <- txtProgressBar(min=0, max=nboot, style=3) 
+      for(b in 1:nboot) {
+        
+        setTxtProgressBar(pb, b)
     
-    pb <- txtProgressBar(min=0, max=nboot, style=3) 
-    for(b in 1:nboot) {
-      
-      setTxtProgressBar(pb, b)
-  
-      #samp_10kb <- sample_n(df_10kb, nrow(df_10kb), replace=T)
-      samp_100kb <- sample_n(df_100kb, nrow(df_100kb), replace=T)
-      samp_1Mb <- sample_n(df_1Mb, nrow(df_1Mb), replace=T)
-      
-      #pvals_10kb <- rep(NA, length(basis_set))
-      pvals_100kb <- rep(NA, length(basis_set))
-      pvals_1Mb <- rep(NA, length(basis_set))
-  
-      for(i in 1:length(basis_set)) {
+        #samp_10kb <- sample_n(df_10kb, nrow(df_10kb), replace=T)
+        samp_100kb <- sample_n(df_100kb, nrow(df_100kb), replace=T)
+        samp_1Mb <- sample_n(df_1Mb, nrow(df_1Mb), replace=T)
         
-        var1 <- basis_set[[i]][1]
-        var2 <- basis_set[[i]][2]
-        
-        cond <- NULL
-        if(length(basis_set[[i]]) > 2) {
-          cond <- basis_set[[i]][3:length(basis_set[[i]])]
-        }
-        
-        if(length(basis_set[[i]]) > 2) {
-            #pvals_10kb[i] <- ppcor::pcor.test(samp_10kb[, ..var1], 
-            #                                  samp_10kb[, ..var2], 
-            #                                  samp_10kb[, ..cond],
-            #                                  method="kendall")$p.value
-            
-            pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
-                                               samp_100kb[, ..var2], 
-                                               samp_100kb[, ..cond],
-                                               method="kendall")$p.value
-            
-            pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
-                                             samp_1Mb[, ..var2], 
-                                             samp_1Mb[, ..cond],
-                                             method="kendall")$p.value
-        } else {
-          #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
-          #                          samp_10kb[, ..var2][[1]],
-          #                          method="kendall",
-          #                          exact=F)$p.value
+        #pvals_10kb <- rep(NA, length(basis_set))
+        pvals_100kb <- rep(NA, length(basis_set))
+        pvals_1Mb <- rep(NA, length(basis_set))
+    
+        for(i in 1:length(basis_set)) {
           
-          pvals_100kb[i] <- cor.test(samp_100kb[, ..var1][[1]],
-                                     samp_100kb[, ..var2][[1]],
+          var1 <- basis_set[[i]][1]
+          var2 <- basis_set[[i]][2]
+          
+          cond <- NULL
+          if(length(basis_set[[i]]) > 2) {
+            cond <- basis_set[[i]][3:length(basis_set[[i]])]
+          }
+          
+          if(length(basis_set[[i]]) > 2) {
+              #pvals_10kb[i] <- ppcor::pcor.test(samp_10kb[, ..var1], 
+              #                                  samp_10kb[, ..var2], 
+              #                                  samp_10kb[, ..cond],
+              #                                  method="kendall")$p.value
+              
+              pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
+                                                 samp_100kb[, ..var2], 
+                                                 samp_100kb[, ..cond],
+                                                 method="kendall")$p.value
+              
+              pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
+                                               samp_1Mb[, ..var2], 
+                                               samp_1Mb[, ..cond],
+                                               method="kendall")$p.value
+          } else {
+            #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
+            #                          samp_10kb[, ..var2][[1]],
+            #                          method="kendall",
+            #                          exact=F)$p.value
+            
+            pvals_100kb[i] <- cor.test(samp_100kb[, ..var1][[1]],
+                                       samp_100kb[, ..var2][[1]],
+                                       method="kendall",
+                                       exact=F)$p.value
+            
+            pvals_1Mb[i] <- cor.test(samp_1Mb[, ..var1][[1]],
+                                     samp_1Mb[, ..var2][[1]],
                                      method="kendall",
                                      exact=F)$p.value
-          
-          pvals_1Mb[i] <- cor.test(samp_1Mb[, ..var1][[1]],
-                                   samp_1Mb[, ..var2][[1]],
-                                   method="kendall",
-                                   exact=F)$p.value
+          }
         }
+        close(pb)
+        
+        #dsep_c_10kb[b, c] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
+        dsep_c_100kb[b, c] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
+        dsep_c_1Mb[b, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
       }
-      close(pb)
-      
-      #dsep_c_10kb[b, c] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
-      dsep_c_100kb[b, c] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
-      dsep_c_1Mb[b, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
     }
+    
+    #fwrite(dsep_c_10kb, paste("real_data_maps/dsep_10kb_pisim_m",
+    #                          i, ".csv.gz", sep=""))
+    fwrite(dsep_c_100kb, paste("real_data_maps/dsep_100kb_pisim_m",
+                               m, "_", u, ".csv.gz", sep=""))
+    fwrite(dsep_c_1Mb, paste("real_data_maps/dsep_1Mb_pisim_m",
+                              m, "_", u, ".csv.gz", sep=""))
   }
-  
-  #fwrite(dsep_c_10kb, paste("real_data_maps/dsep_10kb_pisim_m",
-  #                          i, ".csv.gz", sep=""))
-  fwrite(dsep_c_100kb, paste("real_data_maps/dsep_100kb_pisim_m",
-                             m, ".csv.gz", sep=""))
-  fwrite(dsep_c_1Mb, paste("real_data_maps/dsep_1Mb_pisim_m",
-                            m, ".csv.gz", sep=""))
 }
 ```
 
