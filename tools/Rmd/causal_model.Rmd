@@ -6724,7 +6724,7 @@ save_plot("meta_lm_rec_pi_SEM.png", p, base_height=8, base_width=10)
 
 # Human maps
 
-Here we use the Roulette mutation maps, pyrho recombination maps as well as
+Here we use several mutation maps, pyrho recombination maps as well as
 a the positions of functionally constrained elements in the human genome
 (build 38 and SFS-based DFEs) to predict B-values and pi along autosomes
 
@@ -6911,9 +6911,9 @@ human_maps_10kb_gnomad$mut_map <- "gnomad"
 human_maps_10kb_uniform$mut_map <- "uniform"
 
 human_maps_10kb <- rbind.data.frame(human_maps_10kb_roulette,
-                                   human_maps_10kb_carlson,
-                                   human_maps_10kb_gnomad,
-                                   human_maps_10kb_uniform)
+                                    human_maps_10kb_carlson,
+                                    human_maps_10kb_gnomad,
+                                    human_maps_10kb_uniform) %>% ungroup()
 
 # 100 kb binning
 human_maps_100kb_roulette <- human_maps_10kb_roulette %>%
@@ -6938,7 +6938,7 @@ human_maps_100kb_roulette <- human_maps_10kb_roulette %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_100kb, .keep_all=T)
+                  distinct(bin_100kb, .keep_all=T) %>% ungroup()
 
 human_maps_100kb_roulette$chromStart <- human_maps_100kb_roulette$bin_100kb * 1e+5
 human_maps_100kb_roulette$chromEnd <- (human_maps_100kb_roulette$bin_100kb + 1) * 1e+5
@@ -6965,7 +6965,7 @@ human_maps_100kb_carlson <- human_maps_10kb_carlson %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_100kb, .keep_all=T)
+                  distinct(bin_100kb, .keep_all=T) %>% ungroup()
 
 human_maps_100kb_carlson$chromStart <- human_maps_100kb_carlson$bin_100kb * 1e+5
 human_maps_100kb_carlson$chromEnd <- (human_maps_100kb_carlson$bin_100kb + 1) * 1e+5
@@ -6992,7 +6992,7 @@ human_maps_100kb_gnomad <- human_maps_10kb_gnomad %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_100kb, .keep_all=T)
+                  distinct(bin_100kb, .keep_all=T) %>% ungroup()
 
 human_maps_100kb_gnomad$chromStart <- human_maps_100kb_gnomad$bin_100kb * 1e+5
 human_maps_100kb_gnomad$chromEnd <- (human_maps_100kb_gnomad$bin_100kb + 1) * 1e+5
@@ -7019,7 +7019,7 @@ human_maps_100kb_uniform <- human_maps_10kb_uniform %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_100kb, .keep_all=T)
+                  distinct(bin_100kb, .keep_all=T) %>% ungroup()
 
 human_maps_100kb_uniform$chromStart <- human_maps_100kb_uniform$bin_100kb * 1e+5
 human_maps_100kb_uniform$chromEnd <- (human_maps_100kb_uniform$bin_100kb + 1) * 1e+5
@@ -7033,7 +7033,6 @@ human_maps_100kb <- rbind.data.frame(human_maps_100kb_roulette,
                                      human_maps_100kb_carlson,
                                      human_maps_100kb_gnomad,
                                      human_maps_100kb_uniform)
-
 
 # 1 Mb binning
 human_maps_1Mb_roulette <- human_maps_10kb_roulette %>%
@@ -7058,7 +7057,7 @@ human_maps_1Mb_roulette <- human_maps_10kb_roulette %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_1Mb, .keep_all=T)
+                  distinct(bin_1Mb, .keep_all=T) %>% ungroup()
 
 human_maps_1Mb_roulette$chromStart <- human_maps_1Mb_roulette$bin_1Mb * 1e+6
 human_maps_1Mb_roulette$chromEnd <- (human_maps_1Mb_roulette$bin_1Mb + 1) * 1e+6
@@ -7085,7 +7084,7 @@ human_maps_1Mb_carlson <- human_maps_10kb_carlson %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_1Mb, .keep_all=T)
+                  distinct(bin_1Mb, .keep_all=T) %>% ungroup()
 
 human_maps_1Mb_carlson$chromStart <- human_maps_1Mb_carlson$bin_1Mb * 1e+6
 human_maps_1Mb_carlson$chromEnd <- (human_maps_1Mb_carlson$bin_1Mb + 1) * 1e+6
@@ -7112,7 +7111,7 @@ human_maps_1Mb_gnomad <- human_maps_10kb_gnomad %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_1Mb, .keep_all=T)
+                  distinct(bin_1Mb, .keep_all=T) %>% ungroup()
 
 human_maps_1Mb_gnomad$chromStart <- human_maps_1Mb_gnomad$bin_1Mb * 1e+6
 human_maps_1Mb_gnomad$chromEnd <- (human_maps_1Mb_gnomad$bin_1Mb + 1) * 1e+6
@@ -7139,7 +7138,7 @@ human_maps_1Mb_uniform <- human_maps_10kb_uniform %>%
                          pi_sim_neu=mean(pi_sim_neu),
                          pi_sim_neu=mean(pi_sim_neu),
                          prop_del_sites=mean(prop_del_sites)) %>%
-                  distinct(bin_1Mb, .keep_all=T)
+                  distinct(bin_1Mb, .keep_all=T) %>% ungroup()
 
 human_maps_1Mb_uniform$chromStart <- human_maps_1Mb_uniform$bin_1Mb * 1e+6
 human_maps_1Mb_uniform$chromEnd <- (human_maps_1Mb_uniform$bin_1Mb + 1) * 1e+6
@@ -7569,7 +7568,9 @@ Basic visualization
 ```{r sd-ac-plots, include=F, message=F, warning=F}
 
 for(c in c(1:18, 20:22)) { # chr19 doesn't have enough data w/ 75% threshold
-  dt_1Mb <- dplyr::filter(human_maps_1Mb, chrom==c, num_sites > 5e+5) %>% 
+  dt_1Mb <- human_maps_1Mb[human_maps_1Mb$chrom==c & 
+                           human_maps_1Mb$num_sites>5e+5,] %>% 
+  #dt_1Mb <- dplyr::filter(human_maps_1Mb, chrom==c, num_sites > 5e+5) %>% 
             dplyr::select(., c(prop_del_sites,
                                avg_mut,
                                avg_rec,
@@ -7579,12 +7580,14 @@ for(c in c(1:18, 20:22)) { # chr19 doesn't have enough data w/ 75% threshold
                                num_sites)) 
             
   p <- ggpairs(dt_1Mb)
-  save_plot(paste("Correlations/pairs_1Mb_chr", chrom, ".png", sep=""), p,
+  save_plot(paste("Correlations/pairs_1Mb_chr", c, ".png", sep=""), p,
             base_height=10, base_width=12)
 }
 
 for(c in c(1:18, 20:22)) {
-  dt_100kb <- filter(human_maps_100kb, chrom==c, num_sites > 7.5e+4) %>% 
+  dt_100kb <- human_maps_100kb[human_maps_100kb$chrom==c & 
+                               human_maps_100kb$num_sites>7.5e+4,] %>% 
+  #dt_100kb <- filter(human_maps_100kb, chrom==c, num_sites > 7.5e+4) %>% 
             dplyr::select(., c(prop_del_sites,
                                avg_mut,
                                avg_rec,
@@ -7594,12 +7597,14 @@ for(c in c(1:18, 20:22)) {
                                num_sites)) 
             
   p <- ggpairs(dt_100kb)
-  save_plot(paste("Correlations/pairs_100kb_chr", chrom, ".png", sep=""), p,
+  save_plot(paste("Correlations/pairs_100kb_chr", c, ".png", sep=""), p,
             base_height=10, base_width=12)
 }
 
 for(c in c(1:18, 20:22)) {
-  dt_10kb <- filter(human_maps_10kb, chrom==c, num_sites > 7.5e+3) %>% 
+  dt_10kb <- human_maps_10kb[human_maps_10kb$chrom==c & 
+                             human_maps_10kb$num_sites>7.5e+3,] %>% 
+  #dt_10kb <- filter(human_maps_10kb, chrom==c, num_sites > 7.5e+3) %>% 
              dplyr::select(., c(prop_del_sites,
                                 avg_mut,
                                 avg_rec,
@@ -7609,7 +7614,7 @@ for(c in c(1:18, 20:22)) {
                                 num_sites)) 
             
   p <- ggpairs(dt_10kb)
-  save_plot(paste("Correlations/pairs_10kb_chr", chrom, ".png", sep=""), p,
+  save_plot(paste("Correlations/pairs_10kb_chr", c, ".png", sep=""), p,
             base_height=10, base_width=12)
 }
 ```
@@ -7621,7 +7626,7 @@ for(c in c(1:18, 20:22)) {
 NOTES:
 We filter for missing (obs) data and coverage to match real data tests
 
-Specifying the models with sim_pi
+Specifying the models to be tested (with sim. pi, maps are true)
 
 ```{r dags-human-maps, include=F, eval=T}
 
@@ -7695,9 +7700,12 @@ nboot <- 1e+3 # resampling the dataframe for reducing autocorrelation
 # skipping 10kb scale because resampling is too expensive
 for(u in unique(human_maps_100kb$mut_map)) {
   
-  tbl_100kb <- filter(human_maps_100kb, mut_map==u)
-  tbl_1Mb <- filter(human_maps_1Mb, mut_map==u)
-
+  #tbl_100kb <- filter(human_maps_100kb, mut_map==u)
+  #tbl_1Mb <- filter(human_maps_1Mb, mut_map==u)
+  
+  tbl_100kb <- human_maps_100kb[human_maps_100kb$mut_map==u,]
+  tbl_1Mb <- human_maps_1Mb[human_maps_1Mb$mut_map==u,]
+  
   for(m in 1:length(models_list)) {
     
     basis_set <- basiSet(models_list[[m]])
@@ -7720,14 +7728,12 @@ for(u in unique(human_maps_100kb$mut_map)) {
       #                  chr==c,
       #                  coverage > 0.75, 
       #                  !is.na(avg_pi)) 
-      df_100kb <- filter(tbl_100kb,
-                         chr==c, 
-                         num_sites > 7.5e+4, 
-                         !is.na(avg_pi)) 
-      df_1Mb <- filter(tbl_1Mb, 
-                       chr==c,
-                       coverage > 5e+5, 
-                       !is.na(avg_pi)) 
+      df_100kb <- tbl_100kb[tbl_100kb$chr==c & 
+                            tbl_100kb$num_sites > 7.5e+4 &
+                            !is.na(tbl_100kb$avg_pi),] %>% as.data.table()
+      df_1Mb <- tbl_1Mb[tbl_1Mb$chr==c & 
+                        tbl_1Mb$num_sites > 5e+5 &
+                        !is.na(tbl_1Mb$avg_pi),] %>% as.data.table()
       
       pb <- txtProgressBar(min=0, max=nboot, style=3) 
       for(b in 1:nboot) {
@@ -7758,15 +7764,19 @@ for(u in unique(human_maps_100kb$mut_map)) {
               #                                  samp_10kb[, ..cond],
               #                                  method="kendall")$p.value
               
-              pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
+              tryCatch({
+                pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
                                                  samp_100kb[, ..var2], 
                                                  samp_100kb[, ..cond],
                                                  method="kendall")$p.value
+              }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
               
-              pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
-                                               samp_1Mb[, ..var2], 
-                                               samp_1Mb[, ..cond],
-                                               method="kendall")$p.value
+              tryCatch({
+                pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
+                                                 samp_1Mb[, ..var2], 
+                                                 samp_1Mb[, ..cond],
+                                                 method="kendall")$p.value
+              }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
           } else {
             #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
             #                          samp_10kb[, ..var2][[1]],
@@ -7871,6 +7881,7 @@ Specifying the models with avg_pi
 ```{r dags-human-maps, include=F, eval=T}
 
 D1 <- DAG(
+  avg_pi~prop_del_sites,
   avg_pi~B,
   avg_pi~avg_mut,
   B~avg_mut,
@@ -7878,6 +7889,7 @@ D1 <- DAG(
 )
 
 D2 <- DAG(
+  avg_pi~prop_del_sites,
   avg_pi~B,
   avg_pi~avg_mut,
   B~avg_mut,
@@ -7886,6 +7898,7 @@ D2 <- DAG(
 )
 
 D3 <- DAG(
+  avg_pi~prop_del_sites,
   avg_pi~B,
   avg_pi~avg_mut,
   B~avg_mut,
@@ -7895,6 +7908,7 @@ D3 <- DAG(
 )
 
 D4 <- DAG(
+  avg_pi~prop_del_sites,
   avg_pi~B,
   avg_pi~avg_mut,
   B~avg_mut,
@@ -7906,6 +7920,7 @@ D4 <- DAG(
 )
 
 D5 <- DAG(
+  avg_pi~prop_del_sites,
   avg_pi~B,
   avg_pi~avg_mut,
   B~avg_mut,
@@ -7992,15 +8007,19 @@ for(m in 1:length(models_list)) {
             #                                  samp_10kb[, ..cond],
             #                                  method="kendall")$p.value
             
-            pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
-                                               samp_100kb[, ..var2], 
-                                               samp_100kb[, ..cond],
-                                               method="kendall")$p.value
+            tryCatch({
+              pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
+                                                 samp_100kb[, ..var2], 
+                                                 samp_100kb[, ..cond],
+                                                 method="kendall")$p.value
+            }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
             
-            pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
-                                             samp_1Mb[, ..var2], 
-                                             samp_1Mb[, ..cond],
-                                             method="kendall")$p.value
+            tryCatch({
+              pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
+                                               samp_1Mb[, ..var2], 
+                                               samp_1Mb[, ..cond],
+                                               method="kendall")$p.value
+            }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
         } else {
           #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
           #                          samp_10kb[, ..var2][[1]],
