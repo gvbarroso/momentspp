@@ -505,6 +505,14 @@ request_memory = 32GB
 request_disk = 2GB
 ```
 
+# Simulation study
+
+These simulations are based on moments++ predictions using artificially 
+constructed maps.
+
+We can obtain predictions with (final B iteration) and without (1st iteration)
+interference.
+
 Specifying causal models
 
 ```{r dags-viz, include=F, message=F, warning=F}
@@ -556,14 +564,14 @@ save_plot("DAGs/DAG_1.svg", DD1p)
 save_plot("DAGs/DAG_1.png", DD1p)
 
 DAG2 <- dagify(
-  pi_s ~ B,
-  pi_s ~ u,
-  B ~ pi_n,
+  pi_neu ~ B,
+  pi_neu ~ u,
+  B ~ pi_neu,
   B ~ r,
   B ~ S,
   u ~ r,
-  pi_n ~ u,
-  pi_n ~ S
+  pi_del ~ u,
+  pi_del ~ S
 )
 
 DD2p <- DAG2 %>% 
@@ -575,22 +583,22 @@ DD2p <- DAG2 %>%
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
                 label = c("B", "S", 
-                          expression(pi[N]), expression(pi[S]), 
+                          expression(pi[del]), expression(pi[neu]), 
                           "r", expression(mu)))
   
 save_plot("DAGs/DAG_2.svg", DD2p)
 save_plot("DAGs/DAG_2.png", DD2p)
 
 DAG3 <- dagify(
-  pi_s ~ B,
-  pi_s ~ u,
-  B ~ pi_n,
+  pi_neu ~ B,
+  pi_neu ~ u,
+  B ~ pi_del,
   B ~ LD,
   LD ~ S,
   LD ~ r,
-  pi_n ~ S,
+  pi_del ~ S,
   u ~ r,
-  pi_n ~ u
+  pi_del ~ u
 )
 
 DD3p <- DAG3 %>% 
@@ -602,28 +610,28 @@ DD3p <- DAG3 %>%
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
                 label = c("B", "LD", "S", 
-                          expression(pi[N]), 
-                          expression(pi[S]), "r", expression(mu)))
+                          expression(pi[del]), 
+                          expression(pi[neu]), "r", expression(mu)))
 
 save_plot("DAGs/DAG_3.svg", DD3p)
 save_plot("DAGs/DAG_3.png", DD3p)
 
 # with interference
 DAG4 <- dagify(
-  pi_s ~ B,
-  pi_s ~ u,
-  B ~ pi_n,
+  pi_neu ~ B,
+  pi_neu ~ u,
+  B ~ pi_del,
   B ~ LD,
   Ne ~ B,
   LD ~ Ne,
-  pi_n ~ Ne,
+  pi_del ~ Ne,
   S ~ Ne,
-  pi_s ~ Ne,
+  pi_neu ~ Ne,
   LD ~ S,
   LD ~ r,
-  pi_n ~ S,
+  pi_del ~ S,
   u ~ r,
-  pi_n ~ u
+  pi_del ~ u
 )
 
 DD4p <- DAG4 %>% 
@@ -635,26 +643,26 @@ DD4p <- DAG4 %>%
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
                 label = c("B", "LD", "Ne", "S",
-                          expression(pi[N]), 
-                          expression(pi[S]), "r", expression(mu)))
+                          expression(pi[del]), 
+                          expression(pi[neu]), "r", expression(mu)))
 
 save_plot("DAGs/DAG_4.svg", DD4p)
 save_plot("DAGs/DAG_4.png", DD4p)
 
 DAG5 <- dagify(
-  pi_s ~ B,
-  pi_s ~ u,
-  B ~ pi_n,
+  pi_neu ~ B,
+  pi_neu ~ u,
+  B ~ pi_del,
   B ~ r,
-  pi_n ~ E,
+  pi_del ~ E,
   u ~ r,
-  pi_n ~ u,
-  pi ~ pi_s,
-  pi ~ pi_n
+  pi_del ~ u,
+  pi ~ pi_neu,
+  pi ~ pi_del
 )
 
 # assuming the strength of selection is constant across functional elements
-# the problem is that B and piN cannot affect each other directly
+# the problem is that B and pi_del cannot affect each other directly
 DD5p <- DAG5 %>% 
   tidy_dagitty(layout="auto") %>%
   arrange(name) %>% 
@@ -664,8 +672,8 @@ DD5p <- DAG5 %>%
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
                 label = c("B", "E", expression(pi),
-                          expression(pi[N]), 
-                          expression(pi[S]),
+                          expression(pi[del]), 
+                          expression(pi[neu]),
                           "r", expression(mu)))
 
 save_plot("DAGs/DAG_5.svg", DD5p)
@@ -673,8 +681,9 @@ save_plot("DAGs/DAG_5.png", DD5p)
 
 # the DAGs that we will test with d-sep
 DAG6 <- dagify(
-  pi_s ~ B,
-  pi_s ~ u,
+  pi ~ B,
+  pi ~ u,
+  pi ~ E,
   B ~ E,
   B ~ r,
   B ~ u,
@@ -689,7 +698,7 @@ DD6p <- DAG6 %>%
   geom_dag_edges() +
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
-                label = c("B", "E", expression(pi[S]),
+                label = c("B", "E", expression(pi),
                           "r", expression(mu)))
 
 save_plot("DAGs/DAG_6.svg", DD6p)
@@ -697,8 +706,9 @@ save_plot("DAGs/DAG_6.png", DD6p)
 
 # non-mutagenic rec
 DAG7 <- dagify(
-  pi_s ~ B,
-  pi_s ~ u,
+  pi ~ B,
+  pi ~ u,
+  pi ~ E,
   B ~ E,
   B ~ r,
   B ~ u
@@ -712,20 +722,12 @@ DD7p <- DAG7 %>%
   geom_dag_edges() +
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
-                label = c("B", "E", expression(pi[S]),
+                label = c("B", "E", expression(pi),
                           "r", expression(mu)))
 
 save_plot("DAGs/DAG_7.svg", DD7p)
 save_plot("DAGs/DAG_7.png", DD7p)
 ```
-
-# Simulated data
-
-These simulations are based on moments++ predictions using artificially 
-constructed maps.
-
-We can obtain predictions with (final B iteration) and without (1st iteration)
-interference.
 
 ## Setting up
 
@@ -770,7 +772,7 @@ for(m in 1:num_models) {
     }
     
     m1kb$sim_pi <- sim_pi / S
-    m1kb$pi_neu_sim <- pi_neu_sim 
+    m1kb$pi_neu_sim <- pi_neu_sim / S
     
     data_cols <- names(m1kb)[4:ncol(m1kb)]
     
@@ -818,7 +820,7 @@ for(m in 1:num_models) {
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scale.4d) +
       scale_color_discrete(name=NULL,
-                           labels=c("pi tot., pi neu."),
+                           labels=c("pi tot.", "pi neu."),
                            type=c("purple3", "green4")) +
       labs(title="10 kb", x=NULL, y=expression(pi)) + 
       theme(axis.title.x=element_text(size=16),
@@ -884,7 +886,7 @@ for(m in 1:num_models) {
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, 
-                           labels=c("pi tot., pi neu."),
+                           labels=c("pi tot.", "pi neu."),
                            type=c("purple3", "green4")) +
       labs(title="100 kb", x=NULL, y=NULL) +
       theme(axis.title.x=element_text(size=16),
@@ -950,7 +952,7 @@ for(m in 1:num_models) {
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scale.4d) +
       scale_color_discrete(name=NULL, 
-                           labels=c("pi tot., pi neu."),
+                           labels=c("pi tot.", "pi neu."),
                            type=c("purple3", "green4")) +
       labs(title="1 Mb", x=NULL, y=NULL) +
       theme(axis.title.x=element_text(size=16),
@@ -1006,8 +1008,8 @@ for(m in 1:num_models) {
                            align='v', ncol=1, rel_heights=c(1, 1, 1, 1.25))
 
     lands_scales <- plot_grid(lands_10kb, lands_100kb, lands_1Mb, nrow=1)
-    #save_plot(paste("model_", m, "/rep_", r, "/maps.png", sep=""),
-    #          lands_scales, base_height=12, base_width=24)
+    save_plot(paste("model_", m, "/rep_", r, "/maps.png", sep=""),
+              lands_scales, base_height=12, base_width=24)
   }
   
   cv_u_cv_B[m, 2] <- cv_u_cv_B_10kb / num_reps
@@ -7692,7 +7694,7 @@ models_list[[5]] <- D5
 
 Testing the models
 
-```{r dsep-humans, include=F, eval=T}
+```{r dsep-humans-simpi, include=F, eval=T}
 
 num_chrom <- 22
 nboot <- 1e+3 # resampling the dataframe for reducing autocorrelation
@@ -7817,59 +7819,48 @@ Processing files
 ```{r d-sep-plot, include=F, message=F, warning=F}
 
 # combines tables from previous chunks
-## 100 kb
-pval_dsep1_100kb <- fread("real_data_maps/dsep_100kb_pisim_m1.csv.gz") 
-pval_dsep2_100kb <- fread("real_data_maps/dsep_100kb_pisim_m2.csv.gz") 
-pval_dsep3_100kb <- fread("real_data_maps/dsep_100kb_pisim_m3.csv.gz") 
-pval_dsep4_100kb <- fread("real_data_maps/dsep_100kb_pisim_m4.csv.gz") 
-pval_dsep5_100kb <- fread("real_data_maps/dsep_100kb_pisim_m5.csv.gz") 
+pval_dsep_100kb <- list(length=length(models_list) *
+                        length(unique(human_maps_100kb$mut_map)))
 
-pval_dsep1_100kb$DAG <- 1
-pval_dsep2_100kb$DAG <- 2
-pval_dsep3_100kb$DAG <- 3
-pval_dsep4_100kb$DAG <- 4
-pval_dsep5_100kb$DAG <- 5
+pval_dsep_1Mb <- list(length=length(models_list) *
+                      length(unique(human_maps_1Mb$mut_map)))
 
-pval_dsep1_100kb$boot <- 1:nrow(pval_dsep1_100kb)
-pval_dsep2_100kb$boot <- 1:nrow(pval_dsep2_100kb)
-pval_dsep3_100kb$boot <- 1:nrow(pval_dsep3_100kb)
-pval_dsep4_100kb$boot <- 1:nrow(pval_dsep4_100kb)
-pval_dsep5_100kb$boot <- 1:nrow(pval_dsep5_100kb)
+for(i in 1:length(unique(human_maps_100kb$mut_map))) {
+  for(m in 1:length(models_list)) {
+    
+    u <- unique(human_maps_100kb$mut_map)[i]
+    
+    fin_100kb <- paste("real_data_maps/dsep_100kb_pisim_m", m, 
+                       "_", u, ".csv.gz", sep="")
+    
+    fin_1Mb <- paste("real_data_maps/dsep_1Mb_pisim_m", m, 
+                     "_", u, ".csv.gz", sep="")
+    
+    pval_tbl_100kb <- fread(fin_100kb) 
+    pval_tbl_1Mb <- fread(fin_1Mb) 
+    
+    pval_tbl_100kb$DAG <- m
+    pval_tbl_1Mb$DAG <- m
+    
+    pval_tbl_100kb$mut_map <- u
+    pval_tbl_1Mb$mut_map <- u
+    
+    pval_tbl_100kb$boot <- 1:nrow(pval_tbl_100kb)
+    pval_tbl_1Mb$boot <- 1:nrow(pval_tbl_1Mb)
+    
+    idx <- i  + (m - 1) * length(unique(human_maps_100kb$mut_map))
+    
+    pval_dsep_100kb[[idx]] <- pval_tbl_100kb
+    pval_dsep_1Mb[[idx]] <- pval_tbl_1Mb
+  }
+}
 
-dsep_human_maps_100kb <- rbind.data.frame(pval_dsep1_100kb,
-                                        pval_dsep2_100kb,
-                                        pval_dsep3_100kb,
-                                        pval_dsep4_100kb,
-                                        pval_dsep5_100kb)
-names(dsep_human_maps_100kb) <- c(as.character(1:22), "DAG", "boot")
+dsep_human_maps_100kb <- do.call(rbind.data.frame, pval_dsep_100kb)
+dsep_human_maps_1Mb <- do.call(rbind.data.frame, pval_dsep_1Mb)
+
 fwrite(dsep_human_maps_100kb,
        "real_data_maps/dsep_human_maps_100kb_pisim.csv.gz")
 
-## 1 Mb
-pval_dsep1_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m1.csv.gz") 
-pval_dsep2_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m2.csv.gz") 
-pval_dsep3_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m3.csv.gz") 
-pval_dsep4_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m4.csv.gz") 
-pval_dsep5_1Mb <- fread("real_data_maps/dsep_1Mb_pisim_m5.csv.gz") 
-
-pval_dsep1_1Mb$DAG <- 1
-pval_dsep2_1Mb$DAG <- 2
-pval_dsep3_1Mb$DAG <- 3
-pval_dsep4_1Mb$DAG <- 4
-pval_dsep5_1Mb$DAG <- 5
-
-pval_dsep1_1Mb$boot <- 1:nrow(pval_dsep1_1Mb)
-pval_dsep2_1Mb$boot <- 1:nrow(pval_dsep2_1Mb)
-pval_dsep3_1Mb$boot <- 1:nrow(pval_dsep3_1Mb)
-pval_dsep4_1Mb$boot <- 1:nrow(pval_dsep4_1Mb)
-pval_dsep5_1Mb$boot <- 1:nrow(pval_dsep5_1Mb)
-
-dsep_human_maps_1Mb <- rbind.data.frame(pval_dsep1_1Mb,
-                                        pval_dsep2_1Mb,
-                                        pval_dsep3_1Mb,
-                                        pval_dsep4_1Mb,
-                                        pval_dsep5_1Mb)
-names(dsep_human_maps_1Mb) <- c(as.character(1:22), "DAG", "boot")
 fwrite(dsep_human_maps_1Mb,
        "real_data_maps/dsep_human_maps_1Mb_pisim.csv.gz")
 ```
@@ -7888,6 +7879,27 @@ D1 <- DAG(
   B~avg_rec
 )
 
+DAG1 <- dagify(
+  pi ~ E,
+  pi ~ B,
+  pi ~ u,
+  B ~ u,
+  B ~ r
+)
+
+DD1p <- DAG1 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E", expression(pi), "r", expression(mu)))
+  
+save_plot("real_data_maps/DAG_1.svg", DD1p)
+save_plot("real_data_maps/DAG_1.png", DD1p)
+
 D2 <- DAG(
   avg_pi~prop_del_sites,
   avg_pi~B,
@@ -7896,6 +7908,30 @@ D2 <- DAG(
   B~avg_rec,
   B~prop_del_sites
 )
+
+DAG2 <- dagify(
+  pi ~ E,
+  pi ~ B,
+  pi ~ u,
+  B ~ u,
+  B ~ r,
+  B ~ E
+)
+
+DD2p <- DAG2 %>% 
+  tidy_dagitty(layout="fr") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E", 
+                          expression(pi), 
+                          "r", expression(mu)))
+  
+save_plot("real_data_maps/DAG_2.svg", DD2p)
+save_plot("real_data_maps/DAG_2.png", DD2p)
 
 D3 <- DAG(
   avg_pi~prop_del_sites,
@@ -7906,6 +7942,30 @@ D3 <- DAG(
   B~prop_del_sites,
   avg_mut~avg_rec
 )
+
+DAG3 <- dagify(
+  pi ~ E,
+  pi ~ B,
+  pi ~ u,
+  B ~ u,
+  B ~ r,
+  B ~ E,
+  u ~ r
+)
+
+DD3p <- DAG3 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E",
+                          expression(pi), "r", expression(mu)))
+
+save_plot("real_data_maps/DAG_3.svg", DD3p)
+save_plot("real_data_maps/DAG_3.png", DD3p)
 
 D4 <- DAG(
   avg_pi~prop_del_sites,
@@ -7919,6 +7979,31 @@ D4 <- DAG(
   avg_mut~prop_del_sites
 )
 
+DAG4 <- dagify(
+  pi ~ E,
+  pi ~ B,
+  pi ~ u,
+  B ~ u,
+  B ~ r,
+  B ~ E,
+  u ~ r,
+  u ~ E
+)
+
+DD4p <- DAG4 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E",
+                          expression(pi), "r", expression(mu)))
+
+save_plot("real_data_maps/DAG_4.svg", DD4p)
+save_plot("real_data_maps/DAG_4.png", DD4p)
+
 D5 <- DAG(
   avg_pi~prop_del_sites,
   avg_pi~B,
@@ -7927,10 +8012,36 @@ D5 <- DAG(
   B~avg_rec,
   B~prop_del_sites,
   avg_mut~avg_rec,
-  # 2nd order selection on the mutation landscape
+  # 2nd order selection 
   avg_mut~prop_del_sites,
   avg_rec~prop_del_sites
 )
+
+DAG5 <- dagify(
+  pi ~ E,
+  pi ~ B,
+  pi ~ u,
+  B ~ u,
+  B ~ r,
+  B ~ E,
+  u ~ r,
+  u ~ E,
+  r ~ E
+)
+
+DD5p <- DAG5 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", "E",
+                          expression(pi), "r", expression(mu)))
+
+save_plot("real_data_maps/DAG_5.svg", DD5p)
+save_plot("real_data_maps/DAG_5.png", DD5p)
 
 models_list <- list(length=5)
 models_list[[1]] <- D1
@@ -7942,115 +8053,123 @@ models_list[[5]] <- D5
 
 Testing the models
 
-```{r dsep-humans, include=F, eval=T}
+```{r dsep-humans-obspi, include=F, eval=T}
 
 num_chrom <- 22
-nboot <- 1e+3 # sampling the dataframe for reducing autocorrelation
+nboot <- 1e+3 # resampling the dataframe for reducing autocorrelation
   
-for(m in 1:length(models_list)) {
+# skipping 10kb scale because resampling is too expensive
+for(u in unique(human_maps_100kb$mut_map)) {
   
-  basis_set <- basiSet(models_list[[m]])
-  weights <- rep(1, length=length(basis_set))
-
-  #dsep_c_10kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
-  dsep_c_100kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
-  dsep_c_1Mb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+  #tbl_100kb <- filter(human_maps_100kb, mut_map==u)
+  #tbl_1Mb <- filter(human_maps_1Mb, mut_map==u)
   
-  #names(dsep_c_10kb) <-  paste("chr_", 1:num_chrom, sep="")
-  names(dsep_c_100kb) <- paste("chr_", 1:num_chrom, sep="")
-  names(dsep_c_1Mb) <-  paste("chr_", 1:num_chrom, sep="")
-   
-  for(c in 1:num_chrom) {
+  tbl_100kb <- human_maps_100kb[human_maps_100kb$mut_map==u,]
+  tbl_1Mb <- human_maps_1Mb[human_maps_1Mb$mut_map==u,]
+  
+  for(m in 1:length(models_list)) {
     
-    cat(paste("DAG", m, "chromosome", c))
-    cat("\n")
+    basis_set <- basiSet(models_list[[m]])
+    weights <- rep(1, length=length(basis_set))
+  
+    #dsep_c_10kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+    dsep_c_100kb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
+    dsep_c_1Mb <- as.data.frame(matrix(nrow=nboot, ncol=num_chrom))
     
-    #df_10kb <- filter(human_maps_10kb, 
-    #                  chr==c,
-    #                  coverage > 0.75, 
-    #                  !is.na(avg_pi)) 
-    df_100kb <- filter(human_maps_100kb,
-                       chr==c, 
-                       coverage > 0.75, 
-                       !is.na(avg_pi)) 
-    df_1Mb <- filter(human_maps_1Mb, 
-                     chr==c,
-                     coverage > 0.5, 
-                     !is.na(avg_pi)) 
-    
-    pb <- txtProgressBar(min=0, max=nboot, style=3) 
-    for(b in 1:nboot) {
+    #names(dsep_c_10kb) <-  paste("chr_", 1:num_chrom, sep="")
+    names(dsep_c_100kb) <- paste("chr_", 1:num_chrom, sep="")
+    names(dsep_c_1Mb) <-  paste("chr_", 1:num_chrom, sep="")
+     
+    for(c in 1:num_chrom) {
       
-      setTxtProgressBar(pb, b)
-  
-      #samp_10kb <- sample_n(df_10kb, nrow(df_10kb), replace=T)
-      samp_100kb <- sample_n(df_100kb, nrow(df_100kb), replace=T)
-      samp_1Mb <- sample_n(df_1Mb, nrow(df_1Mb), replace=T)
+      cat(paste("DAG", m, "chromosome", c))
+      cat("\n")
       
-      #pvals_10kb <- rep(NA, length(basis_set))
-      pvals_100kb <- rep(NA, length(basis_set))
-      pvals_1Mb <- rep(NA, length(basis_set))
-  
-      for(i in 1:length(basis_set)) {
+      #df_10kb <- filter(human_maps_10kb, 
+      #                  chr==c,
+      #                  coverage > 0.75, 
+      #                  !is.na(avg_pi)) 
+      df_100kb <- tbl_100kb[tbl_100kb$chr==c & 
+                            tbl_100kb$num_sites > 7.5e+4 &
+                            !is.na(tbl_100kb$avg_pi),] %>% as.data.table()
+      df_1Mb <- tbl_1Mb[tbl_1Mb$chr==c & 
+                        tbl_1Mb$num_sites > 5e+5 &
+                        !is.na(tbl_1Mb$avg_pi),] %>% as.data.table()
+      
+      pb <- txtProgressBar(min=0, max=nboot, style=3) 
+      for(b in 1:nboot) {
         
-        var1 <- basis_set[[i]][1]
-        var2 <- basis_set[[i]][2]
+        setTxtProgressBar(pb, b)
+    
+        #samp_10kb <- sample_n(df_10kb, nrow(df_10kb), replace=T)
+        samp_100kb <- sample_n(df_100kb, nrow(df_100kb), replace=T)
+        samp_1Mb <- sample_n(df_1Mb, nrow(df_1Mb), replace=T)
         
-        cond <- NULL
-        if(length(basis_set[[i]]) > 2) {
-          cond <- basis_set[[i]][3:length(basis_set[[i]])]
-        }
-        
-        if(length(basis_set[[i]]) > 2) {
-            #pvals_10kb[i] <- ppcor::pcor.test(samp_10kb[, ..var1], 
-            #                                  samp_10kb[, ..var2], 
-            #                                  samp_10kb[, ..cond],
-            #                                  method="kendall")$p.value
-            
-            tryCatch({
-              pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
+        #pvals_10kb <- rep(NA, length(basis_set))
+        pvals_100kb <- rep(NA, length(basis_set))
+        pvals_1Mb <- rep(NA, length(basis_set))
+    
+        for(i in 1:length(basis_set)) {
+          
+          var1 <- basis_set[[i]][1]
+          var2 <- basis_set[[i]][2]
+          
+          cond <- NULL
+          if(length(basis_set[[i]]) > 2) {
+            cond <- basis_set[[i]][3:length(basis_set[[i]])]
+          }
+          
+          if(length(basis_set[[i]]) > 2) {
+              #pvals_10kb[i] <- ppcor::pcor.test(samp_10kb[, ..var1], 
+              #                                  samp_10kb[, ..var2], 
+              #                                  samp_10kb[, ..cond],
+              #                                  method="kendall")$p.value
+              
+              tryCatch({
+                pvals_100kb[i] <- ppcor::pcor.test(samp_100kb[, ..var1], 
                                                  samp_100kb[, ..var2], 
                                                  samp_100kb[, ..cond],
                                                  method="kendall")$p.value
-            }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+              }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+              
+              tryCatch({
+                pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
+                                                 samp_1Mb[, ..var2], 
+                                                 samp_1Mb[, ..cond],
+                                                 method="kendall")$p.value
+              }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
+          } else {
+            #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
+            #                          samp_10kb[, ..var2][[1]],
+            #                          method="kendall",
+            #                          exact=F)$p.value
             
-            tryCatch({
-              pvals_1Mb[i] <- ppcor::pcor.test(samp_1Mb[, ..var1], 
-                                               samp_1Mb[, ..var2], 
-                                               samp_1Mb[, ..cond],
-                                               method="kendall")$p.value
-            }, error=function(e){cat("WARNING :",conditionMessage(e), "\n")})
-        } else {
-          #pvals_10kb[i] <- cor.test(samp_10kb[, ..var1][[1]],
-          #                          samp_10kb[, ..var2][[1]],
-          #                          method="kendall",
-          #                          exact=F)$p.value
-          
-          pvals_100kb[i] <- cor.test(samp_100kb[, ..var1][[1]],
-                                     samp_100kb[, ..var2][[1]],
+            pvals_100kb[i] <- cor.test(samp_100kb[, ..var1][[1]],
+                                       samp_100kb[, ..var2][[1]],
+                                       method="kendall",
+                                       exact=F)$p.value
+            
+            pvals_1Mb[i] <- cor.test(samp_1Mb[, ..var1][[1]],
+                                     samp_1Mb[, ..var2][[1]],
                                      method="kendall",
                                      exact=F)$p.value
-          
-          pvals_1Mb[i] <- cor.test(samp_1Mb[, ..var1][[1]],
-                                   samp_1Mb[, ..var2][[1]],
-                                   method="kendall",
-                                   exact=F)$p.value
+          }
         }
+        close(pb)
+        
+        #dsep_c_10kb[b, c] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
+        dsep_c_100kb[b, c] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
+        dsep_c_1Mb[b, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
       }
-      close(pb)
-      
-      #dsep_c_10kb[b, c] <- combine.test(pvals_10kb, weights, "fisher", na.rm=T)
-      dsep_c_100kb[b, c] <- combine.test(pvals_100kb, weights, "fisher", na.rm=T)
-      dsep_c_1Mb[b, c] <- combine.test(pvals_1Mb, weights, "fisher", na.rm=T)
     }
+    
+    #fwrite(dsep_c_10kb, paste("real_data_maps/dsep_10kb_pisim_m",
+    #                          i, ".csv.gz", sep=""))
+    fwrite(dsep_c_100kb, paste("real_data_maps/dsep_100kb_piobs_m",
+                               m, "_", u, ".csv.gz", sep=""))
+    fwrite(dsep_c_1Mb, paste("real_data_maps/dsep_1Mb_piobs_m",
+                              m, "_", u, ".csv.gz", sep=""))
   }
-  
-  #fwrite(dsep_c_10kb, paste("real_data_maps/dsep_10kb_piobs_m",
-  #                          i, ".csv.gz", sep=""))
-  fwrite(dsep_c_100kb, paste("real_data_maps/dsep_100kb_piobs_m",
-                             m, ".csv.gz", sep=""))
-  fwrite(dsep_c_1Mb, paste("real_data_maps/dsep_1Mb_piobs_m",
-                            m, ".csv.gz", sep=""))
 }
 ```
 
@@ -8059,59 +8178,48 @@ Processing files
 ```{r d-sep-plot, include=F, message=F, warning=F}
 
 # combines tables from previous chunks
-## 100 kb
-pval_dsep1_100kb <- fread("real_data_maps/dsep_100kb_piobs_m1.csv.gz") 
-pval_dsep2_100kb <- fread("real_data_maps/dsep_100kb_piobs_m2.csv.gz") 
-pval_dsep3_100kb <- fread("real_data_maps/dsep_100kb_piobs_m3.csv.gz") 
-pval_dsep4_100kb <- fread("real_data_maps/dsep_100kb_piobs_m4.csv.gz") 
-pval_dsep5_100kb <- fread("real_data_maps/dsep_100kb_piobs_m5.csv.gz") 
+pval_dsep_100kb <- list(length=length(models_list) *
+                        length(unique(human_maps_100kb$mut_map)))
 
-pval_dsep1_100kb$DAG <- 1
-pval_dsep2_100kb$DAG <- 2
-pval_dsep3_100kb$DAG <- 3
-pval_dsep4_100kb$DAG <- 4
-pval_dsep5_100kb$DAG <- 5
+pval_dsep_1Mb <- list(length=length(models_list) *
+                      length(unique(human_maps_1Mb$mut_map)))
 
-pval_dsep1_100kb$boot <- 1:nrow(pval_dsep1_100kb)
-pval_dsep2_100kb$boot <- 1:nrow(pval_dsep2_100kb)
-pval_dsep3_100kb$boot <- 1:nrow(pval_dsep3_100kb)
-pval_dsep4_100kb$boot <- 1:nrow(pval_dsep4_100kb)
-pval_dsep5_100kb$boot <- 1:nrow(pval_dsep5_100kb)
+for(i in 1:length(unique(human_maps_100kb$mut_map))) {
+  for(m in 1:length(models_list)) {
+    
+    u <- unique(human_maps_100kb$mut_map)[i]
+    
+    fin_100kb <- paste("real_data_maps/dsep_100kb_piobs_m", m, 
+                       "_", u, ".csv.gz", sep="")
+    
+    fin_1Mb <- paste("real_data_maps/dsep_1Mb_piobs_m", m, 
+                     "_", u, ".csv.gz", sep="")
+    
+    pval_tbl_100kb <- fread(fin_100kb) 
+    pval_tbl_1Mb <- fread(fin_1Mb) 
+    
+    pval_tbl_100kb$DAG <- m
+    pval_tbl_1Mb$DAG <- m
+    
+    pval_tbl_100kb$mut_map <- u
+    pval_tbl_1Mb$mut_map <- u
+    
+    pval_tbl_100kb$boot <- 1:nrow(pval_tbl_100kb)
+    pval_tbl_1Mb$boot <- 1:nrow(pval_tbl_1Mb)
+    
+    idx <- i  + (m - 1) * length(unique(human_maps_100kb$mut_map))
+    
+    pval_dsep_100kb[[idx]] <- pval_tbl_100kb
+    pval_dsep_1Mb[[idx]] <- pval_tbl_1Mb
+  }
+}
 
-dsep_human_maps_100kb <- rbind.data.frame(pval_dsep1_100kb,
-                                        pval_dsep2_100kb,
-                                        pval_dsep3_100kb,
-                                        pval_dsep4_100kb,
-                                        pval_dsep5_100kb)
-names(dsep_human_maps_100kb) <- c(as.character(1:22), "DAG", "boot")
+dsep_human_maps_100kb <- do.call(rbind.data.frame, pval_dsep_100kb)
+dsep_human_maps_1Mb <- do.call(rbind.data.frame, pval_dsep_1Mb)
+
 fwrite(dsep_human_maps_100kb,
        "real_data_maps/dsep_human_maps_100kb_piobs.csv.gz")
 
-## 1 Mb
-pval_dsep1_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m1.csv.gz") 
-pval_dsep2_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m2.csv.gz") 
-pval_dsep3_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m3.csv.gz") 
-pval_dsep4_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m4.csv.gz") 
-pval_dsep5_1Mb <- fread("real_data_maps/dsep_1Mb_piobs_m5.csv.gz") 
-
-pval_dsep1_1Mb$DAG <- 1
-pval_dsep2_1Mb$DAG <- 2
-pval_dsep3_1Mb$DAG <- 3
-pval_dsep4_1Mb$DAG <- 4
-pval_dsep5_1Mb$DAG <- 5
-
-pval_dsep1_1Mb$boot <- 1:nrow(pval_dsep1_1Mb)
-pval_dsep2_1Mb$boot <- 1:nrow(pval_dsep2_1Mb)
-pval_dsep3_1Mb$boot <- 1:nrow(pval_dsep3_1Mb)
-pval_dsep4_1Mb$boot <- 1:nrow(pval_dsep4_1Mb)
-pval_dsep5_1Mb$boot <- 1:nrow(pval_dsep5_1Mb)
-
-dsep_human_maps_1Mb <- rbind.data.frame(pval_dsep1_1Mb,
-                                        pval_dsep2_1Mb,
-                                        pval_dsep3_1Mb,
-                                        pval_dsep4_1Mb,
-                                        pval_dsep5_1Mb)
-names(dsep_human_maps_1Mb) <- c(as.character(1:22), "DAG", "boot")
 fwrite(dsep_human_maps_1Mb,
        "real_data_maps/dsep_human_maps_1Mb_piobs.csv.gz")
 ```
@@ -8129,19 +8237,22 @@ pval_dsep_pisim$pi <- "sim"
 pval_dsep_piobs$pi <- "obs"
 
 dsep_human_maps_100kb <- rbind.data.frame(pval_dsep_pisim,
-                                        pval_dsep_piobs)
+                                          pval_dsep_piobs)
+
+# it is handy to convert chr names to numeric
+names(dsep_human_maps_100kb)[1:22] <- 1:num_chrom
 
 m_dsep_human_100kb <- pivot_longer(dsep_human_maps_100kb,
-                                 cols=1:num_chrom,
-                                 names_to="chr", values_to="pval")
+                                   cols=1:num_chrom,
+                                   names_to="chr", values_to="pval")
 m_dsep_human_100kb$chr <- as.numeric(m_dsep_human_100kb$chr)
 
 # testing the trend of avg pvalue vs chromosome id (~inverse of chr size)
-x <- m_dsep_human_100kb %>% group_by(DAG, pi, chr) %>% 
+x <- m_dsep_human_100kb %>% group_by(DAG, mut_map, pi, chr) %>% 
                           mutate(avg_p=mean(pval)) %>%
                           distinct(DAG, pi, chr, .keep_all=T) %>%
                           dplyr::select(DAG, pi, chr, avg_p)
-y <- x %>% group_by(DAG, pi) %>% 
+y <- x %>% group_by(DAG, mut_map, pi) %>% 
            mutate(cor_pval_chrID_est=cor.test(avg_p, 
                                               chr, 
                                               method="kendall")$estimate,
@@ -8168,7 +8279,7 @@ p1 <- ggplot(data=filter(m_dsep_human_100kb),
                  linetype="dashed", color="red") +
       #geom_violin(trim=FALSE, fill="white") + # gets misaligned by levels() <-
       geom_boxplot(width=0.25, fill="white", alpha=0.25)+
-      facet_wrap(~DAG, ncol=1, labeller=label_both) + theme_bw() + 
+      facet_grid(mut_map~DAG, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_discrete(breaks=as.character(sort(rep(1:22, 2)))) + 
       scale_color_manual(values=c("purple3", "seagreen4")) +
@@ -8183,7 +8294,7 @@ p1 <- ggplot(data=filter(m_dsep_human_100kb),
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("Manhattan/manhattan_d-sep_human_100kb.png", p1, 
-          base_height=10, base_width=15)
+          base_height=15, base_width=25)
 
 m_dsep_human_100kb$minuslog10pval <- -log10(m_dsep_human_100kb$pval)
 
@@ -8194,22 +8305,24 @@ my_comparisons <- list(c("1", "2"),
                        c("3", "4"),
                        c("4", "5"))
 
-p2 <- ggpubr::ggboxplot(data=pisim_tbl,
-                x="DAG", 
-                y="minuslog10pval",
-                legend="bottom",
-                ylab="-log10(pval)",
-                title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
-                       "between pairs of increasingly complex DAGs (sim. pi)")) +
-      facet_wrap(~chr, nrow=4, labeller=label_both) +
-      scale_y_continuous(breaks=pretty_breaks()) +
-      stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
-      theme(plot.title=element_text(size=26),
-            axis.title=element_text(size=24), 
-            axis.text=element_text(size=16),
-            strip.text.x=element_text(size=14))
-save_plot("pairwise_d-sep_human_DAGs_pisim_100kb.png", p2, 
-          base_height=20, base_width=30)
+for(u in unique(pisim_tbl$mut_map)) {
+  p2 <- ggpubr::ggboxplot(data=filter(pisim_tbl, mut_map==u),
+                  x="DAG", 
+                  y="minuslog10pval",
+                  legend="bottom",
+                  ylab="-log10(pval)",
+                  title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
+                         "between pairs of increasingly complex DAGs (sim. pi)")) +
+        facet_wrap(~chr, ncol=4, labeller=label_both) +
+        scale_y_continuous(breaks=pretty_breaks()) +
+        stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
+        theme(plot.title=element_text(size=26),
+              axis.title=element_text(size=24), 
+              axis.text=element_text(size=16),
+              strip.text.x=element_text(size=14))
+  save_plot(paste("pairwise_d-sep_human_DAGs_pisim_100kb_", u, ".png", sep=""),
+            p2, base_height=24, base_width=30)
+}
 
 piobs_tbl=filter(m_dsep_human_100kb, pi=="obs")
 compare_means(pval ~ DAG,  data=piobs_tbl)
@@ -8218,22 +8331,24 @@ my_comparisons <- list(c("1", "2"),
                        c("3", "4"),
                        c("4", "5"))
 
-p3 <- ggpubr::ggboxplot(data=piobs_tbl,
-                x="DAG", 
-                y="minuslog10pval",
-                legend="bottom",
-                ylab="-log10(pval)",
-                title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
-                       "between pairs of increasingly complex DAGs (obs. pi)")) +
-      facet_wrap(~chr, nrow=4, labeller=label_both) +
-      scale_y_continuous(breaks=pretty_breaks()) +
-      stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
-      theme(plot.title=element_text(size=26),
-            axis.title=element_text(size=24), 
-            axis.text=element_text(size=16),
-            strip.text.x=element_text(size=14))
-save_plot("pairwise_d-sep_human_DAGs_piobs_100kb.png", p3, 
-          base_height=20, base_width=30)
+for(u in unique(piobs_tbl$mut_map)) {
+  p3 <- ggpubr::ggboxplot(data=filter(piobs_tbl, mut_map==u),
+                  x="DAG", 
+                  y="minuslog10pval",
+                  legend="bottom",
+                  ylab="-log10(pval)",
+                  title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
+                         "between pairs of increasingly complex DAGs (obs. pi)")) +
+        facet_wrap(~chr, nrow=4, labeller=label_both) +
+        scale_y_continuous(breaks=pretty_breaks()) +
+        stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
+        theme(plot.title=element_text(size=26),
+              axis.title=element_text(size=24), 
+              axis.text=element_text(size=16),
+              strip.text.x=element_text(size=14))
+  save_plot(paste("pairwise_d-sep_human_DAGs_piobs_100kb_", u, ".png", sep=""),
+            p3, base_height=24, base_width=30)
+}
 
 # 1 Mb
 # combines tables from previous chunks
@@ -8244,19 +8359,22 @@ pval_dsep_pisim$pi <- "sim"
 pval_dsep_piobs$pi <- "obs"
 
 dsep_human_maps_1Mb <- rbind.data.frame(pval_dsep_pisim,
-                                        pval_dsep_piobs)
+                                          pval_dsep_piobs)
+
+# it is handy to convert chr names to numeric
+names(dsep_human_maps_1Mb)[1:22] <- 1:num_chrom
 
 m_dsep_human_1Mb <- pivot_longer(dsep_human_maps_1Mb,
-                                 cols=1:num_chrom,
-                                 names_to="chr", values_to="pval")
+                                   cols=1:num_chrom,
+                                   names_to="chr", values_to="pval")
 m_dsep_human_1Mb$chr <- as.numeric(m_dsep_human_1Mb$chr)
 
 # testing the trend of avg pvalue vs chromosome id (~inverse of chr size)
-x <- m_dsep_human_1Mb %>% group_by(DAG, pi, chr) %>% 
+x <- m_dsep_human_1Mb %>% group_by(DAG, mut_map, pi, chr) %>% 
                           mutate(avg_p=mean(pval)) %>%
                           distinct(DAG, pi, chr, .keep_all=T) %>%
                           dplyr::select(DAG, pi, chr, avg_p)
-y <- x %>% group_by(DAG, pi) %>% 
+y <- x %>% group_by(DAG, mut_map, pi) %>% 
            mutate(cor_pval_chrID_est=cor.test(avg_p, 
                                               chr, 
                                               method="kendall")$estimate,
@@ -8283,7 +8401,7 @@ p1 <- ggplot(data=filter(m_dsep_human_1Mb),
                  linetype="dashed", color="red") +
       #geom_violin(trim=FALSE, fill="white") + # gets misaligned by levels() <-
       geom_boxplot(width=0.25, fill="white", alpha=0.25)+
-      facet_wrap(~DAG, ncol=1, labeller=label_both) + theme_bw() + 
+      facet_grid(mut_map~DAG, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_discrete(breaks=as.character(sort(rep(1:22, 2)))) + 
       scale_color_manual(values=c("purple3", "seagreen4")) +
@@ -8298,7 +8416,7 @@ p1 <- ggplot(data=filter(m_dsep_human_1Mb),
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("Manhattan/manhattan_d-sep_human_1Mb.png", p1, 
-          base_height=10, base_width=15)
+          base_height=15, base_width=25)
 
 m_dsep_human_1Mb$minuslog10pval <- -log10(m_dsep_human_1Mb$pval)
 
@@ -8309,22 +8427,24 @@ my_comparisons <- list(c("1", "2"),
                        c("3", "4"),
                        c("4", "5"))
 
-p2 <- ggpubr::ggboxplot(data=pisim_tbl,
-                x="DAG", 
-                y="minuslog10pval",
-                legend="bottom",
-                ylab="-log10(pval)",
-                title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
-                       "between pairs of increasingly complex DAGs (sim. pi)")) +
-      facet_wrap(~chr, nrow=4, labeller=label_both) +
-      scale_y_continuous(breaks=pretty_breaks()) +
-      stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
-      theme(plot.title=element_text(size=26),
-            axis.title=element_text(size=24), 
-            axis.text=element_text(size=16),
-            strip.text.x=element_text(size=14))
-save_plot("pairwise_d-sep_human_DAGs_pisim_1Mb.png", p2, 
-          base_height=20, base_width=30)
+for(u in unique(pisim_tbl$mut_map)) {
+  p2 <- ggpubr::ggboxplot(data=filter(pisim_tbl, mut_map==u),
+                  x="DAG", 
+                  y="minuslog10pval",
+                  legend="bottom",
+                  ylab="-log10(pval)",
+                  title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
+                         "between pairs of increasingly complex DAGs (sim. pi)")) +
+        facet_wrap(~chr, ncol=4, labeller=label_both) +
+        scale_y_continuous(breaks=pretty_breaks()) +
+        stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
+        theme(plot.title=element_text(size=26),
+              axis.title=element_text(size=24), 
+              axis.text=element_text(size=16),
+              strip.text.x=element_text(size=14))
+  save_plot(paste("pairwise_d-sep_human_DAGs_pisim_1Mb_", u, ".png", sep=""),
+            p2, base_height=24, base_width=30)
+}
 
 piobs_tbl=filter(m_dsep_human_1Mb, pi=="obs")
 compare_means(pval ~ DAG,  data=piobs_tbl)
@@ -8333,28 +8453,30 @@ my_comparisons <- list(c("1", "2"),
                        c("3", "4"),
                        c("4", "5"))
 
-p3 <- ggpubr::ggboxplot(data=piobs_tbl,
-                x="DAG", 
-                y="minuslog10pval",
-                legend="bottom",
-                ylab="-log10(pval)",
-                title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
-                       "between pairs of increasingly complex DAGs (obs. pi)")) +
-      facet_wrap(~chr, nrow=4, labeller=label_both) +
-      scale_y_continuous(breaks=pretty_breaks()) +
-      stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
-      theme(plot.title=element_text(size=26),
-            axis.title=element_text(size=24), 
-            axis.text=element_text(size=16),
-            strip.text.x=element_text(size=14))
-save_plot("pairwise_d-sep_human_DAGs_piobs_1Mb.png", p3, 
-          base_height=20, base_width=30)
+for(u in unique(piobs_tbl$mut_map)) {
+  p3 <- ggpubr::ggboxplot(data=filter(piobs_tbl, mut_map==u),
+                  x="DAG", 
+                  y="minuslog10pval",
+                  legend="bottom",
+                  ylab="-log10(pval)",
+                  title=paste("Difference in d-sep p-values (1000 bootstrap samples)", 
+                         "between pairs of increasingly complex DAGs (obs. pi)")) +
+        facet_wrap(~chr, nrow=4, labeller=label_both) +
+        scale_y_continuous(breaks=pretty_breaks()) +
+        stat_compare_means(comparisons=my_comparisons) + theme_bw() + 
+        theme(plot.title=element_text(size=26),
+              axis.title=element_text(size=24), 
+              axis.text=element_text(size=16),
+              strip.text.x=element_text(size=14))
+  save_plot(paste("pairwise_d-sep_human_DAGs_piobs_1Mb_", u, ".png", sep=""),
+            p3, base_height=24, base_width=30)
+}
 ```
 
 ## Path Models
 
-Here we assume that the maps (roulette, pyrho, moments++) are perfect measures
-of the true mutation, recombination and B-value maps.
+Here we assume that the there is no measurement error in the maps
+(mutation, recombination, moments++).
 
 This is of course unrealistic. 
 We later relax these assumptions with latent variables.
@@ -8364,28 +8486,24 @@ reduce auto-correlation.
 
 ```{r SEM-human-maps-fw, include=F, message=F, warning=F}
 
-human_maps_1Mb$coverage <- human_maps_1Mb$num_sites / 1e+6 
-human_maps_1Mb$prop_del_sites <- human_maps_1Mb$del_sites / 
-  human_maps_1Mb$num_sites
-
-for(w in 1:5) {
+for(u in unique(human_maps_1Mb$mut_map)) {
   Sys.time()
-  cat(paste("fitting SEMs with filter w = ", w, sep=""))
+  cat(paste("fitting SEM(s) -- ", u, sep=""))
   cat("\n")
   
-  human_maps_1Mb$bin <- human_maps_1Mb$chromStart %/% w * 1e+6 
   dat_1Mb <- human_maps_1Mb %>% 
-             group_by(chr) %>% # chr 19 too few data points
-             filter(., del_sites > 0, coverage > 0.75, chr!=19) %>% 
-             na.exclude() %>% 
-             distinct(bin, .keep_all=T)
-  
-  fwrite(dat_1Mb, paste("SEM/dat_1Mb_w", w, ".csv.gz", sep="")) # storing
+             group_by(chr) %>%
+             filter(., mut_map == u,
+                    del_sites > 0,
+                    num_sites > 5e+5,
+                    chr!=19) %>%  # chr 19 too few data points
+             na.exclude() 
   
   model_1 <- "
   avg_pi ~ start(0.25)*c1*B
   avg_pi ~ start(0.25)*c2*avg_mut
-  B ~ start(-0.25)*c3*avg_mut
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*avg_mut
   avg_mut ~~ 0*B
   "
   
@@ -8397,43 +8515,41 @@ for(w in 1:5) {
                group="chr", 
                group.equal="none")
   
-  fwrite(parameterestimates(m1gls, ci=F), paste("SEM/m1gls_est_w", 
-                                                w, 
-                                                ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m1gls))), paste("SEM/m1gls_fit_w",
-                                                     w,
-                                                     ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m1gls, "rsquare")), paste("SEM/m1gls_r2_w",
-                                                   w,
-                                                   ".csv", sep="")) 
+  fwrite(parameterestimates(m1gls, ci=F), paste("SEM/m1gls_est_",
+                                                u, ".csv", sep=""))
+  fwrite(t(as.data.frame(fitMeasures(m1gls))), paste("SEM/m1gls_fit_",
+                                                     u, ".csv", sep=""))
+  fwrite(as.data.frame(inspect(m1gls, "rsquare")), paste("SEM/m1gls_r2_",
+                                                   u, ".csv", sep="")) 
   
-  m1boot <- sem(model_1,
-                data=dat_1Mb,
-                fixed.x=F,
-                std.ov=T,
-                estimator="ML",
-                test="boot",
-                se="boot",
-                group="chr", 
-                group.equal="regressions")
+  #m1boot <- sem(model_1,
+  #              data=dat_1Mb,
+  #              fixed.x=F,
+  #              std.ov=T,
+  #              estimator="ML",
+  #              test="boot",
+  #              se="boot",
+  #              group="chr", 
+  #              group.equal="regressions")
   
-  fwrite(parameterestimates(m1boot,
-                            boot.ci.type="norm",
-                            ci=T,
-                            standardized=T), paste("SEM/m1boot_est_w", 
-                                                   w,
-                                                   ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m1boot))), paste("SEM/m1boot_fit_w",
-                                                w,
-                                                ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m1boot, "rsquare")), paste("SEM/m1boot_r2_w",
-                                                          w,
-                                                          ".csv", sep=""))
+  #fwrite(parameterestimates(m1boot,
+  #                          boot.ci.type="norm",
+  #                          ci=T,
+  #                          standardized=T), paste("SEM/m1boot_est_w", 
+  #                                                 w,
+  #                                                 ".csv", sep=""))
+  #fwrite(t(as.data.frame(fitMeasures(m1boot))), paste("SEM/m1boot_fit_w",
+  #                                              w,
+  #                                              ".csv", sep=""))
+  #fwrite(as.data.frame(inspect(m1boot, "rsquare")), paste("SEM/m1boot_r2_w",
+  #                                                        w,
+  #                                                        ".csv", sep=""))
   
   model_2 <- "
   avg_pi ~ start(0.25)*c1*B
   avg_pi ~ start(0.25)*c2*avg_mut
-  B ~ start(-0.25)*c3*avg_mut
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*avg_mut
   avg_mut ~~ B # covariance due to un-modelled rec rate
   "
   
@@ -8445,46 +8561,44 @@ for(w in 1:5) {
                group="chr", 
                group.equal="regressions")
   
-  fwrite(parameterestimates(m2gls, ci=F), paste("SEM/m2gls_est_w", 
-                                                w, 
-                                                ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m2gls))), paste("SEM/m2gls_fit_w",
-                                                     w,
-                                                     ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m2gls, "rsquare")), paste("SEM/m2gls_r2_w",
-                                                   w,
-                                                   ".csv", sep="")) 
+  fwrite(parameterestimates(m2gls, ci=F), paste("SEM/m2gls_est_", 
+                                                u, ".csv", sep=""))
+  fwrite(t(as.data.frame(fitMeasures(m2gls))), paste("SEM/m2gls_fit_",
+                                                     u, ".csv", sep=""))
+  fwrite(as.data.frame(inspect(m2gls, "rsquare")), paste("SEM/m2gls_r2_",
+                                                   u, ".csv", sep="")) 
   
-  m2boot <- sem(model_2,
-               data=dat_1Mb,
-               fixed.x=F,
-               std.ov=T,
-               estimator="ML",
-               test="boot",
-               se="boot",
-               group="chr", 
-               group.equal="regressions")
+  #m2boot <- sem(model_2,
+  #             data=dat_1Mb,
+  #             fixed.x=F,
+  #             std.ov=T,
+  #             estimator="ML",
+  #             test="boot",
+  #             se="boot",
+  #             group="chr", 
+  #             group.equal="regressions")
   
-  fwrite(parameterestimates(m2boot,
-                            boot.ci.type="norm",
-                            ci=T,
-                            standardized=T), paste("SEM/m2boot_est_w", 
-                                                   w,
-                                                   ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m2boot))), paste("SEM/m2boot_fit_w",
-                                                w,
-                                                ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m2boot, "rsquare")), paste("SEM/m2boot_r2_w",
-                                                          w,
-                                                          ".csv", sep="")) 
+  #fwrite(parameterestimates(m2boot,
+  #                          boot.ci.type="norm",
+  #                          ci=T,
+  #                          standardized=T), paste("SEM/m2boot_est_w", 
+  #                                                 w,
+  #                                                 ".csv", sep=""))
+  #fwrite(t(as.data.frame(fitMeasures(m2boot))), paste("SEM/m2boot_fit_w",
+  #                                              w,
+  #                                              ".csv", sep=""))
+  #fwrite(as.data.frame(inspect(m2boot, "rsquare")), paste("SEM/m2boot_r2_w",
+  #                                                        w,
+  #                                                        ".csv", sep="")) 
   
   # incorporating rec map
   model_3 <- "
   avg_pi ~ start(0.75)*c1*B
   avg_pi ~ start(0.75)*c2*avg_mut
-  B ~ start(-0.25)*c3*avg_mut
-  B ~ start(0.1)*c4*avg_rec
-  avg_mut ~ start(0.1)*c5*avg_rec
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*avg_mut
+  B ~ start(0.1)*c5*avg_rec
+  avg_mut ~ start(0.1)*c6*avg_rec
   "
   
   m3gls <- sem(model_3,
@@ -8495,45 +8609,43 @@ for(w in 1:5) {
                group="chr", 
                group.equal="regressions")
   
-  fwrite(parameterestimates(m3gls, ci=F), paste("SEM/m3gls_est_w", 
-                                                w, 
-                                                ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m3gls))), paste("SEM/m3gls_fit_w",
-                                                     w,
-                                                     ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m3gls, "rsquare")), paste("SEM/m3gls_r2_w",
-                                                   w,
-                                                   ".csv", sep=""))  
+  fwrite(parameterestimates(m3gls, ci=F), paste("SEM/m3gls_est_", 
+                                                u, ".csv", sep=""))
+  fwrite(t(as.data.frame(fitMeasures(m3gls))), paste("SEM/m3gls_fit_",
+                                                     u, ".csv", sep=""))
+  fwrite(as.data.frame(inspect(m3gls, "rsquare")), paste("SEM/m3gls_r2_",
+                                                   u, ".csv", sep=""))  
   
-  m3boot <- sem(model_3,
-               data=dat_1Mb,
-               fixed.x=F,
-               std.ov=T,
-               estimator="ML",
-               se="boot",
-               test="boot", 
-               group="chr", 
-               group.equal="regressions")
+  #m3boot <- sem(model_3,
+  #             data=dat_1Mb,
+  #             fixed.x=F,
+  #             std.ov=T,
+  #             estimator="ML",
+  #             se="boot",
+  #             test="boot", 
+  #             group="chr", 
+  #             group.equal="regressions")
   
-  fwrite(parameterestimates(m3boot,
-                            boot.ci.type="norm",
-                            ci=T,
-                            standardized=T), paste("SEM/m3boot_est_w", 
-                                                   w,
-                                                   ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m3boot))), paste("SEM/m3boot_fit_w",
-                                                w,
-                                                ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m3boot, "rsquare")), paste("SEM/m3boot_r2_w",
-                                                          w,
-                                                          ".csv", sep="")) 
+  #fwrite(parameterestimates(m3boot,
+  #                          boot.ci.type="norm",
+  #                          ci=T,
+  #                          standardized=T), paste("SEM/m3boot_est_w", 
+  #                                                 w,
+  #                                                 ".csv", sep=""))
+  #fwrite(t(as.data.frame(fitMeasures(m3boot))), paste("SEM/m3boot_fit_w",
+  #                                              w,
+  #                                              ".csv", sep=""))
+  #fwrite(as.data.frame(inspect(m3boot, "rsquare")), paste("SEM/m3boot_r2_w",
+  #                                                        w,
+  #                                                        ".csv", sep="")) 
   
   # incorporating del sites (normalized by number of accessible sites)
   model_4 <- "
   avg_pi ~ start(0.75)*c1*B
   avg_pi ~ start(0.75)*c2*avg_mut
-  B ~ start(-0.25)*c3*avg_mut
-  B ~ start(-0.1)*c4*prop_del_sites
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*avg_mut
+  B ~ start(-0.1)*c5*prop_del_sites
   avg_mut ~~ 0*prop_del_sites
   avg_mut ~~ 0*B
   "
@@ -8546,44 +8658,42 @@ for(w in 1:5) {
                group="chr", 
                group.equal="regressions")
   
-  fwrite(parameterestimates(m4gls, ci=F), paste("SEM/m4gls_est_w", 
-                                                w, 
-                                                ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m4gls))), paste("SEM/m4gls_fit_w",
-                                                     w,
-                                                     ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m4gls, "rsquare")), paste("SEM/m4gls_r2_w",
-                                                   w,
-                                                   ".csv", sep="")) 
+  fwrite(parameterestimates(m4gls, ci=F), paste("SEM/m4gls_est_", 
+                                                u, ".csv", sep=""))
+  fwrite(t(as.data.frame(fitMeasures(m4gls))), paste("SEM/m4gls_fit_",
+                                                     u, ".csv", sep=""))
+  fwrite(as.data.frame(inspect(m4gls, "rsquare")), paste("SEM/m4gls_r2_",
+                                                   u, ".csv", sep="")) 
   
-  m4boot <- sem(model_4,
-               data=dat_1Mb,
-               fixed.x=F,
-               std.ov=T,
-               estimator="ML",
-               se="boot",
-               test="boot", 
-               group="chr", 
-               group.equal="regressions")
+  #m4boot <- sem(model_4,
+  #             data=dat_1Mb,
+  #             fixed.x=F,
+  #             std.ov=T,
+  #             estimator="ML",
+  #             se="boot",
+  #             test="boot", 
+  #             group="chr", 
+  #             group.equal="regressions")
   
-  fwrite(parameterestimates(m4boot,
-                            boot.ci.type="norm",
-                            ci=T,
-                            standardized=T), paste("SEM/m4boot_est_w", 
-                                                   w,
-                                                   ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m4boot))), paste("SEM/m4boot_fit_w",
-                                                w,
-                                                ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m4boot, "rsquare")), paste("SEM/m4boot_r2_w",
-                                                          w,
-                                                          ".csv", sep="")) 
+  #fwrite(parameterestimates(m4boot,
+  #                          boot.ci.type="norm",
+  #                          ci=T,
+  #                          standardized=T), paste("SEM/m4boot_est_w", 
+  #                                                 w,
+  #                                                 ".csv", sep=""))
+  #fwrite(t(as.data.frame(fitMeasures(m4boot))), paste("SEM/m4boot_fit_w",
+  #                                              w,
+  #                                              ".csv", sep=""))
+  #fwrite(as.data.frame(inspect(m4boot, "rsquare")), paste("SEM/m4boot_r2_w",
+  #                                                        w,
+  #                                                        ".csv", sep="")) 
   
   model_5 <- "
   avg_pi ~ start(0.75)*c1*B
   avg_pi ~ start(0.75)*c2*avg_mut
-  B ~ start(-0.25)*c3*avg_mut
-  B ~ start(-0.1)*c4*prop_del_sites
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*avg_mut
+  B ~ start(-0.1)*c5*prop_del_sites
   avg_mut ~ start(0.25)*c6*avg_rec
   avg_mut ~~ prop_del_sites
   "
@@ -8596,44 +8706,42 @@ for(w in 1:5) {
                group="chr", 
                group.equal="regressions")
   
-  fwrite(parameterestimates(m5gls, ci=F), paste("SEM/m5gls_est_w", 
-                                                w, 
-                                                ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m5gls))), paste("SEM/m5gls_fit_w",
-                                                     w,
-                                                     ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m5gls, "rsquare")), paste("SEM/m5gls_r2_w",
-                                                   w,
-                                                   ".csv", sep=""))  
+  fwrite(parameterestimates(m5gls, ci=F), paste("SEM/m5gls_est_", 
+                                                u, ".csv", sep=""))
+  fwrite(t(as.data.frame(fitMeasures(m5gls))), paste("SEM/m5gls_fit_",
+                                                     u, ".csv", sep=""))
+  fwrite(as.data.frame(inspect(m5gls, "rsquare")), paste("SEM/m5gls_r2_",
+                                                   u, ".csv", sep=""))  
   
-  m5boot <- sem(model_5,
-               data=dat_1Mb,
-               fixed.x=F,
-               std.ov=T,
-               estimator="ML",
-               se="boot",
-               test="boot", 
-               group="chr", 
-               group.equal="regressions")
+  #m5boot <- sem(model_5,
+  #             data=dat_1Mb,
+  #             fixed.x=F,
+  #             std.ov=T,
+  #             estimator="ML",
+  #             se="boot",
+  #             test="boot", 
+  #             group="chr", 
+  #             group.equal="regressions")
   
-  fwrite(parameterestimates(m5boot,
-                            boot.ci.type="norm",
-                            ci=T,
-                            standardized=T), paste("SEM/m5boot_est_w", 
-                                                   w,
-                                                   ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m5boot))), paste("SEM/m5boot_fit_w",
-                                                w,
-                                                ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m5boot, "rsquare")), paste("SEM/m5boot_r2_w",
-                                                          w,
-                                                          ".csv", sep="")) 
+  #fwrite(parameterestimates(m5boot,
+  #                          boot.ci.type="norm",
+  #                          ci=T,
+  #                          standardized=T), paste("SEM/m5boot_est_w", 
+  #                                                 w,
+  #                                                 ".csv", sep=""))
+  #fwrite(t(as.data.frame(fitMeasures(m5boot))), paste("SEM/m5boot_fit_w",
+  #                                              w,
+  #                                              ".csv", sep=""))
+  #fwrite(as.data.frame(inspect(m5boot, "rsquare")), paste("SEM/m5boot_r2_w",
+  #                                                        w,
+  #                                                        ".csv", sep="")) 
   
   model_6 <- "
   avg_pi ~ start(0.25)*c1*B
   avg_pi ~ start(0.25)*c2*avg_mut
-  B ~ start(-0.25)*c3*avg_mut
-  B ~ start(-0.1)*c4*prop_del_sites
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*avg_mut
+  B ~ start(-0.1)*c5*prop_del_sites
   B ~ start(0.25)*c5*avg_rec
   avg_mut ~ start(0.25)*c6*avg_rec
   avg_mut ~~ prop_del_sites
@@ -8648,66 +8756,67 @@ for(w in 1:5) {
                group="chr", 
                group.equal="regressions")
   
-  fwrite(parameterestimates(m6gls, ci=F), paste("SEM/m6gls_est_w", 
-                                                w, 
-                                                ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m6gls))), paste("SEM/m6gls_fit_w",
-                                                     w,
-                                                     ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m6gls, "rsquare")), paste("SEM/m6gls_r2_w",
-                                                   w,
-                                                   ".csv", sep="")) 
+  fwrite(parameterestimates(m6gls, ci=F), paste("SEM/m6gls_est_", 
+                                                u, ".csv", sep=""))
+  fwrite(t(as.data.frame(fitMeasures(m6gls))), paste("SEM/m6gls_fit_",
+                                                     u, ".csv", sep=""))
+  fwrite(as.data.frame(inspect(m6gls, "rsquare")), paste("SEM/m6gls_r2_",
+                                                   u, ".csv", sep="")) 
   
-  m6boot <- sem(model_6,
+  #m6boot <- sem(model_6,
+  #             data=dat_1Mb,
+  #             fixed.x=F,
+  #             std.ov=T,
+  #             estimator="ML",
+  #             test="boot",
+  #             se="boot",
+  #             group="chr", 
+  #             group.equal="regressions")
+  
+  #fwrite(parameterestimates(m6boot,
+  #                          boot.ci.type="norm",
+  #                          ci=T,
+  #                          standardized=T), paste("SEM/m6boot_est_w", 
+  #                                                 w,
+  #                                                 ".csv", sep=""))
+  #fwrite(t(as.data.frame(fitMeasures(m6boot))), paste("SEM/m6boot_fit_w",
+  #                                              w,
+  #                                              ".csv", sep=""))
+  #fwrite(as.data.frame(inspect(m6boot, "rsquare")), paste("SEM/m6boot_r2_w",
+  #                                                        w,
+  #                                                        ".csv", sep="")) 
+  
+  # based on modification indices
+  model_7 <- "
+  avg_pi ~ start(0.25)*c1*B
+  avg_pi ~ start(0.25)*c2*avg_mut
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*avg_mut
+  B ~ start(-0.1)*c5*prop_del_sites
+  B ~ start(0.25)*c6*avg_rec
+  B ~ start(0.25)*c10*avg_pi
+  avg_mut ~ start(0.25)*c7*avg_rec
+  prop_del_sites ~ start(0.25)*c8*avg_mut
+  prop_del_sites ~ start(0.25)*c9*avg_rec
+  avg_rec ~ start(0.25)*c10*prop_del_sites
+  avg_mut ~~ B
+  "
+  
+  m7gls <- sem(model_7,
                data=dat_1Mb,
                fixed.x=F,
                std.ov=T,
-               estimator="ML",
-               test="boot",
-               se="boot",
+               estimator="GLS",
                group="chr", 
                group.equal="regressions")
   
-  fwrite(parameterestimates(m6boot,
-                            boot.ci.type="norm",
-                            ci=T,
-                            standardized=T), paste("SEM/m6boot_est_w", 
-                                                   w,
-                                                   ".csv", sep=""))
-  fwrite(t(as.data.frame(fitMeasures(m6boot))), paste("SEM/m6boot_fit_w",
-                                                w,
-                                                ".csv", sep=""))
-  fwrite(as.data.frame(inspect(m6boot, "rsquare")), paste("SEM/m6boot_r2_w",
-                                                          w,
-                                                          ".csv", sep="")) 
+  fwrite(parameterestimates(m7gls, ci=F), paste("SEM/m7gls_est_", 
+                                                u, ".csv", sep=""))
+  fwrite(t(as.data.frame(fitMeasures(m7gls))), paste("SEM/m7gls_fit_",
+                                                     u, ".csv", sep=""))
+  fwrite(as.data.frame(inspect(m7gls, "rsquare")), paste("SEM/m7gls_r2_",
+                                                   u, ".csv", sep="")) 
 }
-
-modificationIndices(m6gls)
-
-model_7 <- "
-avg_pi ~ start(0.25)*c1*B
-avg_pi ~ start(0.25)*c2*avg_mut
-avg_pi ~ prop_del_sites
-avg_pi ~ avg_rec
-B ~ start(-0.25)*c3*avg_mut
-B ~ start(-0.1)*c4*prop_del_sites
-B ~ start(0.25)*c5*avg_rec
-avg_mut ~ start(0.25)*c6*avg_rec
-prop_del_sites ~ avg_mut
-prop_del_sites ~ avg_rec
-avg_mut ~~ B
-"
-
-m7gls <- sem(model_7,
-             data=dat_1Mb,
-             fixed.x=F,
-             std.ov=T,
-             estimator="GLS",
-             group="chr", 
-             group.equal="regressions")
-
-modificationindices(m7gls)
-fitmeasures(m7gls)
 ```
 
 ## Measurement models
