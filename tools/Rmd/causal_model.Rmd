@@ -12279,7 +12279,8 @@ for(u in unique(human_maps_100kb$mut_map)) {
 ```{r SEM-human-maps-fw-1Mb, include=F, message=F, warning=F}
 
 human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz")  %>%
-                  filter(., mut_map!="uniform")
+                  filter(., mut_map!="uniform") %>%
+                  dplyr::select(-c(bin_100kb, bin_1Mb))
   
 for(u in unique(human_maps_1Mb$mut_map)) {
   Sys.time()
@@ -12987,7 +12988,7 @@ p <- ggplot(data=gw_anova,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/lavaan_out/gw_anova.png", p, 
-          base_height=9, base_width=9)
+          base_height=8, base_width=15)
 
 # per chr models
 ## 10 kb
@@ -13088,7 +13089,7 @@ p <- ggplot(data=filter(chr_anova, demo=="equilibrium"), # eq. =~ 4-epoch
       scale_shape_manual(values=c(0, 1, 2), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="ANOVA test of nested DAGs 2 & 3 (per chr models)",
+      labs(title="ANOVA test of nested DAGs 2 & 3 (models fit per chromosome)",
            x="Chromosome", y="-log10(p-value)") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13096,7 +13097,7 @@ p <- ggplot(data=filter(chr_anova, demo=="equilibrium"), # eq. =~ 4-epoch
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_pvals.png", p, 
+save_plot("real_data_maps/lavaan_out/chr_anova.png", p, 
           base_height=10, base_width=20)
 ```
 
@@ -13104,7 +13105,7 @@ Variance explained
 
 ```{r SEM-human-r2,  include=F, message=F, warning=F}
 
-# DAGs 0-1 
+# genome-wide models, DAGs 0-1 
 ## 10 kb
 gw_r2_10kb <- data.frame()
 for(dag in 0:1) { 
@@ -13129,7 +13130,7 @@ gw_r2_10kb$scale <- 1e+4
 
 ## 100 kb
 gw_r2_100kb <- data.frame()
-for(dag in 2:3) { # only DAGs with mu as endogeneous
+for(dag in 0:1) {
   for(u in unique(human_maps_100kb$mut_map)) {
     for(m in unique(human_maps_100kb$constrained_model)) { 
       for(d in unique(human_maps_100kb$demo)) {
@@ -13151,7 +13152,7 @@ gw_r2_100kb$scale <- 1e+5
 
 ## 1 Mb
 gw_r2_1Mb <- data.frame()
-for(dag in 2:3) { # only DAGs with mu as endogeneous
+for(dag in 0:1) {
   for(u in unique(human_maps_1Mb$mut_map)) {
     for(m in unique(human_maps_1Mb$constrained_model)) { 
       for(d in unique(human_maps_1Mb$demo)) {
@@ -13177,7 +13178,6 @@ gw_r2 <- rbind.data.frame(gw_r2_10kb,
 
 gw_r2_B <- pivot_longer(gw_r2, cols=ends_with(".B"))
 gw_r2_pi <- pivot_longer(gw_r2, cols=ends_with(".avg_pi"))
-gw_r2_mut <- pivot_longer(gw_r2, cols=ends_with(".avg_mut"))
 
 p <- ggplot(data=gw_r2_pi, 
             aes(x=name, 
@@ -13186,12 +13186,12 @@ p <- ggplot(data=gw_r2_pi,
                 shape=as.factor(DAG))) +
       geom_point(size=2) +
       facet_grid(constrained_model~scale, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) + ylim(c(0,1)) +
+      scale_y_continuous(breaks=seq(from=0, to=1, by=0.1)) + ylim(c(0,1)) +
       scale_x_discrete(labels=as.character(1:22)) +
       scale_shape_manual(values=c(0, 1, 2), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Variance Explained in diversity (genome-wide model)",
+      labs(title="Variance Explained in diversity (genome-wide model, DAGs 0-1)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13199,8 +13199,8 @@ p <- ggplot(data=gw_r2_pi,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/gw_pvals.png", p, 
-          base_height=10, base_width=16)
+save_plot("real_data_maps/lavaan_out/chr_r2_pi_DAGs0-1_A.png", p, 
+          base_height=10, base_width=20)
 
 q <- ggplot(data=gw_r2_B, 
             aes(x=name, 
@@ -13215,7 +13215,7 @@ q <- ggplot(data=gw_r2_B,
                          name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Variance Explained in B (genome-wide model)",
+      labs(title="Variance Explained in B (genome-wide model, DAGs 0-1)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13223,37 +13223,13 @@ q <- ggplot(data=gw_r2_B,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/gw_r2_B.png", q, 
-          base_height=10, base_width=16)
+save_plot("real_data_maps/lavaan_out/chr_r2_B_DAGs0-1_A.png", q, 
+          base_height=10, base_width=20)
 
-r <- ggplot(data=gw_r2_mut, 
-            aes(x=name, 
-                y=value, 
-                color=mut_map,
-                shape=as.factor(DAG))) +
-      geom_point(size=2) +
-      facet_grid(constrained_model~scale, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) + ylim(c(0,1)) +
-      scale_x_discrete(labels=as.character(1:22)) +
-      scale_shape_manual(values=c(0, 1, 2), 
-                         name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Variance Explained in mut. (genome-wide model)",
-           x="Chromosome", y="Variance Explained") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/gw_r2_mut.png", q, 
-          base_height=10, base_width=16)
-
-# per chromosome SEM models
+# per chromosome SEM models, DAGs 0-1
 ## 10 kb
 chr_r2_10kb <- data.frame()
-for(dag in 2:3) {
+for(dag in 0:1) {
   for(u in unique(human_maps_10kb$mut_map)) {
     for(m in unique(human_maps_10kb$constrained_model)) { 
       for(d in unique(human_maps_10kb$demo)) {
@@ -13282,7 +13258,7 @@ chr_r2_10kb$scale <- 1e+4
 
 ## 100 kb
 chr_r2_100kb <- data.frame()
-for(dag in 2:3) {
+for(dag in 0:1) {
   for(u in unique(human_maps_100kb$mut_map)) {
     for(m in unique(human_maps_100kb$constrained_model)) { 
       for(d in unique(human_maps_100kb$demo)) {
@@ -13311,7 +13287,7 @@ chr_r2_100kb$scale <- 1e+5
 
 ## 1 Mb
 chr_r2_1Mb <- data.frame()
-for(dag in 2:3) {
+for(dag in 0:1) {
   for(u in unique(human_maps_1Mb$mut_map)) {
     for(m in unique(human_maps_1Mb$constrained_model)) { 
       for(d in unique(human_maps_1Mb$demo)) {
@@ -13338,6 +13314,7 @@ for(dag in 2:3) {
 }
 chr_r2_1Mb$scale <- 1e+6
 
+# NOTE there are no fit measures available for DAGs 0-1
 chr_r2 <- rbind.data.frame(chr_r2_10kb,
                            chr_r2_100kb,
                            chr_r2_1Mb)
@@ -13355,7 +13332,7 @@ p <- ggplot(data=chr_r2,
                          name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Variance Explained in pi (chr-specific models)",
+      labs(title="Variance Explained in pi (chr-specific models, DAGs 0-1, GFI > 0.95)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13363,8 +13340,8 @@ p <- ggplot(data=chr_r2,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_r2_pi.png", p, 
-          base_height=10, base_width=16)
+save_plot("real_data_maps/lavaan_out/chr_r2_pi_DAGs0-1_A.png", p, 
+          base_height=10, base_width=20)
 
 q <- ggplot(data=chr_r2, 
              aes(x=chrom, 
@@ -13378,7 +13355,7 @@ q <- ggplot(data=chr_r2,
       scale_shape_manual(values=c(0, 1, 2), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Variance Explained in B (chr-specific models)",
+      labs(title="Variance Explained in B (chr-specific models, DAGs 0-1, GFI > 0.95)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13386,33 +13363,10 @@ q <- ggplot(data=chr_r2,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_r2_B.png", p, 
-          base_height=10, base_width=16)
+save_plot("real_data_maps/lavaan_out/chr_r2_B_DAGs0-1_A.png", p, 
+          base_height=10, base_width=20)
 
-r <- ggplot(data=chr_r2, 
-             aes(x=chrom, 
-                 y=avg_mut, 
-                 color=mut_map,
-                 shape=as.factor(DAG))) +
-      geom_point(size=2) + 
-      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
-      scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2), name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"), 
-                         name="Mut. Map") +
-      labs(title="Variance Explained in mut. (chr-specific models)",
-           x="Chromosome", y="Variance Explained") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_r2_mut.png", p, 
-          base_height=10, base_width=16)
-
-# DAGs 2-3 (mu as endogeneous)
+# genome-wide models, DAGs 2-3
 ## 10 kb
 gw_r2_10kb <- data.frame()
 for(dag in 2:3) { 
@@ -13508,7 +13462,7 @@ p <- ggplot(data=gw_r2_pi,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/lavaan_out/gw_r2_pi_DAGs2-3.png", p, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 q <- ggplot(data=gw_r2_B, 
             aes(x=name, 
@@ -13532,7 +13486,7 @@ q <- ggplot(data=gw_r2_B,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/lavaan_out/gw_r2_B_DAGs2-3.png", q, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 r <- ggplot(data=gw_r2_mut, 
             aes(x=name, 
@@ -13556,9 +13510,9 @@ r <- ggplot(data=gw_r2_mut,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/lavaan_out/gw_r2_mut_DAGs2-3.png", q, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
-# per chromosome SEM models
+# per chromosome SEM models, DAGs 2-3
 ## 10 kb
 chr_r2_10kb <- data.frame()
 for(dag in 2:3) {
@@ -13650,7 +13604,13 @@ chr_r2 <- rbind.data.frame(chr_r2_10kb,
                            chr_r2_100kb,
                            chr_r2_1Mb)
 
-p <- ggplot(data=chr_r2, 
+chr_r2_ext <- left_join(chr_r2, 
+                        chr_fitmeasures,
+                        by=c("chrom", "DAG", "mut_map",
+                             "constrained_model", "demo", "scale"))
+
+p <- ggplot(data=filter(chr_r2_ext,
+                        gfi > 0.95), 
              aes(x=chrom, 
                  y=avg_pi, 
                  color=mut_map,
@@ -13663,7 +13623,7 @@ p <- ggplot(data=chr_r2,
                          name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Variance Explained in pi (chr-specific models, DAGs 2-3)",
+      labs(title="Variance Explained in pi (chr-specific models, DAGs 2-3, GFI > 0.95)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13671,10 +13631,11 @@ p <- ggplot(data=chr_r2,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_r2_pi_DAGs2-3.png", p, 
-          base_height=10, base_width=16)
+save_plot("real_data_maps/lavaan_out/chr_r2_pi_DAGs2-3_B.png", p, 
+          base_height=10, base_width=20)
 
-q <- ggplot(data=chr_r2, 
+q <- ggplot(data=filter(chr_r2_ext,
+                        gfi > 0.95), 
              aes(x=chrom, 
                  y=B, 
                  color=mut_map,
@@ -13686,7 +13647,7 @@ q <- ggplot(data=chr_r2,
       scale_shape_manual(values=c(0, 1, 2), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Variance Explained in B (chr-specific models, DAGs 2-3)",
+      labs(title="Variance Explained in B (chr-specific models, DAGs 2-3, GFI > 0.95)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13694,10 +13655,11 @@ q <- ggplot(data=chr_r2,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_r2_B_DAGs2-3.png", p, 
-          base_height=10, base_width=16)
+save_plot("real_data_maps/lavaan_out/chr_r2_B_DAGs2-3_B.png", p, 
+          base_height=10, base_width=20)
 
-r <- ggplot(data=chr_r2, 
+r <- ggplot(data=filter(chr_r2_ext,
+                        gfi > 0.95), 
              aes(x=chrom, 
                  y=avg_mut, 
                  color=mut_map,
@@ -13709,7 +13671,7 @@ r <- ggplot(data=chr_r2,
       scale_shape_manual(values=c(0, 1, 2), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"), 
                          name="Mut. Map") +
-      labs(title="Variance Explained in mut. (chr-specific models, DAGs 2-3)",
+      labs(title="Variance Explained in mut. (chr-specific models, DAGs 2-3, GFI > 0.95)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13717,8 +13679,8 @@ r <- ggplot(data=chr_r2,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_r2_mut_DAGs2-3.png", p, 
-          base_height=10, base_width=16)
+save_plot("real_data_maps/lavaan_out/chr_r2_mut_DAGs2-3_B.png", p, 
+          base_height=10, base_width=20)
 ```
 
 Parameter estimates
@@ -13795,6 +13757,7 @@ gw_params_1Mb$scale <- 1e+6
 gw_params <- rbind.data.frame(gw_params_10kb,
                               gw_params_100kb,
                               gw_params_1Mb) %>%
+             filter(., pvalue < 0.05) %>%
              filter(., block==1, # all blocks (chr) share PC's in G-W model
                        op=="~") 
 
@@ -13810,15 +13773,38 @@ p <- ggplot(data=filter(gw_params, lhs=="avg_pi"),
       scale_shape_manual(values=c(0, 1), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Std. Path Coefficients (genome-wide model)",
-           x="Variable", y="Std. Path Coefficient") +
+      labs(title="Std. Path Coefficients to B (genome-wide model)",
+           x="Variable", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/gw_pvals.png", p, 
+save_plot("real_data_maps/lavaan_out/gw_PCs_pi.png", p, 
+          base_height=10, base_width=16)
+
+q <- ggplot(data=filter(gw_params, lhs=="B"), 
+            aes(x=rhs, 
+                y=est, 
+                color=mut_map,
+                shape=as.factor(DAG))) +
+      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") + 
+      facet_grid(constrained_model~scale, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) + ylim(c(-1,1)) +
+      scale_x_discrete() +
+      scale_shape_manual(values=c(0, 1), name="DAG") +
+      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
+                         name="Mut. Map") +
+      labs(title="Std. Path Coefficients to B (genome-wide model)",
+           x="Variable", y="Direct Std. PC to B") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/lavaan_out/gw_PCs_B.png", p, 
           base_height=10, base_width=16)
 
 # per chromosome SEM models
@@ -13912,23 +13898,34 @@ chr_params_1Mb$scale <- 1e+6
 chr_params <- rbind.data.frame(chr_params_10kb,
                                chr_params_100kb,
                                chr_params_1Mb)  %>%
-              filter(., op=="~") 
+              filter(., pvalue < 0.05) %>%
+              filter(., op=="~" | op==":=") 
 
-p <- ggplot(data=filter(chr_params, lhs=="avg_pi", 
+chr_params_ext <- left_join(chr_params, 
+                            chr_fitmeasures,
+                            by=c("chrom", "DAG", "mut_map",
+                                 "constrained_model", "demo", "scale"))
+
+names(chr_params_ext)[8] <- "pvalue_est"
+names(chr_params_ext)[21] <- "pvalue_DAG"
+  
+p <- ggplot(data=filter(chr_params_ext,
+                        gfi > 0.95,
+                        lhs=="avg_pi", 
                         DAG==2), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
                  shape=rhs)) +
-      geom_point(size=2) + 
+      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
+      scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Path Coefficients to Pi DAG 2",
-           x="Chromosome", y="PC to Pi") +
+      labs(title="Path Coefficients to Pi (DAG 2, GFI > 0.95, pval_est < 0.05)",
+           x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -13938,21 +13935,23 @@ p <- ggplot(data=filter(chr_params, lhs=="avg_pi",
 save_plot("real_data_maps/lavaan_out/chr_params_pi_DAG2.png", p, 
           base_height=10, base_width=16)
 
-q <- ggplot(data=filter(chr_params, lhs=="avg_pi", 
+q <- ggplot(data=filter(chr_params_ext,
+                        gfi > 0.95,
+                        lhs=="avg_pi", 
                         DAG==3), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
                  shape=rhs)) +
-      geom_point(size=2) + 
+      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
+      scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2)) +
+      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Path Coefficients to Pi DAG 3",
-           x="Chromosome", y="PC to Pi") +
+      labs(title="Path Coefficients to Pi (DAG 3, GFI > 0.95, pval_est < 0.05)",
+           x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
             axis.text.x=element_text(size=12),
@@ -13962,42 +13961,146 @@ q <- ggplot(data=filter(chr_params, lhs=="avg_pi",
 save_plot("real_data_maps/lavaan_out/chr_params_pi_DAG3.png", q, 
           base_height=10, base_width=16)
 
-# ratios of PCs
-chr_wide <- chr_params %>% filter(., pvalue < 5e-2) %>%
-         dplyr::select(., -c(op, label, se, z, pvalue, ci.lower, ci.upper)) %>%
+p <- ggplot(data=filter(chr_params_ext,
+                        gfi > 0.95, 
+                        lhs=="B", 
+                        DAG==2), 
+             aes(x=chrom, 
+                 y=est, 
+                 color=mut_map,
+                 shape=rhs)) +
+      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=1:22) + 
+      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
+      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
+                         name="Mut. Map") +
+      labs(title="Path Coefficients to B (DAG 2, GFI > 0.95, pval_est < 0.05)",
+           x="Chromosome", y="Direct Std. PC to B") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/lavaan_out/chr_params_B_DAG2.png", p, 
+          base_height=10, base_width=16)
+
+q <- ggplot(data=filter(chr_params_ext,
+                        gfi > 0.95,
+                        lhs=="B", 
+                        DAG==3), 
+             aes(x=chrom, 
+                 y=est, 
+                 color=mut_map,
+                 shape=rhs)) +
+      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=1:22) + 
+      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
+      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
+                         name="Mut. Map") +
+      labs(title="Path Coefficients to B (DAG 3, GFI > 0.95, pval_est < 0.05)",
+           x="Chromosome", y="Direct Std. PC to B") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/lavaan_out/chr_params_B_DAG3.png", q, 
+          base_height=10, base_width=16)
+
+r <- ggplot(data=filter(chr_params_ext,
+                        gfi > 0.95,
+                        op==":=", 
+                        DAG==2), 
+             aes(x=chrom, 
+                 y=est, 
+                 color=mut_map,
+                 shape=lhs)) +
+      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=1:22) + 
+      scale_shape_manual(values=c(0, 1, 2, 3), name="Path") +
+      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
+                         name="Mut. Map") +
+      labs(title="Indirect Path Coefficients (DAG 2, GFI > 0.95, pval_est < 0.05)",
+           x="Chromosome", y="Indirect Std. PC") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/lavaan_out/chr_params_indirect_DAG2.png", r, 
+          base_height=10, base_width=20)
+
+s <- ggplot(data=filter(chr_params_ext,
+                        gfi > 0.95,
+                        op==":=", 
+                        DAG==3), 
+             aes(x=chrom, 
+                 y=est, 
+                 color=mut_map,
+                 shape=lhs)) +
+      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=1:22) + 
+      scale_shape_manual(values=c(0, 1, 2, 3), name="Path") +
+      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
+                         name="Mut. Map") +
+      labs(title="Indirect Path Coefficients (DAG 3, GFI > 0.95, pval_est < 0.05)",
+           x="Chromosome", y="Indirect Std. PC") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/lavaan_out/chr_params_indirect_DAG3.png", s, 
+          base_height=10, base_width=20)
+
+# ratios of PCs from B and Mu to Pi
+chr_wide <- chr_params_ext %>% filter(., pvalue_est < 5e-2) %>%
+         dplyr::select(., -c(op, label, se, z, pvalue_est, pvalue_DAG,
+                             ci.lower, ci.upper)) %>%
          filter(., demo=="equilibrium", lhs=="avg_pi") %>% 
          filter(., rhs=="avg_mut" | rhs=="B") %>%
          pivot_wider(values_from="est", names_from="rhs")
-
+         #filter(., avg_mut >)
+          
 chr_wide$ratio_B_u <- chr_wide$B / chr_wide$avg_mut # chr 19 is weird!
 
-for(c in 1:22) {
-  r <- ggplot(data=filter(chr_wide, chrom==c), 
-               aes(x=scale, 
-                   y=ratio_B_u, 
-                   color=mut_map,
-                   shape=as.factor(DAG))) +
-        geom_point(size=2.5) + 
-        facet_grid(~constrained_model, labeller=label_both) + theme_bw() + 
-        scale_y_continuous(breaks=pretty_breaks()) +
-        scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) + 
-        scale_shape_manual(values=c(0, 1),
-                           name="DAG") +
-        scale_color_manual(values=c("purple3", "seagreen4", "brown1"), 
-                           name="Mut. Map") +
-        labs(title="Ratio of Path Coefficients to Pi",
-             x="Scale", y="PC(B) / PC(Mu)") +
-        theme(axis.title=element_text(size=16), 
-              axis.text=element_text(size=12), 
-              axis.text.x=element_text(size=12),
-              legend.text=element_text(size=16),
-              legend.title=element_text(size=16),
-              legend.position="bottom")
-  save_plot(paste("real_data_maps/lavaan_out/sem_params_pi_chr", c, 
-                  ".png", sep=""),
-            r, base_height=8, base_width=20)
-}
-
+r <- ggplot(data=filter(chr_wide,
+                        gfi > 0.95), 
+             aes(x=chrom, 
+                 y=ratio_B_u, 
+                 color=mut_map,
+                 shape=as.factor(DAG))) +
+      geom_point(size=2.5) + 
+      geom_hline(yintercept=1, linetype="dashed") +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=1:22) + 
+      scale_shape_manual(values=c(0, 1),
+                         name="DAG") +
+      scale_color_manual(values=c("purple3", "seagreen4", "brown1"), 
+                         name="Mut. Map") +
+      labs(title="Ratio of Path Coefficients to Pi (GFI > 0.95, pval_est < 0.05)",
+           x="Chromosome", y="PC(B) / PC(Mu)") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot(paste("real_data_maps/lavaan_out/sem_pcratios_pi.png", sep=""),
+          r, base_height=8, base_width=20)
 ```
 
 ## Measurement models
@@ -14012,7 +14115,7 @@ num_chrom <- 22
 roulette <- list(length=num_chrom)
 for(c in 1:num_chrom) {
   roulette[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
-                               "mutation_tables/roulette_tbls/",
+                               "mutation_tables/roulette/",
                                "roulette_tbl_chr", c, ".csv.gz", sep=""))
 }
 roulette_1kb <- do.call(rbind.data.frame, roulette)
@@ -14024,7 +14127,7 @@ names(roulette_1kb)[4:ncol(roulette_1kb)] <-
 carlson <- list(length=num_chrom)
 for(c in 1:num_chrom) {
   carlson[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
-                              "mutation_tables/carlson_tbls/",
+                              "mutation_tables/carlson/",
                               "carlson_tbl_chr", c, ".csv.gz", sep=""))
 }
 carlson_1kb <- do.call(rbind.data.frame, carlson)
@@ -14036,7 +14139,7 @@ names(carlson_1kb)[4:ncol(carlson_1kb)] <-
 gnomad <- list(length=num_chrom)
 for(c in 1:num_chrom) {
   gnomad[[c]] <- fread(paste("~/Data/bgs_lmr/human_data/data/",
-                             "mutation_tables/gnomad_tbls/",
+                             "mutation_tables/gnomad/",
                              "gnomad_tbl_chr", c, ".csv.gz", sep=""))
 }
 gnomad_1kb <- do.call(rbind.data.frame, gnomad)
@@ -14055,18 +14158,18 @@ mut_maps_1kb <- mut_maps_1kb %>% group_by(chrom) %>%
 
 mut_maps_10kb <- mut_maps_1kb %>%
                  group_by(chrom, bin_10kb) %>% 
-                 mutate(mean_mut_roulette=mean(avg_mut_roulette),
-                        mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
-                        mean_mut_carlson=mean(avg_mut_carlson),
-                        mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
-                        mean_mut_gnomad=mean(avg_mut_gnomad),
-                        mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
-                        sum_sites_roulette=sum(num_sites_roulette),
-                        sum_sites_masked_roulette=sum(num_sites_masked_roulette),
-                        sum_sites_carlson=sum(num_sites_carlson),
-                        sum_sites_masked_carlson=sum(num_sites_masked_carlson),
-                        sum_sites_gnomad=sum(num_sites_gnomad),
-                        sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                 mutate(mean_mut_roulette=mean(avg_mut_roulette, na.rm=T),
+                        mean_mut_masked_roulette=mean(avg_mut_masked_roulette, na.rm=T),
+                        mean_mut_carlson=mean(avg_mut_carlson, na.rm=T),
+                        mean_mut_masked_carlson=mean(avg_mut_masked_carlson, na.rm=T),
+                        mean_mut_gnomad=mean(avg_mut_gnomad, na.rm=T),
+                        mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad, na.rm=T),
+                        sum_sites_roulette=sum(num_sites_roulette, na.rm=T),
+                        sum_sites_masked_roulette=sum(num_sites_masked_roulette, na.rm=T),
+                        sum_sites_carlson=sum(num_sites_carlson, na.rm=T),
+                        sum_sites_masked_carlson=sum(num_sites_masked_carlson, na.rm=T),
+                        sum_sites_gnomad=sum(num_sites_gnomad, na.rm=T),
+                        sum_sites_masked_gnomad=sum(num_sites_masked_gnomad, na.rm=T),
                         chromStart=min(chromStart),
                         chromEnd=max(chromEnd)) %>%
                  distinct(bin_10kb, .keep_all=T) %>%
@@ -14088,18 +14191,18 @@ mut_maps_10kb <- mut_maps_1kb %>%
     
 mut_maps_100kb <- mut_maps_1kb %>%
                   group_by(chrom, bin_100kb) %>% 
-                  mutate(mean_mut_roulette=mean(avg_mut_roulette),
-                         mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
-                         mean_mut_carlson=mean(avg_mut_carlson),
-                         mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
-                         mean_mut_gnomad=mean(avg_mut_gnomad),
-                         mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
-                         sum_sites_roulette=sum(num_sites_roulette),
-                         sum_sites_masked_roulette=sum(num_sites_masked_roulette),
-                         sum_sites_carlson=sum(num_sites_carlson),
-                         sum_sites_masked_carlson=sum(num_sites_masked_carlson),
-                         sum_sites_gnomad=sum(num_sites_gnomad),
-                         sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                  mutate(mean_mut_roulette=mean(avg_mut_roulette, na.rm=T),
+                         mean_mut_masked_roulette=mean(avg_mut_masked_roulette, na.rm=T),
+                         mean_mut_carlson=mean(avg_mut_carlson, na.rm=T),
+                         mean_mut_masked_carlson=mean(avg_mut_masked_carlson, na.rm=T),
+                         mean_mut_gnomad=mean(avg_mut_gnomad, na.rm=T),
+                         mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad, na.rm=T),
+                         sum_sites_roulette=sum(num_sites_roulette, na.rm=T),
+                         sum_sites_masked_roulette=sum(num_sites_masked_roulette, na.rm=T),
+                         sum_sites_carlson=sum(num_sites_carlson, na.rm=T),
+                         sum_sites_masked_carlson=sum(num_sites_masked_carlson, na.rm=T),
+                         sum_sites_gnomad=sum(num_sites_gnomad, na.rm=T),
+                         sum_sites_masked_gnomad=sum(num_sites_masked_gnomad, na.rm=T),
                          chromStart=min(chromStart),
                          chromEnd=max(chromEnd)) %>%
                   distinct(bin_100kb, .keep_all=T) %>%
@@ -14121,18 +14224,18 @@ mut_maps_100kb <- mut_maps_1kb %>%
 
 mut_maps_1Mb <- mut_maps_1kb %>%
                  group_by(chrom, bin_1Mb) %>% 
-                 mutate(mean_mut_roulette=mean(avg_mut_roulette),
-                        mean_mut_masked_roulette=mean(avg_mut_masked_roulette),
-                        mean_mut_carlson=mean(avg_mut_carlson),
-                        mean_mut_masked_carlson=mean(avg_mut_masked_carlson),
-                        mean_mut_gnomad=mean(avg_mut_gnomad),
-                        mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad),
-                        sum_sites_roulette=sum(num_sites_roulette),
-                        sum_sites_masked_roulette=sum(num_sites_masked_roulette),
-                        sum_sites_carlson=sum(num_sites_carlson),
-                        sum_sites_masked_carlson=sum(num_sites_masked_carlson),
-                        sum_sites_gnomad=sum(num_sites_gnomad),
-                        sum_sites_masked_gnomad=sum(num_sites_masked_gnomad),
+                 mutate(mean_mut_roulette=mean(avg_mut_roulette, na.rm=T),
+                        mean_mut_masked_roulette=mean(avg_mut_masked_roulette, na.rm=T),
+                        mean_mut_carlson=mean(avg_mut_carlson, na.rm=T),
+                        mean_mut_masked_carlson=mean(avg_mut_masked_carlson, na.rm=T),
+                        mean_mut_gnomad=mean(avg_mut_gnomad, na.rm=T),
+                        mean_mut_masked_gnomad=mean(avg_mut_masked_gnomad, na.rm=T),
+                        sum_sites_roulette=sum(num_sites_roulette, na.rm=T),
+                        sum_sites_masked_roulette=sum(num_sites_masked_roulette, na.rm=T),
+                        sum_sites_carlson=sum(num_sites_carlson, na.rm=T),
+                        sum_sites_masked_carlson=sum(num_sites_masked_carlson, na.rm=T),
+                        sum_sites_gnomad=sum(num_sites_gnomad, na.rm=T),
+                        sum_sites_masked_gnomad=sum(num_sites_masked_gnomad, na.rm=T),
                         chromStart=min(chromStart),
                         chromEnd=max(chromEnd)) %>%
                  distinct(bin_1Mb, .keep_all=T) %>%
@@ -14154,7 +14257,7 @@ mut_maps_1Mb <- mut_maps_1kb %>%
 
 mut_maps_10kb$mean_mut_roulette[which(mut_maps_10kb$sum_sites_roulette < 7.5e+3)] <- NA
 mut_maps_10kb$mean_mut_masked_roulette[which(mut_maps_10kb$sum_sites_masked_roulette < 7.5e+3)] <- NA
-mut_maps_10kb$mean_mut_carlson[which(mut_maps_10kb$sum_sites_carlson < 5.5e+3)] <- NA
+mut_maps_10kb$mean_mut_carlson[which(mut_maps_10kb$sum_sites_carlson < 7.5e+3)] <- NA
 mut_maps_10kb$mean_mut_masked_carlson[which(mut_maps_10kb$sum_sites_masked_carlson < 7.5e+3)] <- NA
 mut_maps_10kb$mean_mut_gnomad[which(mut_maps_10kb$sum_sites_gnomad < 7.5e+3)] <- NA
 mut_maps_10kb$mean_mut_masked_gnomad[which(mut_maps_10kb$sum_sites_masked_gnomad < 7.5e+3)] <- NA
@@ -14166,21 +14269,25 @@ mut_maps_100kb$mean_mut_masked_carlson[which(mut_maps_100kb$sum_sites_masked_car
 mut_maps_100kb$mean_mut_gnomad[which(mut_maps_100kb$sum_sites_gnomad < 7.5e+4)] <- NA
 mut_maps_100kb$mean_mut_masked_gnomad[which(mut_maps_100kb$sum_sites_masked_gnomad < 7.5e+4)] <- NA
 
-mut_maps_1Mb$mean_mut_roulette[which(mut_maps_1Mb$sum_sites_roulette < 7.5e+5)] <- NA
-mut_maps_1Mb$mean_mut_masked_roulette[which(mut_maps_1Mb$sum_sites_masked_roulette < 7.5e+5)] <- NA
-mut_maps_1Mb$mean_mut_carlson[which(mut_maps_1Mb$sum_sites_carlson < 7.5e+5)] <- NA
-mut_maps_1Mb$mean_mut_masked_carlson[which(mut_maps_1Mb$sum_sites_masked_carlson < 7.5e+5)] <- NA
-mut_maps_1Mb$mean_mut_gnomad[which(mut_maps_1Mb$sum_sites_gnomad < 7.5e+5)] <- NA
-mut_maps_1Mb$mean_mut_masked_gnomad[which(mut_maps_1Mb$sum_sites_masked_gnomad < 7.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_roulette[which(mut_maps_1Mb$sum_sites_roulette < 5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_roulette[which(mut_maps_1Mb$sum_sites_masked_roulette < 5e+5)] <- NA
+mut_maps_1Mb$mean_mut_carlson[which(mut_maps_1Mb$sum_sites_carlson < 5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_carlson[which(mut_maps_1Mb$sum_sites_masked_carlson < 5e+5)] <- NA
+mut_maps_1Mb$mean_mut_gnomad[which(mut_maps_1Mb$sum_sites_gnomad < 5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_gnomad[which(mut_maps_1Mb$sum_sites_masked_gnomad < 5e+5)] <- NA
 
 # testing measurement model on chr1, 1 Mb scale
 names(mut_maps_1Mb)[1] <- "chrom"
-df_1Mb <- left_join(mut_maps_1Mb, human_maps_1Mb, by=c("chrom",
-                                                       "chromStart",
-                                                       "chromEnd"))
+obs_pi_1Mb <- filter(human_maps_1Mb, mut_map=="roulette") %>% # mut maps indifferent
+              dplyr::select(., c(chrom, chromStart, chromEnd, coverage, avg_pi))
+
+df_1Mb <- left_join(mut_maps_1Mb, obs_pi_1Mb, by=c("chrom",
+                                                   "chromStart",
+                                                   "chromEnd")) %>%
+          distinct(., chrom, chromStart, .keep_all=T)
 
 # ismc chr 1, from the book chapter Barroso & Dutheil 2025/6
-ismc_chr1 <- fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.theta.1Mb.bedgraph")
+ismc_chr1 <- fread("/media/gvbarroso/extradrive1/iSMC/iSMC_Mbuti/Mbuti_chr1.theta.1Mb.bedgraph")
 ismc_chr1$chrom <- 1
 ismc_chr1$chrom <- as.integer(ismc_chr1$chrom)
 names(ismc_chr1)[4:9] <- c(paste("ismc", 1:4, sep="_"), "ismc_mean", "ismc_joint")
@@ -14220,17 +14327,6 @@ df_chr1_1Mb <- left_join(filter(df_1Mb, chrom==1),
 
 mut_chr1_1Mb <-  filter(df_chr1_1Mb, coverage > 0.5)
 
-p1 <- ggpairs(dplyr::select(mut_chr1_1Mb, c(mean_mut_masked_carlson,
-                                            mean_mut_masked_roulette,
-                                            mean_mut_masked_gnomad,
-                                            #ismc_1,
-                                            #ismc_2,
-                                            #ismc_3,
-                                            #ismc_4,
-                                            #ismc_mean,
-                                            ismc_latent,
-                                            avg_pi)))
-
 mut_chr1_1Mb_log <- cbind.data.frame(mut_chr1_1Mb[,1:3],
                                      apply(mut_chr1_1Mb[,4:(ncol(mut_chr1_1Mb)-1)],
                                            2, log))
@@ -14267,18 +14363,27 @@ vcov(m4)
 
 mut_chr1_1Mb_log$mut_latent <- as.numeric(predict(m4))
 
+# all chr models (cannot test model fit, we want to extract the latent)
+mut_1Mb_log <- cbind.data.frame(df_1Mb[,1:3],
+                                apply(df_1Mb[,4:ncol(df_1Mb)],
+                                      2, log))
 mut_measurement_3 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad + ismc_mean
-mean_mut_masked_roulette ~~ ismc_mean
+mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
 "
 
-m5 <- sem(model=mut_measurement_3,
-          data=mut_chr1_1Mb_log,
-          std.ov=T,
-          std.lv=T,
-          missing="fiml")
-
-modificationindices(m5)
+for(c in 1:22) {
+  tbl_chr <- filter(mut_1Mb_log, chrom==c)
+  m5 <- sem(model=mut_measurement_3,
+            data=tbl_chr,
+            std.ov=T,
+            std.lv=T,
+            missing="fiml")
+  
+  tbl_chr$mut_latent_log <- as.numeric(predict(m5))
+  fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, mut_latent_log)),
+         paste("~/Desktop/causal_inference/real_data_maps/mut_latent_chr",
+               c, ".csv.gz", sep=""))
+}
 ```
 
 Recombination
