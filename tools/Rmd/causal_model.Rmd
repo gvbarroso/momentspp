@@ -10346,9 +10346,9 @@ maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz")
 maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz")
 
 # TODO break lines/points at gaps in the maps
-maps_1Mb$dat_carlson <- as.integer(!is.na(maps_1Mb_f$ismc_c))
-maps_1Mb_f$new <- abs(c(0, maps_1Mb_f$dat[-length(maps_1Mb_f$dat)] - maps_1Mb_f$dat[-1]))
-maps_1Mb_f$grp <- cumsum(maps_1Mb_f$new)
+#maps_1Mb$dat_carlson <- as.integer(!is.na(maps_1Mb$ismc_c))
+#maps_1Mb_f$new <- abs(c(0, maps_1Mb_f$dat[-length(maps_1Mb_f$dat)] - maps_1Mb_f$dat[-1]))
+#maps_1Mb_f$grp <- cumsum(maps_1Mb_f$new)
 
 pb <- txtProgressBar(min=0, max=22, style=3)
 for(c in 1:22) {
@@ -11646,7 +11646,7 @@ This is of course unrealistic.
 We later relax these assumptions with latent variables.
 
 10 kb
-```{r SEM-human-maps-fw-10kb, include=F, message=F, warning=F}
+```{r SEM-human-maps-10kb, include=F, message=F, warning=F}
 
 human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
                    filter(., mut_map!="uniform")
@@ -11819,8 +11819,8 @@ for(u in unique(human_maps_10kb$mut_map)) {
                    d, "_", m, "_", u, ".csv", sep=""),
              col.names=F)
       
-      fwrite(anova(m2gls, m3gls),
-             paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_10kb_genomewide_",
+      fwrite(lavTestLRT(m2gls, m3gls),
+             paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_10kb_genomewide_",
                    d, "_", m, "_", u, ".csv", sep=""))
         
       # one model per chrom
@@ -11951,8 +11951,8 @@ for(u in unique(human_maps_10kb$mut_map)) {
                      c, "_", d, "_", m, "_", u, ".csv", sep=""),
               col.names=F)
         
-        fwrite(anova(m2gls, m3gls),
-             paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_10kb_chr",
+        fwrite(lavTestLRT(m2gls, m3gls),
+             paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_10kb_chr",
                    c, "_", d, "_", m, "_", u, ".csv", sep=""))
       }
     }
@@ -11961,7 +11961,7 @@ for(u in unique(human_maps_10kb$mut_map)) {
 ```
 
 100 kb
-```{r SEM-human-maps-fw-100kb, include=F, message=F, warning=F}
+```{r SEM-human-maps-100kb, include=F, message=F, warning=F}
 
 human_maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz") %>%
                     filter(., mut_map!="uniform")
@@ -12134,8 +12134,8 @@ for(u in unique(human_maps_100kb$mut_map)) {
                    d, "_", m, "_", u, ".csv", sep=""),
              col.names=F)
       
-      fwrite(anova(m2gls, m3gls),
-             paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_100kb_genomewide_", 
+      fwrite(lavTestLRT(m2gls, m3gls),
+             paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_100kb_genomewide_", 
                    d, "_", m, "_", u, ".csv", sep=""))
         
       # one model per chrom
@@ -12266,8 +12266,8 @@ for(u in unique(human_maps_100kb$mut_map)) {
                      c, "_", d, "_", m, "_", u, ".csv", sep=""),
                col.names=F)
         
-        fwrite(anova(m2gls, m3gls),
-             paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_100kb_chr",
+        fwrite(lavTestLRT(m2gls, m3gls),
+             paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_100kb_chr",
                    c, "_", d, "_", m, "_", u, ".csv", sep=""))
       }
     }
@@ -12276,7 +12276,7 @@ for(u in unique(human_maps_100kb$mut_map)) {
 ```
 
 1 Mb
-```{r SEM-human-maps-fw-1Mb, include=F, message=F, warning=F}
+```{r SEM-human-maps-1Mb, include=F, message=F, warning=F}
 
 human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz")  %>%
                   filter(., mut_map!="uniform") %>%
@@ -12450,8 +12450,8 @@ for(u in unique(human_maps_1Mb$mut_map)) {
                    d, "_", m, "_", u, ".csv", sep=""),
              col.names=F)
       
-      fwrite(anova(m2gls, m3gls),
-             paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_1Mb_genomewide_", 
+      fwrite(lavTestLRT(m2gls, m3gls),
+             paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_1Mb_genomewide_", 
                    d, "_", m, "_", u, ".csv", sep=""))
         
       # one model per chrom
@@ -12582,8 +12582,8 @@ for(u in unique(human_maps_1Mb$mut_map)) {
                      c, "_", d, "_", m, "_", u, ".csv", sep=""),
                col.names=F)
         
-        fwrite(anova(m2gls, m3gls),
-               paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_1Mb_chr",
+        fwrite(lavTestLRT(m2gls, m3gls),
+               paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_1Mb_chr",
                      c, "_", d, "_", m, "_", u, ".csv", sep=""))
       }
     }
@@ -12903,14 +12903,14 @@ save_plot("real_data_maps/lavaan_out/chr_gfi.png", r,
           base_height=10, base_width=20)
 
 
-# (Nested) model selection, DAGs 2 and 3 (ANOVA)
+# (Nested) model selection, DAGs 2 and 3 (LRT)
 # (DAG 3 adds a covariance term between constrained sites and mutation rates)
-anova_gw_10kb <- data.frame()
+LRT_gw_10kb <- data.frame()
 for(u in unique(human_maps_10kb$mut_map)) {
   for(m in unique(human_maps_10kb$constrained_model)) { 
     for(d in unique(human_maps_10kb$demo)) {
       
-      tmp <- fread(paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_10kb_genomewide_",
+      tmp <- fread(paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_10kb_genomewide_",
                    d, "_", m, "_", u, ".csv", sep=""))
       
       df <- as.data.frame(tmp$`Pr(>Chisq)`[2],)  
@@ -12918,18 +12918,18 @@ for(u in unique(human_maps_10kb$mut_map)) {
       df$constrained_model <- m
       df$demo <- d
       
-      anova_gw_10kb <- rbind.data.frame(anova_gw_10kb, df)
+      LRT_gw_10kb <- rbind.data.frame(LRT_gw_10kb, df)
     }
   }
 }
-anova_gw_10kb$scale <- 1e+4
+LRT_gw_10kb$scale <- 1e+4
 
-anova_gw_100kb <- data.frame()
+LRT_gw_100kb <- data.frame()
 for(u in unique(human_maps_100kb$mut_map)) {
   for(m in unique(human_maps_100kb$constrained_model)) { 
     for(d in unique(human_maps_100kb$demo)) {
       
-      tmp <- fread(paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_100kb_genomewide_",
+      tmp <- fread(paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_100kb_genomewide_",
                    d, "_", m, "_", u, ".csv", sep=""))
       
       df <- as.data.frame(tmp$`Pr(>Chisq)`[2],)  
@@ -12937,18 +12937,18 @@ for(u in unique(human_maps_100kb$mut_map)) {
       df$constrained_model <- m
       df$demo <- d
       
-      anova_gw_100kb <- rbind.data.frame(anova_gw_100kb, df)
+      LRT_gw_100kb <- rbind.data.frame(LRT_gw_100kb, df)
     }
   }
 }
-anova_gw_100kb$scale <- 1e+5
+LRT_gw_100kb$scale <- 1e+5
 
-anova_gw_1Mb <- data.frame()
+LRT_gw_1Mb <- data.frame()
 for(u in unique(human_maps_1Mb$mut_map)) {
   for(m in unique(human_maps_1Mb$constrained_model)) { 
     for(d in unique(human_maps_1Mb$demo)) {
       
-      tmp <- fread(paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_1Mb_genomewide_",
+      tmp <- fread(paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_1Mb_genomewide_",
                    d, "_", m, "_", u, ".csv", sep=""))
       
       df <- as.data.frame(tmp$`Pr(>Chisq)`[2],)  
@@ -12956,19 +12956,19 @@ for(u in unique(human_maps_1Mb$mut_map)) {
       df$constrained_model <- m
       df$demo <- d
       
-      anova_gw_1Mb <- rbind.data.frame(anova_gw_1Mb, df)
+      LRT_gw_1Mb <- rbind.data.frame(LRT_gw_1Mb, df)
     }
   }
 }
-anova_gw_1Mb$scale <- 1e+6
+LRT_gw_1Mb$scale <- 1e+6
 
-gw_anova <- rbind.data.frame(anova_gw_10kb,
-                             anova_gw_100kb,
-                             anova_gw_1Mb)
+gw_LRT <- rbind.data.frame(LRT_gw_10kb,
+                             LRT_gw_100kb,
+                             LRT_gw_1Mb)
 
-names(gw_anova)[1] <- "pvalue"
+names(gw_LRT)[1] <- "pvalue"
 
-p <- ggplot(data=gw_anova, 
+p <- ggplot(data=gw_LRT, 
              aes(x=mut_map, 
                  y=pvalue, 
                  color=constrained_model,
@@ -12979,7 +12979,7 @@ p <- ggplot(data=gw_anova,
       scale_shape_manual(values=c(0, 1), name="Demography") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Const. Model") +
-      labs(title="ANOVA test of nested DAGs 2 and 3 (genome-wide)",
+      labs(title="LRT test of nested DAGs 2 and 3 (genome-wide)",
            x="Mut. Map", y="p-value") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -12987,19 +12987,19 @@ p <- ggplot(data=gw_anova,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/gw_anova.png", p, 
+save_plot("real_data_maps/lavaan_out/gw_LRT.png", p, 
           base_height=8, base_width=15)
 
 # per chr models
 ## 10 kb
-chr_anova_10kb <- data.frame()
+chr_LRT_10kb <- data.frame()
 for(u in unique(human_maps_10kb$mut_map)) {
   for(m in unique(human_maps_10kb$constrained_model)) { 
     for(d in unique(human_maps_10kb$demo)) {
       chr_list <- list(length=22)
       for(c in 1:22) {
         
-        tmp <- fread(paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_10kb_chr",
+        tmp <- fread(paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_10kb_chr",
                            c, "_", d, "_", m, "_", u, ".csv", sep=""))
         
         tmp <- as.data.frame(tmp$`Pr(>Chisq)`[2],)  
@@ -13012,21 +13012,21 @@ for(u in unique(human_maps_10kb$mut_map)) {
       }
       
       df <- do.call(rbind.data.frame, chr_list)
-      chr_anova_10kb <- rbind.data.frame(chr_anova_10kb, df)
+      chr_LRT_10kb <- rbind.data.frame(chr_LRT_10kb, df)
     }
   }
 }
-chr_anova_10kb$scale <- 1e+4
+chr_LRT_10kb$scale <- 1e+4
 
 ## 100 kb
-chr_anova_100kb <- data.frame()
+chr_LRT_100kb <- data.frame()
 for(u in unique(human_maps_100kb$mut_map)) {
   for(m in unique(human_maps_100kb$constrained_model)) { 
     for(d in unique(human_maps_100kb$demo)) {
       chr_list <- list(length=22)
       for(c in 1:22) {
         
-        tmp <- fread(paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_100kb_chr",
+        tmp <- fread(paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_100kb_chr",
                            c, "_", d, "_", m, "_", u, ".csv", sep=""))
         
         tmp <- as.data.frame(tmp$`Pr(>Chisq)`[2],)  
@@ -13039,21 +13039,21 @@ for(u in unique(human_maps_100kb$mut_map)) {
       }
       
       df <- do.call(rbind.data.frame, chr_list)
-      chr_anova_100kb <- rbind.data.frame(chr_anova_100kb, df)
+      chr_LRT_100kb <- rbind.data.frame(chr_LRT_100kb, df)
     }
   }
 }
-chr_anova_100kb$scale <- 1e+5
+chr_LRT_100kb$scale <- 1e+5
 
 ## 1 Mb
-chr_anova_1Mb <- data.frame()
+chr_LRT_1Mb <- data.frame()
 for(u in unique(human_maps_100kb$mut_map)) {
   for(m in unique(human_maps_100kb$constrained_model)) { 
     for(d in unique(human_maps_100kb$demo)) {
       chr_list <- list(length=22)
       for(c in 1:22) {
         
-        tmp <- fread(paste("real_data_maps/lavaan_out/ANOVA_DAG2_DAG3_1Mb_chr",
+        tmp <- fread(paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_1Mb_chr",
                            c, "_", d, "_", m, "_", u, ".csv", sep=""))
         
         tmp <- as.data.frame(tmp$`Pr(>Chisq)`[2],)  
@@ -13066,18 +13066,18 @@ for(u in unique(human_maps_100kb$mut_map)) {
       }
       
       df <- do.call(rbind.data.frame, chr_list)
-      chr_anova_1Mb <- rbind.data.frame(chr_anova_1Mb, df)
+      chr_LRT_1Mb <- rbind.data.frame(chr_LRT_1Mb, df)
     }
   }
 }
-chr_anova_1Mb$scale <- 1e+6
+chr_LRT_1Mb$scale <- 1e+6
 
-chr_anova <- rbind.data.frame(chr_anova_10kb,
-                              chr_anova_100kb,
-                              chr_anova_1Mb)
-names(chr_anova)[1] <- "pvalue"
+chr_LRT <- rbind.data.frame(chr_LRT_10kb,
+                            chr_LRT_100kb,
+                            chr_LRT_1Mb)
+names(chr_LRT)[1] <- "pvalue"
 
-p <- ggplot(data=filter(chr_anova, demo=="equilibrium"), # eq. =~ 4-epoch
+p <- ggplot(data=filter(chr_LRT, demo=="equilibrium"), # eq. =~ 4-epoch
              aes(x=chrom, 
                  y=-log10(pvalue), 
                  color=mut_map)) +
@@ -13089,7 +13089,7 @@ p <- ggplot(data=filter(chr_anova, demo=="equilibrium"), # eq. =~ 4-epoch
       scale_shape_manual(values=c(0, 1, 2), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="ANOVA test of nested DAGs 2 & 3 (models fit per chromosome)",
+      labs(title="LRT test of nested DAGs 2 & 3 (models fit per chromosome)",
            x="Chromosome", y="-log10(p-value)") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13097,7 +13097,7 @@ p <- ggplot(data=filter(chr_anova, demo=="equilibrium"), # eq. =~ 4-epoch
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/lavaan_out/chr_anova.png", p, 
+save_plot("real_data_maps/lavaan_out/chr_LRT.png", p, 
           base_height=10, base_width=20)
 ```
 
@@ -14629,7 +14629,7 @@ m2 <- sem(model=ismc_measurement_2,
           std.ov=T,
           std.lv=T)
 
-anova(m1, m2)
+lavTestLRT(m1, m2)
 
 ismc_chr1$ismc_latent <- as.numeric(predict(m1))
 
@@ -14678,14 +14678,46 @@ vcov(m4)
 mut_chr1_1Mb_log$mut_latent <- as.numeric(predict(m4))
 
 # all chr models (cannot test model fit, we want to extract the latent)
-mut_1Mb_log <- cbind.data.frame(df_1Mb[,1:3],
-                                apply(df_1Mb[,4:ncol(df_1Mb)],
+mut_10kb_log <- cbind.data.frame(mut_maps_10kb[,1:3],
+                                 apply(mut_maps_10kb[,4:ncol(mut_maps_10kb)],
+                                       2, log))
+
+mut_100kb_log <- cbind.data.frame(mut_maps_100kb[,1:3],
+                                  apply(mut_maps_100kb[,4:ncol(mut_maps_100kb)],
+                                        2, log))
+
+mut_1Mb_log <- cbind.data.frame(mut_maps_1Mb[,1:3],
+                                apply(mut_maps_1Mb[,4:ncol(mut_maps_1Mb)],
                                       2, log))
 mut_measurement_3 <- "
 mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
 "
 
 for(c in 1:22) {
+  tbl_chr <- filter(mut_10kb_log, chrom==c)
+  m5 <- sem(model=mut_measurement_3,
+            data=tbl_chr,
+            std.ov=T,
+            std.lv=T,
+            missing="fiml")
+  
+  tbl_chr$mut_latent_log <- as.numeric(predict(m5))
+  fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, mut_latent_log)),
+         paste("~/Desktop/causal_inference/real_data_maps/mut_latent_chr",
+               c, "_10kb.csv.gz", sep=""))
+  
+  tbl_chr <- filter(mut_100kb_log, chrom==c)
+  m5 <- sem(model=mut_measurement_3,
+            data=tbl_chr,
+            std.ov=T,
+            std.lv=T,
+            missing="fiml")
+  
+  tbl_chr$mut_latent_log <- as.numeric(predict(m5))
+  fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, mut_latent_log)),
+         paste("~/Desktop/causal_inference/real_data_maps/mut_latent_chr",
+               c, "_100kb.csv.gz", sep=""))
+  
   tbl_chr <- filter(mut_1Mb_log, chrom==c)
   m5 <- sem(model=mut_measurement_3,
             data=tbl_chr,
@@ -14696,7 +14728,7 @@ for(c in 1:22) {
   tbl_chr$mut_latent_log <- as.numeric(predict(m5))
   fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, mut_latent_log)),
          paste("~/Desktop/causal_inference/real_data_maps/mut_latent_chr",
-               c, ".csv.gz", sep=""))
+               c, "_1Mb.csv.gz", sep=""))
 }
 ```
 
@@ -14765,7 +14797,37 @@ rec_maps_1kb <- as.data.table(rec_maps_1kb) %>% dplyr::select(., c(seqnames,
 names(rec_maps_1kb)[1:3] <- c("chrom", "chromStart", "chromEnd")
 
 rec_maps_1kb <- rec_maps_1kb %>% group_by(chrom) %>% 
-                                 mutate(bin_1Mb=chromStart %/% 1e+6)
+                                 mutate(bin_10kb=(1:n() - 1) %/% 10,
+                                        bin_100kb=(1:n() - 1) %/% 100,
+                                        bin_1Mb=(1:n() - 1) %/% 1000)
+
+rec_maps_10kb <- rec_maps_1kb %>%
+                group_by(chrom, bin_10kb) %>% 
+                mutate(mean_pyrho_CEU=mean(pyrho_CEU),
+                       mean_pyrho_YRI=mean(pyrho_YRI),
+                       mean_deCODE=mean(deCODE),
+                       chromStart=min(chromStart),
+                       chromEnd=max(chromEnd)) %>%
+                 distinct(bin_10kb, .keep_all=T) %>%
+                 ungroup() %>%
+                 dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                    mean_pyrho_CEU,
+                                    mean_pyrho_YRI,
+                                    mean_deCODE))
+
+rec_maps_100kb <- rec_maps_1kb %>%
+                group_by(chrom, bin_100kb) %>% 
+                mutate(mean_pyrho_CEU=mean(pyrho_CEU),
+                       mean_pyrho_YRI=mean(pyrho_YRI),
+                       mean_deCODE=mean(deCODE),
+                       chromStart=min(chromStart),
+                       chromEnd=max(chromEnd)) %>%
+                 distinct(bin_100kb, .keep_all=T) %>%
+                 ungroup() %>%
+                 dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                    mean_pyrho_CEU,
+                                    mean_pyrho_YRI,
+                                    mean_deCODE))
 
 rec_maps_1Mb <- rec_maps_1kb %>%
                 group_by(chrom, bin_1Mb) %>% 
@@ -14782,19 +14844,19 @@ rec_maps_1Mb <- rec_maps_1kb %>%
                                     mean_deCODE))
 
 # ismc chr 1, from the book chapter Barroso & Dutheil 2025/6
-ismc_chr1 <- fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.rho.1Mb.bedgraph")
+ismc_chr1 <- fread("/media/gvbarroso/extradrive1/iSMC/iSMC_Mbuti/Mbuti_chr1.rho.1Mb.bedgraph")
 names(ismc_chr1)[4:9] <- c(paste("ismc", 1:4, sep="_"), "ismc_mean", "ismc_joint")
 
 # w/ rec we must filter by hand since there's no "coverage" info in the tables
-ismc_missing <-  fread("~/Data/iSMC/iSMC_Mbuti/Mbuti_chr1.missing.prop.1Mb.bedgraph")
+ismc_missing <-  fread("/media/gvbarroso/extradrive1//iSMC/iSMC_Mbuti/Mbuti_chr1.missing.prop.1Mb.bedgraph")
 
 ismc_chr1$missing_prop <- ismc_missing$`LP6005441-DNA_A08`
-ismc_chr1$ismc_1[ismc_chr1$missing_prop > 0.25] <- NA
-ismc_chr1$ismc_2[ismc_chr1$missing_prop > 0.25] <- NA
-ismc_chr1$ismc_3[ismc_chr1$missing_prop > 0.25] <- NA
-ismc_chr1$ismc_4[ismc_chr1$missing_prop > 0.25] <- NA
-ismc_chr1$ismc_mean[ismc_chr1$missing_prop > 0.25] <- NA
-ismc_chr1$ismc_joint[ismc_chr1$missing_prop > 0.25] <- NA
+ismc_chr1$ismc_1[ismc_chr1$missing_prop > 0.5] <- NA
+ismc_chr1$ismc_2[ismc_chr1$missing_prop > 0.5] <- NA
+ismc_chr1$ismc_3[ismc_chr1$missing_prop > 0.5] <- NA
+ismc_chr1$ismc_4[ismc_chr1$missing_prop > 0.5] <- NA
+ismc_chr1$ismc_mean[ismc_chr1$missing_prop > 0.5] <- NA
+ismc_chr1$ismc_joint[ismc_chr1$missing_prop > 0.5] <- NA
 
 ismc_measurement_1 <- "
 ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4
@@ -14821,7 +14883,7 @@ m2 <- sem(model=ismc_measurement_2,
           std.lv=T,
           missing="fiml")
 
-anova(m1, m2)
+lavTestLRT(m1, m2)
 
 ismc_chr1$ismc_latent <- as.numeric(predict(m1))
 
@@ -14846,10 +14908,10 @@ p1 <- ggpairs(dplyr::select(df_chr1_1Mb, c(mean_pyrho_CEU,
 save_plot("real_data_maps/rec_pairs_chr1_1Mb.png", p1,
           base_width=12, base_height=10)
 
-rec_chr1_log <- cbind.data.frame(rec_chr1_1Mb[,1:3],
-                                 apply(rec_chr1_1Mb[,4:ncol(rec_chr1_1Mb)],
+rec_chr1_log <- cbind.data.frame(df_chr1_1Mb[,1:3],
+                                 apply(df_chr1_1Mb[,4:ncol(df_chr1_1Mb)],
                                        2, log))
-rec_chr1_log$ismc_latent <- ismc_chr1$ismc_latent
+rec_chr1_log$ismc_latent <- df_chr1_1Mb$ismc_latent
 
 rec_measurement_1 <- "
 rec=~mean_pyrho_CEU + mean_pyrho_YRI + mean_deCODE + ismc_latent 
@@ -14880,253 +14942,1193 @@ lavInspect(m4, what="free")
 vcov(m4)
 
 rec_chr1_log$rec_latent <- as.numeric(predict(m3))
+
+
+# all chr models (cannot test model fit, we want to extract the latent)
+rec_10kb_log <- cbind.data.frame(rec_maps_10kb[,1:3],
+                                apply(rec_maps_10kb[,4:ncol(rec_maps_10kb)],
+                                      2, log))
+rec_10kb_log$mean_deCODE[rec_10kb_log$mean_deCODE==-Inf] <- NA
+
+rec_100kb_log <- cbind.data.frame(rec_maps_100kb[,1:3],
+                                apply(rec_maps_100kb[,4:ncol(rec_maps_100kb)],
+                                      2, log))
+rec_100kb_log$mean_deCODE[rec_100kb_log$mean_deCODE==-Inf] <- NA
+
+rec_1Mb_log <- cbind.data.frame(rec_maps_1Mb[,1:3],
+                                apply(rec_maps_1Mb[,4:ncol(rec_maps_1Mb)],
+                                      2, log))
+rec_measurement_2 <- "
+rec=~mean_pyrho_CEU + mean_pyrho_YRI + mean_deCODE 
+"
+
+for(c in 1:22) {
+  tbl_chr <- filter(rec_10kb_log, chrom==paste("chr", c, sep=""))
+  m5 <- sem(model=rec_measurement_2,
+            data=tbl_chr,
+            std.ov=T,
+            std.lv=T,
+            missing="fiml")
+  
+  tbl_chr$rec_latent_log <- as.numeric(predict(m5))
+  df <- cbind.data.frame(c, dplyr::select(tbl_chr, c(chromStart, 
+                                                     chromEnd, 
+                                                     rec_latent_log))) %>%
+        as.data.table()
+  names(df)[1] <- "chrom"
+  fwrite(df, paste("~/Desktop/causal_inference/real_data_maps/rec_latent_chr",
+                   c, "_10kb.csv.gz", sep=""))
+  
+  tbl_chr <- filter(rec_100kb_log, chrom==paste("chr", c, sep=""))
+  m5 <- sem(model=rec_measurement_2,
+            data=tbl_chr,
+            std.ov=T,
+            std.lv=T,
+            missing="fiml")
+  
+  tbl_chr$rec_latent_log <- as.numeric(predict(m5))
+  df <- cbind.data.frame(c, dplyr::select(tbl_chr, c(chromStart, 
+                                                     chromEnd, 
+                                                     rec_latent_log))) %>%
+        as.data.table()
+  names(df)[1] <- "chrom"
+  fwrite(df, paste("~/Desktop/causal_inference/real_data_maps/rec_latent_chr",
+                   c, "_100kb.csv.gz", sep=""))
+  
+  tbl_chr <- filter(rec_1Mb_log, chrom==paste("chr", c, sep=""))
+  m5 <- sem(model=rec_measurement_2,
+            data=tbl_chr,
+            std.ov=T,
+            std.lv=T,
+            missing="fiml")
+  
+  tbl_chr$rec_latent_log <- as.numeric(predict(m5))
+  df <- cbind.data.frame(c, dplyr::select(tbl_chr, c(chromStart, 
+                                                     chromEnd, 
+                                                     rec_latent_log))) %>%
+        as.data.table()
+  names(df)[1] <- "chrom"
+  fwrite(df, paste("~/Desktop/causal_inference/real_data_maps/rec_latent_chr",
+                   c, "_1Mb.csv.gz", sep=""))
+}
+```
+
+B-value maps
+
+```{r measure-B, include=F, message=F, warning=F}
+
+human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
+                   filter(., mut_map!="uniform", demo=="equilibrium") %>%
+                   dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                      B, mut_map, constrained_model))
+
+human_maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz") %>%
+                    filter(., mut_map!="uniform", demo=="equilibrium") %>%
+                    dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                       B, mut_map, constrained_model))
+
+human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
+                  filter(., mut_map!="uniform", demo=="equilibrium") %>%
+                  dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                     B, mut_map, constrained_model))
+
+B_measurement <- "
+B=~roulette + carlson + gnomad # B maps from each mutation map 
+"
+
+for(m in unique(human_maps_1Mb$constrained_model)) {
+  
+  tmp_10kb <- filter(human_maps_10kb, constrained_model==m) %>%
+              pivot_wider(., values_from=B, names_from=mut_map) 
+  
+  tmp_10kb <- cbind.data.frame(tmp_10kb[,1:4],
+                                apply(tmp_10kb[,5:ncol(tmp_10kb)],
+                                      2, log))
+  
+  tmp_100kb <- filter(human_maps_100kb, constrained_model==m) %>%
+               pivot_wider(., values_from=B, names_from=mut_map)
+  
+  tmp_100kb <- cbind.data.frame(tmp_100kb[,1:4],
+                                apply(tmp_100kb[,5:ncol(tmp_100kb)],
+                                      2, log))
+  
+  tmp_1Mb <- filter(human_maps_1Mb, constrained_model==m) %>%
+             pivot_wider(., values_from=B, names_from=mut_map)
+  
+  tmp_1Mb <- cbind.data.frame(tmp_1Mb[,1:4],
+                                apply(tmp_1Mb[,5:ncol(tmp_1Mb)],
+                                      2, log))
+  
+  for(c in 1:22) {
+    tbl_chr <- filter(tmp_10kb, chrom==c)
+    m1 <- sem(model=B_measurement,
+              data=tbl_chr,
+              std.ov=T,
+              std.lv=T,
+              missing="fiml")
+    
+    tbl_chr$B_latent_log <- as.numeric(predict(m1))
+    fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, 
+                                    constrained_model, B_latent_log)),
+           paste("~/Desktop/causal_inference/real_data_maps/B_latent_chr",
+                 c, "_", m, "_10kb.csv.gz", sep=""))
+    
+    tbl_chr <- filter(tmp_100kb, chrom==c)
+    m1 <- sem(model=B_measurement,
+              data=tbl_chr,
+              std.ov=T,
+              std.lv=T,
+              missing="fiml")
+    
+    tbl_chr$B_latent_log <- as.numeric(predict(m1))
+    fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, 
+                                    constrained_model, B_latent_log)),
+           paste("~/Desktop/causal_inference/real_data_maps/B_latent_chr",
+                 c, "_", m, "_100kb.csv.gz", sep=""))
+    
+    tbl_chr <- filter(tmp_1Mb, chrom==c)
+    m1 <- sem(model=B_measurement,
+              data=tbl_chr,
+              std.ov=T,
+              std.lv=T,
+              missing="fiml")
+    
+    tbl_chr$B_latent_log <- as.numeric(predict(m1))
+    fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, 
+                                    constrained_model, B_latent_log)),
+           paste("~/Desktop/causal_inference/real_data_maps/B_latent_chr",
+                 c, "_", m, "_1Mb.csv.gz", sep=""))
+  }
+}
+
 ```
 
 ## SEM
 
-chr 1, 1Mb scale
-
-```{r SEM-chr1, include=F, message=F, warning=F}
-
-rec_chr1_log$chromEnd[nrow(rec_chr1_log)] <- 249000000
-names(mut_chr1_1Mb_log)[which(names(mut_chr1_1Mb_log)=="ismc_latent")] <- "ismc_mut_latent"
-names(rec_chr1_log)[which(names(rec_chr1_log)=="ismc_latent")] <- "ismc_rec_latent"
-
-tbl_chr1_1Mb <- left_join(mut_chr1_1Mb_log, rec_chr1_log,
-                          by=c("chrom", "chromStart", "chromEnd"))
-
-df <- dplyr::select(tbl_chr1_1Mb, c(exp_pi, 
-                                    avg_pi, 
-                                    mean_mut_masked_roulette,
-                                    mean_pyrho_YRI,
-                                    prop_del_sites,
-                                    mut_latent,
-                                    rec_latent,
-                                    B))
-
-names(df)[c(3, 4)] <- c("roulette", "pyrho")
-cor.test(tbl_chr1_1Mb$avg_pi, tbl_chr1_1Mb$mut_latent, method="pearson")
-cor.test(tbl_chr1_1Mb$avg_pi, tbl_chr1_1Mb$mean_mut_masked_roulette)
-
-ggpairs(df)
-
-model_1 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
-avg_pi ~ start(0.25)*c1*mu
-"
-
-m1gls <- sem(model_1,
-             data=tbl_chr1_1Mb,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             estimator="GLS")
-
-modificationindices(m1gls)
-fitMeasures(m1gls)
-
-model_2 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
-avg_pi ~ start(0.25)*c1*mu
-mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
-"
-
-m2gls <- sem(model_2,
-             data=tbl_chr1_1Mb,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             estimator="GLS")
-
-summary(m2gls)
-inspect(m2gls, "r2")
-modificationindices(m2gls)
-
-model_3 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
-avg_pi ~ start(0.25)*c1*mu
-avg_pi ~ start(0.25)*c2*B
-mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
-"
-
-m3gls <- sem(model_3,
-             data=tbl_chr1_1Mb,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             estimator="GLS")
-
-modificationindices(m3gls)
-
-model_4 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
-avg_pi ~ start(0.25)*c1*mu
-avg_pi ~ start(0.25)*c2*B
-B ~ start(-0.25)*c3*mu
-mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
-"
-
-m4gls <- sem(model_4,
-             data=tbl_chr1_1Mb,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             estimator="GLS")
-
-modificationindices(m4gls)
-
-model_5 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
-rec=~mean_pyrho_YRI + mean_deCODE
-avg_pi ~ start(0.25)*c1*mu
-avg_pi ~ start(0.25)*c2*B
-B ~ start(-0.25)*c3*prop_del_sites
-B ~ start(0.25)*c4*rec
-B ~ start(-0.25)*c5*mu
-mu ~ start(0.25)*c6*rec
-mu ~~ prop_del_sites
-mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
-"
-
-m5gls <- sem(model_5,
-             data=tbl_chr1_1Mb,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             estimator="GLS")
-
-parameterestimates(m5gls)
-inspect(m1gls, "r2")
-modificationindices(m1gls)
-summary(m1gls, fit.measures=T)
-fitMeasures(m1gls)
-
-###
-model_0 <- "
-rec=~mean_pyrho_YRI + mean_deCODE + mean_pyrho_CEU
-avg_pi ~ start(0.25)*c1*rec
-"
-
-m0gls <- sem(model_0,
-             data=tbl_chr1_1Mb,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             estimator="GLS")
-
-inspect(m0gls, "r2")
-parameterEstimates(m0gls)
-modificationindices(m0gls)
-fitMeasures(m0gls)
-
-```
-
-Other chromosomes
+Path models using latent variable predictions for mut, rec, B
 
 ```{r real-data, include=F, message=F, warning=F}
 
-rec_maps_1Mb$chrom <- as.character(rec_maps_1Mb$chrom)
-for(i in 1:22) {
-  rec_maps_1Mb$chrom[rec_maps_1Mb$chrom==paste("chr", i, sep="")] <- i
+# recombination latent
+rec_10kb <- list(length=22)
+rec_100kb <- list(length=22)
+rec_1Mb <- list(length=22)
+
+for(c in 1:22) {
+  
+ rec_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                              "rec_latent_chr", c, "_10kb.csv.gz", sep=""))
+ 
+ rec_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                               "rec_latent_chr", c, "_100kb.csv.gz", sep=""))
+ 
+ rec_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                             "rec_latent_chr", c, "_1Mb.csv.gz", sep=""))
+}  
+
+rec_latent_10kb <- do.call(rbind.data.frame, rec_10kb)
+rec_latent_100kb <- do.call(rbind.data.frame, rec_100kb)
+rec_latent_1Mb <- do.call(rbind.data.frame, rec_1Mb)
+
+# mutation latent
+mut_10kb <- list(length=22)
+mut_100kb <- list(length=22)
+mut_1Mb <- list(length=22)
+
+for(c in 1:22) {
+  
+ mut_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                              "mut_latent_chr", c, "_10kb.csv.gz", sep=""))
+ 
+ mut_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                               "mut_latent_chr", c, "_100kb.csv.gz", sep=""))
+ 
+ mut_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                             "mut_latent_chr", c, "_1Mb.csv.gz", sep=""))
+}  
+
+mut_latent_10kb <- do.call(rbind.data.frame, mut_10kb)
+mut_latent_100kb <- do.call(rbind.data.frame, mut_100kb)
+mut_latent_1Mb <- do.call(rbind.data.frame, mut_1Mb)
+
+# B-map latent
+B_10kb <- data.frame()
+B_100kb <- data.frame()
+B_1Mb <- data.frame()
+
+for(m in unique(human_maps_1Mb$constrained_model)) {
+  
+  tmp_10kb <- list(length=22)
+  tmp_100kb <- list(length=22)
+  tmp_1Mb <- list(length=22)
+  
+  for(c in 1:22) {
+
+    tmp_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                                 "B_latent_chr", c, "_", m, "_10kb.csv.gz", sep=""))
+   
+    tmp_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                                  "B_latent_chr", c, "_", m, "_100kb.csv.gz", sep=""))
+   
+    tmp_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                                "B_latent_chr", c, "_", m, "_1Mb.csv.gz", sep=""))
+  }
+  
+  B_10kb <- rbind.data.frame(B_10kb, do.call(rbind.data.frame, tmp_10kb))
+  B_100kb <- rbind.data.frame(B_100kb, do.call(rbind.data.frame, tmp_100kb))
+  B_1Mb <- rbind.data.frame(B_1Mb, do.call(rbind.data.frame, tmp_1Mb))
 }
-rec_maps_1Mb$chrom <- as.integer(rec_maps_1Mb$chrom)
 
-all_maps_1Mb <- left_join(rec_maps_1Mb, df_1Mb, by=c("chrom",
-                                                     "chromStart",
+# (re-) loading human data
+human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
+                   filter(., mut_map=="uniform", demo=="equilibrium") %>%
+                   dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                      coverage, prop_del_sites, avg_pi,
+                                      constrained_model))
+
+human_maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz") %>%
+                    filter(., mut_map=="uniform", demo=="equilibrium") %>%
+                    dplyr::select(., c(chrom, chromStart, chromEnd,
+                                       coverage, prop_del_sites, avg_pi,
+                                       constrained_model))
+
+human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
+                  filter(., mut_map=="uniform", demo=="equilibrium") %>%
+                  dplyr::select(., c(chrom, chromStart, chromEnd, 
+                                     coverage, prop_del_sites, avg_pi,
+                                     constrained_model))
+
+# 10 kb
+for(m in unique(human_maps_1Mb$constrained_model)) { 
+
+  tbl_10kb <- filter(human_maps_10kb, constrained_model==m)  
+  tbl_10kb$avg_pi <- log(tbl_10kb$avg_pi)
+  
+  # because of 0's
+  if(any(tbl_10kb$prop_del_sites==0)) {
+    tbl_10kb$prop_del_sites <- log1p(tbl_10kb$prop_del_sites) 
+  } else {
+    tbl_10kb$prop_del_sites <- log(tbl_10kb$prop_del_sites) 
+  }
+  
+  tmp_B <- filter(B_10kb, constrained_model==m) %>%
+           dplyr::select(., -constrained_model)
+  
+  tbl_10kb <- left_join(tbl_10kb, tmp_B, by=c("chrom", 
+                                              "chromStart", 
+                                              "chromEnd"))
+  
+  tbl_10kb <- left_join(tbl_10kb, rec_latent_10kb, by=c("chrom", 
+                                                        "chromStart", 
+                                                        "chromEnd"))
+  
+  tbl_10kb <- left_join(tbl_10kb, mut_latent_10kb, by=c("chrom", 
+                                                        "chromStart", 
+                                                        "chromEnd"))
+  
+  tbl_10kb <- filter(tbl_10kb, coverage > 0.75)
+  names(tbl_10kb)[8:10] <- c("B", "avg_rec", "avg_mut")
+  
+  # genome-wide models
+  model_0 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  B ~ start(-0.25)*c3*avg_mut
+  "
+  
+  m0gls <- sem(model_0,
+               data=tbl_10kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m0gls, "r2"))),
+                          as.numeric(unlist(inspect(m0gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m0gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m0gls)),
+                          as.numeric(fitMeasures(m0gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_1 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  mu_B_pi:=c1*c5
+  "
+  
+  m1gls <- sem(model_1,
+               data=tbl_10kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1gls, "r2"))),
+                          as.numeric(unlist(inspect(m1gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1gls)),
+                          as.numeric(fitMeasures(m1gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_2 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  B ~ start(0.25)*c6*avg_rec
+  avg_mut ~ start(0.25)*c7*avg_rec
+  avg_mut ~~ 0*prop_del_sites
+  mu_B_pi:=c1*c5
+  rec_B_pi:=c2*c6
+  rec_mu_pi:=c1*c7
+  rec_mu_B_pi:=c2*c5*c7
+  "
+  
+  m2gls <- sem(model_2,
+               data=tbl_10kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2gls, "r2"))),
+                          as.numeric(unlist(inspect(m2gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2gls)),
+                          as.numeric(fitMeasures(m2gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_3 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  B ~ start(0.25)*c6*avg_rec
+  avg_mut ~ start(0.25)*c7*avg_rec
+  avg_mut ~~ prop_del_sites
+  mu_B_pi:=c1*c5
+  rec_B_pi:=c2*c6
+  rec_mu_pi:=c1*c7
+  rec_mu_B_pi:=c2*c5*c7
+  "
+  
+  m3gls <- sem(model_3,
+               data=tbl_10kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3gls, "r2"))),
+                          as.numeric(unlist(inspect(m3gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3gls)),
+                          as.numeric(fitMeasures(m3gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(lavTestLRT(m2gls, m3gls),
+         paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+    
+  # one model per chrom
+  for(c in 1:22) {
+  
+    model_0 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    B ~ start(-0.25)*c3*avg_mut
+    "
+    
+    m0gls <- sem(model_0,
+               data=filter(tbl_10kb, chrom==c),
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m0gls, "r2")),
+                            as.numeric(inspect(m0gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG0_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m0gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG0_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_1 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    mu_B_pi:=c1*c5
+    "
+    
+    m1gls <- sem(model_1,
+                 data=filter(tbl_10kb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m1gls, "r2")),
+                            as.numeric(inspect(m1gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m1gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_2 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ 0*prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m2gls <- sem(model_2,
+                 data=filter(tbl_10kb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m2gls, "r2")),
+                            as.numeric(inspect(m2gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m2gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m2gls)),
+                            as.numeric(fitMeasures(m2gls))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    model_3 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m3gls <- sem(model_3,
+                 data=filter(tbl_10kb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m3gls, "r2")),
+                            as.numeric(inspect(m3gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m3gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m3gls)),
+                            as.numeric(fitMeasures(m3gls))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    fwrite(lavTestLRT(m2gls, m3gls),
+           paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_10kb_chr",
+                 c, "_latents_", m, ".csv", sep=""))
+  }
+}
+
+# 100 kb
+for(m in unique(human_maps_1Mb$constrained_model)) { 
+
+  tbl_100kb <- filter(human_maps_100kb, constrained_model==m)  
+  tbl_100kb$avg_pi <- log(tbl_100kb$avg_pi)
+  
+  # because of 0's
+  if(any(tbl_100kb$prop_del_sites==0)) {
+    tbl_100kb$prop_del_sites <- log1p(tbl_100kb$prop_del_sites) 
+  } else {
+    tbl_100kb$prop_del_sites <- log(tbl_100kb$prop_del_sites) 
+  }
+  
+  tmp_B <- filter(B_100kb, constrained_model==m) %>%
+           dplyr::select(., -constrained_model)
+  
+  tbl_100kb <- left_join(tbl_100kb, tmp_B, by=c("chrom", 
+                                                "chromStart", 
+                                                "chromEnd"))
+  
+  tbl_100kb <- left_join(tbl_100kb, rec_latent_100kb, by=c("chrom", 
+                                                           "chromStart", 
+                                                           "chromEnd"))
+  
+  tbl_100kb <- left_join(tbl_100kb, mut_latent_100kb, by=c("chrom", 
+                                                           "chromStart", 
+                                                           "chromEnd"))
+  
+  tbl_100kb <- filter(tbl_100kb, coverage > 0.75)
+  names(tbl_100kb)[8:10] <- c("B", "avg_rec", "avg_mut")
+  
+  # genome-wide models
+  model_0 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  B ~ start(-0.25)*c3*avg_mut
+  "
+  
+  m0gls <- sem(model_0,
+               data=tbl_100kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m0gls, "r2"))),
+                          as.numeric(unlist(inspect(m0gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m0gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m0gls)),
+                          as.numeric(fitMeasures(m0gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_1 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  mu_B_pi:=c1*c5
+  "
+  
+  m1gls <- sem(model_1,
+               data=tbl_100kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1gls, "r2"))),
+                          as.numeric(unlist(inspect(m1gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1gls)),
+                          as.numeric(fitMeasures(m1gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_2 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  B ~ start(0.25)*c6*avg_rec
+  avg_mut ~ start(0.25)*c7*avg_rec
+  avg_mut ~~ 0*prop_del_sites
+  mu_B_pi:=c1*c5
+  rec_B_pi:=c2*c6
+  rec_mu_pi:=c1*c7
+  rec_mu_B_pi:=c2*c5*c7
+  "
+  
+  m2gls <- sem(model_2,
+               data=tbl_100kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2gls, "r2"))),
+                          as.numeric(unlist(inspect(m2gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2gls)),
+                          as.numeric(fitMeasures(m2gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_3 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  B ~ start(0.25)*c6*avg_rec
+  avg_mut ~ start(0.25)*c7*avg_rec
+  avg_mut ~~ prop_del_sites
+  mu_B_pi:=c1*c5
+  rec_B_pi:=c2*c6
+  rec_mu_pi:=c1*c7
+  rec_mu_B_pi:=c2*c5*c7
+  "
+  
+  m3gls <- sem(model_3,
+               data=tbl_100kb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3gls, "r2"))),
+                          as.numeric(unlist(inspect(m3gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3gls)),
+                          as.numeric(fitMeasures(m3gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(lavTestLRT(m2gls, m3gls),
+         paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+    
+  # one model per chrom
+  for(c in 1:22) {
+  
+    model_0 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    B ~ start(-0.25)*c3*avg_mut
+    "
+    
+    m0gls <- sem(model_0,
+               data=filter(tbl_100kb, chrom==c),
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m0gls, "r2")),
+                            as.numeric(inspect(m0gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG0_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m0gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG0_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_1 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    mu_B_pi:=c1*c5
+    "
+    
+    m1gls <- sem(model_1,
+                 data=filter(tbl_100kb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m1gls, "r2")),
+                            as.numeric(inspect(m1gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m1gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_2 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ 0*prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m2gls <- sem(model_2,
+                 data=filter(tbl_100kb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m2gls, "r2")),
+                            as.numeric(inspect(m2gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m2gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m2gls)),
+                            as.numeric(fitMeasures(m2gls))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    model_3 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m3gls <- sem(model_3,
+                 data=filter(tbl_100kb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m3gls, "r2")),
+                            as.numeric(inspect(m3gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m3gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m3gls)),
+                            as.numeric(fitMeasures(m3gls))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    fwrite(lavTestLRT(m2gls, m3gls),
+           paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_100kb_chr",
+                 c, "_latents_", m, ".csv", sep=""))
+  }
+}
+    
+# 1 Mb
+for(m in unique(human_maps_1Mb$constrained_model)) { 
+
+  tbl_1Mb <- filter(human_maps_1Mb, constrained_model==m)  
+  tbl_1Mb$avg_pi <- log(tbl_1Mb$avg_pi)
+  
+  # because of 0's
+  if(any(tbl_1Mb$prop_del_sites==0)) {
+    tbl_1Mb$prop_del_sites <- log1p(tbl_1Mb$prop_del_sites) 
+  } else {
+    tbl_1Mb$prop_del_sites <- log(tbl_1Mb$prop_del_sites) 
+  }
+  
+  tmp_B <- filter(B_1Mb, constrained_model==m) %>%
+           dplyr::select(., -constrained_model)
+  
+  tbl_1Mb <- left_join(tbl_1Mb, tmp_B, by=c("chrom", 
+                                            "chromStart", 
+                                            "chromEnd"))
+  
+  tbl_1Mb <- left_join(tbl_1Mb, rec_latent_1Mb, by=c("chrom", 
+                                                     "chromStart", 
                                                      "chromEnd"))
-
-all_maps_1Mb <- filter(all_maps_1Mb, coverage > 0.75, chrom!=19)
-
-all_maps_chr_log <- cbind.data.frame(all_maps_1Mb[,1:3],
-                                     apply(all_maps_1Mb[,4:ncol(all_maps_1Mb)],
-                                           2, log))
-
-model_0 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
-avg_pi ~ start(0.25)*c1*mu
-"
-
-m0gls <- sem(model_0,
-             data=all_maps_chr_log,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             group="chrom",
-             estimator="GLS")
-
-modificationindices(m0gls)
-
-model_1 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
-avg_pi ~ start(0.25)*c1*mu
-mean_mut_masked_roulette ~~ mean_mut_masked_carlson
-mean_mut_masked_gnomad ~~ avg_pi
-"
-
-m1gls <- sem(model_1,
-             data=all_maps_chr_log,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             group="chrom",
-             estimator="GLS")
-
-modificationindices(m1gls)
-
-parameterestimates(m1gls)
-summary(m1gls, fit.measures=T)
-fitMeasures(m1gls)
-
-model_2 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
-avg_pi ~ start(0.25)*c1*mu
-avg_pi ~ start(0.25)*c2*B
-mean_mut_masked_roulette ~~ mean_mut_masked_carlson
-mean_mut_masked_gnomad ~~ avg_pi
-"
-
-m2gls <- sem(model_2,
-             data=all_maps_chr_log,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             group="chrom",
-             estimator="GLS")
-
-modificationindices(m2gls)
-
-model_3 <- "
-mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad
-rec=~mean_pyrho_YRI + mean_deCODE
-avg_pi ~ start(0.25)*c1*mu
-avg_pi ~ start(0.25)*c2*B
-B ~ start(-0.25)*c3*prop_del_sites
-B ~ start(0.25)*c4*rec
-B ~ start(-0.25)*c5*mu
-mu ~ start(0.25)*c6*rec
-mu ~~ prop_del_sites
-mean_mut_masked_roulette ~~ mean_mut_masked_gnomad
-"
-
-m3gls <- sem(model_3,
-             data=all_maps_chr_log,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             group="chrom",
-             group.equal="regressions",
-             estimator="GLS")
-
-m4gls <- sem(model_3,
-             data=all_maps_chr_log,
-             fixed.x=F,
-             std.ov=T,
-             std.lv=T,
-             group="chrom",
-             group.equal=c("loadings", "intercepts"),
-             group.partial = c("visual=~x2", "x7~1"),
-             estimator="GLS")
-
-anova(m3gls, m4gls)
+  
+  tbl_1Mb <- left_join(tbl_1Mb, mut_latent_1Mb, by=c("chrom", 
+                                                     "chromStart", 
+                                                     "chromEnd"))
+  
+  tbl_1Mb <- filter(tbl_1Mb, coverage > 0.5)
+  names(tbl_1Mb)[8:10] <- c("B", "avg_rec", "avg_mut")
+  
+  # genome-wide models
+  model_0 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  B ~ start(-0.25)*c3*avg_mut
+  "
+  
+  m0gls <- sem(model_0,
+               data=tbl_1Mb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m0gls, "r2"))),
+                          as.numeric(unlist(inspect(m0gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m0gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m0gls)),
+                          as.numeric(fitMeasures(m0gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_1 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  mu_B_pi:=c1*c5
+  "
+  
+  m1gls <- sem(model_1,
+               data=tbl_1Mb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1gls, "r2"))),
+                          as.numeric(unlist(inspect(m1gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1gls)),
+                          as.numeric(fitMeasures(m1gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_2 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  B ~ start(0.25)*c6*avg_rec
+  avg_mut ~ start(0.25)*c7*avg_rec
+  avg_mut ~~ 0*prop_del_sites
+  mu_B_pi:=c1*c5
+  rec_B_pi:=c2*c6
+  rec_mu_pi:=c1*c7
+  rec_mu_B_pi:=c2*c5*c7
+  "
+  
+  m2gls <- sem(model_2,
+               data=tbl_1Mb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2gls, "r2"))),
+                          as.numeric(unlist(inspect(m2gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2gls)),
+                          as.numeric(fitMeasures(m2gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  model_3 <- "
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  B ~ start(0.25)*c6*avg_rec
+  avg_mut ~ start(0.25)*c7*avg_rec
+  avg_mut ~~ prop_del_sites
+  mu_B_pi:=c1*c5
+  rec_B_pi:=c2*c6
+  rec_mu_pi:=c1*c7
+  rec_mu_B_pi:=c2*c5*c7
+  "
+  
+  m3gls <- sem(model_3,
+               data=tbl_1Mb,
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               group="chrom",
+               estimator="GLS")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3gls, "r2"))),
+                          as.numeric(unlist(inspect(m3gls, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3gls, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3gls)),
+                          as.numeric(fitMeasures(m3gls))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(lavTestLRT(m2gls, m3gls),
+         paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+    
+  # one model per chrom
+  for(c in 1:22) {
+  
+    model_0 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    B ~ start(-0.25)*c3*avg_mut
+    "
+    
+    m0gls <- sem(model_0,
+               data=filter(tbl_1Mb, chrom==c),
+               fixed.x=F,
+               std.ov=T,
+               std.lv=T,
+               estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m0gls, "r2")),
+                            as.numeric(inspect(m0gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG0_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m0gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG0_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_1 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    mu_B_pi:=c1*c5
+    "
+    
+    m1gls <- sem(model_1,
+                 data=filter(tbl_1Mb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m1gls, "r2")),
+                            as.numeric(inspect(m1gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m1gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_2 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ 0*prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m2gls <- sem(model_2,
+                 data=filter(tbl_1Mb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m2gls, "r2")),
+                            as.numeric(inspect(m2gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m2gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m2gls)),
+                            as.numeric(fitMeasures(m2gls))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    model_3 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m3gls <- sem(model_3,
+                 data=filter(tbl_1Mb, chrom==c),
+                 fixed.x=F,
+                 std.ov=T,
+                 std.lv=T,
+                 estimator="GLS")
+    
+    fwrite(rbind.data.frame(names(inspect(m3gls, "r2")),
+                            as.numeric(inspect(m3gls, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m3gls, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m3gls)),
+                            as.numeric(fitMeasures(m3gls))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    fwrite(lavTestLRT(m2gls, m3gls),
+           paste("real_data_maps/lavaan_out/LRT_DAG2_DAG3_1Mb_chr",
+                 c, "_latents_", m, ".csv", sep=""))
+  }
+}
 ```
 
