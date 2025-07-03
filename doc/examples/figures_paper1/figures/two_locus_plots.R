@@ -5,7 +5,7 @@ library(bigsnpr) # for seq_log
 library(data.table)
 library(cowplot)
 
-lookup_tbl <- fread("~/Data/mpp_figures/lookup_tables/lookup_tbl_two-locus.csv.gz")
+lookup_tbl <- fread("../lookup_tables/lookup_tbl_two-locus.csv.gz")
 lookup_tbl$Ns[which(lookup_tbl$Ns == "1000;10000")] <- "10-fold bottleneck"
 lookup_tbl$Ns[which(lookup_tbl$Ns == "1e+05;10000")] <- "10-fold expansion"
 scaleFUN <- function(x) sprintf("%.5f", x)
@@ -56,8 +56,7 @@ p3 <- ggplot(data=filter(df, s==-1e-5),
 
 cp1 <- plot_grid(p1, p2, p3, ncol=1, rel_heights=c(1, 1, 1.35), labels="AUTO", align='v')
 cp1
-save_plot("~/Data/mpp_figures/figures/two-locus_time_B.pdf", cp1, 
-          base_height=15, base_width=12)
+save_plot("two-locus_time_B.pdf", cp1, base_height=15, base_width=12)
 
 q1 <- ggplot(data=filter(lookup_tbl, s==-1e-3), aes(x=Generation, y=Hl)) + 
   theme_bw() + geom_line(linewidth=1.25) + facet_grid(~s~Ns) +
@@ -100,11 +99,10 @@ q3 <- ggplot(data=filter(lookup_tbl, s==-1e-5), aes(x=Generation, y=Hl)) +
 
 cq1 <- plot_grid(q1, q2, q3, ncol=1, rel_heights=c(1, 1, 1.35), labels="AUTO", align='v')
 cq1
-save_plot("~/Data/mpp_figures/figures/Hl_time.pdf", cq1, 
-          base_height=15, base_width=12)
+save_plot("Hl_time.pdf", cq1, base_height=15, base_width=12)
 
 # looking for an extended period of time in the expansion scenario
-lookup_tbl <- fread("~/Data/mpp_figures/lookup_tables/lookup_tbl_two-locus_extended.csv.gz")
+lookup_tbl <- fread("../lookup_tables/lookup_tbl_two-locus_extended.csv.gz")
 lookup_tbl$Ns[which(lookup_tbl$Ns == "1e+05;10000")] <- "10-fold expansion"
 
 p4 <- ggplot(data=filter(lookup_tbl, s==-1e-3),
@@ -150,7 +148,7 @@ p6 <- ggplot(data=filter(lookup_tbl, s==-1e-5),
         legend.position="bottom") +
   guides(color=guide_legend(title="r"))
 
-cp2 <- plot_grid(p4, p5, p6, ncol=1, rel_heights=c(1, 1, 1.35), labels="AUTO", align='v')
+cp2 <- plot_grid(p4, p5, p6, ncol=1, rel_heights=c(1, 1, 1.35),
+                 labels="AUTO", align='v')
 cp2
-save_plot("~/Data/mpp_figures/figures/two-locus_time_exp_extended.pdf", cp2,
-          base_height=15, base_width=8)
+save_plot("two-locus_time_exp_extended.pdf", cp2, base_height=15, base_width=8)

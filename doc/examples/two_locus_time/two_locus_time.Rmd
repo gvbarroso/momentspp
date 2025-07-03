@@ -213,8 +213,8 @@ do
         b=${a%.*}
         Ns=$(($b * -2))
 	    
-  	    # choosing an appropriate order of (1-2p) factors based on Ne*s
-    	  if [[ $Ns -lt 30 ]]
+        # choosing an appropriate order of (1-2p) factors based on Ne*s
+        if [[ $Ns -lt 30 ]]
     	  then
        	    momentspp param=opt.bpp F=$f O=70 > /dev/null
       	elif [[ $Ns -lt 70 ]]
@@ -235,7 +235,7 @@ do
   cd ..
 done
 
-# get pi0 from neutral model following the same demography
+# gets pi0 from neutral model following the same demography
 cd demo
 for f in *yaml
 do 
@@ -309,7 +309,7 @@ num_models <- nrow(demo_models)
 pi0 <- as.data.frame(matrix(nrow=num_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
-fnames <- list.files("output/demo", pattern="*_e_*.*_time.txt", full.names=TRUE)
+fnames <- list.files("output/demo", pattern="*_e_*.*_time.txt", full.names=T)
 hets <- NULL
 for(l in 1:length(fnames)) {
   moms <- fread(fnames[l])
