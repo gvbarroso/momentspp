@@ -11151,7 +11151,8 @@ DAG4 <- dagify(
   B ~ r,
   B ~ E,
   u ~ r,
-  u ~ E
+  u ~ X,
+  E ~ X
 )
 
 DD4p <- DAG4 %>% 
@@ -11162,7 +11163,7 @@ DD4p <- DAG4 %>%
   geom_dag_edges() +
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
-                label = c("B", "E",
+                label = c("B", "E", "X",
                           expression(pi), "r", expression(mu)))
 
 save_plot("real_data_maps/DAG_4.svg", DD4p)
@@ -13623,11 +13624,11 @@ chr_r2_ext <- left_join(chr_r2,
                         by=c("chrom", "DAG", "mut_map",
                              "constrained_model", "demo", "scale"))
 
-p <- ggplot(data=filter(chr_r2_ext,
-                        gfi > 0.95), 
+p <- ggplot(data=chr_r2_ext, 
              aes(x=chrom, 
                  y=avg_pi, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=as.factor(DAG))) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -13648,11 +13649,11 @@ p <- ggplot(data=filter(chr_r2_ext,
 save_plot("real_data_maps/chr_r2_pi_DAGs2-3_B.png", p, 
           base_height=10, base_width=20)
 
-q <- ggplot(data=filter(chr_r2_ext,
-                        gfi > 0.95), 
+q <- ggplot(data=chr_r2_ext, 
              aes(x=chrom, 
                  y=B, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=as.factor(DAG))) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -13672,11 +13673,11 @@ q <- ggplot(data=filter(chr_r2_ext,
 save_plot("real_data_maps/chr_r2_B_DAGs2-3_B.png", q, 
           base_height=10, base_width=20)
 
-r <- ggplot(data=filter(chr_r2_ext,
-                        gfi > 0.95), 
+r <- ggplot(data=chr_r2_ext, 
              aes(x=chrom, 
                  y=avg_mut, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=as.factor(DAG))) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -13929,7 +13930,7 @@ p <- ggplot(data=filter(chr_params,
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Path Coefficients to Pi (DAG 0, GFI > 0.95, pval_est < 0.05)",
+      labs(title="Path Coefficients to Pi (DAG 0, pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13954,7 +13955,7 @@ q <- ggplot(data=filter(chr_params,
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Path Coefficients to Pi (DAG 1, GFI > 0.95, pval_est < 0.05)",
+      labs(title="Path Coefficients to Pi (DAG 1, pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -13979,7 +13980,7 @@ p <- ggplot(data=filter(chr_params,
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Path Coefficients to B (DAG 0, GFI > 0.95, pval_est < 0.05)",
+      labs(title="Path Coefficients to B (DAG 0, pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to B") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -14004,7 +14005,7 @@ q <- ggplot(data=filter(chr_params,
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Mut. Map") +
-      labs(title="Path Coefficients to B (DAG 1, GFI > 0.95, pval_est < 0.05)",
+      labs(title="Path Coefficients to B (DAG 1, pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to B") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -14238,12 +14239,12 @@ names(chr_params_ext)[8] <- "pvalue_est"
 names(chr_params_ext)[21] <- "pvalue_DAG"
   
 p <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
                         lhs=="avg_pi", 
                         DAG==2), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -14264,12 +14265,12 @@ save_plot("real_data_maps/chr_params_pi_DAG2.png", p,
           base_height=10, base_width=20)
 
 q <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
                         lhs=="avg_pi", 
                         DAG==3), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -14290,12 +14291,12 @@ save_plot("real_data_maps/chr_params_pi_DAG3.png", q,
           base_height=10, base_width=20)
 
 p <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95, 
                         lhs=="B", 
                         DAG==2), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -14316,12 +14317,12 @@ save_plot("real_data_maps/chr_params_B_DAG2.png", p,
           base_height=10, base_width=20)
 
 q <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
                         lhs=="B", 
                         DAG==3), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -14342,12 +14343,12 @@ save_plot("real_data_maps/chr_params_B_DAG3.png", q,
           base_height=10, base_width=20)
 
 r <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
                         op==":=", 
                         DAG==2), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
+                 alpha=gfi, 
                  shape=lhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -14368,12 +14369,12 @@ save_plot("real_data_maps/chr_params_indirect_DAG2.png", r,
           base_height=10, base_width=20)
 
 s <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
                         op==":=", 
                         DAG==3), 
              aes(x=chrom, 
                  y=est, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=lhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -14404,11 +14405,11 @@ chr_wide <- chr_params_ext %>% filter(., pvalue_est < 5e-2) %>%
           
 chr_wide$ratio_B_u <- chr_wide$B / chr_wide$avg_mut # chr 19 is weird!
 
-r <- ggplot(data=filter(chr_wide,
-                        gfi > 0.95), 
+r <- ggplot(data=chr_wide, 
              aes(x=chrom, 
                  y=ratio_B_u, 
                  color=mut_map,
+                 alpha=gfi,
                  shape=as.factor(DAG))) +
       geom_point(size=2.5) + 
       geom_hline(yintercept=1, linetype="dashed") +
@@ -15302,18 +15303,18 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                test="boot",
                se="boot")
   
-  fwrite(rbind.data.frame(names(unlist(inspect(m0gls, "r2"))),
-                          as.numeric(unlist(inspect(m0gls, "r2")))), 
+  fwrite(rbind.data.frame(names(unlist(inspect(m0boot, "r2"))),
+                          as.numeric(unlist(inspect(m0boot, "r2")))), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_r2_10kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
   
-  fwrite(parameterestimates(m0gls, ci=T), 
+  fwrite(parameterestimates(m0boot, ci=F), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_params_10kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""))
   
-  fwrite(rbind.data.frame(names(fitMeasures(m0gls)),
-                          as.numeric(fitMeasures(m0gls))), 
+  fwrite(rbind.data.frame(names(fitMeasures(m0boot)),
+                          as.numeric(fitMeasures(m0boot))), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_10kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
@@ -15360,20 +15361,22 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                std.lv=T,
                group="chrom",
                group.equal="regressions",
-               estimator="ML")
+               estimator="ML",
+               test="boot",
+               se="boot")
   
-  fwrite(rbind.data.frame(names(unlist(inspect(m1gls, "r2"))),
-                          as.numeric(unlist(inspect(m1gls, "r2")))), 
+  fwrite(rbind.data.frame(names(unlist(inspect(m1boot, "r2"))),
+                          as.numeric(unlist(inspect(m1boot, "r2")))), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_r2_10kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
   
-  fwrite(parameterestimates(m1gls, ci=T), 
+  fwrite(parameterestimates(m1boot, ci=F), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_params_10kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""))
   
-  fwrite(rbind.data.frame(names(fitMeasures(m1gls)),
-                          as.numeric(fitMeasures(m1gls))), 
+  fwrite(rbind.data.frame(names(fitMeasures(m1boot)),
+                          as.numeric(fitMeasures(m1boot))), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_10kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
@@ -15878,18 +15881,18 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                test="boot",
                se="boot")
   
-  fwrite(rbind.data.frame(names(unlist(inspect(m0gls, "r2"))),
-                          as.numeric(unlist(inspect(m0gls, "r2")))), 
+  fwrite(rbind.data.frame(names(unlist(inspect(m0boot, "r2"))),
+                          as.numeric(unlist(inspect(m0boot, "r2")))), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_r2_100kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
   
-  fwrite(parameterestimates(m0gls, ci=T), 
+  fwrite(parameterestimates(m0boot, ci=F), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_params_100kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""))
   
-  fwrite(rbind.data.frame(names(fitMeasures(m0gls)),
-                          as.numeric(fitMeasures(m0gls))), 
+  fwrite(rbind.data.frame(names(fitMeasures(m0boot)),
+                          as.numeric(fitMeasures(m0boot))), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_100kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
@@ -15936,20 +15939,22 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                std.lv=T,
                group="chrom",
                group.equal="regressions",
-               estimator="ML")
+               estimator="ML",
+               test="boot",
+               se="boot")
   
-  fwrite(rbind.data.frame(names(unlist(inspect(m1gls, "r2"))),
-                          as.numeric(unlist(inspect(m1gls, "r2")))), 
+  fwrite(rbind.data.frame(names(unlist(inspect(m1boot, "r2"))),
+                          as.numeric(unlist(inspect(m1boot, "r2")))), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_r2_100kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
   
-  fwrite(parameterestimates(m1gls, ci=T), 
+  fwrite(parameterestimates(m1boot, ci=F), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_params_100kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""))
   
-  fwrite(rbind.data.frame(names(fitMeasures(m1gls)),
-                          as.numeric(fitMeasures(m1gls))), 
+  fwrite(rbind.data.frame(names(fitMeasures(m1boot)),
+                          as.numeric(fitMeasures(m1boot))), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_100kb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
@@ -16454,18 +16459,18 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                test="boot",
                se="boot")
   
-  fwrite(rbind.data.frame(names(unlist(inspect(m0gls, "r2"))),
-                          as.numeric(unlist(inspect(m0gls, "r2")))), 
+  fwrite(rbind.data.frame(names(unlist(inspect(m0boot, "r2"))),
+                          as.numeric(unlist(inspect(m0boot, "r2")))), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_r2_1Mb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
   
-  fwrite(parameterestimates(m0gls, ci=T), 
+  fwrite(parameterestimates(m0boot, ci=F), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_params_1Mb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""))
   
-  fwrite(rbind.data.frame(names(fitMeasures(m0gls)),
-                          as.numeric(fitMeasures(m0gls))), 
+  fwrite(rbind.data.frame(names(fitMeasures(m0boot)),
+                          as.numeric(fitMeasures(m0boot))), 
          paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_1Mb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
@@ -16512,20 +16517,22 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                std.lv=T,
                group="chrom",
                group.equal="regressions",
-               estimator="ML")
+               estimator="ML",
+               test="boot",
+               se="boot")
   
-  fwrite(rbind.data.frame(names(unlist(inspect(m1gls, "r2"))),
-                          as.numeric(unlist(inspect(m1gls, "r2")))), 
+  fwrite(rbind.data.frame(names(unlist(inspect(m1boot, "r2"))),
+                          as.numeric(unlist(inspect(m1boot, "r2")))), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_r2_1Mb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
   
-  fwrite(parameterestimates(m1gls, ci=T), 
+  fwrite(parameterestimates(m1boot, ci=F), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_params_1Mb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""))
   
-  fwrite(rbind.data.frame(names(fitMeasures(m1gls)),
-                          as.numeric(fitMeasures(m1gls))), 
+  fwrite(rbind.data.frame(names(fitMeasures(m1boot)),
+                          as.numeric(fitMeasures(m1boot))), 
          paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_1Mb_genomewide_", 
                "latents_", m, "_BOOT.csv", sep=""),
          col.names=F)
@@ -16965,7 +16972,7 @@ human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
 
 gw_fitmeasures_10kb_gls <- data.frame()
 gw_fitmeasures_10kb_boot <- data.frame()
-for(dag in 0:3) {
+for(dag in 2:3) {
   for(m in unique(human_maps_10kb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
                        dag, "_fitmeasures_10kb_genomewide", 
@@ -16998,7 +17005,7 @@ human_maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz") %>%
 
 gw_fitmeasures_100kb_gls <- data.frame()
 gw_fitmeasures_100kb_boot <- data.frame()
-for(dag in 0:3) {
+for(dag in 2:3) {
   for(m in unique(human_maps_100kb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
                        dag, "_fitmeasures_100kb_genomewide", 
@@ -17031,7 +17038,7 @@ human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
 
 gw_fitmeasures_1Mb_gls <- data.frame()
 gw_fitmeasures_1Mb_boot <- data.frame()
-for(dag in 0:3) {
+for(dag in 2:3) {
   for(m in unique(human_maps_1Mb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
                        dag, "_fitmeasures_1Mb_genomewide", 
@@ -17080,7 +17087,7 @@ p <- ggplot(data=gw_fitmeasures_latent,
       geom_hline(yintercept=-log10(0.05), linetype="dashed") +
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(1e+4, 1e+5, 1e+6)) +
+      scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("purple3", "seagreen4"), 
                          name="DAG") +
       labs(title="p-values for genome-wide models, chr equal regressions, latent variables (H0: data is compatible with model)",
@@ -17092,7 +17099,7 @@ p <- ggplot(data=gw_fitmeasures_latent,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_pvals_latent.png", p, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 q <- ggplot(data=gw_fitmeasures_latent, 
              aes(x=scale, 
@@ -17103,7 +17110,7 @@ q <- ggplot(data=gw_fitmeasures_latent,
                                       color="red") +
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(1e+4, 1e+5, 1e+6)) +
+      scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("purple3", "seagreen4")) +
       labs(title="CFI for genome-wide models, chr equal regressions, latent variables",
            x="Scale", y="CFI") +
@@ -17114,7 +17121,7 @@ q <- ggplot(data=gw_fitmeasures_latent,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_cfi_latent.png", q, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 r <- ggplot(data=gw_fitmeasures_latent, 
              aes(x=scale, 
@@ -17125,7 +17132,7 @@ r <- ggplot(data=gw_fitmeasures_latent,
                                       color="red") +
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(1e+4, 1e+5, 1e+6)) +
+      scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("purple3", "seagreen4")) +
       labs(title="GFI for genome-wide models, chr equal regressions, latent variables",
            x="Scale", y="GFI") +
@@ -17136,7 +17143,7 @@ r <- ggplot(data=gw_fitmeasures_latent,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_gfi_latent.png", r, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 # free chromosome params
 gw_fitmeasures_10kb_samechrom <- data.frame()
@@ -17248,7 +17255,7 @@ p <- ggplot(data=gw_fitmeasures_latent,
       geom_hline(yintercept=-log10(0.05), linetype="dashed") +
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(1e+4, 1e+5, 1e+6)) +
+      scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("purple3", "seagreen4"), 
                          name="DAG") +
       labs(title="p-values for genome-wide models, latent variables (H0: data is compatible with model)",
@@ -17260,7 +17267,7 @@ p <- ggplot(data=gw_fitmeasures_latent,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_pvals_latent_freechrom_vs_same.png", p, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 q <- ggplot(data=gw_fitmeasures_latent, 
              aes(x=scale, 
@@ -17271,7 +17278,7 @@ q <- ggplot(data=gw_fitmeasures_latent,
                                       color="red") +
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(1e+4, 1e+5, 1e+6)) +
+      scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("purple3", "seagreen4")) +
       labs(title="CFI for genome-wide models, latent variables",
            x="Scale", y="CFI") +
@@ -17282,7 +17289,7 @@ q <- ggplot(data=gw_fitmeasures_latent,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_cfi_latent_freechrom_vs_same.png", q, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 r <- ggplot(data=gw_fitmeasures_latent, 
              aes(x=scale, 
@@ -17293,7 +17300,7 @@ r <- ggplot(data=gw_fitmeasures_latent,
                                       color="red") +
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=c(1e+4, 1e+5, 1e+6)) +
+      scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("purple3", "seagreen4")) +
       labs(title="GFI for genome-wide models, latent variables",
            x="Scale", y="GFI") +
@@ -17304,7 +17311,7 @@ r <- ggplot(data=gw_fitmeasures_latent,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_gfi_latent_freechrom_vs_same.png", r, 
-          base_height=10, base_width=16)
+          base_height=10, base_width=20)
 
 # per chromosome SEM models
 ## 10 kb
@@ -17595,7 +17602,7 @@ p <- ggplot(data=gw_LRT_gls,
       scale_shape_manual(values=c(0, 1), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Const. Model") +
-      labs(title="LRT test of nested DAGs 2 and 3 (genome-wide)",
+      labs(title="LRT test of nested free-chrom vs genome-wide models",
            x="Scale", y="-log10(p-value)") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -17604,7 +17611,7 @@ p <- ggplot(data=gw_LRT_gls,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_LRT_latent_freechrom.png", p, 
-          base_height=8, base_width=8)
+          base_height=9, base_width=14)
 
 # (Nested) model selection, DAGs 2 and 3 (LRT)
 # (DAG 3 adds a covariance term between constrained sites and mutation rates)
@@ -17759,7 +17766,7 @@ p <- ggplot(data=gw_LRT_latent,
             legend.title=element_text(size=16),
             legend.position="bottom")
 save_plot("real_data_maps/gw_LRT_latent_DAGs2-3.png", p, 
-          base_height=8, base_width=8)
+          base_height=9, base_width=14)
 
 # per chr models
 ## 10 kb
@@ -18087,12 +18094,12 @@ for(dag in 0:1) {
 }
 chr_r2_1Mb_gls$scale <- 1e+6
 
-# NOTE there are no fit measures available for DAGs 0-1
-chr_r2_gls <- rbind.data.frame(chr_r2_10kb_gls,
-                               chr_r2_100kb_gls,
-                               chr_r2_1Mb_gls)
+# NOTE: there are no fit measures available for DAGs 0-1
+chr_r2_DAGs01 <- rbind.data.frame(chr_r2_10kb_gls,
+                                  chr_r2_100kb_gls,
+                                  chr_r2_1Mb_gls)
 
-p <- ggplot(data=chr_r2_gls, 
+p <- ggplot(data=chr_r2_DAGs01, 
              aes(x=chrom, 
                  y=avg_pi, 
                  color=as.factor(DAG))) +
@@ -18113,7 +18120,7 @@ p <- ggplot(data=chr_r2_gls,
 save_plot("real_data_maps/chr_r2_pi_DAGs0-1_latents.png", p, 
           base_height=10, base_width=20)
 
-q <- ggplot(data=chr_r2_gls, 
+q <- ggplot(data=chr_r2_DAGs01, 
              aes(x=chrom, 
                  y=B, 
                  color=as.factor(DAG))) +
@@ -18226,9 +18233,9 @@ gw_r2_boot <- rbind.data.frame(gw_r2_10kb_boot,
 
 gw_r2_latent <- rbind.data.frame(gw_r2_boot, gw_r2_gls)
 
-gw_r2_B <- pivot_longer(gw_r2, cols=ends_with(".B"))
-gw_r2_pi <- pivot_longer(gw_r2, cols=ends_with(".avg_pi"))
-gw_r2_mut <- pivot_longer(gw_r2, cols=ends_with(".avg_mut"))
+gw_r2_B <- pivot_longer(gw_r2_latent, cols=ends_with(".B"))
+gw_r2_pi <- pivot_longer(gw_r2_latent, cols=ends_with(".avg_pi"))
+gw_r2_mut <- pivot_longer(gw_r2_latent, cols=ends_with(".avg_mut"))
 
 p <- ggplot(data=gw_r2_pi, 
             aes(x=name, 
@@ -18301,116 +18308,97 @@ save_plot("real_data_maps/gw_r2_mut_DAGs2-3.png", r,
 
 # per chromosome SEM models, DAGs 2-3
 ## 10 kb
-chr_r2_10kb <- data.frame()
+chr_r2_10kb_gls <- data.frame()
 for(dag in 2:3) {
-  for(u in unique(human_maps_10kb$mut_map)) {
-    for(m in unique(human_maps_10kb$constrained_model)) { 
-      for(d in unique(human_maps_10kb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_r2_10kb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_r2_10kb <- rbind.data.frame(chr_r2_10kb, df)
-      }
+  for(m in unique(human_maps_10kb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                         "_r2_10kb_chr", c, "_latents_", m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+      tmp$model <- "GLS"
+      
+      chr_list[[c]] <- tmp
     }
+        
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_r2_10kb_gls <- rbind.data.frame(chr_r2_10kb_gls, df)
   }
 }
-chr_r2_10kb$scale <- 1e+4
+chr_r2_10kb_gls$scale <- 1e+4
 
 ## 100 kb
-chr_r2_100kb <- data.frame()
+chr_r2_100kb_gls <- data.frame()
 for(dag in 2:3) {
-  for(u in unique(human_maps_100kb$mut_map)) {
-    for(m in unique(human_maps_100kb$constrained_model)) { 
-      for(d in unique(human_maps_100kb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_r2_100kb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_r2_100kb <- rbind.data.frame(chr_r2_100kb, df)
-      }
+  for(m in unique(human_maps_100kb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                         "_r2_100kb_chr", c, "_latents_", m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+      tmp$model <- "GLS"
+      
+      chr_list[[c]] <- tmp
     }
+        
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_r2_100kb_gls <- rbind.data.frame(chr_r2_100kb_gls, df)
   }
 }
-chr_r2_100kb$scale <- 1e+5
+chr_r2_100kb_gls$scale <- 1e+5
 
 ## 1 Mb
-chr_r2_1Mb <- data.frame()
+chr_r2_1Mb_gls <- data.frame()
 for(dag in 2:3) {
-  for(u in unique(human_maps_1Mb$mut_map)) {
-    for(m in unique(human_maps_1Mb$constrained_model)) { 
-      for(d in unique(human_maps_1Mb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_r2_1Mb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_r2_1Mb <- rbind.data.frame(chr_r2_1Mb, df)
-      }
+  for(m in unique(human_maps_1Mb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                         "_r2_1Mb_chr", c, "_latents_", m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+      tmp$model <- "GLS"
+      
+      chr_list[[c]] <- tmp
     }
+        
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_r2_1Mb_gls <- rbind.data.frame(chr_r2_1Mb_gls, df)
   }
 }
-chr_r2_1Mb$scale <- 1e+6
+chr_r2_1Mb_gls$scale <- 1e+6
 
-chr_r2 <- rbind.data.frame(chr_r2_10kb,
-                           chr_r2_100kb,
-                           chr_r2_1Mb)
+chr_r2_DAGs23 <- rbind.data.frame(chr_r2_10kb_gls,
+                                  chr_r2_100kb_gls,
+                                  chr_r2_1Mb_gls)
 
-chr_r2_ext <- left_join(chr_r2, 
-                        chr_fitmeasures,
-                        by=c("chrom", "DAG", "mut_map",
-                             "constrained_model", "demo", "scale"))
+chr_r2_ext_DAGs23 <- left_join(chr_r2_DAGs23, 
+                               chr_fitmeasures_latent,
+                               by=c("chrom", "DAG", "constrained_model",  "scale"))
 
-p <- ggplot(data=filter(chr_r2_ext,
-                        gfi > 0.95), 
+p <- ggplot(data=filter(chr_r2_ext_DAGs23, method=="GLS"), # BOOT does not change R^2
              aes(x=chrom, 
                  y=avg_pi, 
-                 color=mut_map,
-                 shape=as.factor(DAG))) +
+                 color=as.factor(DAG),
+                 alpha=gfi)) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
       scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2),
+      scale_color_manual(values=c("purple3", "seagreen4"),
                          name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Variance Explained in pi (chr-specific models, DAGs 2-3, GFI > 0.95)",
+      labs(title="Variance Explained in pi (chr-specific models, latents, DAGs 2-3)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -18418,23 +18406,21 @@ p <- ggplot(data=filter(chr_r2_ext,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_r2_pi_DAGs2-3_B.png", p, 
+save_plot("real_data_maps/chr_r2_pi_DAGs2-3_latents.png", p, 
           base_height=10, base_width=20)
 
-q <- ggplot(data=filter(chr_r2_ext,
-                        gfi > 0.95), 
+q <- ggplot(data=filter(chr_r2_ext_DAGs23, method=="GLS"), 
              aes(x=chrom, 
                  y=B, 
-                 color=mut_map,
-                 shape=as.factor(DAG))) +
+                 color=as.factor(DAG),
+                 alpha=gfi)) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
       scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2), name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Variance Explained in B (chr-specific models, DAGs 2-3, GFI > 0.95)",
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
+      labs(title="Variance Explained in B (chr-specific models, latents DAGs 2-3)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -18442,23 +18428,21 @@ q <- ggplot(data=filter(chr_r2_ext,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_r2_B_DAGs2-3_B.png", q, 
+save_plot("real_data_maps/chr_r2_B_DAGs2-3_latents.png", q, 
           base_height=10, base_width=20)
 
-r <- ggplot(data=filter(chr_r2_ext,
-                        gfi > 0.95), 
+r <- ggplot(data=filter(chr_r2_ext_DAGs23, method=="GLS"), 
              aes(x=chrom, 
                  y=avg_mut, 
-                 color=mut_map,
-                 shape=as.factor(DAG))) +
+                 color=as.factor(DAG),
+                 alpha=gfi)) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
       scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2), name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"), 
-                         name="Mut. Map") +
-      labs(title="Variance Explained in mut. (chr-specific models, DAGs 2-3, GFI > 0.95)",
+      scale_color_manual(values=c("purple3", "seagreen4"), 
+                         name="DAG") +
+      labs(title="Variance Explained in mut. (chr-specific models, latents, DAGs 2-3)",
            x="Chromosome", y="Variance Explained") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -18466,7 +18450,40 @@ r <- ggplot(data=filter(chr_r2_ext,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_r2_mut_DAGs2-3_B.png", r, 
+save_plot("real_data_maps/chr_r2_mut_DAGs2-3_latents.png", r, 
+          base_height=10, base_width=20)
+
+chr_r2_dags <- rbind.data.frame(chr_r2_DAGs01,
+                                dplyr::select(chr_r2_DAGs23, -avg_mut)) %>%
+               dplyr::select(., -model)
+
+mean_dat <- chr_r2_dags %>% group_by(DAG, constrained_model, scale) %>%
+            summarise(mean_r2_pi=mean(avg_pi),
+                      mean_r2_B=mean(B))
+
+r <- ggplot(data=filter(chr_r2_dags), 
+             aes(x=chrom, 
+                 y=avg_pi, 
+                 color=as.factor(DAG))) +
+      geom_point(size=2) + 
+      geom_hline(data=mean_dat, 
+                 aes(yintercept=mean_r2_pi, 
+                     col=as.factor(DAG)),
+                 linetype="dashed") +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
+      scale_x_continuous(breaks=1:22) + 
+      scale_color_manual(values=c("purple3", "seagreen4", "brown1", "cyan3"), 
+                         name="DAG") +
+      labs(title="Variance Explained in diversity (chr-specific models, latents)",
+           x="Chromosome", y="Variance Explained") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_r2_pi_latents.png", r, 
           base_height=10, base_width=20)
 ```
 
@@ -18478,21 +18495,14 @@ Parameter estimates
 ## 10 kb
 gw_params_10kb <- data.frame()
 for(dag in 0:1) { # only DAGs with mu as endogeneous
-  for(u in unique(human_maps_10kb$mut_map)) {
-    for(m in unique(human_maps_10kb$constrained_model)) { 
-      for(d in unique(human_maps_10kb$demo)) {
-        tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                           "_params_10kb_genomewide_", 
-                           d, "_", m, "_", u, ".csv", sep=""))
-        
-        tmp$DAG <- dag
-        tmp$mut_map <- u
-        tmp$constrained_model <- m
-        tmp$demo <- d
-        
-        gw_params_10kb <- rbind.data.frame(gw_params_10kb, tmp)
-      }
-    }
+  for(m in unique(human_maps_10kb$constrained_model)) { 
+    tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_10kb_genomewide_latents_", m, ".csv", sep=""))
+  
+    tmp$DAG <- dag
+    tmp$constrained_model <- m
+
+    gw_params_10kb <- rbind.data.frame(gw_params_10kb, tmp)
   }
 }
 gw_params_10kb$scale <- 1e+4
@@ -18500,21 +18510,14 @@ gw_params_10kb$scale <- 1e+4
 ## 100 kb
 gw_params_100kb <- data.frame()
 for(dag in 0:1) { # only DAGs with mu as endogeneous
-  for(u in unique(human_maps_100kb$mut_map)) {
-    for(m in unique(human_maps_100kb$constrained_model)) { 
-      for(d in unique(human_maps_100kb$demo)) {
-        tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                           "_params_100kb_genomewide_", 
-                           d, "_", m, "_", u, ".csv", sep=""))
-        
-        tmp$DAG <- dag
-        tmp$mut_map <- u
-        tmp$constrained_model <- m
-        tmp$demo <- d
-        
-        gw_params_100kb <- rbind.data.frame(gw_params_100kb, tmp)
-      }
-    }
+  for(m in unique(human_maps_100kb$constrained_model)) { 
+    tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_100kb_genomewide_latents_", m, ".csv", sep=""))
+  
+    tmp$DAG <- dag
+    tmp$constrained_model <- m
+
+    gw_params_100kb <- rbind.data.frame(gw_params_100kb, tmp)
   }
 }
 gw_params_100kb$scale <- 1e+5
@@ -18522,21 +18525,14 @@ gw_params_100kb$scale <- 1e+5
 ## 1 Mb
 gw_params_1Mb <- data.frame()
 for(dag in 0:1) { # only DAGs with mu as endogeneous
-  for(u in unique(human_maps_1Mb$mut_map)) {
-    for(m in unique(human_maps_1Mb$constrained_model)) { 
-      for(d in unique(human_maps_1Mb$demo)) {
-        tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                           "_params_1Mb_genomewide_", 
-                           d, "_", m, "_", u, ".csv", sep=""))
-        
-        tmp$DAG <- dag
-        tmp$mut_map <- u
-        tmp$constrained_model <- m
-        tmp$demo <- d
-        
-        gw_params_1Mb <- rbind.data.frame(gw_params_1Mb, tmp)
-      }
-    }
+  for(m in unique(human_maps_1Mb$constrained_model)) { 
+    tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_1Mb_genomewide_latents_", m, ".csv", sep=""))
+  
+    tmp$DAG <- dag
+    tmp$constrained_model <- m
+
+    gw_params_1Mb <- rbind.data.frame(gw_params_1Mb, tmp)
   }
 }
 gw_params_1Mb$scale <- 1e+6
@@ -18551,16 +18547,15 @@ gw_params <- rbind.data.frame(gw_params_10kb,
 p <- ggplot(data=filter(gw_params, lhs=="avg_pi"), 
             aes(x=rhs, 
                 y=est, 
-                color=mut_map,
-                shape=as.factor(DAG))) +
+                color=as.factor(DAG))) +
       geom_point(size=2) +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) + #ylim(c(0,1)) +
       scale_x_discrete() +
       scale_shape_manual(values=c(0, 1), name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Std. Path Coefficients to B (genome-wide model)",
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
+      labs(title="Std. Path Coefficients to pi (genome-wide model)",
            x="Variable", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -18574,15 +18569,13 @@ save_plot("real_data_maps/gw_PCs_pi_DAGs0-1.png", p,
 q <- ggplot(data=filter(gw_params, lhs=="B"), 
             aes(x=rhs, 
                 y=est, 
-                color=mut_map,
-                shape=as.factor(DAG))) +
+                color=as.factor(DAG))) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) + #ylim(c(-1,1)) +
       scale_x_discrete() +
-      scale_shape_manual(values=c(0, 1), name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
       labs(title="Std. Path Coefficients to B (genome-wide model)",
            x="Variable", y="Direct Std. PC to B") +
       theme(axis.title=element_text(size=16), 
@@ -18597,87 +18590,69 @@ save_plot("real_data_maps/gw_PCs_B_DAGs0-1.png", q,
 # per chromosome SEM models, DAGs 0-1
 ## 10 kb
 chr_params_10kb <- data.frame()
-for(dag in 0:1) {
-  for(u in unique(human_maps_10kb$mut_map)) {
-    for(m in unique(human_maps_10kb$constrained_model)) { 
-      for(d in unique(human_maps_10kb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_params_10kb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_params_10kb <- rbind.data.frame(chr_params_10kb, df)
-      }
+for(dag in 0:1) { # only DAGs with mu as endogeneous
+  for(m in unique(human_maps_10kb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_10kb_chr", c, "_latents_", m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+
+      chr_list[[c]] <- tmp
     }
+    
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_params_10kb <- rbind.data.frame(chr_params_10kb, df)
   }
 }
 chr_params_10kb$scale <- 1e+4
 
 ## 100 kb
 chr_params_100kb <- data.frame()
-for(dag in 0:1) {
-  for(u in unique(human_maps_100kb$mut_map)) {
-    for(m in unique(human_maps_100kb$constrained_model)) { 
-      for(d in unique(human_maps_100kb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_params_100kb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_params_100kb <- rbind.data.frame(chr_params_100kb, df)
-      }
+for(dag in 0:1) { # only DAGs with mu as endogeneous
+  for(m in unique(human_maps_100kb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_100kb_chr", c, "_latents_", m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+
+      chr_list[[c]] <- tmp
     }
+    
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_params_100kb <- rbind.data.frame(chr_params_100kb, df)
   }
 }
 chr_params_100kb$scale <- 1e+5
 
 ## 1 Mb
 chr_params_1Mb <- data.frame()
-for(dag in 0:1) {
-  for(u in unique(human_maps_1Mb$mut_map)) {
-    for(m in unique(human_maps_1Mb$constrained_model)) { 
-      for(d in unique(human_maps_1Mb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_params_1Mb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_params_1Mb <- rbind.data.frame(chr_params_1Mb, df)
-      }
+for(dag in 0:1) { # only DAGs with mu as endogeneous
+  for(m in unique(human_maps_1Mb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_1Mb_chr", c, "_latents_", m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+
+      chr_list[[c]] <- tmp
     }
+    
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_params_1Mb <- rbind.data.frame(chr_params_1Mb, df)
   }
 }
 chr_params_1Mb$scale <- 1e+6
@@ -18688,21 +18663,19 @@ chr_params <- rbind.data.frame(chr_params_10kb,
               filter(., pvalue < 0.05) %>%
               filter(., op=="~" | op==":=") 
 
-p <- ggplot(data=filter(chr_params,
-                        lhs=="avg_pi", 
-                        DAG==0), 
+p <- ggplot(data=filter(chr_params, lhs=="avg_pi"), 
              aes(x=chrom, 
                  y=est, 
-                 color=mut_map,
+                 color=as.factor(DAG),
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=1:22) + 
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to Pi (DAG 0, GFI > 0.95, pval_est < 0.05)",
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
+      labs(title="Path Coefficients to Pi (DAG 0, pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -18710,49 +18683,22 @@ p <- ggplot(data=filter(chr_params,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_params_pi_DAG0.png", p, 
+save_plot("real_data_maps/chr_params_pi_latents.png", p, 
           base_height=10, base_width=20)
 
-q <- ggplot(data=filter(chr_params,
-                        lhs=="avg_pi", 
-                        DAG==1), 
+q <- ggplot(data=filter(chr_params, lhs=="B"), 
              aes(x=chrom, 
                  y=est, 
-                 color=mut_map,
+                 color=as.factor(DAG),
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=1:22) + 
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to Pi (DAG 1, GFI > 0.95, pval_est < 0.05)",
-           x="Chromosome", y="Direct Std. PC to Diversity") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/chr_params_pi_DAG1.png", q, 
-          base_height=10, base_width=20)
-
-p <- ggplot(data=filter(chr_params,
-                        lhs=="B", 
-                        DAG==0), 
-             aes(x=chrom, 
-                 y=est, 
-                 color=mut_map,
-                 shape=rhs)) +
-      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
-      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to B (DAG 0, GFI > 0.95, pval_est < 0.05)",
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
+      labs(title="Path Coefficients to B (DAG 0, pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to B") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -18760,53 +18706,21 @@ p <- ggplot(data=filter(chr_params,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_params_B_DAG0.png", p, 
-          base_height=10, base_width=20)
-
-q <- ggplot(data=filter(chr_params,
-                        lhs=="B", 
-                        DAG==1), 
-             aes(x=chrom, 
-                 y=est, 
-                 color=mut_map,
-                 shape=rhs)) +
-      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
-      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to B (DAG 1, GFI > 0.95, pval_est < 0.05)",
-           x="Chromosome", y="Direct Std. PC to B") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/chr_params_B_DAG1.png", q, 
+save_plot("real_data_maps/chr_params_B_latents.png", q, 
           base_height=10, base_width=20)
 
 # genome-wide, DAGs 2-3
 ## 10 kb
 gw_params_10kb <- data.frame()
 for(dag in 2:3) { # only DAGs with mu as endogeneous
-  for(u in unique(human_maps_10kb$mut_map)) {
-    for(m in unique(human_maps_10kb$constrained_model)) { 
-      for(d in unique(human_maps_10kb$demo)) {
-        tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                           "_params_10kb_genomewide_", 
-                           d, "_", m, "_", u, ".csv", sep=""))
-        
-        tmp$DAG <- dag
-        tmp$mut_map <- u
-        tmp$constrained_model <- m
-        tmp$demo <- d
-        
-        gw_params_10kb <- rbind.data.frame(gw_params_10kb, tmp)
-      }
-    }
+  for(m in unique(human_maps_10kb$constrained_model)) { 
+    tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_10kb_genomewide_latents_", m, ".csv", sep=""))
+  
+    tmp$DAG <- dag
+    tmp$constrained_model <- m
+
+    gw_params_10kb <- rbind.data.frame(gw_params_10kb, tmp)
   }
 }
 gw_params_10kb$scale <- 1e+4
@@ -18814,21 +18728,14 @@ gw_params_10kb$scale <- 1e+4
 ## 100 kb
 gw_params_100kb <- data.frame()
 for(dag in 2:3) { # only DAGs with mu as endogeneous
-  for(u in unique(human_maps_100kb$mut_map)) {
-    for(m in unique(human_maps_100kb$constrained_model)) { 
-      for(d in unique(human_maps_100kb$demo)) {
-        tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                           "_params_100kb_genomewide_", 
-                           d, "_", m, "_", u, ".csv", sep=""))
-        
-        tmp$DAG <- dag
-        tmp$mut_map <- u
-        tmp$constrained_model <- m
-        tmp$demo <- d
-        
-        gw_params_100kb <- rbind.data.frame(gw_params_100kb, tmp)
-      }
-    }
+  for(m in unique(human_maps_100kb$constrained_model)) { 
+    tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_100kb_genomewide_latents_", m, ".csv", sep=""))
+  
+    tmp$DAG <- dag
+    tmp$constrained_model <- m
+
+    gw_params_100kb <- rbind.data.frame(gw_params_100kb, tmp)
   }
 }
 gw_params_100kb$scale <- 1e+5
@@ -18836,21 +18743,14 @@ gw_params_100kb$scale <- 1e+5
 ## 1 Mb
 gw_params_1Mb <- data.frame()
 for(dag in 2:3) { # only DAGs with mu as endogeneous
-  for(u in unique(human_maps_1Mb$mut_map)) {
-    for(m in unique(human_maps_1Mb$constrained_model)) { 
-      for(d in unique(human_maps_1Mb$demo)) {
-        tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                           "_params_1Mb_genomewide_", 
-                           d, "_", m, "_", u, ".csv", sep=""))
-        
-        tmp$DAG <- dag
-        tmp$mut_map <- u
-        tmp$constrained_model <- m
-        tmp$demo <- d
-        
-        gw_params_1Mb <- rbind.data.frame(gw_params_1Mb, tmp)
-      }
-    }
+  for(m in unique(human_maps_1Mb$constrained_model)) { 
+    tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                       "_params_1Mb_genomewide_latents_", m, ".csv", sep=""))
+  
+    tmp$DAG <- dag
+    tmp$constrained_model <- m
+
+    gw_params_1Mb <- rbind.data.frame(gw_params_1Mb, tmp)
   }
 }
 gw_params_1Mb$scale <- 1e+6
@@ -18865,15 +18765,13 @@ gw_params <- rbind.data.frame(gw_params_10kb,
 p <- ggplot(data=filter(gw_params, lhs=="avg_pi"), 
             aes(x=rhs, 
                 y=est, 
-                color=mut_map,
-                shape=as.factor(DAG))) +
+                color=as.factor(DAG))) +
       geom_point(size=2) +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) + ylim(c(0,1)) +
       scale_x_discrete() +
-      scale_shape_manual(values=c(0, 1), name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
       labs(title="Std. Path Coefficients to B (genome-wide model)",
            x="Variable", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
@@ -18882,21 +18780,19 @@ p <- ggplot(data=filter(gw_params, lhs=="avg_pi"),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/gw_PCs_pi_DAGs2-3.png", p, 
+save_plot("real_data_maps/gw_PCs_pi_DAGs2-3_latents.png", p, 
           base_height=10, base_width=16)
 
 q <- ggplot(data=filter(gw_params, lhs=="B"), 
             aes(x=rhs, 
                 y=est, 
-                color=mut_map,
-                shape=as.factor(DAG))) +
+                color=as.factor(DAG))) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) + ylim(c(-1,1)) +
       scale_x_discrete() +
-      scale_shape_manual(values=c(0, 1), name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
       labs(title="Std. Path Coefficients to B (genome-wide model)",
            x="Variable", y="Direct Std. PC to B") +
       theme(axis.title=element_text(size=16), 
@@ -18905,35 +18801,29 @@ q <- ggplot(data=filter(gw_params, lhs=="B"),
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/gw_PCs_B_DAGs2-3.png", q, 
+save_plot("real_data_maps/gw_PCs_B_DAGs2-3_latents.png", q, 
           base_height=10, base_width=16)
 
 # per chromosome SEM models
 ## 10 kb
 chr_params_10kb <- data.frame()
 for(dag in 2:3) {
-  for(u in unique(human_maps_10kb$mut_map)) {
-    for(m in unique(human_maps_10kb$constrained_model)) { 
-      for(d in unique(human_maps_10kb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_params_10kb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_params_10kb <- rbind.data.frame(chr_params_10kb, df)
-      }
+  for(m in unique(human_maps_100kb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                         "_params_10kb_chr", c, "_latents_", 
+                         m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+
+      chr_list[[c]] <- tmp
     }
+    
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_params_10kb <- rbind.data.frame(chr_params_10kb, df)
   }
 }
 chr_params_10kb$scale <- 1e+4
@@ -18941,28 +18831,22 @@ chr_params_10kb$scale <- 1e+4
 ## 100 kb
 chr_params_100kb <- data.frame()
 for(dag in 2:3) {
-  for(u in unique(human_maps_100kb$mut_map)) {
-    for(m in unique(human_maps_100kb$constrained_model)) { 
-      for(d in unique(human_maps_100kb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_params_100kb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_params_100kb <- rbind.data.frame(chr_params_100kb, df)
-      }
+  for(m in unique(human_maps_100kb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                         "_params_100kb_chr", c, "_latents_", 
+                         m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+
+      chr_list[[c]] <- tmp
     }
+    
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_params_100kb <- rbind.data.frame(chr_params_100kb, df)
   }
 }
 chr_params_100kb$scale <- 1e+5
@@ -18970,28 +18854,22 @@ chr_params_100kb$scale <- 1e+5
 ## 1 Mb
 chr_params_1Mb <- data.frame()
 for(dag in 2:3) {
-  for(u in unique(human_maps_1Mb$mut_map)) {
-    for(m in unique(human_maps_1Mb$constrained_model)) { 
-      for(d in unique(human_maps_1Mb$demo)) {
-        chr_list <- list(length=22)
-        for(c in 1:22) {
-          tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
-                             "_params_1Mb_chr", c, "_", 
-                             d, "_", m, "_", u, ".csv", sep=""))
-          
-          tmp$chrom <- c
-          tmp$DAG <- dag
-          tmp$mut_map <- u
-          tmp$constrained_model <- m
-          tmp$demo <- d
-          
-          chr_list[[c]] <- tmp
-        }
-        
-        df <- do.call(rbind.data.frame, chr_list)
-        chr_params_1Mb <- rbind.data.frame(chr_params_1Mb, df)
-      }
+  for(m in unique(human_maps_100kb$constrained_model)) { 
+    chr_list <- list(length=22)
+    for(c in 1:22) {
+      tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
+                         "_params_1Mb_chr", c, "_latents_", 
+                         m, ".csv", sep=""))
+      
+      tmp$chrom <- c
+      tmp$DAG <- dag
+      tmp$constrained_model <- m
+
+      chr_list[[c]] <- tmp
     }
+    
+    df <- do.call(rbind.data.frame, chr_list)
+    chr_params_1Mb <- rbind.data.frame(chr_params_1Mb, df)
   }
 }
 chr_params_1Mb$scale <- 1e+6
@@ -19003,29 +18881,26 @@ chr_params <- rbind.data.frame(chr_params_10kb,
               filter(., op=="~" | op==":=") 
 
 chr_params_ext <- left_join(chr_params, 
-                            chr_fitmeasures,
-                            by=c("chrom", "DAG", "mut_map",
-                                 "constrained_model", "demo", "scale"))
+                            chr_fitmeasures_latent,
+                            by=c("chrom", "DAG", "constrained_model","scale"))
 
 names(chr_params_ext)[8] <- "pvalue_est"
-names(chr_params_ext)[21] <- "pvalue_DAG"
+names(chr_params_ext)[15] <- "pvalue_DAG"
   
-p <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
-                        lhs=="avg_pi", 
-                        DAG==2), 
+p <- ggplot(data=filter(chr_params_ext, lhs=="avg_pi"), 
              aes(x=chrom, 
                  y=est, 
-                 color=mut_map,
+                 color=as.factor(DAG),
+                 alpha=gfi,
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=1:22) + 
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to Pi (DAG 2, GFI > 0.95, pval_est < 0.05)",
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
+      labs(title="Path Coefficients to Pi (pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -19033,51 +18908,23 @@ p <- ggplot(data=filter(chr_params_ext,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_params_pi_DAG2.png", p, 
+save_plot("real_data_maps/chr_params_pi_latents.png", p, 
           base_height=10, base_width=20)
 
-q <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
-                        lhs=="avg_pi", 
-                        DAG==3), 
+p <- ggplot(data=filter(chr_params_ext, lhs=="B"), 
              aes(x=chrom, 
                  y=est, 
-                 color=mut_map,
+                 color=as.factor(DAG),
+                 alpha=gfi,
                  shape=rhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=1:22) + 
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to Pi (DAG 3, GFI > 0.95, pval_est < 0.05)",
-           x="Chromosome", y="Direct Std. PC to Diversity") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/chr_params_pi_DAG3.png", q, 
-          base_height=10, base_width=20)
-
-p <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95, 
-                        lhs=="B", 
-                        DAG==2), 
-             aes(x=chrom, 
-                 y=est, 
-                 color=mut_map,
-                 shape=rhs)) +
-      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
-      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to B (DAG 2, GFI > 0.95, pval_est < 0.05)",
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
+      labs(title="Path Coefficients to B (pval_est < 0.05)",
            x="Chromosome", y="Direct Std. PC to B") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -19085,51 +18932,26 @@ p <- ggplot(data=filter(chr_params_ext,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_params_B_DAG2.png", p, 
+save_plot("real_data_maps/chr_params_B_latents.png", p, 
           base_height=10, base_width=20)
 
-q <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
-                        lhs=="B", 
-                        DAG==3), 
+r <- ggplot(data=filter(chr_params_ext, 
+                        op==":=",
+                        lhs=="rec_B_pi" | lhs=="rec_mu_pi"), 
              aes(x=chrom, 
                  y=est, 
-                 color=mut_map,
-                 shape=rhs)) +
-      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
-      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2), name="Variable") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Path Coefficients to B (DAG 3, GFI > 0.95, pval_est < 0.05)",
-           x="Chromosome", y="Direct Std. PC to B") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/chr_params_B_DAG3.png", q, 
-          base_height=10, base_width=20)
-
-r <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
-                        op==":=", 
-                        DAG==2), 
-             aes(x=chrom, 
-                 y=est, 
-                 color=mut_map,
+                 color=as.factor(DAG),
+                 alpha=gfi,
                  shape=lhs)) +
       geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2, 3), name="Path") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Indirect Path Coefficients (DAG 2, GFI > 0.95, pval_est < 0.05)",
+      scale_shape_manual(values=c(0, 1), name="Path",
+                         labels=c("r>B>pi", "r>u>pi")) +
+      scale_color_manual(values=c("purple3", "seagreen4"),
+                         name="DAG") +
+      labs(title="Indirect Path Coefficients (pval_est < 0.05)",
            x="Chromosome", y="Indirect Std. PC") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -19137,62 +18959,32 @@ r <- ggplot(data=filter(chr_params_ext,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_params_indirect_DAG2.png", r, 
-          base_height=10, base_width=20)
-
-s <- ggplot(data=filter(chr_params_ext,
-                        gfi > 0.95,
-                        op==":=", 
-                        DAG==3), 
-             aes(x=chrom, 
-                 y=est, 
-                 color=mut_map,
-                 shape=lhs)) +
-      geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
-      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1, 2, 3), name="Path") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
-                         name="Mut. Map") +
-      labs(title="Indirect Path Coefficients (DAG 3, GFI > 0.95, pval_est < 0.05)",
-           x="Chromosome", y="Indirect Std. PC") +
-      theme(axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/chr_params_indirect_DAG3.png", s, 
+save_plot("real_data_maps/chr_params_indirect_latents.png", r, 
           base_height=10, base_width=20)
 
 # ratios of PCs from B and Mu to Pi
 chr_wide <- chr_params_ext %>% filter(., pvalue_est < 5e-2) %>%
-         dplyr::select(., -c(op, label, se, z, pvalue_est, pvalue_DAG,
-                             ci.lower, ci.upper)) %>%
-         filter(., demo=="equilibrium", lhs=="avg_pi") %>% 
-         filter(., rhs=="avg_mut" | rhs=="B") %>%
-         pivot_wider(values_from="est", names_from="rhs")
-         #filter(., avg_mut >)
-          
+            dplyr::select(., -c(op, label, se, z, pvalue_est, pvalue_DAG,
+                                ci.lower, ci.upper)) %>%
+            filter(., lhs=="avg_pi") %>% 
+            filter(., rhs=="avg_mut" | rhs=="B") %>%
+            pivot_wider(values_from="est", names_from="rhs")
+
 chr_wide$ratio_B_u <- chr_wide$B / chr_wide$avg_mut # chr 19 is weird!
 
-r <- ggplot(data=filter(chr_wide,
-                        gfi > 0.95), 
+r <- ggplot(data=filter(chr_wide, chrom!=19), 
              aes(x=chrom, 
                  y=ratio_B_u, 
-                 color=mut_map,
-                 shape=as.factor(DAG))) +
+                 color=as.factor(DAG),
+                 alpha=gfi)) +
       geom_point(size=2.5) + 
       geom_hline(yintercept=1, linetype="dashed") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_y_continuous(breaks=1:10) +
       scale_x_continuous(breaks=1:22) + 
-      scale_shape_manual(values=c(0, 1),
+      scale_color_manual(values=c("purple3", "seagreen4"), 
                          name="DAG") +
-      scale_color_manual(values=c("purple3", "seagreen4", "brown1"), 
-                         name="Mut. Map") +
-      labs(title="Ratio of Path Coefficients to Pi (GFI > 0.95, pval_est < 0.05)",
+      labs(title="Ratio of Path Coefficients to Pi (pval_est < 0.05)",
            x="Chromosome", y="PC(B) / PC(Mu)") +
       theme(axis.title=element_text(size=16), 
             axis.text=element_text(size=12), 
@@ -19200,7 +18992,266 @@ r <- ggplot(data=filter(chr_wide,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot(paste("real_data_maps/lavaan_out/sem_pcratios_pi.png", sep=""),
-          r, base_height=8, base_width=20)
+save_plot(paste("real_data_maps/sem_pcratios_pi_lantents.png", sep=""),
+          r, base_height=10, base_width=20)
 ```
 
+Why do some chr fit better than others?
+
+```{r SEM-chr-features,  include=F, message=F, warning=F}
+
+summary(chr_fitmeasures_latent)
+summars <- fread("~/Data/bgs_lmr/human_data/data/h38.genome")
+names(summars)[1] <- "chrom"
+
+human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
+                   filter(., mut_map!="uniform") %>%
+                   dplyr::select(-c(bin_100kb, bin_1Mb))
+
+human_maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz") %>%
+                    filter(., mut_map!="uniform") %>%
+                    dplyr::select(-c(bin_100kb, bin_1Mb))
+
+human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
+                   filter(., mut_map!="uniform") %>%
+                   dplyr::select(-c(bin_100kb, bin_1Mb))
+
+# recombination latent
+rec_10kb <- list(length=22)
+rec_100kb <- list(length=22)
+rec_1Mb <- list(length=22)
+
+for(c in 1:22) {
+  
+ rec_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                              "rec_latent_chr", c, "_10kb.csv.gz", sep=""))
+ 
+ rec_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                               "rec_latent_chr", c, "_100kb.csv.gz", sep=""))
+ 
+ rec_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                             "rec_latent_chr", c, "_1Mb.csv.gz", sep=""))
+}  
+
+rec_latent_10kb <- do.call(rbind.data.frame, rec_10kb)
+rec_latent_100kb <- do.call(rbind.data.frame, rec_100kb)
+rec_latent_1Mb <- do.call(rbind.data.frame, rec_1Mb)
+
+# mutation latent
+mut_10kb <- list(length=22)
+mut_100kb <- list(length=22)
+mut_1Mb <- list(length=22)
+
+for(c in 1:22) {
+  
+ mut_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                              "mut_latent_chr", c, "_10kb.csv.gz", sep=""))
+ 
+ mut_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                               "mut_latent_chr", c, "_100kb.csv.gz", sep=""))
+ 
+ mut_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+                             "mut_latent_chr", c, "_1Mb.csv.gz", sep=""))
+}  
+
+mut_latent_10kb <- do.call(rbind.data.frame, mut_10kb)
+mut_latent_100kb <- do.call(rbind.data.frame, mut_100kb)
+mut_latent_1Mb <- do.call(rbind.data.frame, mut_1Mb)
+
+tbl <- left_join(human_maps_10kb, rec_latent_10kb, by=c("chrom", 
+                                                        "chromStart", 
+                                                        "chromEnd"))
+  
+tbl <- left_join(tbl, mut_latent_10kb, by=c("chrom", 
+                                            "chromStart", 
+                                            "chromEnd"))
+  
+tbl <- filter(tbl, coverage > 0.75) %>%
+       dplyr::select(., c(chrom,
+                          constrained_model,
+                          prop_del_sites,
+                          rec_latent_log, 
+                          mut_latent_log)) %>%
+       group_by(., chrom, constrained_model) %>%
+       summarize_at(vars(mut_latent_log, rec_latent_log, prop_del_sites), 
+                    .funs=mean)
+tbl <- left_join(tbl, summars, by="chrom")
+df <- left_join(tbl, chr_fitmeasures_latent, by=c("chrom", "constrained_model"))
+
+p <- ggplot(data=filter(df, method=="GLS"), 
+             aes(x=GC, 
+                 y=gfi, 
+                 color=as.factor(DAG),
+                 shape=method)) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_color_manual(values=c("brown1", "cyan3"), name="DAG") +
+      labs(title="Does GC content affect chr GFI from DAGs?",
+           x="GC %", y="GFI") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_GFI_GC.png", p, 
+          base_height=10, base_width=20)
+
+q <- ggplot(data=filter(df, method=="GLS"), 
+             aes(x=mut_latent_log, 
+                 y=gfi, 
+                 color=as.factor(DAG),
+                 shape=method)) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_color_manual(values=c("brown1", "cyan3"), name="DAG") +
+      labs(title="Does avg. mut. rate affect chr GFI from DAGs?",
+           x="Log Mut. Latent", y="GFI") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_GFI_Mut.png", q, 
+          base_height=10, base_width=20)
+
+r <- ggplot(data=filter(df, method=="GLS"), 
+             aes(x=rec_latent_log, 
+                 y=gfi, 
+                 color=as.factor(DAG))) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_color_manual(values=c("brown1", "cyan3"), name="DAG") +
+      labs(title="Does avg. rec. rate affect chr GFI from DAGs?",
+           x="Log Rec. Latent", y="GFI") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_GFI_Rec.png", r, 
+          base_height=10, base_width=20)
+
+s <- ggplot(data=filter(df, method=="GLS"), 
+             aes(x=prop_del_sites * 100, 
+                 y=gfi, 
+                 color=as.factor(DAG))) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_color_manual(values=c("brown1", "cyan3"), name="DAG") +
+      labs(title="Does % deleterious sites affect chr GFI from DAGs?",
+           x="% Del. Sites", y="GFI") +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_GFI_delsites.png", s, 
+          base_height=10, base_width=20)
+
+df <- left_join(tbl, chr_r2_dags, by=c("chrom", "constrained_model"))
+
+p <- ggplot(data=df, 
+             aes(x=GC, 
+                 y=avg_pi, 
+                 color=as.factor(DAG))) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_color_manual(values=c("purple3",
+                                  "seagreen4", 
+                                  "brown1",
+                                  "cyan3"), name="DAG") +
+      labs(title="Does GC content affect chr R^2 from DAGs?",
+           x="GC %", y=expression(R^2)) +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_R2_GC.png", p, 
+          base_height=10, base_width=20)
+
+q <- ggplot(data=df, 
+             aes(x=mut_latent_log, 
+                 y=avg_pi, 
+                 color=as.factor(DAG))) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_shape_manual(values=c(0, 1), name="Method") +
+      scale_color_manual(values=c("purple3",
+                                  "seagreen4", 
+                                  "brown1",
+                                  "cyan3"), name="DAG") +
+      labs(title="Does avg. mut. rate affect chr R^2 from DAGs?",
+           x="Log Mut. Latent", y=expression(R^2)) +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_R2_Mut.png", q, 
+          base_height=10, base_width=20)
+
+r <- ggplot(data=df, 
+             aes(x=rec_latent_log, 
+                 y=avg_pi, 
+                 color=as.factor(DAG))) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_color_manual(values=c("purple3",
+                                  "seagreen4", 
+                                  "brown1",
+                                  "cyan3"), name="DAG") +
+      labs(title="Does avg. rec. rate affect chr R^2 from DAGs?",
+           x="Log Rec. Latent", y=expression(R^2)) +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_R2_Rec.png", r, 
+          base_height=10, base_width=20)
+
+s <- ggplot(data=df, 
+             aes(x=prop_del_sites * 100, 
+                 y=avg_pi, 
+                 color=as.factor(DAG))) +
+      geom_text(aes(label=chrom), vjust=2, size=3) +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=pretty_breaks()) +
+      scale_color_manual(values=c("purple3",
+                                  "seagreen4", 
+                                  "brown1",
+                                  "cyan3"), name="DAG") +
+      labs(title="Does % deleterious sites affect chr R^2 from DAGs?",
+           x="% Del. Sites", y=expression(R^2)) +
+      theme(axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_R2_delsites.png", s, 
+          base_height=10, base_width=20)
+```
