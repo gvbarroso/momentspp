@@ -1,4 +1,4 @@
-Dependencies:
+## Dependencies:
 - A C++ compiler, both gcc and clang should work. Recent versions are required, with support for C++20
 - CMake >= 3.1 for building
 - The Boost C++ libraries >= 1.71, available in https://www.boost.org/
@@ -7,37 +7,57 @@ Dependencies:
 - The Eigen3 libraries, available at https://eigen.tuxfamily.org/dox/GettingStarted.html
 - The yaml-cpp library (https://github.com/jbeder/yaml-cpp)
 
-Installation using an external build:
+## Installation using an external build:
 
+```
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local .. (for a local install)
 make
 make install
+```
 
-The 'momentspp' executable should then be copied in $HOME/.local/bin 
-NOTE: you can use 
+The 'momentspp' executable should then be copied to $HOME/.local/bin 
+NOTE: we can request 
 
-cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DVERBOSE=true ..
+```
+-DVERBOSE=true ..
+```
 
-For compiling in 'Verbose' mode, where diagnostic .txt files will be output to the same directory.
+for compiling in 'verbose' mode, where diagnostic files will be output to the same directory. Furthermore, in Linux machines
 
-On a standard linux workstation, Moments++ takes < 2 minutes to compile and install once all dependencies are met. Note that static linkage is not supported at the moment.
+```
+-DNativeBuiild=ON
+```
 
-NOTE ABOUT COMPUTING CLUSTERS:
+will optimize compilation by exploiting knowledge of the machine's architecture (this can decrease runtime by 20%).
+
+We can put it all together, e.g.
+
+```
+cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DNativeBuild=ON -DVERBOSE=true ..
+```
+
+On a standard Linux workstation, Moments++ takes < 2 minutes to compile and install once all dependencies are met. Note that static linkage is not supported at the moment, but out-of-the-box executable versions can be obtained with container images (see README in the home directory).
+
+## NOTE ABOUT COMPUTING CLUSTERS:
 
 It is possible that the default versions of gcc and cmake on computing clusters will not meet the aforementioned requirements.
 To fix this, one can execute, e.g.,
 
+```
 module load gcc/11.2.0
 module load cmake/3.7.2
+```
 
 in the interactive session that is used to build Moments++ on the cluster.
 
 I have also noticed that cmake may have problems finding the Boost installation when working on a cluster.
 To work around this problem one can execute (from the external build directory):
 
+```
 ccmake ..
+```
 
 then press "t" to enter "advanced" mode and edit the BOOST lines at the top of the GUI by pressing "enter" and enter the correct path.
 

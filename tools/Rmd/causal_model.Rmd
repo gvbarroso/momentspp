@@ -11035,12 +11035,37 @@ Specifying the models with avg_pi
 
 ```{r dags-human-maps, include=F, eval=T}
 
+D0 <- DAG(
+  avg_pi~B,
+  avg_pi~avg_mut,
+  B~avg_mut
+)
+
+DAG0 <- dagify(
+  pi ~ B,
+  pi ~ u,
+  B ~ u
+)
+
+DD0p <- DAG0 %>% 
+  tidy_dagitty(layout="auto") %>%
+  arrange(name) %>% 
+  ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
+  geom_dag_node() +
+  geom_dag_edges() +
+  theme_dag() + 
+  geom_dag_text(parse=TRUE, 
+                label = c("B", expression(pi), expression(mu)))
+  
+save_plot("real_data_maps/DAG_0.svg", DD0p)
+save_plot("real_data_maps/DAG_0.png", DD0p)
+
 D1 <- DAG(
   avg_pi~prop_del_sites,
   avg_pi~B,
   avg_pi~avg_mut,
   B~avg_mut,
-  B~avg_rec
+  B~prop_del_sites
 )
 
 DAG1 <- dagify(
@@ -11048,7 +11073,7 @@ DAG1 <- dagify(
   pi ~ B,
   pi ~ u,
   B ~ u,
-  B ~ r
+  B ~ E
 )
 
 DD1p <- DAG1 %>% 
@@ -11059,7 +11084,7 @@ DD1p <- DAG1 %>%
   geom_dag_edges() +
   theme_dag() + 
   geom_dag_text(parse=TRUE, 
-                label = c("B", "E", expression(pi), "r", expression(mu)))
+                label = c("B", "E", expression(pi), expression(mu)))
   
 save_plot("real_data_maps/DAG_1.svg", DD1p)
 save_plot("real_data_maps/DAG_1.png", DD1p)

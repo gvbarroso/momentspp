@@ -148,7 +148,7 @@ void SumStatsLibrary::initMoments_(bool compress)
   for(auto itI = std::begin(popIndices_); itI != std::end(popIndices_); ++itI)
   {
     #ifdef NAKED_D
-    std::string nameD = "D_" + asString(*itI); // naked singed D
+    std::string nameD = "D_" + asString(*itI); // naked signed D
     moments_.emplace_back(std::make_shared<Moment>(nameD, 0.));
 
     for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE D stats include two factors of (1-2p) more than other stats
@@ -263,7 +263,7 @@ void SumStatsLibrary::initMoments_(bool compress)
         }
       }
 
-      // Hr stats don't require training factors of (1-2p_x)
+      // Hr stats don't require trailing factors of (1-2p_x)
       name = "Hr_" + asString(*itI) + "_" + asString(*itJ);
       moments_.emplace_back(std::make_shared<HetMoment>(name, 0., false)); // Hr_01 = p_0(1-p_1); Hr_10 = p_1(1-p_0)
 
