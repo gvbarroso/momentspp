@@ -52,8 +52,8 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1)
   {
-    std::cout << "Usage:\n\n";
-    std::cout << "momentspp params=opt.bpp\n";
+    std::cout << "Usage:\n";
+    std::cout << "momentspp param=opt.bpp\n\n";
 
     std::cout << "\nThe github repository contains instructions on how to write the options file:\n";
     std::cout << "https://github.com/gvbarroso/momentspp/tree/main/doc" << std::endl << std::endl;
@@ -232,7 +232,7 @@ int main(int argc, char *argv[]) {
       model->getIndependentParameters().printParameters(std::cout);
 
       OptimizationWrapper optimizer(options);
-      optimizer.fitModel(model.get());
+      optimizer.fitModel(model);
     }
   }
 

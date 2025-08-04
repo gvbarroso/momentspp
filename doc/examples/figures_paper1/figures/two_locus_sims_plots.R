@@ -1,14 +1,11 @@
+library(R.utils)
+library(tidyverse)
+library(data.table)
+library(cowplot)
+library(scales)
+library(bslib)
+library(purrr)
 
-
-suppressMessages({
-  library(R.utils)
-  library(tidyverse)
-  library(data.table)
-  library(cowplot)
-  library(scales)
-  library(bslib)
-  library(purrr)
-})
 
 setwd("~/../../media/gvbarroso/extradrive1/D_iagnostics/selected/")
 
@@ -21,7 +18,9 @@ stats <- list(length=length(stats_files))
 pb <- txtProgressBar(min=0, max=length(stats_files), style=3)
 for(i in 1:length(stats_files)) {
   setTxtProgressBar(pb, i)
-  stats[[i]] <- fread(stats_files[i]) %>% dplyr::select(., -V2) %>% dplyr::filter(., V1!="random_seed")
+  stats[[i]] <- fread(stats_files[i]) %>% 
+                dplyr::select(., -V2) %>% 
+                dplyr::filter(., V1!="random_seed")
 }
 close(pb)
 
@@ -67,8 +66,10 @@ Ds <- fread(paste("Ds_", sim_params, ".csv.gz", sep=""))
 
 summary(Ds)
 
-Ds_q <- Ds %>% group_by(q) %>% summarize_at(vars(D, D_prime, Dr, Dl, Dz, p), list(avg=mean))
-Ds_p <- Ds %>% group_by(p) %>% summarize_at(vars(D, D_prime, Dr, Dl, Dz, q), list(avg=mean))
+Ds_q <- Ds %>% group_by(q) %>% 
+        summarize_at(vars(D, D_prime, Dr, Dl, Dz, p), list(avg=mean))
+Ds_p <- Ds %>% group_by(p) %>% 
+        summarize_at(vars(D, D_prime, Dr, Dl, Dz, q), list(avg=mean))
 
 #Dx <- Ds %>% group_by(p, q) %>% summarize_at(vars(D, Dr, Dl, Dz), list(avg=mean))
 #D_p_1 <- ggplot(data=Dx, aes(x=p, y=D_avg, color=q)) + 
@@ -98,7 +99,6 @@ D_p <- ggplot(data=Ds_p, aes(x=p, y=D_avg, color=q_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="none")
-#ggsave(paste("../D_p_nominal_", type,".pdf", sep=""), D_p, dpi=500, width=10, height=7)
 
 D_q <- ggplot(data=Ds_q, aes(x=q, y=D_avg, color=p_avg)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -112,7 +112,6 @@ D_q <- ggplot(data=Ds_q, aes(x=q, y=D_avg, color=p_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="none")
-#ggsave(paste("../D_q_nominal_", type,".pdf", sep=""), D_q, dpi=500, width=10, height=7)
 
 Dr_q <- ggplot(data=Ds_q, aes(x=q, y=Dr_avg, color=p_avg)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -126,7 +125,6 @@ Dr_q <- ggplot(data=Ds_q, aes(x=q, y=Dr_avg, color=p_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="none")
-#ggsave(paste("../Dr_q_nominal_", type,".pdf", sep=""), Dr_q, dpi=500, width=10, height=7)
 
 Dr_p <- ggplot(data=Ds_p, aes(x=p, y=Dr_avg, color=q_avg)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -140,7 +138,6 @@ Dr_p <- ggplot(data=Ds_p, aes(x=p, y=Dr_avg, color=q_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="none")
-#ggsave(paste("../Dr_p_nominal_", type,".pdf", sep=""), Dr_p, dpi=500, width=10, height=7)
 
 Dl_q <- ggplot(data=Ds_q, aes(x=q, y=Dl_avg, color=p_avg)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -154,7 +151,6 @@ Dl_q <- ggplot(data=Ds_q, aes(x=q, y=Dl_avg, color=p_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="bottom")
-#ggsave(paste("../Dl_q_nominal_", type,".pdf", sep=""), Dl_q, dpi=500, width=10, height=7)
 
 Dl_p <- ggplot(data=Ds_p, aes(x=p, y=Dl_avg, color=q_avg)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -168,7 +164,6 @@ Dl_p <- ggplot(data=Ds_p, aes(x=p, y=Dl_avg, color=q_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="bottom")
-#ggsave(paste("../Dl_p_nominal_", type,".pdf", sep=""), Dl_p, dpi=500, width=10, height=7)
 
 pgd <- plot_grid(D_p, D_q, Dr_p, Dr_q, Dl_p, Dl_q,
                  rel_heights=c(1, 1, 1.35), 
@@ -187,7 +182,8 @@ Dz_q <- ggplot(data=Ds_q, aes(x=q, y=Dz_avg, color=p_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="bottom")
-ggsave(paste("../Dz_q_nominal_", type,".pdf", sep=""), Dz_q, dpi=500, width=10, height=7)
+ggsave(paste("../Dz_q_nominal_", type,".pdf", sep=""), Dz_q, 
+       dpi=500, width=10, height=7)
 
 Dz_p <- ggplot(data=Ds_p, aes(x=p, y=Dz_avg, color=q_avg)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -201,7 +197,8 @@ Dz_p <- ggplot(data=Ds_p, aes(x=p, y=Dz_avg, color=q_avg)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="bottom")
-ggsave(paste("../Dz_p_nominal_", type,".pdf", sep=""), Dz_p, dpi=500, width=10, height=7)
+ggsave(paste("../Dz_p_nominal_", type,".pdf", sep=""), Dz_p, 
+       dpi=500, width=10, height=7)
 
 # weighted distributions
 Ds_samp <- slice_sample(Ds, n=2e+5)
@@ -217,7 +214,8 @@ D_qs <- ggplot(data=Ds_samp, aes(x=q, y=D, color=p)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="bottom")
-ggsave(paste("../D_q_sample_", type,".pdf", sep=""), D_qs, dpi=500, width=10, height=7)
+ggsave(paste("../D_q_sample_", type,".pdf", sep=""), D_qs, 
+       dpi=500, width=10, height=7)
 
 D_ps <- ggplot(data=Ds_samp, aes(x=p, y=D, color=q)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -231,7 +229,8 @@ D_ps <- ggplot(data=Ds_samp, aes(x=p, y=D, color=q)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="bottom")
-ggsave(paste("../D_p_sample_", type,".pdf", sep=""), D_ps, dpi=500, width=10, height=7)
+ggsave(paste("../D_p_sample_", type,".pdf", sep=""), D_ps, 
+       dpi=500, width=10, height=7)
 
 Dr_q <- ggplot(data=Ds_samp, aes(x=q, y=Dr, color=p)) + 
   theme_bw() + geom_point(shape=21) + geom_smooth(color="black") + 
@@ -245,7 +244,8 @@ Dr_q <- ggplot(data=Ds_samp, aes(x=q, y=Dr, color=p)) +
         axis.text.x=element_text(size=12), 
         axis.text.y=element_text(size=12),
         legend.position="bottom")
-ggsave(paste("../D_q_dist_", type, ".pdf", sep=""), D_q, dpi=500, width=10, height=7)
+ggsave(paste("../D_q_dist_", type, ".pdf", sep=""), D_q, 
+       dpi=500, width=10, height=7)
 
 ##########################
 #

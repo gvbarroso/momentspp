@@ -289,6 +289,19 @@ names(tbl_pp)[10] <- "m2l"
 tbl_pp <- tbl_pp %>% mutate(ratio=mpp/m2l)
 
 # plots
+p0 <- ggplot(data=filter(tbl_pp, stats==commom_stats[3],
+                         sample_size==80), aes(x=order, y=ratio)) +
+      geom_point(size=3) + geom_line() + theme_bw() + 
+  facet_wrap(~alpha, ncol=1) + 
+  scale_x_continuous(breaks=unique(tbl_pp$order)) +
+  labs(title=NULL, x="Order (1-2p)", y=expression(H[l])) +
+  geom_hline(yintercept=1, linetype="dashed", color="red") +
+  theme(axis.title=element_text(size=12),
+        axis.text=element_text(size=10),
+        axis.text.x=element_text(angle=90, size=12, vjust=0.5, hjust=1.0),
+        legend.position="bottom")
+save_plot("Hl_ratios_order.pdf", p0, base_height=24, base_width=12)
+
 p1 <- ggplot(data=filter(tbl_pp, stats==commom_stats[1],
                          sample_size==80), aes(x=r, y=ratio)) +
       geom_point(size=3) + geom_line() + theme_bw() + 

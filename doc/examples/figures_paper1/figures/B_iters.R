@@ -4,9 +4,8 @@ library(data.table)
 library(scales)
 library(cowplot)
 
-setwd("~/Data/mpp_figures/figures/")
 
-B_iters <- fread("B_iters.txt", header=F)  # from Python
+B_iters <- fread("../data/B_iters.txt", header=F) # obtained with bgshr
 names(B_iters) <- as.character(1:ncol(B_iters))
 B_iters$iteration <- 1:nrow(B_iters)
 

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 19/03/2023
+ * Last modified: 01/04/2025
  *
  */
 
@@ -19,45 +19,33 @@
 #include "Epoch.hpp"
 #include "Model.hpp"
 
-void OptimizationWrapper::fitModel(Model* model)
+void OptimizationWrapper::fitModel(std::shared_ptr<Model> model)
 {
   std::cout << "\nOptimizing model with the following parameters:\n";
   model->getUnfrozenParameters().printParameters(std::cout);
 
-  std::unique_ptr<bpp::Optimizer> optimizer;
+  std::unique_ptr<bpp::OptimizerInterface> optimizer;
 
   if(options_.getOptimMethod() == "Powell")
   {
-    bpp::ReparametrizationFunctionWrapper rfw(model, model->getUnfrozenParameters());
+    std::shared_ptr<bpp::ReparametrizationFunctionWrapper> rfw =
+    std::make_shared<bpp::ReparametrizationFunctionWrapper>(model, model->getUnfrozenParameters());
 
-    optimizer.reset(new bpp::PowellMultiDimensions(&rfw));
-    optimizer->init(rfw.getParameters());
+    optimizer.reset(new bpp::PowellMultiDimensions(rfw));
+    optimizer->init(rfw->getParameters());
   }
-
-  /*else if(options_.getOptimMethod() == "NewtonRhapson")
-  {
-    bpp::ThreePointsNumericalDerivative tpnd(model);
-
-    tpnd.setParametersToDerivate(model->getUnfrozenParameters().getParameterNames());
-    tpnd.enableFirstOrderDerivatives(true);
-    tpnd.enableSecondOrderDerivatives(true);
-    tpnd.enableSecondOrderCrossDerivatives(false); // Pseudo-Newton
-
-    optimizer.reset(new bpp::PseudoNewtonOptimizer(&tpnd));
-    optimizer->setConstraintPolicy(bpp::AutoParameter::CONSTRAINTS_AUTO);
-    optimizer->init(model->getUnfrozenParameters());
-  }*/
 
   else if(options_.getOptimMethod() == "BFGS")
   {
-    bpp::ThreePointsNumericalDerivative tpnd(model);
+    std::shared_ptr<bpp::ThreePointsNumericalDerivative> tpnd =
+    std::make_shared<bpp::ThreePointsNumericalDerivative>(model);
 
-    tpnd.setParametersToDerivate(model->getUnfrozenParameters().getParameterNames());
-    tpnd.enableFirstOrderDerivatives(true);
-    tpnd.enableSecondOrderDerivatives(false);
-    tpnd.enableSecondOrderCrossDerivatives(false);
+    tpnd->setParametersToDerivate(model->getUnfrozenParameters().getParameterNames());
+    tpnd->enableFirstOrderDerivatives(true);
+    tpnd->enableSecondOrderDerivatives(false);
+    tpnd->enableSecondOrderCrossDerivatives(false);
 
-    optimizer.reset(new bpp::BfgsMultiDimensions(&tpnd));
+    optimizer.reset(new bpp::BfgsMultiDimensions(tpnd));
     optimizer->setConstraintPolicy(bpp::AutoParameter::CONSTRAINTS_AUTO);
     optimizer->init(model->getUnfrozenParameters());
   }
@@ -65,18 +53,25 @@ void OptimizationWrapper::fitModel(Model* model)
   else
     throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer " + options_.getOptimMethod());
 
-  std::unique_ptr<bpp::FunctionStopCondition> stopCond = std::make_unique<bpp::FunctionStopCondition>(optimizer.get(), options_.getTolerance());
-  optimizer->setStopCondition(*stopCond);
+  /* NOTE this needs to be ported to bpp-core 3.0.0
+  std::unique_ptr<std::ofstream> prof = std::make_unique<std::ofstream>("profile.txt", std::ios::out);
+  std::unique_ptr<std::ofstream> mess = std::make_unique<std::ofstream>("messages.txt", std::ios::out);
 
-  std::ofstream prof("profile.txt", std::ios::out);
-  std::ofstream mess("messages.txt", std::ios::out);
+  std::unique_ptr<std::ostream> prof_ptr = std::move(prof);
+  std::unique_ptr<std::ostream> mess_ptr = std::move(mess);
 
-  bpp::StlOutputStream profiler(&prof);
-  bpp::StlOutputStream messenger(&mess);
+  std::shared_ptr<bpp::StlOutputStream> profiler = std::make_shared<bpp::StlOutputStream>(prof_ptr);
+  std::shared_ptr<bpp::StlOutputStream> messenger = std::make_shared<bpp::StlOutputStream>(mess_ptr);
 
-  optimizer->setProfiler(&profiler);
-  optimizer->setMessageHandler(&messenger);
-  
+  optimizer->setProfiler(profiler);
+  optimizer->setMessageHandler(messenger);
+
+  std::shared_ptr<bpp::OptimizationStopCondition> stopCond;// = std::make_shared<bpp::OptimizationStopCondition>();
+  stopCond->setOptimizer(optimizer.get());
+  stopCond->setTolerance(options_.getTolerance());
+  optimizer->setStopCondition(stopCond);
+  */
+
   try
   {
     optimizer->optimize();
@@ -159,7 +154,7 @@ void OptimizationWrapper::fitModel(Model* model)
   }
 }*/
 
-void OptimizationWrapper::writeEstimatesToFile_(Model* model)
+void OptimizationWrapper::writeEstimatesToFile_(std::shared_ptr<Model> model)
 {
   std::ofstream file;
   file.open(model->getName() + "_estimates.txt");

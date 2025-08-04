@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 30/05/2024
+ * Last modified: 01/04/2025
  *
  */
 
@@ -32,7 +32,7 @@
 #include "Epoch.hpp"
 #include "Data.hpp"
 
-class Model: public bpp::AbstractParameterAliasable, public bpp::Function
+class Model: public bpp::AbstractParameterAliasable, public bpp::FunctionInterface
 {
 
 private:

@@ -75,7 +75,7 @@ Creates files that will be used as input for moments++
 params <- fread("params.csv")
 n_models <- nrow(params)
 
-# writes demes files specifying models (one demography, r X s)
+# writes augmented demes files specifying models (one demography, r X s)
 options(digits=16) # precision
 for(i in 1:n_models) {
   
