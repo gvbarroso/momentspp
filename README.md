@@ -17,8 +17,8 @@ make
 make install
 ```
 
-Alternatively, it is possible to use container images. 
-These are straightforward to obtain but the executable is not optimized and should be slower to run.
+Alternatively, it is possible to use a method (use of container images) that does not require compilation and provides an out-of-the-box executable.
+These are straightforward to obtain but the program is not optimized and could be a little slower to run.
 
 To get the docker image for the main branch:
 ```
