@@ -1,5 +1,5 @@
 ---
-title: "BGS under non-equilibrium demography (paper 1)"
+title: "Lookup tables for Maize data"
 author: "Gustavo V. Barroso"
 date: "`r Sys.Date()`"
 output:
@@ -19,25 +19,33 @@ library(bigsnpr) # for seq_log
 library(data.table)
 library(cowplot)
 
-knitr::opts_knit$set(root.dir="~/Data/momentspp/paper_1/2_epoch_expansion/")
+knitr::opts_knit$set(root.dir="~/Data/bgs_maize/test_expansion")
 ```
 
 # Creating folders and files
 
 Builds a parameter grid that allows for fast assembly of whole chromosomes
 
-```{r, params, include=F, eval=T, results=F, message=F, warning=F}
+```{r, params, include=T, eval=T, results=F, message=F, warning=F}
+# N's and T's specified from present to past, ommiting last epoch requested by Paulo
+# scaled down 10x to handle Ne*s parameters
 
-Ns <- paste(1e+5, 1e+4, sep=";") # from present to past
-Ts <- paste(0, 25000, sep=";") # from present (0) to past, in generations
+Ns <- round(seq_log(1.5e+4, 1e+7, 11), digits=0)
+Ts <- paste(0, 15, 40, 400, 1000, sep=";")
 
-uL <- 1e-8
-uR <- 1e-8
-# rounding is required so that directory names don't diverge due to precision
-r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
-s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
+# scaling u by 10x (Paulo suggested 3.3e-8) due to high order of 1-2p
+# this effectively "compensates" the scaling of Ns and Ts above, but will still need to be handled by
+# bgshr since the scaling argument there will operate on u, r and s simultaneously
+uL <- 1e-6
+uR <- 1e-6
+
+# r and s specified as they would normally be for momentspp (ie, not scaling to compensate demo)
+r <- c(1e-8, 1e-6, 1e-4, 1e-2)
+s <- c(-1e-6, -1e-5)
 
 params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
+
+params$Ns <- paste(params$Ns, 1.5e+4, 1.5e+5, 1.5e+3, 1.5e+4, sep=";")
 n_models <- nrow(params)
 
 fwrite(as.data.frame(r), "r.csv", col.names=F)
@@ -99,10 +107,10 @@ for(i in 1:n_models) {
   cat("    epochs:\n")
   for(j in length(Ts):1) {
     cat("      - end_time: ")
-    cat(Ts[j])
+    cat(format(Ts[j], scientific=F))
     cat("\n")
     cat("        start_size: ")
-    cat(Ns[j])
+    cat(format(Ns[j], scientific=F))
     cat("\n")
   }
   cat("metadata:\n")
@@ -167,88 +175,54 @@ cat("    epochs:\n")
 cat("      - end_time: 0\n")
 cat("        rates: [0]\n")
 sink()
-
 ```
 
 # Running moments++
 
 Computes summary statistics for each model
+For reference, the following script was run, not from this Rmd file but looping from the terminal
 
-```{bash moments++, engine.opts='-i', include=F, eval=T, results=F, warning=F}
-
+```{bash moments++, engine.opts='-i', include=F, eval=F, results=F, warning=F}
 #!/bin/bash
+f=$(find -name '*.yaml' | cut -d '/' -f 2)
 
-i=1
-nr=$(wc -l r.csv | cut -d ' ' -f 1)
-
-for r in r_*
-do
-  date
-  echo "$i of $nr"
-  cd $r
-  for s in s_*
-  do
-    cd $s
-    for f in model_*.yaml
-    do
-	    Na=$(sed '6q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2) # fix which lines you get Na, N1, and s
-	    N1=$(sed '8q;d' $f | cut -d : -f 2 | cut -d ' ' -f 2)
-	    Ne=$Na
-	    if [[ $N1 -gt $Na ]]
-      then
-	      Ne=$N1
-	    fi
-      x=$(sed '23q;d' $f | cut -d : -f 2 | cut -d [ -f 2 | cut -d ] -f 1)
-      s=$(echo "scale=10; $x" | bc)
-	    a=$(echo "scale=10; $Ne * $s" | bc)
-      if [[ $(echo "$a < -1" | bc) == 1 ]]
-	    then
-	      b=${a%.*}
-	      Ns=$(($b * -2))
-	      if [[ $Ns -lt 30 ]]
-	      then
-  	      momentspp params=opt.bpp F=$f O=70 > /dev/null
-  	    elif [[ $Ns -lt 70 ]]
-  	    then 
-  	      momentspp params=opt.bpp F=$f O=150 > /dev/null
-  	    elif [[ $Ns -lt 150 ]]
-  	    then    
-  	      momentspp params=opt.bpp F=$f O=300 > /dev/null
-  	    else
-  	      momentspp params=opt.bpp F=$f O=400 > /dev/null
-  	    fi
-      else
-	      momentspp params=opt.bpp F=$f O=10 > /dev/null
-	    fi
-    done
-    cd ..
-  done
-  cd ..
-  i=$(($i + 1))
-done
-
-# get pi0 over time
-cd demo
-for f in *yaml
-do 
-  momentspp params=opt.bpp F=$f O=2
-done
+N=150000 # largest N in prescribed (scaled down) demography
+x=$(sed '23q;d' $f | cut -d : -f 2 | cut -d [ -f 2 | cut -d ] -f 1)
+s=$(echo "scale=10; $x" | bc)
+a=$(echo "scale=10; $N * $s" | bc)
+if [[ $(echo "$a < -1" | bc) == 1 ]]
+then
+  b=${a%.*}
+  Ns=$(($b * -2))
+  if [[ $Ns -lt 20 ]]
+  then
+    momentspp param=opt.bpp F=$f O=60 > /dev/null
+  elif [[ $Ns -lt 70 ]]
+  then
+    momentspp param=opt.bpp F=$f O=150 > /dev/null
+  elif [[ $Ns -lt 150 ]]
+  then
+    momentspp param=opt.bpp F=$f O=300 > /dev/null
+  else
+    momentspp param=opt.bpp F=$f O=400 > /dev/null
+  fi
+else
+  momentspp param=opt.bpp F=$f O=10 > /dev/null
+fi
 ```
 
 Collects lookup table with Hr values on the parameter grid
 
-```{r, lookup, include=F, eval=T, results=F, message=F, warning=F}
+```{r, lookup, include=T, eval=F, results=F, message=F, warning=F}
 
-# setwd("ne_bar")
 params <- fread("params.csv")
 n_models <- nrow(params)
 
 lookup_r <- unique(params$r)
 lookup_s <- unique(params$s)
 t <- max(as.numeric(strsplit(as.character(unique(params$Ts)), ";")[[1]]))
-sampling_times <- seq(from=t, to=0, by=-500)
+sampling_times <- seq(from=0, to=0, by=-500) # no temporal sampling
 
-# Het stats over time (include steady-state and present-time)
 hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
 hls <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
 
@@ -263,26 +237,21 @@ for(i in 1:length(lookup_r)) {
   print(Sys.time())
   for(j in 1:length(lookup_s)) {
     fnames <- list.files(paste("r_", lookup_r[i], "/s_", lookup_s[j], sep=""),
-                         pattern="*_e_*.*_time.txt", full.names=TRUE)
-                         #pattern="*_expectations.txt", full.names=TRUE)
+                         pattern="*_expectations.txt", full.names=TRUE)
     
     idx <- 0  
-    hets <- NULL
     for(l in 1:length(fnames)) {
       moms <- fread(fnames[l], header=F)
       str_sides <- strsplit(fnames[l], "_O_")[[1]]
       idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
       order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])
-      hets <- rbind.data.frame(hets, moms)
+      
+      left <- filter(moms, V1=="Hl_0_0")
+      right <- filter(moms, V1=="Hr_0_0")
+      
+      hls[idx,] <- c(t(dplyr::select(left, V3)), order)
+      hrs[idx,] <- c(t(dplyr::select(right, V3)), order)
     }  
-    left <- filter(hets, V1=="Hl_0_0")
-    right <- filter(hets, V1=="Hr_0_0")
-    # multiple epochs may overlap their output in their last/first time-point
-    left <- left[!duplicated(left$V4)]
-    right <- right[!duplicated(right$V4)]
-    
-    hls[idx,] <- c(t(dplyr::select(left, V3)), order)
-    hrs[idx,] <- c(t(dplyr::select(right, V3)), order)
   }
 }
 
@@ -297,39 +266,62 @@ lookup_tbl$Hl <- as.numeric(lookup_tbl_hl$Hl)
 lookup_tbl$Generation <- as.numeric(lookup_tbl$Generation)
 
 # get pi0 from demography
-demo_models <- crossing(unique(params$Ns), unique(params$Ts))
+#demo_models <- crossing(unique(params$Ns), unique(params$Ts))
+demo_models <- cbind.data.frame(unique(params$Ns), pi0)
+#demo_models$model <- 1:nrow(demo_models)
 names(demo_models) <- c("Ns", "Ts")
 num_models <- nrow(demo_models)
 pi0 <- as.data.frame(matrix(nrow=num_models, ncol=length(sampling_times)))
 names(pi0) <- as.character(sampling_times)
 
-fnames <- list.files("demo", pattern="*_e_*.*_time.txt", full.names=TRUE)
-hets <- NULL
+#fnames <- list.files("demo", pattern="*_e_*.*_time.txt", full.names=TRUE) if time_steps > 0
+fnames <- list.files("demo", pattern="*_expectations.txt", full.names=TRUE)
 for(l in 1:length(fnames)) {
   moms <- fread(fnames[l])
   str_sides <- strsplit(fnames[l], "_O_")[[1]]
   order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])
-  hets <- rbind.data.frame(hets, moms)
+  idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
+  right <- filter(moms, V1=="Hr_0_0")
+  pi0[idx, 1] <- t(dplyr::select(filter(right, V1=="Hr_0_0"), V3))
 }
 
-right <- filter(hets, V1=="Hr_0_0")
-right <- right[!duplicated(right$V4)]
-pi0[1,] <- t(dplyr::select(filter(right, V1=="Hr_0_0"), V3))
 
 demo_pi0 <- cbind.data.frame(demo_models, pi0)
 m_pi0 <- pivot_longer(demo_pi0, 
                       cols=as.character(sampling_times),
                       names_to="Generation", values_to="pi0")
 m_pi0$Generation <- as.numeric(m_pi0$Generation)
-m_pi0 <- dplyr::select(m_pi0, -c(Ns, Ts))
+m_pi0 <- dplyr::select(m_pi0, -c(Ts))
 
-lookup_tbl <- left_join(lookup_tbl, m_pi0, by=c("Generation"))
+lookup_tbl <- left_join(lookup_tbl, m_pi0, by=c("Ns", "Generation"))
 lookup_tbl$B <- lookup_tbl$Hr / lookup_tbl$pi0
-lookup_tbl$piN_pi0 <- lookup_tbl$Hl / lookup_tbl$pi0
-lookup_tbl$piN_piS <- lookup_tbl$Hl / lookup_tbl$Hr
 
 # when in ne_bar_ss, equivalent generation in temporal model
-lookup_tbl$Generation <- rep(sampling_times, nrow(lookup_tbl) / length(sampling_times)) 
+#lookup_tbl$Generation <- rep(sampling_times, nrow(lookup_tbl) / length(sampling_times)) 
 
 fwrite(lookup_tbl, "lookup_tbl.csv.gz", compress="gzip") 
+```
+
+
+```{r, plots, eval=F}
+
+tbl <- lookup_tbl
+tbl$exp_fold <- as.factor(round(as.numeric(unlist(lapply(strsplit(tbl$Ns, ";"),
+                                   function(y) return(y[1])))) / 15000, 0))
+
+p <- ggplot(data=tbl, aes(y=B^1000, x=r/10, color=exp_fold)) + 
+  geom_point() + geom_line() + theme_bw() +
+  facet_wrap(~s/10) + scale_x_log10(breaks=unique(tbl$r/10)) +
+  labs(title=NULL,
+           x="r", y="B", color="Expansion Factor") +
+  theme(strip.text.y=element_text(size=16),      
+        strip.text.x=element_text(size=16),       
+        axis.title=element_text(size=16), 
+        axis.text=element_text(size=12), 
+        axis.text.x=element_text(size=12),
+        legend.text=element_text(size=16),
+        legend.title=element_text(size=16),
+        legend.position="bottom")
+
+save_plot("test_expansion.pdf", p, base_height=8, base_width=16)
 ```
