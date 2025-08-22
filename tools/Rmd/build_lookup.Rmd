@@ -19,7 +19,7 @@ library(bigsnpr) # for seq_log
 library(data.table)
 library(cowplot)
 
-knitr::opts_knit$set(root.dir="~/Data/bgs_maize/test_expansion")
+knitr::opts_knit$set(root.dir="~/Data/mpp_data/mitosis/equilibrium/10_gens/")
 ```
 
 # Creating folders and files
@@ -27,25 +27,22 @@ knitr::opts_knit$set(root.dir="~/Data/bgs_maize/test_expansion")
 Builds a parameter grid that allows for fast assembly of whole chromosomes
 
 ```{r, params, include=T, eval=T, results=F, message=F, warning=F}
-# N's and T's specified from present to past, ommiting last epoch requested by Paulo
-# scaled down 10x to handle Ne*s parameters
 
-Ns <- round(seq_log(1.5e+4, 1e+7, 11), digits=0)
-Ts <- paste(0, 15, 40, 400, 1000, sep=";")
+#Ns <- paste(c(1e+3, 5e+3, 1e+4), sep=";")
+#Ts <- paste(0, sep=";")
 
-# scaling u by 10x (Paulo suggested 3.3e-8) due to high order of 1-2p
-# this effectively "compensates" the scaling of Ns and Ts above, but will still need to be handled by
-# bgshr since the scaling argument there will operate on u, r and s simultaneously
-uL <- 1e-6
-uR <- 1e-6
+Ns <- paste(rep(1e+4, 100), collapse=";")
+Ts <- paste(rep(c(1e+1, 1e+4), 50), collapse=";")
 
-# r and s specified as they would normally be for momentspp (ie, not scaling to compensate demo)
-r <- c(1e-8, 1e-6, 1e-4, 1e-2)
-s <- c(-1e-6, -1e-5)
+uL <- 1e-8
+uR <- 1e-8
+
+r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
+s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
 
 params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
 
-params$Ns <- paste(params$Ns, 1.5e+4, 1.5e+5, 1.5e+3, 1.5e+4, sep=";")
+#params$Ns <- paste(params$Ns, 1.5e+4, 1.5e+5, 1.5e+3, 1.5e+4, sep=";")
 n_models <- nrow(params)
 
 fwrite(as.data.frame(r), "r.csv", col.names=F)
