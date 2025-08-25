@@ -110,6 +110,7 @@ int main(int argc, char *argv[]) {
      * even though inside Model class we often choose to alias r and mu across epochs and pops.
      */
 
+    // NOTE this current implementation generates a problem if the user wants other 1-gen epochs for some reason
     if((start - end) == 1) // Admixture is modeled as the only operator in an epoch of 1 generation
     {
       /*if(!demes.getPulse(i).isZero(0))

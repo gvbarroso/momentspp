@@ -19,7 +19,7 @@ library(bigsnpr) # for seq_log
 library(data.table)
 library(cowplot)
 
-knitr::opts_knit$set(root.dir="~/Data/mpp_data/mitosis/equilibrium/10_gens/")
+knitr::opts_knit$set(root.dir="~/Data/mpp_data/mitosis/10k_gens/")
 ```
 
 # Creating folders and files
@@ -30,15 +30,28 @@ Builds a parameter grid that allows for fast assembly of whole chromosomes
 
 #Ns <- paste(c(1e+3, 5e+3, 1e+4), sep=";")
 #Ts <- paste(0, sep=";")
+gens_sex <- 10
+gens_nosex <- 1e+4
+gens_sum <- gens_nosex + gens_sex
+num_cycles <- 50
 
-Ns <- paste(rep(1e+4, 100), collapse=";")
-Ts <- paste(rep(c(1e+1, 1e+4), 50), collapse=";")
+ends_nosex <- seq(from=gens_sum*num_cycles, to=0, by=-gens_sum)
+starts_sex <- seq(from=gens_sum*num_cycles, to=gens_sex, by=-gens_sum)
+ends_sex <- starts_sex - gens_sex
+starts_nosex <- ends_sex
 
-uL <- 1e-8
-uR <- 1e-8
+sexy_times <- sort(unique(c(starts_nosex,
+                            ends_nosex, 
+                            starts_sex, 
+                            ends_sex)), decreasing=F)
+Ts <- paste(sexy_times, collapse=";")
+Ns <- paste(rep(2e+4, length(sexy_times)), collapse=";")
+
+uL <- 2.5e-8
+uR <- 2.5e-8
 
 r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
-s <- round(-c(0, seq_log(1e-6, 1e-3, 3*11+1)), digits=12)
+s <- round(-c(0, seq_log(1e-6, 1e-2, 4*11+1)), digits=12)
 
 params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
 
@@ -120,10 +133,18 @@ for(i in 1:n_models) {
   cat("]\n")
   cat("  - name: recombination\n")
   cat("    epochs:\n")
-  cat("      - end_time: 0\n")
-  cat("        rates: [")
-  cat(r)
-  cat("]\n")
+  for(j in length(Ts):1) {
+    cat("      - end_time: ")
+    cat(format(Ts[j], scientific=F))
+    cat("\n")
+    cat("        rates: [")
+    if(j %% 2 == 0) {
+      cat(r)
+    } else {
+      cat(0)
+    }
+    cat("]\n")
+  }
   cat("  - name: selection\n")
   cat("    start_time: .inf\n")
   cat("    epochs:\n")
