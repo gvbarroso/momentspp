@@ -19,7 +19,7 @@ library(bigsnpr) # for seq_log
 library(data.table)
 library(cowplot)
 
-knitr::opts_knit$set(root.dir="~/Data/mpp_data/mitosis/10k_gens/")
+knitr::opts_knit$set(root.dir="~/Data/mpp_data/mitosis/std_sex/")
 ```
 
 # Creating folders and files
@@ -45,13 +45,13 @@ sexy_times <- sort(unique(c(starts_nosex,
                             starts_sex, 
                             ends_sex)), decreasing=F)
 Ts <- paste(sexy_times, collapse=";")
-Ns <- paste(rep(2e+4, length(sexy_times)), collapse=";")
+Ns <- paste(rep(1e+4, length(sexy_times)), collapse=";")
 
-uL <- 2.5e-8
-uR <- 2.5e-8
+uL <- 1.25e-8
+uR <- 1.25e-8
 
-r <- round(c(0, seq_log(1e-8, 1e-1, 71)), digits=12)
-s <- round(-c(0, seq_log(1e-6, 1e-2, 4*11+1)), digits=12)
+r <- round(c(0, seq_log(1e-8, 0.5, 71)), digits=12)
+s <- round(-c(0, seq_log(1e-6, 5e-3, 40)), digits=12)
 
 params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
 
@@ -133,7 +133,7 @@ for(i in 1:n_models) {
   cat("]\n")
   cat("  - name: recombination\n")
   cat("    epochs:\n")
-  for(j in length(Ts):1) {
+  for(j in length(Ts):1) { # alternating asexual and sexual reproduction
     cat("      - end_time: ")
     cat(format(Ts[j], scientific=F))
     cat("\n")
@@ -141,7 +141,7 @@ for(i in 1:n_models) {
     if(j %% 2 == 0) {
       cat(r)
     } else {
-      cat(0)
+      cat(r) 
     }
     cat("]\n")
   }
@@ -284,8 +284,8 @@ lookup_tbl$Hl <- as.numeric(lookup_tbl_hl$Hl)
 lookup_tbl$Generation <- as.numeric(lookup_tbl$Generation)
 
 # get pi0 from demography
-#demo_models <- crossing(unique(params$Ns), unique(params$Ts))
-demo_models <- cbind.data.frame(unique(params$Ns), pi0)
+demo_models <- crossing(unique(params$Ns), unique(params$Ts))
+#demo_models <- cbind.data.frame(unique(params$Ns), pi0)
 #demo_models$model <- 1:nrow(demo_models)
 names(demo_models) <- c("Ns", "Ts")
 num_models <- nrow(demo_models)
@@ -299,25 +299,25 @@ for(l in 1:length(fnames)) {
   str_sides <- strsplit(fnames[l], "_O_")[[1]]
   order <- as.numeric(strsplit(str_sides[2], "_e")[[1]][1])
   idx <- as.numeric(strsplit(str_sides[1], "model_")[[1]][2])
+  idx <- 1 # hack
   right <- filter(moms, V1=="Hr_0_0")
   pi0[idx, 1] <- t(dplyr::select(filter(right, V1=="Hr_0_0"), V3))
 }
-
 
 demo_pi0 <- cbind.data.frame(demo_models, pi0)
 m_pi0 <- pivot_longer(demo_pi0, 
                       cols=as.character(sampling_times),
                       names_to="Generation", values_to="pi0")
 m_pi0$Generation <- as.numeric(m_pi0$Generation)
-m_pi0 <- dplyr::select(m_pi0, -c(Ts))
+#m_pi0 <- dplyr::select(m_pi0, -c(Ts))
 
-lookup_tbl <- left_join(lookup_tbl, m_pi0, by=c("Ns", "Generation"))
+lookup_tbl <- left_join(lookup_tbl, m_pi0, by=c("Ns", "Ts", "Generation"))
 lookup_tbl$B <- lookup_tbl$Hr / lookup_tbl$pi0
 
 # when in ne_bar_ss, equivalent generation in temporal model
 #lookup_tbl$Generation <- rep(sampling_times, nrow(lookup_tbl) / length(sampling_times)) 
 
-fwrite(lookup_tbl, "lookup_tbl.csv.gz", compress="gzip") 
+fwrite(lookup_tbl, "lookup_tbl_50x.csv.gz", compress="gzip") 
 ```
 
 
