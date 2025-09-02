@@ -185,7 +185,7 @@ void Model::linkMoments_()
     {
       std::vector<size_t> factorIds = (*it)->getFactorIndices();
 
-      for(size_t j = 0; j < factorIds.size(); ++j)
+      for(size_t j = 0; j < factorIds.size(); ++j) // (1-2p) factor IDs are independent from Moment's type / prefix
       {
         size_t prevFactorPop = epochs_[i - 1]->getSslib().getNumPops(); // inits to out-of-bounds
         size_t focalFactorPop = factorIds[j];

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 14/Mar/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 02/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
     {
       epochs.back()->printRecursions(std::cout);
       epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) +"_transitions.csv");
+      epochs.back()->printConditionNumber();
     }
   } // ends loop over epochs
 

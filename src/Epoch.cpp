@@ -47,7 +47,8 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
 
 void Epoch::transferStatistics(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y) // y comes from previous Epoch
 {
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> tmp(ssl_.getBasis().size()); // y and tmp have potentially different sizes
+  // NOTE y and tmp have potentially different sizes
+  Eigen::Matrix<long double, Eigen::Dynamic, 1> tmp(ssl_.getBasis().size()); // inits to size of *this Epoch
   tmp.setZero();
 
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
