@@ -239,7 +239,7 @@ n_models <- nrow(params)
 lookup_r <- unique(params$r)
 lookup_s <- unique(params$s)
 t <- max(as.numeric(strsplit(as.character(unique(params$Ts)), ";")[[1]]))
-sampling_times <- seq(from=0, to=0, by=-500) # no temporal sampling
+sampling_times <- seq(from=t, to=0, by=-500) # no temporal sampling
 
 hrs <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
 hls <- as.data.frame(matrix(nrow=n_models, ncol=length(sampling_times)))
