@@ -166,7 +166,6 @@ void Epoch::computeEigenSteadyState()
   testSteadyState();
   init_();
   Eigen::EigenSolver<Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>> es(transitionMatrix_);
-  // NOTE Eigen::GeneralizedEigenSolver may help with numerical instability in some cases?
 
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)

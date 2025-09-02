@@ -28,7 +28,7 @@ class Moment
 {
 
 protected:
-  std::string name_; // e.g. "pi2_1100_(1-2p0)^2", name is unique to *this Moment
+  std::string name_; // e.g. "pi2_1100_(1-2p0)^2"; within each Epoch, name is unique to *this Moment
   std::string prefix_; // e.g. "pi2"
   std::vector<size_t> popIndices_; // population indices associated with main statistic
   std::vector<size_t> factorIndices_; // population indices associated with each (1-2p) factor

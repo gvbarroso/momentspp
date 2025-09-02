@@ -130,7 +130,7 @@ void SumStatsLibrary::readStatsFromFile(const std::string& fileName)
 
   while(std::getline(boostStream, line))
   {
-    // assumes "mom = val" are space-separated
+    // NOTE assumes "mom = val" are space-separated
     boost::split(splitLine, line, [](char c) { return c == ' '; });
 
     std::string name = splitLine[0];

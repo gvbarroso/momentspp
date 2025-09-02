@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "*                  moments++  version 0.1                      *" << std::endl;
+  std::cout << "*                    moments++  version 0.1                      *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*            Two-site recursions                                 *" << std::endl;
@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
       epochs.back()->printRecursions(std::cout);
       epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) +"_transitions.csv");
     }
-  }
+  } // ends loop over epochs
 
   if(options.verbose())
   {
