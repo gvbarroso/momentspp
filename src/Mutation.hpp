@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 06/06/2024
+ * Last modified: 03/09/2025
  *
  */
 
@@ -15,10 +15,10 @@ class Mutation: public AbstractOperator
 {
 
 private:
-  long double leftFactor_; // ratio uL / uR
+  mpfr::mpreal leftFactor_; // ratio uL / uR
 
 public:
-  Mutation(long double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
+  Mutation(mpfr::mpreal leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   leftFactor_(leftFactor)
   {
@@ -27,7 +27,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Mutation(long double leftFactor, const std::vector<long double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Mutation(mpfr::mpreal leftFactor, const std::vector<mpfr::mpreal>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   leftFactor_(leftFactor)
   {
@@ -44,7 +44,7 @@ public:
     return new Mutation(*this);
   }
 
-  long double getLeftFactor()
+  mpfr::mpreal getLeftFactor()
   {
     return leftFactor_;
   }

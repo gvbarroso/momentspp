@@ -17,7 +17,7 @@ class Admixture: public AbstractOperator
 {
 
 private:
-  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleAdmixMat_; // 2 x 2
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> littleAdmixMat_; // 2 x 2
 
 public:
   Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib):
@@ -29,7 +29,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Admixture(const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& admixMat, const SumStatsLibrary& sslib):
+  Admixture(const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>& admixMat, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   littleAdmixMat_(admixMat)
   {
@@ -61,7 +61,7 @@ public:
     return new Admixture(*this);
   }
 
-  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getLittleAdmixMat()
+  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>& getLittleAdmixMat()
   {
     return littleAdmixMat_;
   }

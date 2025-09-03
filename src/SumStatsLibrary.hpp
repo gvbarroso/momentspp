@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 30/05/2024
+ * Last modified: 03/09/2025
  */
 
 
@@ -27,6 +27,7 @@
 #include <boost/iostreams/filter/zlib.hpp>
 
 #include <eigen3/Eigen/Core>
+#include <unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
 
 #include <Bpp/Text/TextTools.h>
 
@@ -150,7 +151,7 @@ public:
 
   void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
 
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> fetchYvec();
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> fetchYvec();
 
   void printMoments(std::ostream& stream);
 

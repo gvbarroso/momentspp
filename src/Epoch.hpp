@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 06/06/2024
+ * Last modified: 03/09/2024
  *
  */
 
@@ -21,6 +21,7 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
 #include <eigen3/unsupported/Eigen/MatrixFunctions>
+#include <unsupported/Eigen/MPRealSupport>
 
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
@@ -45,8 +46,8 @@ private:
   std::vector<std::shared_ptr<Population>> pops_;
   std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> transitionMatrix_; // all sparse operators combined into a dense matrix
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> steadYstate_; // based on the parameters of *this epoch
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> transitionMatrix_; // all sparse operators combined into a dense matrix
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> steadYstate_; // based on the parameters of *this epoch
 
 public:
   Epoch():
@@ -124,12 +125,12 @@ public:
     return startGen_ - endGen_;
   }
 
-  const Eigen::Matrix<long double, Eigen::Dynamic, 1>& getSteadyState()
+  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& getSteadyState()
   {
     return steadYstate_;
   }
 
-  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getTransitionMatrix()
+  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>& getTransitionMatrix()
   {
     return transitionMatrix_;
   }
@@ -213,15 +214,15 @@ public:
 
   std::vector<size_t> fetchSelectedPopIds(); // for *this epoch
 
-  void computeExpectedSumStats(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
+  void computeExpectedSumStats(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y);
 
-  void transferStatistics(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
+  void transferStatistics(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y);
 
-  void updateMoments(const Eigen::Matrix<long double, Eigen::Dynamic, 1>& y);
+  void updateMoments(const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y);
 
   void printMoments(std::ostream& stream);
 
-  void printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, const std::string& name, size_t interval);
+  void printHetMomentsIntermediate(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y, const std::string& name, size_t interval);
 
   void printRecursions(std::ostream& stream);
 
@@ -241,7 +242,7 @@ public:
 
   double fetchConditionNumber()
   {
-    Eigen::JacobiSVD<Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>> svd(transitionMatrix_);
+    Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(transitionMatrix_);
     return svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
   }
 

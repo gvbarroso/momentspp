@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/04/2025
+ * Last modified: 03/09/2025
  *
  */
 
@@ -23,6 +23,7 @@
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
+#include <unsupported/Eigen/MPRealSupport>
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 #include <Bpp/Numeric/Constraints.h>
@@ -41,7 +42,7 @@ private:
   std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own set of params and operators
   std::shared_ptr<Data> data_;
 
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> expected_;
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> expected_;
   double compLogLikelihood_;
 
 public:

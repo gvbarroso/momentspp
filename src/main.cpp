@@ -1,12 +1,15 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 24/03/2025
+ * Last modified: 03/09/2025
  * Source code for moments++
  *
  */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//#include "mpreal.h"
+#include <unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
 
 #include "SumStatsLibrary.hpp"
 #include "Mutation.hpp"
@@ -36,7 +39,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 02/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 03/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -60,6 +63,10 @@ int main(int argc, char *argv[]) {
     std::cout << "\nIf you have any doubts, please email gvbarroso@gmail.com " << std::endl;
     return(0);
   }
+
+  //using mpfr::mpreal;
+  const int digits = 50;
+  mpfr::mpreal::set_default_prec(mpfr::digits2bits(digits)); // NOTE for arbitrary-precision arithmetic
 
   bpp::BppApplication momentspp(argc, argv, "moments++");
   momentspp.startTimer();
@@ -131,7 +138,7 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 0.5 + 1e-6, true, true);
         std::shared_ptr<bpp::IntervalConstraint> icSel = std::make_shared<bpp::IntervalConstraint>(-1e-2, 0., true, true);
 
-        std::vector<long double> drift(0);
+        std::vector<mpfr::mpreal> drift(0);
         drift.reserve(demes.getPopsVec()[i].size());
 
         // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
