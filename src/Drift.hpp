@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 03/09/2025
+ * Last modified: 04/09/2025
  *
  */
 
@@ -24,7 +24,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Drift(const std::vector<mpfr::mpreal>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Drift(const std::vector<long double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices())
   {
     // for each population modeled in the epoch *this operator belongs to, add Ne parameter

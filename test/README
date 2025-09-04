@@ -1,0 +1,12 @@
+Output from running moments++ in VERBOSE mode.
+Four different models.
+In each, output individual transision matrices:
+
+model_1_e_0_op_0.csv --> selection
+model_1_e_0_op_1.csv --> recombination
+model_1_e_0_op_2.csv --> mutation
+model_1_e_0_op_3.csv --> drift
+
+Full transition matrix M:
+
+model_1_e_0_O_25_transitions.csv --> M = D * U * R * S

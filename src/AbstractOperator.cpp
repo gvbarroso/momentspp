@@ -76,13 +76,13 @@ void AbstractOperator::assembleTransitionMatrix_()
 
 void AbstractOperator::setIdentity_(size_t numStats)
 {
-  Eigen::SparseMatrix<long double> id(numStats, numStats);
+  Eigen::SparseMatrix<mpfr::mpreal> id(numStats, numStats);
 
-  std::vector<Eigen::Triplet<long double>> md(0);
+  std::vector<Eigen::Triplet<mpfr::mpreal>> md(0);
   md.reserve(numStats);
 
   for(size_t i = 0; i < numStats; ++i)
-    md.emplace_back(Eigen::Triplet<long double>(i, i, 1.));
+    md.emplace_back(Eigen::Triplet<mpfr::mpreal>(i, i, 1.));
 
   id.setFromTriplets(std::begin(md), std::end(md));
   id.makeCompressed();

@@ -30,13 +30,23 @@ IF(VERBOSE)
   ADD_DEFINITIONS(-DVERBOSE)
 ENDIF()
 
-#SET(THREADS_PREFER_PTHREAD_FLAG ON)
-#FIND_PACKAGE(Threads REQUIRED)
-
 INCLUDE(GNUInstallDirs)
 FIND_PACKAGE(bpp-core3 1.0.0 REQUIRED)
 
 FIND_PACKAGE(GSL REQUIRED)  
+
+INCLUDE(FetchContent)
+
+FetchContent_Declare(
+  mpreal
+  GIT_REPOSITORY https://github.com/advanpix/mpreal.git
+  GIT_TAG        master
+)
+
+FetchContent_MakeAvailable(mpreal)
+
+find_library(MPFR_LIB mpfr REQUIRED)
+find_library(GMP_LIB gmp REQUIRED)
 
 SET(Boost_USE_MULTITHREADED OFF)
 FIND_PACKAGE(Boost 1.67.0 REQUIRED COMPONENTS "iostreams")
