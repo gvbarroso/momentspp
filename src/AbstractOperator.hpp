@@ -1,15 +1,13 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 03/09/2025
+ * Last modified: 04/09/2025
  *
  */
 
 
 #ifndef _OPERATOR_H_
 #define _OPERATOR_H_
-
-//#include "mpreal.h" // for arbitrary-precision arithmetic
 
 #include <ios>
 #include <vector>
