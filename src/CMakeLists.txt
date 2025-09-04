@@ -31,12 +31,15 @@ ADD_EXECUTABLE (twoLocusSim ${twoLocusSim_CPP})
 
 SET(momentspp-targets momentspp twoLocusSim)
 
+target_include_directories(momentspp PRIVATE ${mpreal_SOURCE_DIR})
+
 FOREACH (target ${momentspp-targets})
 	TARGET_LINK_LIBRARIES(${target} ${BPP_LIBS_SHARED})
 	TARGET_LINK_LIBRARIES(${target} ${YAML_CPP_LIBRARIES})
 	TARGET_LINK_LIBRARIES(${target} GSL::gsl GSL::gslcblas)
 	TARGET_LINK_LIBRARIES(${target} Boost::iostreams)
-        #TARGET_LINK_LIBRARIES (${target} Threads::Threads)
+        #TARGET_LINK_LIBRARIES(${target} MPFR::MPFR GMP::GMP)
+        TARGET_LINK_LIBRARIES (${target} ${MPREAL_LIB})
 ENDFOREACH (target)
 
 INSTALL(TARGETS ${momentspp-targets} DESTINATION ${CMAKE_INSTALL_BINDIR})

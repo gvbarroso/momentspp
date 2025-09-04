@@ -83,9 +83,9 @@ void SumStatsLibrary::dropFactorIds(std::vector<size_t>& factorIds, size_t focal
   }
 }
 
-Eigen::Matrix<long double, Eigen::Dynamic, 1> SumStatsLibrary::fetchYvec()
+Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> SumStatsLibrary::fetchYvec()
 {
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> y(moments_.size());
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> y(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
     y(i) = moments_[i]->getValue();

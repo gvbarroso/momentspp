@@ -25,7 +25,7 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/unsupported/Eigen/MatrixFunctions>
-#include <unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
+#include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
 
 #include <Bpp/Numeric/Function/Functions.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>

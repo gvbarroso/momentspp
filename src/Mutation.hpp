@@ -18,7 +18,7 @@ private:
   mpfr::mpreal leftFactor_; // ratio uL / uR
 
 public:
-  Mutation(mpfr::mpreal leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
+  Mutation(long double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   leftFactor_(leftFactor)
   {
@@ -27,7 +27,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Mutation(mpfr::mpreal leftFactor, const std::vector<mpfr::mpreal>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  Mutation(long double leftFactor, const std::vector<long double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()),
   leftFactor_(leftFactor)
   {
