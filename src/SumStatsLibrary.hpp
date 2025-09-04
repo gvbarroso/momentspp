@@ -27,7 +27,7 @@
 #include <boost/iostreams/filter/zlib.hpp>
 
 #include <eigen3/Eigen/Core>
-#include <unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
+#include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
 
 #include <Bpp/Text/TextTools.h>
 
