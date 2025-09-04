@@ -28,8 +28,8 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 void Epoch::computeExpectedSumStats(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y)
 {
   // heavy linear algebra, uses Eigen multi-threading
-  double dur = static_cast<double>(duration()); // need conversion for Eigen compatilibity with mpfr::mpreal 
-  y = transitionMatrix_.pow(dur) * y;
+  for(size_t i = 0; i < duration(); ++i)
+    y = transitionMatrix_ * y;  
 }
 
 std::vector<size_t> Epoch::fetchSelectedPopIds()
@@ -94,8 +94,10 @@ void Epoch::printHetMomentsIntermediate(Eigen::Matrix<mpfr::mpreal, Eigen::Dynam
         fout << std::setprecision(24) << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n";
     }
 
-    if(i < numTimeSteps - 1) // not to advance further than needed, important when there are > 2 Epochs
-      y = transitionMatrix_.pow(interval) * y;
+    if(i < numTimeSteps - 1) { // not to advance further than needed, important when there are > 2 Epochs
+      for(size_t k = 0; k < interval; ++k)
+        y = transitionMatrix_ * y;
+    }
   }
 
   fout.close();
@@ -216,8 +218,11 @@ void Epoch::computePseudoSteadyState() // for speed
     else
       y(i) = h * 1e-4;
   }
+  
+  for(size_t j = 0; j < 1000000; ++j)
+    y =  transitionMatrix_ * y;
 
-  steadYstate_ = transitionMatrix_.pow(1e+6) * y; // in practice 1e+6 gens. is good enough?
+  steadYstate_ = y;
   updateMoments(steadYstate_);
 }
 

@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 0.5 + 1e-6, true, true);
         std::shared_ptr<bpp::IntervalConstraint> icSel = std::make_shared<bpp::IntervalConstraint>(-1e-2, 0., true, true);
 
-        std::vector<mpfr::mpreal> drift(0);
+        std::vector<long double> drift(0);
         drift.reserve(demes.getPopsVec()[i].size());
 
         // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
