@@ -1,6 +1,6 @@
 Output from running moments++ in VERBOSE mode.
-
-Individual transision matrices:
+Four different models.
+In each, output individual transision matrices:
 
 model_1_e_0_op_0.csv --> selection
 model_1_e_0_op_1.csv --> recombination
