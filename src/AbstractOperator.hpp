@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 04/09/2025
+ * Last modified: 05/09/2025
  *
  */
 
@@ -18,6 +18,8 @@
 #include <memory>
 #include <algorithm>
 #include <numeric>
+
+#include <omp.h>
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>

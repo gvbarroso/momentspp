@@ -238,8 +238,10 @@ void Epoch::init_()
 {
   Eigen::SparseMatrix<long double> mat = operators_[0]->getTransitionMatrix();
 
-  for(size_t i = 1; i < operators_.size(); ++i)
+  for(size_t i = 1; i < operators_.size(); ++i) {
     mat = mat * operators_[i]->getTransitionMatrix();
+    mat.makeCompressed();
+  }
 
   transitionMatrix_ = mat; // converts from sparse to dense format
 }

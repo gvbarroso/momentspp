@@ -8,7 +8,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//#include "mpreal.h"
 #include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
 
 #include "SumStatsLibrary.hpp"
@@ -76,6 +75,7 @@ int main(int argc, char *argv[]) {
 
   std::cout << "\nmoments++ is using " << options.getNumThreads() << " threads.\n";
   Eigen::setNbThreads(options.getNumThreads());
+  omp_set_num_threads(options.getNumThreads());
 
   Demes demes(options.getDemesFilePath());
 
