@@ -38,7 +38,7 @@ FOREACH (target ${momentspp-targets})
 	TARGET_LINK_LIBRARIES(${target} ${YAML_CPP_LIBRARIES})
 	TARGET_LINK_LIBRARIES(${target} GSL::gsl GSL::gslcblas)
 	TARGET_LINK_LIBRARIES(${target} Boost::iostreams)
-        #TARGET_LINK_LIBRARIES(${target} MPFR::MPFR GMP::GMP)
+	TARGET_LINK_LIBRARIES(${target} ${MPFR_LIB} ${GMP_LIB})
         TARGET_LINK_LIBRARIES (${target} ${MPREAL_LIB})
 ENDFOREACH (target)
 

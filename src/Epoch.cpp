@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 18/06/2024
+ * Last modified: 04/09/2025
  *
  */
 
@@ -16,7 +16,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   {
     updateOperators_(params);
 
-    Eigen::SparseMatrix<long double> mat = operators_[0]->getTransitionMatrix(); // init
+    Eigen::SparseMatrix<mpfr::mpreal> mat = operators_[0]->getTransitionMatrix(); // init
 
     for(size_t i = 1; i < operators_.size(); ++i)
       mat = mat * operators_[i]->getTransitionMatrix();
@@ -25,10 +25,11 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
   }
 }
 
-void Epoch::computeExpectedSumStats(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y)
+void Epoch::computeExpectedSumStats(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y)
 {
   // heavy linear algebra, uses Eigen multi-threading
-  y = transitionMatrix_.pow(duration()) * y;
+  for(size_t i = 0; i < duration(); ++i)
+    y = transitionMatrix_ * y;  
 }
 
 std::vector<size_t> Epoch::fetchSelectedPopIds()
@@ -45,10 +46,10 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
   return ret;
 }
 
-void Epoch::transferStatistics(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y) // y comes from previous Epoch
+void Epoch::transferStatistics(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y) // y comes from previous Epoch
 {
   // NOTE y and tmp have potentially different sizes
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> tmp(ssl_.getBasis().size()); // inits to size of *this Epoch
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> tmp(ssl_.getBasis().size()); // inits to size of *this Epoch
   tmp.setZero();
 
   // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
@@ -58,12 +59,12 @@ void Epoch::transferStatistics(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y)
   y = tmp;
 }
 
-void Epoch::updateMoments(const Eigen::Matrix<long double, Eigen::Dynamic, 1>& y)
+void Epoch::updateMoments(const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y)
 {
   assert(y.size() == static_cast<int>(ssl_.getBasis().size()));
 
   for(int i = 0; i < y.size(); ++i)
-    ssl_.getBasis()[i]->setValue(y(i));
+    ssl_.getBasis()[i]->setValue(y(i).toDouble());
 }
 
 void Epoch::printMoments(std::ostream& stream)
@@ -75,7 +76,7 @@ void Epoch::printMoments(std::ostream& stream)
 }
 
 // prints expectations of Hl and Hr over time
-void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynamic, 1>& y, const std::string& modelName, size_t interval)
+void Epoch::printHetMomentsIntermediate(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y, const std::string& modelName, size_t interval)
 {
   transferStatistics(y); // since different Epochs may use different Order
 
@@ -93,8 +94,10 @@ void Epoch::printHetMomentsIntermediate(Eigen::Matrix<long double, Eigen::Dynami
         fout << std::setprecision(24) << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n";
     }
 
-    if(i < numTimeSteps - 1) // not to advance further than needed, important when there are > 2 Epochs
-      y = transitionMatrix_.pow(interval) * y;
+    if(i < numTimeSteps - 1) { // not to advance further than needed, important when there are > 2 Epochs
+      for(size_t k = 0; k < interval; ++k)
+        y = transitionMatrix_ * y;
+    }
   }
 
   fout.close();
@@ -166,7 +169,7 @@ void Epoch::computeEigenSteadyState()
 {
   testSteadyState();
   init_();
-  Eigen::EigenSolver<Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>> es(transitionMatrix_);
+  Eigen::EigenSolver<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> es(transitionMatrix_);
 
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
@@ -195,11 +198,11 @@ void Epoch::computePseudoSteadyState() // for speed
   testSteadyState();
   init_();
 
-  Eigen::Matrix<long double, Eigen::Dynamic, 1> y(transitionMatrix_.rows());
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> y(transitionMatrix_.rows());
 
   // a very rough guess for starting values to help w/ convergence
   size_t p = ssl_.getPopIndices()[0];
-  long double h = getParameterValue("u_" + bpp::TextTools::toString(p)) / getParameterValue("1/2N_" + bpp::TextTools::toString(p));
+  mpfr::mpreal h = getParameterValue("u_" + bpp::TextTools::toString(p)) / getParameterValue("1/2N_" + bpp::TextTools::toString(p));
 
   for(int i = 0; i < y.size(); ++i)
   {
@@ -215,8 +218,11 @@ void Epoch::computePseudoSteadyState() // for speed
     else
       y(i) = h * 1e-4;
   }
+  
+  for(size_t j = 0; j < 1000000; ++j)
+    y =  transitionMatrix_ * y;
 
-  steadYstate_ = transitionMatrix_.pow(1e+6) * y; // in practice 1e+6 gens. is good enough?
+  steadYstate_ = y;
   updateMoments(steadYstate_);
 }
 
@@ -236,7 +242,7 @@ void Epoch::testSteadyState()
 
 void Epoch::init_()
 {
-  Eigen::SparseMatrix<long double> mat = operators_[0]->getTransitionMatrix();
+  Eigen::SparseMatrix<mpfr::mpreal> mat = operators_[0]->getTransitionMatrix();
 
   for(size_t i = 1; i < operators_.size(); ++i) {
     mat = mat * operators_[i]->getTransitionMatrix();

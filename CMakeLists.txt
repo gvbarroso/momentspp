@@ -35,6 +35,9 @@ FIND_PACKAGE(bpp-core3 1.0.0 REQUIRED)
 
 FIND_PACKAGE(GSL REQUIRED)  
 
+find_library(MPFR_LIB mpfr REQUIRED)
+find_library(GMP_LIB gmp REQUIRED)
+
 INCLUDE(FetchContent)
 
 FetchContent_Declare(
@@ -44,9 +47,6 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(mpreal)
-
-find_library(MPFR_LIB mpfr REQUIRED)
-find_library(GMP_LIB gmp REQUIRED)
 
 SET(Boost_USE_MULTITHREADED OFF)
 FIND_PACKAGE(Boost 1.67.0 REQUIRED COMPONENTS "iostreams")

@@ -23,7 +23,7 @@
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
-#include <unsupported/Eigen/MPRealSupport>
+#include <eigen3/unsupported/Eigen/MPRealSupport>
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 #include <Bpp/Numeric/Constraints.h>
@@ -99,7 +99,7 @@ public:
     return epochs_;
   }
 
-  const Eigen::Matrix<long double, Eigen::Dynamic, 1>& getExpectedStats()
+  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& getExpectedStats()
   {
     return expected_;
   }

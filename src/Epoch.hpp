@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 03/09/2024
+ * Last modified: 04/09/2025
  *
  */
 
@@ -21,7 +21,7 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Eigenvalues>
 #include <eigen3/unsupported/Eigen/MatrixFunctions>
-#include <unsupported/Eigen/MPRealSupport>
+#include <eigen3/unsupported/Eigen/MPRealSupport>
 
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
@@ -243,7 +243,8 @@ public:
   double fetchConditionNumber()
   {
     Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(transitionMatrix_);
-    return svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
+
+    return svd.singularValues()(0).toDouble() / svd.singularValues()(svd.singularValues().size() - 1).toDouble();
   }
 
 private:
