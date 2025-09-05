@@ -1,5 +1,5 @@
-num_threads = 8
+num_threads = 15
 demes_file = $(F)
 factor_order = $(O)
-verbose = 1
+verbose = $(V)
 time_steps = 0 
