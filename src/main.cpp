@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
   }
 
   //using mpfr::mpreal;
-  const int digits = 45;
+  const int digits = 100;
   mpfr::mpreal::set_default_prec(mpfr::digits2bits(digits)); // NOTE for arbitrary-precision arithmetic
 
   bpp::BppApplication momentspp(argc, argv, "moments++");
