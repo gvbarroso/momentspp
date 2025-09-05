@@ -130,7 +130,7 @@ public:
     return steadYstate_;
   }
 
-  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>& getTransitionMatrix()
+  const Eigen::SparseMatrix<mpfr::mpreal>& getTransitionMatrix()
   {
     return transitionMatrix_;
   }

@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
     {
       epochs.back()->printRecursions(std::cout);
       epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) +"_transitions.csv");
-      epochs.back()->printConditionNumber();
+      //epochs.back()->printConditionNumber();
     }
   } // ends loop over epochs
 

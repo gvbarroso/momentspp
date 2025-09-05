@@ -187,6 +187,7 @@ void Epoch::computeEigenSteadyState()
   {
     double cond = fetchConditionNumber();
     std::cout << "\nCondition Number of transition matrix = " << cond << "\n";
+    std::cout << "\nLeading eigenvalue of full transition matrix = " << es.eigenvalues().real()(idx) << "\n";
     throw bpp::Exception("Epoch::Leading Eigenvalue > 1! Consider using a smaller order of 1-2p factors.\n");
   }
 
@@ -246,13 +247,14 @@ void Epoch::testSteadyState()
 
 void Epoch::init_()
 {
-  Eigen::SparseMatrix<mpfr::mpreal> mat = operators_[0]->getTransitionMatrix();
+  Eigen::SparseMatrix<mpfr::mpreal> mat = operators_[0]->getTransitionMatrix(); // "delta" matrix
 
   for(size_t i = 1; i < operators_.size(); ++i) {
     mat = mat + operators_[i]->getTransitionMatrix(); // NOTE summing rather than multiplying together
     mat.makeCompressed();
   }
 
+  mat = mat + operators_[0]->getIdentity(); // sums Identity to convert from "delta" to transition matrix
   transitionMatrix_ = mat;
 }
 

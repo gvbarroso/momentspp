@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 04/04/2023
- * Last modified: 30/05/2024
+ * Last modified: 05/09/2025
  *
  */
 
@@ -70,8 +70,9 @@ void AbstractOperator::assembleTransitionMatrix_()
     for(size_t i = 1; i < matrices_.size(); ++i)
       transition_ += matrices_[i];
   }
-
-  transition_ += identity_; // converts from "delta" to "transition" matrix
+  
+  // converts from "delta" to "transition" matrix
+  //transition_ += identity_; // NOTE: not used ATM because we are SUMMING matrices from each Operator in Epoch::init_()
 }
 
 void AbstractOperator::setIdentity_(size_t numStats)
