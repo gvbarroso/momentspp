@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 04/09/2025
+ * Last modified: 05/09/2025
  *
  */
 
@@ -27,7 +27,6 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
 void Epoch::computeExpectedSumStats(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y)
 {
-  // heavy linear algebra, uses Eigen multi-threading
   for(size_t i = 0; i < duration(); ++i)
     y = transitionMatrix_ * y;  
 }
@@ -146,16 +145,18 @@ void Epoch::printRecursions(std::ostream& stream)
 
 void Epoch::printTransitionMat(const std::string& fileName) const
 {
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic,  Eigen::Dynamic> denseTransMat = transitionMatrix_;
+
   std::ofstream matFile;
   matFile.open(fileName);
 
-  for(int i = 0; i < transitionMatrix_.rows(); ++i)
+  for(int i = 0; i < denseTransMat.rows(); ++i)
   {
-    for(int j = 0; j < transitionMatrix_.cols(); ++j)
+    for(int j = 0; j < denseTransMat.cols(); ++j)
     {
-      matFile << transitionMatrix_.coeffRef(i, j);
+      matFile << denseTransMat.coeffRef(i, j);
 
-      if(j < transitionMatrix_.cols() - 1)
+      if(j < denseTransMat.cols() - 1)
         matFile << ",";
     }
 
@@ -169,7 +170,10 @@ void Epoch::computeEigenSteadyState()
 {
   testSteadyState();
   init_();
-  Eigen::EigenSolver<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> es(transitionMatrix_);
+
+  // converting to dense format to perform eigen decomposition
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic,  Eigen::Dynamic> denseTransMat = transitionMatrix_;
+  Eigen::EigenSolver<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> es(denseTransMat);
 
   int idx = 0;
   for(int i = 0; i < es.eigenvalues().size(); ++i)
@@ -179,7 +183,7 @@ void Epoch::computeEigenSteadyState()
       idx = i;
   }
 
-  if(es.eigenvalues().real()(idx) > 1. + 1e-5)
+  if(es.eigenvalues().real()(idx) > 1. + 1e-5) // NOTE
   {
     double cond = fetchConditionNumber();
     std::cout << "\nCondition Number of transition matrix = " << cond << "\n";
@@ -193,7 +197,7 @@ void Epoch::computeEigenSteadyState()
   updateMoments(steadYstate_);
 }
 
-void Epoch::computePseudoSteadyState() // for speed
+/*void Epoch::computePseudoSteadyState() // for speed?
 {
   testSteadyState();
   init_();
@@ -224,7 +228,7 @@ void Epoch::computePseudoSteadyState() // for speed
 
   steadYstate_ = y;
   updateMoments(steadYstate_);
-}
+}*/
 
 void Epoch::testSteadyState()
 {
@@ -245,10 +249,10 @@ void Epoch::init_()
   Eigen::SparseMatrix<mpfr::mpreal> mat = operators_[0]->getTransitionMatrix();
 
   for(size_t i = 1; i < operators_.size(); ++i) {
-    mat = mat * operators_[i]->getTransitionMatrix();
+    mat = mat + operators_[i]->getTransitionMatrix(); // NOTE summing rather than multiplying together
     mat.makeCompressed();
   }
 
-  transitionMatrix_ = mat; // converts from sparse to dense format
+  transitionMatrix_ = mat;
 }
 

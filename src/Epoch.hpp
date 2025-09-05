@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 04/09/2025
+ * Last modified: 05/09/2025
  *
  */
 
@@ -46,7 +46,7 @@ private:
   std::vector<std::shared_ptr<Population>> pops_;
   std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> transitionMatrix_; // all sparse operators combined into a dense matrix
+  Eigen::SparseMatrix<mpfr::mpreal> transitionMatrix_; // all sparse operators combined into a dense matrix
   Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> steadYstate_; // based on the parameters of *this epoch
 
 public:
@@ -242,7 +242,8 @@ public:
 
   double fetchConditionNumber()
   {
-    Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(transitionMatrix_);
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic,  Eigen::Dynamic> denseTransMat = transitionMatrix_;
+    Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(denseTransMat);
 
     return svd.singularValues()(0).toDouble() / svd.singularValues()(svd.singularValues().size() - 1).toDouble();
   }

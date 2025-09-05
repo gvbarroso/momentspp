@@ -1,14 +1,14 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 03/09/2025
+ * Last modified: 05/09/2025
  * Source code for moments++
  *
  */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
+//#include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
 
 #include "SumStatsLibrary.hpp"
 #include "Mutation.hpp"
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 04/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 05/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -189,10 +189,10 @@ int main(int argc, char *argv[]) {
 
   if(options.verbose())
   {
-    epochs.front()->computePseudoSteadyState();
-    std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
-    epochs.front()->printMoments(pseudo);
-    pseudo.close();
+    //epochs.front()->computePseudoSteadyState();
+    //std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
+    //epochs.front()->printMoments(pseudo);
+    //pseudo.close();
 
     epochs.front()->computeEigenSteadyState();
     std::ofstream eigen(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");

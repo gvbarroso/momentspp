@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 03/09/2025
+ * Last modified: 05/09/2025
  *
  */
 
@@ -11,52 +11,69 @@
 
 void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
-  size_t numPops = getParameters().size();
-  size_t sizeOfBasis = sslib.getSizeOfBasis();
+  const size_t numPops = getParameters().size();
+  const size_t sizeOfBasis = sslib.getSizeOfBasis();
   matrices_.reserve(numPops);
 
-  for(size_t i = 0; i < numPops; ++i)
+  const auto& basis = sslib.getBasis();
+  const size_t basisSize = basis.size();
+
+  for (size_t i = 0; i < numPops; ++i)
   {
-    size_t id = popIndices_[i];
-    std::vector<Eigen::Triplet<mpfr::mpreal>> coeffs(0);
-    coeffs.reserve(sizeOfBasis);
+    const size_t id = popIndices_[i];
+    const std::string paramName = "r_" + bpp::TextTools::toString(id);
+    const mpfr::mpreal recombRate = getParameterValue(paramName);
 
-    for(auto it = std::begin(sslib.getBasis()); it != std::end(sslib.getBasis()); ++it)
+    // prepare thread-local triplet buffers
+    const int numThreads = omp_get_max_threads();
+    std::vector<std::vector<Eigen::Triplet<mpfr::mpreal>>> threadTriplets(numThreads);
+
+    #pragma omp parallel for
+    for (int row = 0; row < static_cast<int>(basisSize); ++row)
     {
-      int row = it - std::begin(sslib.getBasis());
+      const auto& moment = basis[row];
+      const std::string& prefix = moment->getPrefix();
+      const int tid = omp_get_thread_num();
+      auto& localTriplets = threadTriplets[tid];
 
-      if((*it)->getPrefix() == "DD")
+      if(prefix == "DD")
       {
-        int f = static_cast<int>((*it)->countInstances(id));
-        coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, row, -f));
+        int f = static_cast<int>(moment->countInstances(id));
+        localTriplets.emplace_back(row, row, -f);
       }
 
-      else if((*it)->getPrefix() == "Dr")
+      else if(prefix == "Dr" || prefix == "D")
       {
-        int f = (*it)->getPopIndices()[0] == id;
-        coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, row, -f));
+        int f = (moment->getPopIndices()[0] == id);
+        localTriplets.emplace_back(row, row, -f);
       }
 
-      else if((*it)->getPrefix() == "D")
+      else if(prefix != "I" && prefix != "Hl" && prefix != "Hr" && prefix != "pi2")
       {
-        int f = (*it)->getPopIndices()[0] == id;
-        coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, row, -f));
+        #pragma omp critical
+        {
+          throw bpp::Exception("Recombination::mis-specified Moment prefix: " + prefix);
+        }
       }
-
-      else if((*it)->getPrefix() != "I" && (*it)->getPrefix() != "Hl" && (*it)->getPrefix() != "Hr" && (*it)->getPrefix() != "pi2")
-        throw bpp::Exception("Recombination::mis-specified Moment prefix: " + (*it)->getPrefix());
     }
 
+    // merge thread-local triplets
+    std::vector<Eigen::Triplet<mpfr::mpreal>> coeffs;
+    for(auto& vec : threadTriplets)
+      coeffs.insert(coeffs.end(), vec.begin(), vec.end());
+
     Eigen::SparseMatrix<mpfr::mpreal> mat(sizeOfBasis, sizeOfBasis);
-    mat.setFromTriplets(std::begin(coeffs), std::end(coeffs));
+    mat.setFromTriplets(coeffs.begin(), coeffs.end());
     mat.makeCompressed();
-    mat *= getParameterValue("r_" + bpp::TextTools::toString(id));
-    matrices_.emplace_back(mat);
+    mat *= recombRate;
+
+    matrices_.emplace_back(std::move(mat));
   }
 
   setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
 }
+
 
 void Recombination::updateMatrices_()
 {
