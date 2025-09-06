@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 05/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 06/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
         if(options.verbose())
         {
           for(size_t j = 0; j < operators.size(); ++j)
-            operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_op_" + bpp::TextTools::toString(j) + ".csv");
+            operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_op_" + bpp::TextTools::toString(j) + ".csv");
         }
 
         // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
@@ -177,28 +177,26 @@ int main(int argc, char *argv[]) {
         throw bpp::Exception("Main::Non-Zero Admixture matrix assigned to multi-generation Epoch!");
     }
 
+    // time flows from left to right, with epoch[0] (epoch.front()) => most ancient epoch
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
 
     if(options.verbose())
     {
       epochs.back()->printRecursions(std::cout);
       epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) +"_transitions.csv");
-      //epochs.back()->printConditionNumber();
+      epochs.back()->printConditionNumber();
+
+      epochs.back()->computePseudoSteadyState();
+      std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
+      epochs.back()->printMoments(pseudo);
+      pseudo.close();
+
+      epochs.back()->computeEigenSteadyState();
+      std::ofstream eigen(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
+      epochs.back()->printMoments(eigen);
+      eigen.close();
     }
   } // ends loop over epochs
-
-  if(options.verbose())
-  {
-    epochs.front()->computePseudoSteadyState();
-    std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
-    epochs.front()->printMoments(pseudo);
-    pseudo.close();
-
-    epochs.front()->computeEigenSteadyState();
-    std::ofstream eigen(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
-    epochs.front()->printMoments(eigen);
-    eigen.close();
-  }
 
   if(options.getInitStatsFilePath() == "none")
     epochs.front()->computeEigenSteadyState(); // only need steady state in the deep-most epoch
