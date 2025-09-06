@@ -189,10 +189,10 @@ int main(int argc, char *argv[]) {
 
   if(options.verbose())
   {
-    //epochs.front()->computePseudoSteadyState();
-    //std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
-    //epochs.front()->printMoments(pseudo);
-    //pseudo.close();
+    epochs.front()->computePseudoSteadyState();
+    std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
+    epochs.front()->printMoments(pseudo);
+    pseudo.close();
 
     epochs.front()->computeEigenSteadyState();
     std::ofstream eigen(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");

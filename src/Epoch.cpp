@@ -198,7 +198,7 @@ void Epoch::computeEigenSteadyState()
   updateMoments(steadYstate_);
 }
 
-/*void Epoch::computePseudoSteadyState() // for speed?
+void Epoch::computePseudoSteadyState() // for speed?
 {
   testSteadyState();
   init_();
@@ -221,15 +221,15 @@ void Epoch::computeEigenSteadyState()
       y(i) = 1.;
 
     else
-      y(i) = h * 1e-4;
+      y(i) = h * h;
   }
   
   for(size_t j = 0; j < 1000000; ++j)
-    y =  transitionMatrix_ * y;
+    y = transitionMatrix_ * y;
 
   steadYstate_ = y;
   updateMoments(steadYstate_);
-}*/
+}
 
 void Epoch::testSteadyState()
 {
