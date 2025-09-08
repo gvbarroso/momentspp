@@ -187,12 +187,12 @@ int main(int argc, char *argv[]) {
       epochs.back()->printConditionNumber();
 
       epochs.back()->computePseudoSteadyState();
-      std::ofstream pseudo(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
+      std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
       epochs.back()->printMoments(pseudo);
       pseudo.close();
 
       epochs.back()->computeEigenSteadyState();
-      std::ofstream eigen(options.getLabel() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
+      std::ofstream eigen(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
       epochs.back()->printMoments(eigen);
       eigen.close();
     }
