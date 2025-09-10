@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 03/06/2024
+ * Last modified: 10/06/2024
  *
  */
 
@@ -83,12 +83,12 @@ void SumStatsLibrary::dropFactorIds(std::vector<size_t>& factorIds, size_t focal
   }
 }
 
-Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> SumStatsLibrary::fetchYvec()
+std::unique_ptr<VectorInterface> SumStatsLibrary::fetchYvec()
 {
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> y(moments_.size());
+  std::unique_ptr<VectorInterface> y = std::make_unique<VectorInterface>(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
-    y(i) = moments_[i]->getValue();
+    y->set(i, moments_[i]->getValue()); // loses mpreal precision (if used) but that's not an issue in this method
 
   return y;
 }

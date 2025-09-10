@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 05/09/2025
+ * Last modified: 10/09/2025
  *
  */
 
@@ -26,6 +26,8 @@
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
+#include "VectorInterface.hpp"
+#include "MatrixInterface.hpp"
 #include "AbstractOperator.hpp"
 #include "Admixture.hpp"
 #include "Mutation.hpp"
@@ -39,15 +41,15 @@ private:
   std::string name_;
   SumStatsLibrary ssl_; // *this epoch has its own set of moments using its population indices
 
-  // generations ago, from past to present
+  // generations ago, from past to present (startGen_ > endGen_)
   size_t startGen_;
   size_t endGen_;
 
   std::vector<std::shared_ptr<Population>> pops_;
   std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-  Eigen::SparseMatrix<mpfr::mpreal> transitionMatrix_; // all sparse operators combined into a dense matrix
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> steadYstate_; // based on the parameters of *this epoch
+  std::unique_ptr<MatrixInterface> transitionMatrix_; // all sparse operators combined into a dense matrix
+  std::unique_ptr<VectorInterface> steadYstate_; // based on the parameters of *this epoch
 
 public:
   Epoch():
@@ -72,8 +74,8 @@ public:
   endGen_(end),
   pops_(pops),
   operators_(ops),
-  transitionMatrix_(),
-  steadYstate_()
+  transitionMatrix_(nullptr),
+  steadYstate_(nullptr)
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       addParameters_((*it)->getParameters());
@@ -125,7 +127,7 @@ public:
     return startGen_ - endGen_;
   }
 
-  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& getSteadyState()
+  const std::unique_ptr<VectorInterface>& getSteadyState()
   {
     return steadYstate_;
   }
@@ -222,7 +224,7 @@ public:
 
   void printMoments(std::ostream& stream);
 
-  void printHetMomentsIntermediate(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y, const std::string& name, size_t interval);
+  void printHetMomentsIntermediate(std::unique_ptr<VectorInterface>& y, const std::string& name, size_t interval);
 
   void printRecursions(std::ostream& stream);
 
@@ -234,13 +236,17 @@ public:
 
   void testSteadyState();
 
+  void calibrate(); // TODO implement method to figure out the best dt to use in integrate();
+
+  std::unique_ptr<VectorInterface> integrate(std::unique_ptr<VectorInterface> y, double dt, size_t steps) const;
+
   void printConditionNumber()
   {
     double cond = fetchConditionNumber();
     std::cout << "Condition Number for Transition Matrix, epoch " << name_ << " = " << cond << "\n";
   }
 
-  double fetchConditionNumber()
+  double fetchConditionNumber()// TODO fix
   {
     Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic,  Eigen::Dynamic> denseTransMat = transitionMatrix_;
     Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(denseTransMat);

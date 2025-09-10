@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 04/09/2025
+ * Last modified: 08/09/2025
  *
  */
 
@@ -16,12 +16,12 @@ class Selection: public AbstractOperator
 {
 
 public:
-  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib):
+  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib, bool highPrecision):
   AbstractOperator(sslib.getPopIndices())
   {
     includeParameters_(selParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(sslib);
+    setUpMatrices_(sslib, highPrecision);
   }
 
   Selection(const std::vector<long double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
@@ -40,7 +40,7 @@ public:
     return new Selection(*this);
   }
 
-  void setUpMatrices_(const SumStatsLibrary& sslib) override;
+  void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) override;
 
   void updateMatrices_() override;
 

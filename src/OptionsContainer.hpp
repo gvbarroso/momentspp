@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 18/06/2024
+ * Last modified: 09/09/2025
  *
  */
 
@@ -36,6 +36,7 @@ private:
   bool computeCI_;
   bool verbose_;
 
+  size_t digits_; // if > 0 (DEFAULT), uses mpfr::mpreal, else uses double throughout the program execution
   size_t numThreads_;
   size_t timeSteps_; // after how number of generations to print intermediate values for Hl_*_* and Hr_*_* (see interval arg in Epoch::printHetMomentsIntermediate())
   std::vector<size_t> factorOrder_; // how many (1-2p) factors to include (one value per Epoch; if only one value is provided, it will be used for every Epoch)
@@ -53,6 +54,7 @@ public:
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 4)),
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
   verbose_(bpp::ApplicationTools::getParameter<bool>("verbose", options, false, "", true, 4)),
+  digits_(bpp::ApplicationTools::getParameter<size_t>("digits", options, 0, "", true, 4)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),
   timeSteps_(bpp::ApplicationTools::getParameter<size_t>("time_steps", options, 0, "", true, 4)),
   factorOrder_(bpp::ApplicationTools::getVectorParameter<size_t>("factor_order", options, ',', "10", "", true, 0))
@@ -115,6 +117,16 @@ public:
   bool verbose() const
   {
     return verbose_;
+  }
+
+  bool highPrecision() const
+  {
+    return digits_ > 0; // default = 0 (unspecified precision, use double
+  }
+
+  size_t getDigits() const
+  {
+    return digits_;
   }
 
   size_t getNumThreads() const

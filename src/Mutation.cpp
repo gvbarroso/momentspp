@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 05/09/2025
+ * Last modified: 08/09/2025
  *
  */
 
@@ -10,7 +10,7 @@
 #include "Mutation.hpp"
 
 // assumes both the infinite sites model as well as equal mutation rates across pops.
-void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
+void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
 {
   const size_t numPops = getParameters().size();
   const size_t sizeOfBasis = sslib.getSizeOfBasis();
@@ -19,36 +19,36 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   const auto& basis = sslib.getBasis();
   const size_t basisSize = basis.size();
 
-  for (size_t i = 0; i < numPops; ++i)
+  for(size_t i = 0; i < numPops; ++i)
   {
     const size_t id = popIndices_[i];
     const std::string paramName = "u_" + bpp::TextTools::toString(id);
-    const mpfr::mpreal mutationRate = getParameterValue(paramName);
+    const double mutationRate = getParameterValue(paramName);
 
     // prepare thread-local triplet buffers
-    const int numThreads = omp_get_max_threads();
-    std::vector<std::vector<Eigen::Triplet<mpfr::mpreal>>> threadTriplets(numThreads);
+    const size_t numThreads = omp_get_max_threads();
+    std::vector<std::vector<Eigen::Triplet<double>>> threadTriplets(numThreads);
 
     #pragma omp parallel for
-    for (int row = 0; row < static_cast<int>(basisSize); ++row)
+    for(size_t row = 0; row < static_cast<size_t>(basisSize); ++row)
     {
       const auto& moment = basis[row];
       const std::string& prefix = moment->getPrefix();
-      const int popIdCount = static_cast<int>(moment->countInstances(id));
-      const int tid = omp_get_thread_num();
+      const size_t popIdCount = static_cast<size_t>(moment->countInstances(id));
+      const size_t tid = omp_get_thread_num();
       auto& localTriplets = threadTriplets[tid];
 
       if(prefix == "Hl" || prefix == "Hr")
       {
-        const int col = sslib.findCompressedIndex(sslib.getMoment("I"));
-        const mpfr::mpreal factor = (prefix == "Hl") ? leftFactor_ * popIdCount / 2.0 : popIdCount / 2.0;
+        const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
+        const double factor = (prefix == "Hl") ? leftFactor_ * popIdCount / 2.0 : popIdCount / 2.0;
         localTriplets.emplace_back(row, col, factor);
       }
 
       else if(prefix == "pi2")
       {
         const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
-        if (!tmpPi2)
+        if(!tmpPi2)
           continue;  // skip invalid cast
 
         const auto tempLeft = tmpPi2->getLeftHetStat();
@@ -68,17 +68,28 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
     }
 
     // merge thread-local triplets
-    std::vector<Eigen::Triplet<mpfr::mpreal>> coeffs;
+    std::vector<Eigen::Triplet<double>> coeffs;
     for(auto& vec : threadTriplets)
       coeffs.insert(coeffs.end(), vec.begin(), vec.end());
 
-    Eigen::SparseMatrix<mpfr::mpreal> mat(sizeOfBasis, sizeOfBasis);
-    mat.setFromTriplets(coeffs.begin(), coeffs.end());
-    mat.makeCompressed();
-    mat *= mutationRate;
+    if(highPrecision)
+    {
+      auto mat = std::make_unique<MatrixMPReal>(numStats, numStats);
+      mat.setFromTriplets(coeffs.begin(), coeffs.end());
+      mat.makeCompressed();
+      mat->scale(mutationRate);
+      matrices_.emplace_back(std::move(mat));
+    }
 
-    matrices_.emplace_back(std::move(mat));
-  }
+    else
+    {
+      auto mat = std::make_unique<MatrixDouble>(numStats, numStats);
+      mat.setFromTriplets(coeffs.begin(), coeffs.end());
+      mat.makeCompressed();
+      mat->scale(mutationRate);
+      matrices_.emplace_back(std::move(mat));
+    }
+  } // ends loop over populations
 
   setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
@@ -91,11 +102,11 @@ void Mutation::updateMatrices_()
     size_t id = popIndices_[i];
     std::string paramName = "u_" + bpp::TextTools::toString(id);
 
-    mpfr::mpreal prevVal = prevParams_.getParameterValue(paramName);
-    mpfr::mpreal newVal = getParameterValue(paramName);
+    double prevVal = prevParams_.getParameterValue(paramName);
+    double newVal = getParameterValue(paramName);
 
     if(newVal != prevVal)
-      matrices_[i] *= (newVal / prevVal);
+      matrices_[i]->scale(newVal / prevVal);
   }
 
   assembleTransitionMatrix_();

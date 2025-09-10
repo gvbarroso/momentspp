@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 04/04/2023
- * Last modified: 05/09/2025
+ * Last modified: 09/09/2025
  *
  */
 
@@ -63,30 +63,38 @@ void AbstractOperator::printTransitionLDMat(const std::string& fileName)
 // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
 void AbstractOperator::assembleTransitionMatrix_()
 {
-  transition_ = matrices_[0]; // inits to "delta" matrix
+  // clones / inits to "delta" matrix
+  std::unique_ptr<MatrixInterface> sum = matrices_[0]->add(*matrices_[0]); // Identity operation
 
   if(matrices_.size() > 1)
   {
     for(size_t i = 1; i < matrices_.size(); ++i)
-      transition_ += matrices_[i];
+      sum = sum->add(*matrices_[i]);
   }
-  
-  // converts from "delta" to "transition" matrix
-  //transition_ += identity_; // NOTE: not used ATM because we are SUMMING matrices from each Operator in Epoch::init_()
+
+  transition_ = sum;
 }
 
 void AbstractOperator::setIdentity_(size_t numStats)
 {
-  Eigen::SparseMatrix<mpfr::mpreal> id(numStats, numStats);
-
-  std::vector<Eigen::Triplet<mpfr::mpreal>> md(0);
+  std::vector<Eigen::Triplet<double>> md;
   md.reserve(numStats);
 
   for(size_t i = 0; i < numStats; ++i)
-    md.emplace_back(Eigen::Triplet<mpfr::mpreal>(i, i, 1.));
+    md.emplace_back(i, i, 1.0);
 
-  id.setFromTriplets(std::begin(md), std::end(md));
-  id.makeCompressed();
+  if(!identity_)
+  {
+    if(dynamic_cast<MatrixDouble*>(matrices_[0].get()))
+      identity_ = std::make_unique<MatrixDouble>(numStats, numStats);
 
-  identity_ = id;
+    else if(dynamic_cast<MatrixMPReal*>(matrices_[0].get()))
+      identity_ = std::make_unique<MatrixMPReal>(numStats, numStats);
+
+    else
+      throw bpp::Exception("AbstractOperator::Mis-cast transition matrix!");
+  }
+
+  identity_->setFromTriplets(md);
+  identity_->makeCompressed();
 }

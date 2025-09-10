@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 03/09/2025
+ * Last modified: 10/09/2025
  */
 
 
@@ -47,7 +47,7 @@ private:
   size_t numPops_;
   size_t factorOrder_; // maximum number of 1-2p_x factors attached to a Moment
 
-  std::vector<size_t> popIndices_; // among all Moments in the Epoch to which *this belongs, stored for bookkeeping
+  std::vector<size_t> popIndices_; // among all Moments in the Epoch to which *this belongs (stored for bookkeeping)
   std::vector<std::shared_ptr<Moment>> moments_; // sorted alphabetically based on prefix_ and numerically based on popIndices_
   std::vector<std::shared_ptr<Moment>> basis_; // reduced # of moments, compressed based on population genetic symmetries
 
@@ -151,7 +151,7 @@ public:
 
   void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
 
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> fetchYvec();
+  VectorInterface fetchYvec();
 
   void printMoments(std::ostream& stream);
 
@@ -159,7 +159,8 @@ public:
 
   void readStatsFromFile(const std::string& fileName);
 
-  // this assumes a maximum population count of 2 (speed constraint imposed by selection) and is used for convenience in the Drift operator
+  // NOTE this assumes a maximum population count of 2 (speed constraint imposed by selection)
+  // and is used for convenience in the Drift operator
   size_t fetchOtherId(size_t id)
   {
     assert(popIndices_.size() == 2);

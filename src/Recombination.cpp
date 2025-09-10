@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 05/09/2025
+ * Last modified: 08/09/2025
  *
  */
 
@@ -9,7 +9,7 @@
 
 #include "Recombination.hpp"
 
-void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
+void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
 {
   const size_t numPops = getParameters().size();
   const size_t sizeOfBasis = sslib.getSizeOfBasis();
@@ -18,27 +18,27 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
   const auto& basis = sslib.getBasis();
   const size_t basisSize = basis.size();
 
-  for (size_t i = 0; i < numPops; ++i)
+  for(size_t i = 0; i < numPops; ++i)
   {
     const size_t id = popIndices_[i];
     const std::string paramName = "r_" + bpp::TextTools::toString(id);
-    const mpfr::mpreal recombRate = getParameterValue(paramName);
+    const double recombRate = getParameterValue(paramName);
 
     // prepare thread-local triplet buffers
-    const int numThreads = omp_get_max_threads();
-    std::vector<std::vector<Eigen::Triplet<mpfr::mpreal>>> threadTriplets(numThreads);
+    const size_t numThreads = omp_get_max_threads();
+    std::vector<std::vector<Eigen::Triplet<double>>> threadTriplets(numThreads);
 
     #pragma omp parallel for
-    for (int row = 0; row < static_cast<int>(basisSize); ++row)
+    for(size_t row = 0; row < static_cast<int>(basisSize); ++row)
     {
       const auto& moment = basis[row];
       const std::string& prefix = moment->getPrefix();
-      const int tid = omp_get_thread_num();
+      const size_t tid = omp_get_thread_num();
       auto& localTriplets = threadTriplets[tid];
 
       if(prefix == "DD")
       {
-        int f = static_cast<int>(moment->countInstances(id));
+        size_t f = static_cast<int>(moment->countInstances(id));
         localTriplets.emplace_back(row, row, -f);
       }
 
@@ -58,17 +58,28 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     }
 
     // merge thread-local triplets
-    std::vector<Eigen::Triplet<mpfr::mpreal>> coeffs;
+    std::vector<Eigen::Triplet<double>> coeffs;
     for(auto& vec : threadTriplets)
       coeffs.insert(coeffs.end(), vec.begin(), vec.end());
 
-    Eigen::SparseMatrix<mpfr::mpreal> mat(sizeOfBasis, sizeOfBasis);
-    mat.setFromTriplets(coeffs.begin(), coeffs.end());
-    mat.makeCompressed();
-    mat *= recombRate;
+    if(highPrecision)
+    {
+      auto mat = std::make_unique<MatrixMPReal>(numStats, numStats);
+      mat.setFromTriplets(coeffs.begin(), coeffs.end());
+      mat.makeCompressed();
+      mat->scale(recombRate);
+      matrices_.emplace_back(std::move(mat));
+    }
 
-    matrices_.emplace_back(std::move(mat));
-  }
+    else
+    {
+      auto mat = std::make_unique<MatrixDouble>(numStats, numStats);
+      mat.setFromTriplets(coeffs.begin(), coeffs.end());
+      mat.makeCompressed();
+      mat->scale(recombRate);
+      matrices_.emplace_back(std::move(mat));
+    }
+  } // ends loop over populations
 
   setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();

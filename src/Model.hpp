@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 03/09/2025
+ * Last modified: 09/09/2025
  *
  */
 
@@ -42,7 +42,7 @@ private:
   std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own set of params and operators
   std::shared_ptr<Data> data_;
 
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> expected_;
+  std::unique_ptr<VectorInterface> expected_;
   double compLogLikelihood_;
 
 public:

@@ -33,7 +33,7 @@ protected:
   std::vector<size_t> popIndices_; // population indices associated with main statistic
   std::vector<size_t> factorIndices_; // population indices associated with each (1-2p) factor
   size_t position_; // index within the Y vector (see Epoch::computeExpectedSumStats()) and SumStatsLibrary basis_
-  long double value_; // expectation
+  double value_; // expectation
 
   std::shared_ptr<Moment> parent_; // "equivalent" moment in previous epoch, according to population ancestry
   std::vector<std::weak_ptr<Moment>> aliases_; // equivalent moments (permutations with same expectations)

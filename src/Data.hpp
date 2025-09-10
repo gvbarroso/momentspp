@@ -38,7 +38,7 @@ class Data // observed data
 
 private:
   SumStatsLibrary ssl_; // the moments in Data naturally refer to Population indices among sampled individuals
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> covar_; // covariance matrix of observed sum stats (from sampled populations); ssl_.fetchYvec() will get the expectations
+  std::unique_ptr<MatrixInterface> covar_; // covariance matrix of observed sum stats (from sampled populations); ssl_.fetchYvec() will get the expectations
   std::map<std::string, double> variances_; // bootstrapped, moment name -> moment var
 
 public:
@@ -56,7 +56,7 @@ public:
     return ssl_;
   }
 
-  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>& getCovarMatrix()
+  const std::unique_ptr<MatrixInterface>& getCovarMatrix()
   {
     return covar_;
   }

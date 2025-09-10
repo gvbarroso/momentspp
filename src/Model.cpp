@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 01/04/2025
+ * Last modified: 09/09/2025
  *
  */
 
@@ -20,20 +20,21 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStats()
 {
-  expected_ = epochs_[0]->getSteadyState(); // resets moments to the "deep past"
+  expected_ = epochs_[0]->getSteadyState()->clone(); // resets moments to the "deep past"
 
   for(size_t i = 1; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
   {
-    epochs_[i]->transferStatistics(expected_); // copying values from epoch i-1 into epoch i according to population ancestry
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs
-    epochs_[i]->updateMoments(expected_); // updates inside sslib
+    // this follows the ancestry patterns of moments according to population history, see linkMoments_()
+    epochs_[i]->transferStatistics(expected_); // copying values from epoch i-1 into epoch i
+    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs, y = M * y
+    epochs_[i]->updateMoments(expected_);  // updates inside sslib
   }
 
-  if(epochs_.size() > 1) // final epoch
+  if(epochs_.size() > 1)
   {
     epochs_.back()->transferStatistics(expected_);
     epochs_.back()->computeExpectedSumStats(expected_);
-    epochs_.back()->updateMoments(expected_); // updates inside sslib
+    epochs_.back()->updateMoments(expected_);
   }
 }
 
@@ -90,13 +91,15 @@ void Model::computeCompositeLogLikelihood_()
 
 void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
 {
-  // epoch[0] should never be 1-generation only (ie, an "Admixture epoch")
-  // hence it should always have a full set of parameters, ie, including 'u_*', 'r_*', and 's_*'
+  /* epoch[0] should never be 1-generation only (ie, an "Admixture epoch")
+   * hence it should always have a full set of parameters, ie, including 'u_*', 'r_*', and 's_*'
 
-  // the order of the following two aliasing dimensions (over populations and over epochs) matters!
-  // as implemented, we should first go over populations
+  * the order of the following two aliasing dimensions (over populations and over epochs) matters!
+  * as implemented, we should first go over populations
 
-  // alias u, r and s among populations from the same epoch IFF they have identical (starting) values
+  * alias u, r and s among populations from the same epoch IFF they have identical (starting) values
+  */
+
   if(aliasOverPops)
   {
     std::cout << "Aliasing parameters over populations.\n";
@@ -174,8 +177,10 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
   }
 }
 
-// this method defines the relationships among moments from different epochs (w.r.t population indices)
-// when focal pop has 2 (different) ancestors, pick one of them, then apply Admixture as if it were a pulse
+/*
+ * this method defines the relationships among moments from different epochs (w.r.t population indices)
+ * when focal pop has 2 (different) ancestors, pick one of them, then apply Admixture as if it were a pulse
+ */
 void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd

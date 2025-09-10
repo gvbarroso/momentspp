@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 05/09/2025
+ * Last modified: 09/09/2025
  * Source code for moments++
  *
  */
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 06/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 09/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -63,15 +63,14 @@ int main(int argc, char *argv[]) {
     return(0);
   }
 
-  //using mpfr::mpreal;
-  const int digits = 100;
-  mpfr::mpreal::set_default_prec(mpfr::digits2bits(digits)); // NOTE for arbitrary-precision arithmetic
-
   bpp::BppApplication momentspp(argc, argv, "moments++");
   momentspp.startTimer();
   std::map<std::string, std::string> params = momentspp.getParams();
 
   OptionsContainer options(params);
+
+  if(options.highPrecision())
+    mpfr::mpreal::set_default_prec(mpfr::digits2bits(options.getDigits()));
 
   std::cout << "\nmoments++ is using " << options.getNumThreads() << " threads.\n";
   Eigen::setNbThreads(options.getNumThreads());
