@@ -65,6 +65,11 @@ public:
     mat_.prune(0.0);
   }
 
+  Eigen::MatrixXd toDense() const
+  {
+    return Eigen::MatrixXd(mat_);
+  }
+
   void print(const std::string& fileName) const override
   {
     std::ofstream matFile;

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 10/09/2025
+ * Last modified: 11/09/2025
  *
  */
 
@@ -54,6 +54,8 @@ void Epoch::computeExpectedSumStats(std::unique_ptr<VectorInterface>& y)
 {
   for(size_t i = 0; i < duration(); ++i)
     y = transitionMatrix_->multiply(y.get());
+
+  updateMoments(y);
 }
 
 std::vector<size_t> Epoch::fetchSelectedPopIds()
@@ -70,6 +72,7 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
   return ret;
 }
 
+// copies moment expectations from previous epoch into y, respecting ancestry relationships
 void Epoch::transferStatistics(std::unique_ptr<VectorInterface>& y) // y comes from previous Epoch
 {
   // y and tmp have potentially different sizes due to number of Populations and/or Order(1-2p)
@@ -80,19 +83,20 @@ void Epoch::transferStatistics(std::unique_ptr<VectorInterface>& y) // y comes f
   for(size_t i = 0; i < tmp->size(); ++i)
   {
     size_t parentPos = ssl_.getBasis()[i]->getParent()->getPosition();
-    setValue(tmp.get(), i, getValue(y.get(), parentPos));
+    setValue(tmp.get(), i, getValue(y.get(), parentPos)); // inline function above
   }
 
   y = std::move(tmp);
 }
 
-void Epoch::updateMoments(std::unique_ptr<VectorInterface>& y)
+void Epoch::updateMoments(const std::unique_ptr<VectorInterface>& y)
 {
   assert(y.size() == static_cast<int>(ssl_.getBasis().size()));
 
+  // double precision is fine as expections in ssl_-> moments_ / basis_ exist just for organization / printing
   for(int i = 0; i < y.size(); ++i)
-    ssl_.getBasis()[i]->setValue(y(i).toDouble()); // WARNING must adopt type polymorhpism in SSL as well?
-                                                   // NOTE do I ever extract the value from ssl_-> moments_ / basis_ for actual computation or is it there just for organization / printing?
+    ssl_.getBasis()[i]->setValue(y->get(i));
+
 }
 
 void Epoch::printMoments(std::ostream& stream)
@@ -103,28 +107,30 @@ void Epoch::printMoments(std::ostream& stream)
     stream << std::setprecision(24) << m->getName() << " = " << m->getValue() << "\n";
 }
 
-// prints expectations of Hl and Hr over time (precision not terribly importantly here)
+// prints expectations of Hl and Hr over time
 void Epoch::printHetMomentsIntermediate(std::unique_ptr<VectorInterface>& y, const std::string& modelName, size_t interval)
 {
+  // NOTE method could be adapted to take moment names as input
   transferStatistics(y); // since different Epochs may use different Order
 
   std::string fileName = modelName + "_" + name_ + "_hets_time.txt";
   std::ofstream fout(fileName);
 
-  std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
+  const std::vector<std::shared_ptr<Moment>>& basis = getSslib().getBasis();
   size_t steps = duration() / interval + 1; // prints every interval generations
 
   for(size_t i = 0; i < steps; ++i)
   {
-    for(size_t j = 0; j < tmp.size(); ++j)
+    for(size_t j = 0; j < basis.size(); ++j)
     {
-      if(tmp[j]->getName() == "Hr_0_0" || tmp[j]->getName() == "Hl_0_0")
-        fout << std::setprecision(16) << tmp[j]->getName() << " = " << y[j] << " " << startGen_ - i * interval << "\n"; // WARNING y[i]
+      // precision not terribly importantly here
+      if(basis[j]->getName() == "Hr_0_0" || basis[j]->getName() == "Hl_0_0")
+        fout << basis[j]->getName() << " = " << y->get(j) << " " << startGen_ - i * interval << "\n";
     }
 
     if(i < steps - 1) { // not to advance further than needed, important when there are > 2 Epochs
       for(size_t k = 0; k < interval; ++k)
-        y = transitionMatrix_ * y;
+        y = transitionMatrix_->multiply(y.get());
     }
   }
 
@@ -133,6 +139,8 @@ void Epoch::printHetMomentsIntermediate(std::unique_ptr<VectorInterface>& y, con
 
 void Epoch::printRecursions(std::ostream& stream)
 {
+  // this method only prints first-order coefficients,
+  // even if transitionMatrix_ is obtained by multiplying operators
   stream << "\n";
 
   for(size_t i = 0; i < ssl_.getBasis().size(); ++i)
@@ -146,7 +154,7 @@ void Epoch::printRecursions(std::ostream& stream)
       {
         for(size_t k = 0; k < operators_[j]->getParameters().size(); ++k)
         {
-          bpp::Parameter param = operators_[j]->getParameters()[k];
+          const bpp::Parameter& param = operators_[j]->getParameters()[k];
           const std::string& name = param.getName();
 
           auto mat = operators_[j]->getMatrix(k); // hard copy delta matrix
@@ -174,46 +182,43 @@ void Epoch::printRecursions(std::ostream& stream)
 
 void Epoch::printTransitionMat(const std::string& fileName) const
 {
-  transitionMatrix_ ->print(fileName);
+  transitionMatrix_->print(fileName);
 }
 
 void Epoch::computeEigenSteadyState()
 {
-  testSteadyState();
-  init_();
+  EigenResult res = findLeadingEigenpair();
 
-  // converting to dense format to perform eigen decomposition
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic,  Eigen::Dynamic> denseTransMat = transitionMatrix_;
-  Eigen::EigenSolver<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> es(denseTransMat);
-
-  int idx = 0;
-  for(int i = 0; i < es.eigenvalues().size(); ++i)
-  {
-    // finding the leading eigenvalue (== 1.,but not searching for equality due to precision)
-    if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
-      idx = i;
-  }
-
-  if(es.eigenvalues().real()(idx) > 1. + 1e-5) // NOTE
+  if(res.value.toDouble() > 1. + 1e-14)
   {
     double cond = fetchConditionNumber();
     std::cout << "\nCondition Number of transition matrix = " << cond << "\n";
-    std::cout << "\nLeading eigenvalue of full transition matrix = " << es.eigenvalues().real()(idx) << "\n";
+    std::cout << "\nLeading eigenvalue of full transition matrix = " << res.value.toDouble() << "\n";
     throw bpp::Exception("Epoch::Leading Eigenvalue > 1! Consider using a smaller order of 1-2p factors.\n");
   }
 
-  // I moment embodies scaling constant used by Eigen
-  steadYstate_ = es.eigenvectors().col(idx).real();
-  steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getMoment("I")));
+  // deducing type of steadYstate_ from the type of transitionMatrix_
+  if(dynamic_cast<MatrixMPReal*>(transitionMatrix_.get()))
+    steadYstate_ = std::make_unique<VectorMPReal>(res.vector);
 
+  else if(dynamic_cast<MatrixDouble*>(transitionMatrix_.get()))
+  {
+    Eigen::VectorXd vecDouble(res.vector.size());
+    for(Eigen::Index i = 0; i < res.vector.size(); ++i)
+      vecDouble(i) = res.vector(i).toDouble();
+
+    steadYstate_ = std::make_unique<VectorDouble>(vecDouble);
+  }
+
+  // I moment embodies scaling constant used by Eigen
+  //steadYstate_ = es.eigenvectors().col(idx).real();
+  //steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getMoment("I")));
   updateMoments(steadYstate_);
 }
 
+// assumes discrete-time treatment is adequate
 void Epoch::computePseudoSteadyState()
 {
-  testSteadyState();
-  init_();
-
   if(dynamic_cast<MatrixDouble*>(transitionMatrix_.get()))
     steadYstate_ = std::make_unique<VectorDouble>(transitionMatrix_.size());
 
@@ -221,55 +226,77 @@ void Epoch::computePseudoSteadyState()
     steadYstate_ = std::make_unique<VectorMPReal>(transitionMatrix_.size());
 
   else
-    throw bpp::Exception("AbstractOperator::Mis-cast transition matrix!");
+    throw bpp::Exception("Epoch::Mis-cast transition matrix!");
 
-  // a very rough guess for starting values to help w/ convergence
   size_t pop = ssl_.getPopIndices()[0];
   double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
   double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
-  int twoN = static_cast<int>(1 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
-  double h = twoN * mu;
+  size_t twoN = static_cast<size_t>(1 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
 
-  for(int i = 0; i < y.size(); ++i)
+  // rough guesses for starting values to help w/ convergence
+  double hr = twoN * mu;
+  double hl = hr;
+
+  if(static_cast<double>(twoN * s) < -5)
+  {
+    double p = mu / -s;
+    hl = p * (1-p);
+  }
+
+  for(size_t i = 0; i < steadYstate_.size(); ++i)
   {
     const std::string& prefix = ssl_.getBasis()[i]->getPrefix();
 
-    ifprefix == "Hl")
+    if(prefix == "Hl")
+      steadYstate_->set(i, hl);
+
+    else if(prefix == "Hr")
+      steadYstate_->set(i, hr);
+
+    else if(prefix == "pi2")
+      steadYstate_->set(i, hr * hl);
+
+    else if(prefix == "I")
+      steadYstate_->set(i, 1.);
+
+    else // DD and Dr
+      steadYstate_->set(i, hr * hl * 1e-1);
+  }
+  
+  double tol = 1e-3;
+  auto prev = steadYstate_->clone();  // deep copy if needed
+
+  auto notConverged = [&](size_t i)
+  {
+    double prevVal = prev->get(i);
+    double currVal = steadYstate_->get(i);
+    double relDiff = std::abs(currVal - prevVal) / std::max(1.0, std::abs(prevVal));
+    return relDiff > tol;
+  };
+
+  while(true)
+  {
+    bool converged = true;
+    for(size_t i = 0; i < steadYstate_->size(); ++i)
     {
-      double gamma = static_cast<double>(twoN * s);
-
-      if(gamma < -5.)
+      if(notConverged(i))
       {
-        double p = mu / -s;
-        transitionMatrix_(i) = p * (1-p);
-      }
-
-      else
-      {
-        transitionMatrix_(i) = h;
+        converged = false;
+        break;
       }
     }
 
-    else if(prefix == "Hr")
-      transitionMatrix_(i) = h;
+    if(converged)
+      break;
 
-    else if(prefix == "pi2")
-      transitionMatrix_(i) = h * h;
-
-    else if(prefix == "I")
-      transitionMatrix_(i) = 1.;
-
-    else // DD and Dr
-      transitionMatrix_(i) = h * h * 1e-2;
+    prev = steadYstate_->clone();  // update previous guess
+    steadYstate_ = transitionMatrix_->multiply(steadYstate_.get());
   }
-  
-  for(size_t j = 0; j < 10 * twoN; ++j)
-    y = transitionMatrix_ * y;
 
-  steadYstate_ = y;
   updateMoments(steadYstate_);
 }
 
+// in models with gene-flow
 void Epoch::testSteadyState()
 {
   /*
@@ -294,7 +321,7 @@ std::unique_ptr<VectorInterface> Epoch::integrate(std::unique_ptr<VectorInterfac
   auto I = transitionMatrix_->identity();
   auto halfDtM = transitionMatrix_->clone();
 
-  // "split" original matrix in two
+  // "splits" original matrix in two
   auto halfDtM->scale(dt / 2.0);
   auto A = I->add(*halfDtM->scale(-1.0));  // A = I - dt/2 * M
   auto B = I->add(*halfDtM);               // B = I + dt/2 * M
@@ -323,5 +350,7 @@ void Epoch::init_()
   mat.prune(0.0);  // removes converted zeros
   mat.makeCompressed();
   transitionMatrix_ = mat;
+
+  //testSteadyState();
 }
 

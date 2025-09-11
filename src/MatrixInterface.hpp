@@ -37,7 +37,7 @@ public:
     virtual void makeCompressed() = 0;
     virtual void setFromTriplets(const std::vector<Eigen::Triplet<double>>& triplets) = 0;
     virtual std::unique_ptr<MatrixInterface> clone() const = 0;
-    virtual std::unique_ptr<MatrixInterface> MatrixDouble::identity() = 0;
+    virtual std::unique_ptr<MatrixInterface> identity() = 0;
     virtual std::unique_ptr<VectorInterface> multiply(const VectorInterface& vec) const = 0;
     virtual std::unique_ptr<MatrixInterface> multiply(const MatrixInterface& other) const = 0;
     virtual std::unique_ptr<MatrixInterface> add(const MatrixInterface& other) const = 0;

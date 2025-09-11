@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 10/09/2025
+ * Last modified: 11/09/2025
  *
  */
 
@@ -163,7 +163,6 @@ public:
     if(!solver.isInvertible())
       throw bpp::Exception("Matrix is not invertible!\n");
 
-
     Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> x = solver.solve(b);
 
     auto result = std::make_unique<VectorMPReal>(x.size());
@@ -173,14 +172,16 @@ public:
     return result;
   }
 
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> toDense() const
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> toDense()
   {
     Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> dense(mat_.rows(), mat_.cols());
     dense.setZero();
 
     for(size_t i = 0; i < mat_.outerSize(); ++i)
+    {
       for(Eigen::SparseMatrix<mpfr::mpreal>::InnerIterator it(mat_, i); it; ++it)
         dense(it.row(), it.col()) = it.value();
+    }
 
     return dense;
   }

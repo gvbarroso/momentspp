@@ -1,6 +1,6 @@
 /* Authors: Gustavo V. Barroso
  * Created: 19/09/2022
- * Last modified: 03/06/2024
+ * Last modified: 11/09/2025
  *
  */
 
@@ -50,7 +50,7 @@ public:
   aliases_(0)
   { }
 
-  Moment(const std::string& name, long double value):
+  Moment(const std::string& name, double value):
   name_(name),
   prefix_(""),
   popIndices_(0),
@@ -140,7 +140,7 @@ public:
     return position_;
   }
 
-  long double getValue() const
+  double getValue() const
   {
     return value_;
   }
@@ -194,7 +194,7 @@ public:
     value_ = parent_->getValue();
   }
 
-  void setValue(long double value)
+  void setValue(double value)
   {
     value_ = value;
   }

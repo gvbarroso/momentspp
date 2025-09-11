@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 10/09/2025
+ * Last modified: 11/09/2025
  *
  */
 
@@ -61,7 +61,7 @@ public:
       return vec_(index).toDouble();
     }
 
-    mpfr::mpreal getMPReal(size_t index) const override \
+    mpfr::mpreal getMPReal(size_t index) const override
     {
       return vec_(index);
     }
@@ -101,6 +101,16 @@ public:
         copy->vec(i) = vec(i);
 
       return copy;
+    }
+
+    Eigen::VectorXd convertToDouble()
+    {
+      Eigen::VectorXd ret(vec_.size());
+
+      for(Eigen::Index i = 0; i < vec_.size(); ++i)
+        ret(i) = vec_(i).toDouble();
+
+      return ret;
     }
 
     const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& data() const { return vec_; }

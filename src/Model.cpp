@@ -51,6 +51,7 @@ void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
 }
 
 // prints expectations of Hl and Hr over time (for each epoch)
+// NOTE could be adapted to take moment names as input
 void Model::printHetMomentsIntermediate(const std::string& modelName, size_t interval)
 {
   auto y = epochs_[0]->getSteadyState();

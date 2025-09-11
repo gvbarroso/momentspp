@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 10/09/2025
+ * Last modified: 11/09/2025
  *
  */
 
@@ -33,6 +33,13 @@
 #include "Mutation.hpp"
 #include "SumStatsLibrary.hpp"
 #include "Population.hpp"
+
+struct EigenResult
+{
+  size_t index;
+  mpfr::mpreal value;
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vector;
+};
 
 class Epoch: public bpp::AbstractParameterAliasable
 {
@@ -220,7 +227,7 @@ public:
 
   void transferStatistics(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y);
 
-  void updateMoments(const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y);
+  void updateMoments(const std::unique_ptr<VectorInterface>& y);
 
   void printMoments(std::ostream& stream);
 
@@ -246,12 +253,86 @@ public:
     std::cout << "Condition Number for Transition Matrix, epoch " << name_ << " = " << cond << "\n";
   }
 
-  double fetchConditionNumber()// TODO fix
+  inline double fetchConditionNumber()
   {
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic,  Eigen::Dynamic> denseTransMat = transitionMatrix_;
-    Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(denseTransMat);
+    if(const auto* matMP = dynamic_cast<const MatrixMPReal*>(transitionMatrix_.get()))
+    {
+      auto dense = matMP->toDense();
+      Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(dense);
 
-    return svd.singularValues()(0).toDouble() / svd.singularValues()(svd.singularValues().size() - 1).toDouble();
+      return svd.singularValues()(0).toDouble() / svd.singularValues()(svd.singularValues().size() - 1).toDouble();
+    }
+
+    else if(const auto* matDouble = dynamic_cast<const MatrixDouble*>(transitionMatrix_.get()))
+    {
+      auto dense = matDouble->toDense();
+      Eigen::JacobiSVD<Eigen::MatrixXd> svd(dense);
+
+      return svd.singularValues()(0).toDouble() / svd.singularValues()(svd.singularValues().size() - 1).toDouble();
+    }
+
+    else
+      throw bpp::Exception("Epoch::Unsupported matrix type for eigenvalue analysis!");
+  }
+
+  // computes and returns relative population size (use for continuous-time integration)
+  double fetchNu(size_t popId, double Nref)
+  {
+    double Nfocal = pops_[popId]->getSize();
+    return Nfocal / Nref;
+  }
+
+  // computes and returns relative population size w.r.t "same pop" in previous epoch
+  double fetchNu(size_t popId)
+  {
+    return fetchNu(popId, pops_[popId]->getParent()->getSize());
+  }
+
+  inline EigenResult findLeadingEigenpair()
+  {
+    if(const auto* matMP = dynamic_cast<const MatrixMPReal*>(transitionMatrix_.get()))
+    {
+      auto dense = matMP->toDense();
+      Eigen::EigenSolver<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> es(dense);
+
+      size_t idx = 0;
+      for (size_t i = 1; i < es.eigenvalues().size(); ++i)
+      {
+        if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
+          idx = i;
+      }
+
+      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vec = es.eigenvectors().col(idx).real();
+      vec.normalize();  // Eigen supports mpreal normalization (NumTraits are defined in Eigen_mpreal_traits.hpp)
+
+      return { idx, es.eigenvalues().real()(idx), vec };
+    }
+
+    else if(const auto* matDouble = dynamic_cast<const MatrixDouble*>(transitionMatrix_.get()))
+    {
+      auto dense = matDouble->toDense();
+      Eigen::EigenSolver<Eigen::MatrixXd> es(dense);
+
+      size_t idx = 0;
+      for(size_t i = 1; i < es.eigenvalues().size(); ++i)
+      {
+        if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
+          idx = i;
+      }
+
+      Eigen::VectorXd vec = es.eigenvectors().col(idx).real();
+      vec.normalize();
+
+      // converting to mpreal for consistency
+      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vec.size());
+      for(size_t i = 0; i < vec.size(); ++i)
+        vecMP(i) = mpfr::mpreal(vec(i));
+
+      return { idx, mpfr::mpreal(es.eigenvalues().real()(idx)), vecMP };
+    }
+
+    else
+      throw bpp::Exception("Epoch::Unsupported matrix type for eigenvalue analysis!");
   }
 
 private:
