@@ -83,9 +83,14 @@ void SumStatsLibrary::dropFactorIds(std::vector<size_t>& factorIds, size_t focal
   }
 }
 
-std::unique_ptr<VectorInterface> SumStatsLibrary::fetchYvec()
+std::unique_ptr<VectorInterface> SumStatsLibrary::fetchYvec(bool highPrecision)
 {
-  std::unique_ptr<VectorInterface> y = std::make_unique<VectorInterface>(moments_.size());
+  std::unique_ptr<VectorInterface> y;
+
+  if(highPrecision)
+    y = std::make_unique<VectorMPReal>(moments_.size());
+  else
+    y = std::make_unique<VectorDouble>(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
     y->set(i, moments_[i]->getValue()); // loses mpreal precision (if used) but that's not an issue in this method

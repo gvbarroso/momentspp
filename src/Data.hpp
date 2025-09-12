@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 05/09/2025
+ * Last modified: 11/09/2025
  *
  */
 
@@ -28,7 +28,8 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 
-
+#include "MatrixInterface.hpp"
+#include "VectorInterface.hpp"
 #include "Population.hpp"
 #include "SumStatsLibrary.hpp"
 #include "OptionsContainer.hpp"
@@ -61,9 +62,9 @@ public:
     return covar_;
   }
 
-  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> getY()
+  std::unique_ptr<VectorInterface> getY(bool highPrecision)
   {
-    return ssl_.fetchYvec();
+    return ssl_.fetchYvec(highPrecision);
   }
 
 private:

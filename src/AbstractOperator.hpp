@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 10/09/2025
+ * Last modified: 12/09/2025
  *
  */
 
@@ -21,8 +21,6 @@
 
 #include <omp.h>
 
-#include "eigen_mpreal_traits.hpp"
-
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
@@ -36,10 +34,9 @@
 #include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/Text/TextTools.h>
 
+#include "MatrixEngine.hpp"
 #include "SumStatsLibrary.hpp"
 #include "Log.hpp"
-#include "MatrixDouble.hpp"
-#include "MatrixMPReal.hpp"
 
 class AbstractOperator: public bpp::AbstractParameterAliasable
 {
@@ -49,9 +46,10 @@ protected:
   // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
   // they are then multiplied by parameters (1/2N_i for Drift, m_ij for Migration etc) and finally added into transition_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)
-  std::vector<std::unique_ptr<MatrixInterface>> matrices_; // "delta" matrix(ces)
-  std::unique_ptr<MatrixInterface> identity_; // helper matrix to convert from "delta" to "transition" matrix
-  std::unique_ptr<MatrixInterface> transition_; // "transition" matrix
+  std::vector<std::unique_ptr<MatrixEngine>> matrices_; // "delta" matrix(ces)
+  std::unique_ptr<MatrixEngine> transition_;  // "transition" matrix
+  MatrixVariant identityMatrix_;
+  bool identityInitialized_;
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
   std::vector<size_t> popIndices_;
 
@@ -59,8 +57,9 @@ public:
   AbstractOperator():
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
-  identity_(nullptr),
   transition_(nullptr),
+  identityMatrix_(),
+  identityInitialized_(false),
   prevParams_(),
   popIndices_(0)
   { }
@@ -68,8 +67,9 @@ public:
   AbstractOperator(const std::vector<size_t>& popIndices):
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
-  identity_(nullptr),
   transition_(nullptr),
+  identityMatrix_(),
+  identityInitialized_(false),
   prevParams_(),
   popIndices_(popIndices)
   { }
@@ -97,29 +97,22 @@ public:
       updateMatrices_();
   }
 
-  const std::vector<std::unique_ptr<MatrixInterface>>& getMatrices()
+  const std::vector<std::unique_ptr<MatrixEngine>>& getMatrices()
   {
-    return matrices_; // delta matrices
+    return matrices_;
   }
 
-  const std::unique_ptr<MatrixInterface>& getMatrix(size_t index)
+  const std::unique_ptr<MatrixEngine>& getMatrix(size_t index)
   {
-    return matrices_[index]; // delta matrix; population index for Drift, population-pair index for Migration etc
+    return matrices_[index];
   }
 
-  const std::unique_ptr<MatrixInterface>& getTransitionMatrix()
+  const std::unique_ptr<MatrixEngine>& getTransitionMatrix()
   {
     return transition_;
   }
 
-  const std::unique_ptr<MatrixInterface>& getIdentity()
-  {
-    return identity_;
-  }
-
   virtual void printDeltaLDMat(const std::string& fileName);
-
-  virtual void printTransitionLDMat(const std::string& fileName);
 
 protected:
   // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator
@@ -129,8 +122,6 @@ protected:
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
   virtual void assembleTransitionMatrix_();
-
-  void setIdentity_(size_t numStats);
 
 };
 

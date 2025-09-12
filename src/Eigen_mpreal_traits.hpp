@@ -5,12 +5,14 @@
  *
  */
 
+// NOTE this header is not used at the moment, ie, not included in any file
+
 #ifndef EIGEN_MPREAL_TRAITS_HPP
 #define EIGEN_MPREAL_TRAITS_HPP
 
 #include <mpreal.h>       // MPFR C++ wrapper
-#include <Eigen/Core>     // Core Eigen functionality
-#include <Eigen/Sparse>   // Sparse matrix support
+#include <eigen3/Eigen/Core>     // Core Eigen functionality
+#include <eigen3/Eigen/Sparse>   // Sparse matrix support
 
 // this helps Eigen use mpreal as a scalar
 namespace Eigen
@@ -31,8 +33,8 @@ namespace Eigen
       MulCost = 3
     };
 
-    static inline Real epsilon() { return mpfr::mpreal::eps(); }
-    static inline Real dummy_precision() { return mpfr::mpreal::eps(); }
+    static inline Real epsilon() { return mpfr::mpreal::get_epsilon(); }
+    static inline Real dummy_precision() { return mpfr::mpreal::get_epsilon(); }
     static inline int digits10() { return mpfr::mpreal::get_default_prec(); }
   };
 }

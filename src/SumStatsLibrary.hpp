@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 10/09/2025
+ * Last modified: 11/09/2025
  */
 
 
@@ -26,11 +26,17 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 
-#include <eigen3/Eigen/Core>
 #include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
+#include <eigen3/Eigen/Core>
 
 #include <Bpp/Text/TextTools.h>
 
+#include "VectorInterface.hpp"
+#include "VectorMPReal.hpp"
+#include "VectorDouble.hpp"
+#include "MatrixInterface.hpp"
+#include "MatrixMPReal.hpp"
+#include "MatrixDouble.hpp"
 #include "Population.hpp"
 #include "Moment.hpp"
 #include "DdMoment.hpp"
@@ -151,7 +157,7 @@ public:
 
   void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
 
-  VectorInterface fetchYvec();
+  std::unique_ptr<VectorInterface> fetchYvec(bool highPrecision);
 
   void printMoments(std::ostream& stream);
 

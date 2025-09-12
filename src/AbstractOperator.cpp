@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 04/04/2023
- * Last modified: 09/09/2025
+ * Last modified: 12/09/2025
  *
  */
 
@@ -14,48 +14,34 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName)
   std::ofstream matFile;
   matFile.open(fileName);
 
-  auto mat = matrices_[0];
+  if(!matFile.is_open())
+    throw std::runtime_error("Failed to open file: " + fileName);
 
-  if(matrices_.size() > 1)
-  {
-    for(size_t i = 1; i < matrices_.size(); ++i)
-      mat += matrices_[i];
-  }
+  MatrixVariant combined = matrices_[0]->getMatrixVariant();
 
-  for(int i = 0; i < mat.rows(); ++i)
+  for(size_t i = 1; i < matrices_.size(); ++i)
   {
-    for(int j = 0; j < mat.cols(); ++j)
+    combined = std::visit([](auto& a, auto& b) -> MatrixVariant
     {
-      matFile << mat.coeffRef(i, j);
-
-      if(j < mat.cols() - 1)
-        matFile << ",";
-    }
-
-    matFile  << "\n";
+      return *a.add(b);
+    }, combined, matrices_[i]->getMatrixVariant());
   }
 
-  matFile.close();
-}
-
-void AbstractOperator::printTransitionLDMat(const std::string& fileName)
-{
-  std::ofstream matFile;
-  matFile.open(fileName);
-
-  for(int i = 0; i < transition_.rows(); ++i)
+  std::visit([&](auto& mat)
   {
-    for(int j = 0; j < transition_.cols(); ++j)
+    for(int i = 0; i < mat.rows(); ++i)
     {
-      matFile << transition_.coeffRef(i, j);
+      for(int j = 0; j < mat.cols(); ++j)
+      {
+        matFile << mat.mat_.coeff(i, j);
 
-      if(j < transition_.cols() - 1)
-        matFile << ",";
+        if (j < mat.cols() - 1)
+          matFile << ",";
+      }
 
+      matFile << "\n";
     }
-
-    matFile  << "\n";
-  }
+  }, combined);
 
   matFile.close();
 }
@@ -63,38 +49,35 @@ void AbstractOperator::printTransitionLDMat(const std::string& fileName)
 // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
 void AbstractOperator::assembleTransitionMatrix_()
 {
-  // clones / inits to "delta" matrix
-  std::unique_ptr<MatrixInterface> sum = matrices_[0]->add(*matrices_[0]); // Identity operation
+  MatrixVariant combined = matrices_[0]->getMatrixVariant();
 
-  if(matrices_.size() > 1)
+  for(size_t i = 1; i < matrices_.size(); ++i)
   {
-    for(size_t i = 1; i < matrices_.size(); ++i)
-      sum = sum->add(*matrices_[i]);
+    combined = std::visit([](auto& a, auto& b) -> MatrixVariant
+    {
+      return *a.add(b);
+    }, combined, matrices_[i]->getMatrixVariant());
   }
 
-  transition_ = sum;
-}
-
-void AbstractOperator::setIdentity_(size_t numStats)
-{
-  std::vector<Eigen::Triplet<double>> md;
-  md.reserve(numStats);
-
-  for(size_t i = 0; i < numStats; ++i)
-    md.emplace_back(i, i, 1.0);
-
-  if(!identity_)
+  if(!transition_)
   {
-    if(dynamic_cast<MatrixDouble*>(matrices_[0].get()))
-      identity_ = std::make_unique<MatrixDouble>(numStats, numStats);
-
-    else if(dynamic_cast<MatrixMPReal*>(matrices_[0].get()))
-      identity_ = std::make_unique<MatrixMPReal>(numStats, numStats);
-
-    else
-      throw bpp::Exception("AbstractOperator::Mis-cast transition matrix!");
+    transition_ = std::make_unique<MatrixEngine>(matrices_[0]->useMPReal);
+    transition_->initialize(matrices_[0]->getMatrixVariant().index() == 0 ?
+                            std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).rows() :
+                            std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).rows(),
+                            matrices_[0]->getMatrixVariant().index() == 0 ?
+                            std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).cols() :
+                            std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).cols(),
+                            0);
   }
 
-  identity_->setFromTriplets(md);
-  identity_->makeCompressed();
+  transition_->setMatrix(combined);
+
+  if(!identityInitialized_)
+  {
+    identityMatrix_ = transition_->identityMatrix();
+    identityInitialized_ = true;
+  }
+
+  transition_->addMatrixInPlace(identityMatrix_); // convert delta → transition
 }

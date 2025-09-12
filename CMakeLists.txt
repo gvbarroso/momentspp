@@ -1,113 +1,117 @@
 # CMake script for moments++
 # Authors:
-#   Gustavo V. Barroso
+#   Gustavo V. Barroso and Copilot
 # Created: 28/07/2022
 
-cmake_minimum_required (VERSION 3.5.0)
-project (momentspp CXX)
+cmake_minimum_required(VERSION 3.14)
+project(momentspp LANGUAGES CXX)
 
-option(NativeBuild "Enable -march=native build flag" OFF)
+# Options
+option(NativeBuild "Enable CPU-specific optimization flags" OFF)
+option(NAKED_D "Enable naked D mode" OFF)
+option(VERBOSE "Enable verbose mode" OFF)
 
-# Telling the compiler to optimize based on CPU architecture leads to considerable speed-up.
-# On Linux, add "-march=native" after -O3 flag
-# On MacOS, clang may not support this option (depending on the version); add instead e.g. "-mcpu=apple-M1" after -O3 flag.
-# clang --print-supported-cpus may give additional insight
+# Base compiler flags
+set(BASE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -g -O3")
 
-IF(NativeBuild)
-  MESSAGE("Running native build, including -march=native")
-  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -g -lgsl -O3 -fopenmp -march=native")
-ELSE()
-  MESSAGE("NOT Running native build")
-  SET(CMAKE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -g -lgsl -O3 -fopenmp")
-ENDIF()
+# Platform-specific optimization
+if(NativeBuild)
+  if(APPLE)
+    message(STATUS "Native build on macOS: using -mcpu=apple-m1")
+    set(NATIVE_OPT_FLAGS "-mcpu=apple-m1")
+  else()
+    message(STATUS "Native build on Linux: using -march=native")
+    set(NATIVE_OPT_FLAGS "-march=native")
+  endif()
+else()
+  message(STATUS "Native build disabled")
+  set(NATIVE_OPT_FLAGS "")
+endif()
 
-# Find dependencies (add install directory to search)
-IF(CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}" ${CMAKE_PREFIX_PATH})
-ENDIF(CMAKE_INSTALL_PREFIX)
+# OpenMP setup for macOS
+if(APPLE)
+  set(CMAKE_C_COMPILER "/opt/homebrew/opt/llvm/bin/clang")
+  set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
+  set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/include")
+  set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/include")
+  set(OpenMP_C_LIB_NAMES "omp")
+  set(OpenMP_CXX_LIB_NAMES "omp")
+  set(OpenMP_omp_LIBRARY "/opt/homebrew/lib/libomp.dylib")
+endif()
 
-IF(VERBOSE)
-  ADD_DEFINITIONS(-DVERBOSE)
-ENDIF()
+find_package(OpenMP REQUIRED)
 
-INCLUDE(GNUInstallDirs)
-FIND_PACKAGE(bpp-core3 1.0.0 REQUIRED)
+# Final compiler flags
+set(CMAKE_CXX_FLAGS "${BASE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${NATIVE_OPT_FLAGS}")
 
-FIND_PACKAGE(GSL REQUIRED)  
+# Macro definitions
+if(VERBOSE)
+  add_compile_definitions(VERBOSE)
+endif()
 
+if(NAKED_D)
+  add_compile_definitions(NAKED_D)
+endif()
+
+# Dependencies
+include(GNUInstallDirs)
+
+if(CMAKE_INSTALL_PREFIX)
+  list(APPEND CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}")
+endif()
+
+find_package(GSL REQUIRED)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
+find_package(yaml-cpp REQUIRED)
+find_package(Boost 1.67 REQUIRED CONFIG COMPONENTS iostreams)
 find_library(MPFR_LIB mpfr REQUIRED)
 find_library(GMP_LIB gmp REQUIRED)
+find_package(bpp-core3 1.0.0 REQUIRED)
 
-INCLUDE(FetchContent)
-
+# mpreal via FetchContent
+include(FetchContent)
 FetchContent_Declare(
   mpreal
   GIT_REPOSITORY https://github.com/advanpix/mpreal.git
   GIT_TAG        master
 )
-
 FetchContent_MakeAvailable(mpreal)
 
-SET(Boost_USE_MULTITHREADED OFF)
-FIND_PACKAGE(Boost 1.67.0 REQUIRED COMPONENTS "iostreams")
-IF(Boost_FOUND)
-  INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
-  SET(LIBS ${LIBS} ${Boost_LIBRARIES})
-  MESSAGE("-- Boost libraries found here:")
-  MESSAGE("   includes: ${Boost_INCLUDE_DIRS}")
-  MESSAGE("   dynamic libraries: ${Boost_LIBRARIES}")
-ENDIF()
+# Include directories
+include_directories(
+  ${Boost_INCLUDE_DIRS}
+  ${Eigen3_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIR}
+)
 
-FIND_PACKAGE(Eigen3 3.4 REQUIRED NO_MODULE)
-IF(Eigen3_FOUND)
-  INCLUDE_DIRECTORIES(${Eigen3_INCLUDE_DIRS})
-  SET(LIBS ${LIBS} ${Eigen3_LIBRARIES})
-  MESSAGE("-- Eigen3 libraries found.")
-ENDIF()
+# Link libraries
+set(LIBS
+  ${Boost_LIBRARIES}
+  ${Eigen3_LIBRARIES}
+  ${YAML_CPP_LIBRARIES}
+  ${GSL_LIBRARIES}
+  ${MPFR_LIB}
+  ${GMP_LIB}
+)
 
-FIND_PACKAGE(yaml-cpp REQUIRED)
-IF(yaml-cpp_FOUND)
-	INCLUDE_DIRECTORIES(${YAML_CPP_INCLUDE_DIR})
-  SET(LIBS ${LIBS} ${YAML_CPP_LIBRARY_DIR})
-  MESSAGE("-- yaml-cpp libraries found.")
-  MESSAGE("   includes: ${YAML_CPP_INCLUDE_DIR}")
-  MESSAGE("   dynamic libraries: ${YAML_CPP_LIBRARIES}")
-ENDIF()
+# Source
+add_subdirectory(src)
 
-IF(NAKED_D)
-  ADD_DEFINITIONS(-DNAKED_D)
-ENDIF()
+# Packaging
+set(CPACK_PACKAGE_NAME "moments++")
+set(CPACK_PACKAGE_VENDOR "Gustavo V. Barroso")
+set(CPACK_PACKAGE_VERSION "0.0.1")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast and accurate prediction of two-locus statistics")
+set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_IGNORE_FILES
+  "/build/"
+  "/\\.git/"
+  "/\\.gitignore"
+)
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${CPACK_PACKAGE_VERSION}")
+include(CPack)
 
-# Set the CMAKE_PREFIX_PATH for the find_library function when using non
-# standard install location
-IF(CMAKE_INSTALL_PREFIX)
-  SET(CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}" ${CMAKE_PREFIX_PATH})
-ENDIF(CMAKE_INSTALL_PREFIX)
-
-# Subdirectories
-ADD_SUBDIRECTORY(src)
-
-# Packager
-SET(CPACK_PACKAGE_NAME "moments++")
-SET(CPACK_PACKAGE_VENDOR "Gustavo V. Barroso")
-SET(CPACK_PACKAGE_VERSION "0.0.1")
-SET(CPACK_PACKAGE_VERSION_MAJOR "0")
-SET(CPACK_PACKAGE_VERSION_MINOR "0")
-SET(CPACK_PACKAGE_VERSION_PATCH "1")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast and accurate prediction of two-locus statistics")
-SET(CPACK_SOURCE_GENERATOR "TGZ")
-# /!\ This assumes that an external build is used
-SET(CPACK_SOURCE_IGNORE_FILES 
-       "/build/" 
-       "/\\\\.git/" 
-       "/\\\\.gitignore" 
-       ${CPACK_SOURCE_IGNORE_FILES}
-       )
-
-SET(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
-SET(CPACK_DEBSOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}_${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}.orig")
-INCLUDE(CPack)
-
-# This adds the 'dist' target
-ADD_CUSTOM_TARGET(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-
+# Custom target (guarded to avoid duplication)
+if(NOT TARGET dist)
+  add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
+endif()

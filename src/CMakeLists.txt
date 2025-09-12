@@ -3,7 +3,8 @@
 #   Gustavo V. Barroso
 # Created: 06/09/2022
 
-SET(momentspp_CPP
+# Source files for main executables
+set(momentspp_CPP
   Log.cpp
   Graph.cpp
   Demes.cpp
@@ -11,9 +12,7 @@ SET(momentspp_CPP
   SumStatsLibrary.cpp
   AbstractOperator.cpp
   Drift.cpp
-  #Migration.cpp
   Mutation.cpp
-  #Admixture.cpp
   Selection.cpp
   Recombination.cpp
   Epoch.cpp
@@ -22,25 +21,40 @@ SET(momentspp_CPP
   main.cpp
 )
 
-SET(twoLocusSim_CPP
+set(twoLocusSim_CPP
   twoLocusSim.cpp
 )
 
-ADD_EXECUTABLE (momentspp ${momentspp_CPP})
-ADD_EXECUTABLE (twoLocusSim ${twoLocusSim_CPP})
+# Create executables
+add_executable(momentspp ${momentspp_CPP})
+add_executable(twoLocusSim ${twoLocusSim_CPP})
 
-SET(momentspp-targets momentspp twoLocusSim)
+set(momentspp_targets momentspp twoLocusSim)
 
-target_include_directories(momentspp PRIVATE ${mpreal_SOURCE_DIR})
+# Apply common settings to all targets
+foreach(target ${momentspp_targets})
+  target_compile_features(${target} PRIVATE cxx_std_20)
 
-FOREACH (target ${momentspp-targets})
-	TARGET_LINK_LIBRARIES(${target} ${BPP_LIBS_SHARED})
-	TARGET_LINK_LIBRARIES(${target} ${YAML_CPP_LIBRARIES})
-	TARGET_LINK_LIBRARIES(${target} GSL::gsl GSL::gslcblas)
-	TARGET_LINK_LIBRARIES(${target} Boost::iostreams)
-	TARGET_LINK_LIBRARIES(${target} ${MPFR_LIB} ${GMP_LIB})
-        TARGET_LINK_LIBRARIES (${target} ${MPREAL_LIB})
-ENDFOREACH (target)
+  target_include_directories(${target}
+    PRIVATE
+      ${mpreal_SOURCE_DIR}
+      ${Boost_INCLUDE_DIRS}
+      ${Eigen3_INCLUDE_DIRS}
+      ${YAML_CPP_INCLUDE_DIR}
+  )
 
-INSTALL(TARGETS ${momentspp-targets} DESTINATION ${CMAKE_INSTALL_BINDIR})
+  target_link_libraries(${target}
+    PRIVATE
+      ${BPP_LIBS_SHARED}
+      ${YAML_CPP_LIBRARIES}
+      GSL::gsl
+      GSL::gslcblas
+      Boost::iostreams
+      ${MPFR_LIB}
+      ${GMP_LIB}
+      ${MPREAL_LIB}
+  )
+endforeach()
 
+# Install binaries
+install(TARGETS ${momentspp_targets} DESTINATION ${CMAKE_INSTALL_BINDIR})

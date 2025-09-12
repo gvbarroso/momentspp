@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 11/09/2025
+ * Last modified: 12/09/2025
  *
  */
 
@@ -33,6 +33,7 @@
 #include "Mutation.hpp"
 #include "SumStatsLibrary.hpp"
 #include "Population.hpp"
+#include "MatrixEngine.hpp"
 
 struct EigenResult
 {
@@ -55,8 +56,8 @@ private:
   std::vector<std::shared_ptr<Population>> pops_;
   std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-  std::unique_ptr<MatrixInterface> transitionMatrix_; // all sparse operators combined into a dense matrix
-  std::unique_ptr<VectorInterface> steadYstate_; // based on the parameters of *this epoch
+   // engine_ holds the steady state vector as well as all sparse operators combined into a matrix
+  std::unique_ptr<MatrixEngine> engine_;
 
 public:
   Epoch():
@@ -67,8 +68,7 @@ public:
   endGen_(0),
   pops_(0),
   operators_(0),
-  transitionMatrix_(),
-  steadYstate_()
+  engine_(std::make_unique<MatrixEngine>(true))
   { }
 
   Epoch(const std::string& name, const SumStatsLibrary& ssl, size_t start, size_t end,
@@ -139,9 +139,12 @@ public:
     return steadYstate_;
   }
 
-  const Eigen::SparseMatrix<mpfr::mpreal>& getTransitionMatrix()
+  MatrixEngine::SparseMatrixVariant getTransitionMatrix() const
   {
-    return transitionMatrix_;
+    return std::visit([](const auto& mat)
+    {
+      return typename std::decay_t<decltype(mat)>::MatrixType(mat.mat_);
+    }, engine_->getMatrixVariant());
   }
 
   size_t getNumPops()
