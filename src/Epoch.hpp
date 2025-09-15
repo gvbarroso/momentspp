@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 12/09/2025
+ * Last modified: 15/09/2025
  *
  */
 
@@ -26,8 +26,6 @@
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
-#include "VectorInterface.hpp"
-#include "MatrixInterface.hpp"
 #include "AbstractOperator.hpp"
 #include "Admixture.hpp"
 #include "Mutation.hpp"
@@ -56,8 +54,14 @@ private:
   std::vector<std::shared_ptr<Population>> pops_;
   std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-   // engine_ holds the steady state vector as well as all sparse operators combined into a matrix
+   // engine_ holds the steady state vector as well as all sparse operators summed into a Sparse matrix
   std::unique_ptr<MatrixEngine> engine_;
+
+  // for continuous-time integration
+  double dt_;         // default time step for fixed integration
+  size_t steps_;      // default number of steps
+  double totalTime_;  // default total time for adaptive integration
+  double tolerance_;  // default error tolerance
 
 public:
   Epoch():
@@ -68,12 +72,17 @@ public:
   endGen_(0),
   pops_(0),
   operators_(0),
-  engine_(std::make_unique<MatrixEngine>(true))
+  engine_(std::make_unique<MatrixEngine>(false)),
+  dt_(0.),
+  steps_(0),
+  totalTime_(0.),
+  tolerance_(0.)
   { }
 
   Epoch(const std::string& name, const SumStatsLibrary& ssl, size_t start, size_t end,
+        const std::vector<std::shared_ptr<Population>>& pops,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops,
-        const std::vector<std::shared_ptr<Population>>& pops):
+        double dt = 1e-3, size_t steps = 1e+3, double totalTime = 1., double tol = 1e-6):
   bpp::AbstractParameterAliasable(""),
   name_(name),
   ssl_(ssl),
@@ -81,8 +90,11 @@ public:
   endGen_(end),
   pops_(pops),
   operators_(ops),
-  transitionMatrix_(nullptr),
-  steadYstate_(nullptr)
+  engine_(std::make_unique<MatrixEngine>(false)),
+  dt_(dt),
+  steps_(steps),
+  totalTime_(totalTime),
+  tolerance_(tol)
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       addParameters_((*it)->getParameters());
@@ -114,6 +126,16 @@ public:
     bpp::AbstractParameterAliasable::setParametersValues(params);
   }
 
+  const MatrixEngine& getEngine() const
+  {
+    return *engine_;
+  }
+
+  MatrixEngine& getEngine()
+  {
+    return *engine_;
+  }
+
   const std::string& getName()
   {
     return name_;
@@ -134,22 +156,59 @@ public:
     return startGen_ - endGen_;
   }
 
-  const std::unique_ptr<VectorInterface>& getSteadyState()
+  double getDt()
   {
-    return steadYstate_;
+    return dt_;
   }
 
-  MatrixEngine::SparseMatrixVariant getTransitionMatrix() const
+  size_t getSteps()
   {
-    return std::visit([](const auto& mat)
-    {
-      return typename std::decay_t<decltype(mat)>::MatrixType(mat.mat_);
-    }, engine_->getMatrixVariant());
+    return steps_;
+  }
+
+  double getTotalTime()
+  {
+    return totalTime_;
+  }
+
+  double getTolerance()
+  {
+    return tolerance_;
+  }
+
+  auto getTransitionMatrix() const -> MatrixEngine::SparseMatrixVariant
+  {
+    return engine_->getRawMatrix();
+  }
+
+  auto getSteadyStateVector() const -> MatrixEngine::VectorVariantEigen
+  {
+    return engine_->getRawVector();
   }
 
   size_t getNumPops()
   {
     return pops_.size();
+  }
+
+  void setDt(double dt)
+  {
+    dt_ = dt;
+  }
+
+  void setNumSteps(size_t numSteps)
+  {
+    steps_ = steps;
+  }
+
+  void setTotalTime(double time)
+  {
+    totalTime_ = time;
+  }
+
+  void setTolerance(double tol)
+  {
+    tolerance_ = tol;
   }
 
   const std::vector<std::shared_ptr<Population>>& getPops()
@@ -226,15 +285,19 @@ public:
 
   std::vector<size_t> fetchSelectedPopIds(); // for *this epoch
 
-  void computeExpectedSumStats(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y);
+  void computeExpectedSumStatsDiscrete(const MatrixEngine::VectorVariantEigen& y);
 
-  void transferStatistics(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& y);
+  void transferStatistics(MatrixEngine::VectorVariantEigen& y) const;
 
-  void updateMoments(const std::unique_ptr<VectorInterface>& y);
+  void updateMoments(const MatrixEngine::VectorVariantEigen& y);
 
   void printMoments(std::ostream& stream);
 
-  void printHetMomentsIntermediate(std::unique_ptr<VectorInterface>& y, const std::string& name, size_t interval);
+  void printMomentsIntermediate(
+  MatrixEngine::VectorVariantEigen& y,
+  const std::string& modelName,
+  size_t interval,
+  const std::vector<std::string>& momNames);
 
   void printRecursions(std::ostream& stream);
 
@@ -246,36 +309,23 @@ public:
 
   void testSteadyState();
 
-  void calibrate(); // TODO implement method to figure out the best dt to use in integrate();
+  template<typename Scalar>
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> integrateTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms) const;
 
-  std::unique_ptr<VectorInterface> integrate(std::unique_ptr<VectorInterface> y, double dt, size_t steps) const;
+  MatrixEngine::VectorVariantEigen integrate(const MatrixEngine::VectorVariantEigen& moms) const;
+
+  template<typename Scalar>
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> integrateAdaptiveTyped(
+  const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
+  double dtMin = 1e-6,
+  double dtMax = 1.0) const;
+
+  MatrixEngine::VectorVariantEigen integrateAdaptive(const MatrixEngine::VectorVariantEigen& moms) const;
 
   void printConditionNumber()
   {
     double cond = fetchConditionNumber();
     std::cout << "Condition Number for Transition Matrix, epoch " << name_ << " = " << cond << "\n";
-  }
-
-  inline double fetchConditionNumber()
-  {
-    if(const auto* matMP = dynamic_cast<const MatrixMPReal*>(transitionMatrix_.get()))
-    {
-      auto dense = matMP->toDense();
-      Eigen::JacobiSVD<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> svd(dense);
-
-      return svd.singularValues()(0).toDouble() / svd.singularValues()(svd.singularValues().size() - 1).toDouble();
-    }
-
-    else if(const auto* matDouble = dynamic_cast<const MatrixDouble*>(transitionMatrix_.get()))
-    {
-      auto dense = matDouble->toDense();
-      Eigen::JacobiSVD<Eigen::MatrixXd> svd(dense);
-
-      return svd.singularValues()(0).toDouble() / svd.singularValues()(svd.singularValues().size() - 1).toDouble();
-    }
-
-    else
-      throw bpp::Exception("Epoch::Unsupported matrix type for eigenvalue analysis!");
   }
 
   // computes and returns relative population size (use for continuous-time integration)
@@ -291,31 +341,32 @@ public:
     return fetchNu(popId, pops_[popId]->getParent()->getSize());
   }
 
-  inline EigenResult findLeadingEigenpair()
+  inline double fetchConditionNumber() const
   {
-    if(const auto* matMP = dynamic_cast<const MatrixMPReal*>(transitionMatrix_.get()))
+    return std::visit([](const auto& mat)
     {
-      auto dense = matMP->toDense();
-      Eigen::EigenSolver<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> es(dense);
+      using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
+      using DenseMatrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
-      size_t idx = 0;
-      for (size_t i = 1; i < es.eigenvalues().size(); ++i)
-      {
-        if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
-          idx = i;
-      }
+      DenseMatrix dense(mat.mat_); // convert sparse to dense
+      Eigen::JacobiSVD<DenseMatrix> svd(dense);
 
-      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vec = es.eigenvectors().col(idx).real();
-      vec.normalize();  // Eigen supports mpreal normalization (NumTraits are defined in Eigen_mpreal_traits.hpp)
+      const auto& singularValues = svd.singularValues();
+      return singularValues(0).toDouble() / singularValues(singularValues.size() - 1).toDouble();
+    }, engine_->getMatrixVariant());
+  }
 
-      return { idx, es.eigenvalues().real()(idx), vec };
-    }
-
-    else if(const auto* matDouble = dynamic_cast<const MatrixDouble*>(transitionMatrix_.get()))
+  inline EigenResult findLeadingEigenpair() const
+  {
+    return std::visit([](const auto& mat) -> EigenResult
     {
-      auto dense = matDouble->toDense();
-      Eigen::EigenSolver<Eigen::MatrixXd> es(dense);
+      using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
+      using DenseMatrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
+      DenseMatrix dense(mat.mat_); // convert sparse to dense
+      Eigen::EigenSolver<DenseMatrix> es(dense);
+
+      // Find index of largest real eigenvalue
       size_t idx = 0;
       for(size_t i = 1; i < es.eigenvalues().size(); ++i)
       {
@@ -323,19 +374,17 @@ public:
           idx = i;
       }
 
-      Eigen::VectorXd vec = es.eigenvectors().col(idx).real();
+      // Extract and normalize the corresponding eigenvector
+      auto vec = es.eigenvectors().col(idx).real();
       vec.normalize();
 
-      // converting to mpreal for consistency
+      // Convert to mpreal for consistency
       Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vec.size());
-      for(size_t i = 0; i < vec.size(); ++i)
+      for (size_t i = 0; i < vec.size(); ++i)
         vecMP(i) = mpfr::mpreal(vec(i));
 
       return { idx, mpfr::mpreal(es.eigenvalues().real()(idx)), vecMP };
-    }
-
-    else
-      throw bpp::Exception("Epoch::Unsupported matrix type for eigenvalue analysis!");
+    }, engine_->getMatrixVariant());
   }
 
 private:

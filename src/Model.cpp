@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 09/09/2025
+ * Last modified: 15/09/2025
  *
  */
 
@@ -18,25 +18,49 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   computeCompositeLogLikelihood_(); // e.g. for each rec. bin
 }
 
-void Model::computeExpectedSumStats()
+void Model::computeExpectedSumStatsDiscrete()
 {
-  expected_ = epochs_[0]->getSteadyState()->clone(); // resets moments to the "deep past"
+  auto y = epochs_[0]->getSteadyStateVector(); // resets moments to the "deep past"
 
-  for(size_t i = 1; i < epochs_.size() - 1; ++i) // epochs are sorted from past to present
+  // propagates through
+  for(size_t i = 1; i < epochs_.size(); ++i)
   {
-    // this follows the ancestry patterns of moments according to population history, see linkMoments_()
-    epochs_[i]->transferStatistics(expected_); // copying values from epoch i-1 into epoch i
-    epochs_[i]->computeExpectedSumStats(expected_); // trickling moments down epochs, y = M * y
-    epochs_[i]->updateMoments(expected_);  // updates inside sslib
+    epochs_[i]->transferStatistics(y);         // map ancestry from previous epoch
+    epochs_[i]->computeExpectedSumStats(y);    // applies transition matrix
+    epochs_[i]->updateMoments(y);              // updates inside sslib
   }
 
-  if(epochs_.size() > 1)
-  {
-    epochs_.back()->transferStatistics(expected_);
-    epochs_.back()->computeExpectedSumStats(expected_);
-    epochs_.back()->updateMoments(expected_);
-  }
+  expected_ = y;
 }
+
+void Model::computeExpectedSumStatsContinuous()
+{
+  MatrixEngine::VectorVariantEigen y = epochs_[0]->getSteadyStateVector();
+
+  for(size_t i = 1; i < epochs_.size(); ++i)
+  {
+    epochs_[i]->transferStatistics(y);
+    y = epochs_[i]->integrate(y);
+    epochs_[i]->updateMoments(y);
+  }
+
+  expected_ = y;
+}
+
+void Model::computeExpectedSumStatsAdaptive()
+{
+  MatrixEngine::VectorVariantEigen y = epochs_[0]->getSteadyStateVector();
+
+  for(size_t i = 1; i < epochs_.size(); ++i)
+  {
+    epochs_[i]->transferStatistics(y);
+    y = epochs_[i]->integrateAdaptive(y);
+    epochs_[i]->updateMoments(y);
+  }
+
+  expected_ = y;
+}
+
 
 void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
 {
@@ -50,14 +74,13 @@ void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
   }
 }
 
-// prints expectations of Hl and Hr over time (for each epoch)
-// NOTE could be adapted to take moment names as input
-void Model::printHetMomentsIntermediate(const std::string& modelName, size_t interval)
+// prints expectations over time (for each epoch)
+void Model::printMomentsIntermediate(const std::string& modelName, size_t interval, const std::vector<std::string>& momNames)
 {
-  auto y = epochs_[0]->getSteadyState();
+  MatrixEngine::VectorVariantEigen y = epochs_[0]->getSteadyStateVector();
 
   for(size_t i = 1; i < epochs_.size(); ++i)
-    epochs_[i]->printHetMomentsIntermediate(y, modelName, interval);
+    epochs_[i]->printMomentsIntermediate(y, modelName, interval, momNames);
 }
 
 void Model::printAliasedMoments(std::ostream& stream)

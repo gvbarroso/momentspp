@@ -1,61 +1,46 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 11/09/2025
+ * Last modified: 15/09/2025
  *
  */
 
 #include <ios>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <fstream>
 
 #include "Migration.hpp"
 #include "Epoch.hpp"
-
-namespace
-{
-  inline mpfr::mpreal getValue(const VectorInterface& vec, size_t index)
-  {
-    if(const auto* mpVec = dynamic_cast<const VectorMPReal*>(&vec))
-      return mpVec->get(index);
-
-    else
-      return mpfr::mpreal(vec.get(index));
-  }
-
-  inline void setValue(VectorInterface& vec, size_t index, const mpfr::mpreal& value)
-  {
-    if(auto* mpVec = dynamic_cast<VectorMPReal*>(&vec))
-      mpVec->set(index, value);
-
-    else
-      vec.set(index, value.toDouble());
-  }
-
-  inline void setValue(VectorInterface& vec, size_t index, double value)
-  {
-    vec.set(index, value);  // works for both types
-  }
-}
 
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
   if(matchParametersValues(params))
   {
     updateOperators_(params);
-    std::unique_ptr<MatrixInterface> sum = operators_[0]->getTransitionMatrix()->clone();
+    engine_->setMatrix(operators_[0]->getTransitionMatrix());
 
     for(size_t i = 1; i < operators_.size(); ++i)
-      sum->addInPlace(operators_[i]->getTransitionMatrix().get());
-
-    transitionMatrix_ = std::move(sum);
+      engine_->addMatrixInPlace(operators_[i]->getTransitionMatrix());
   }
 }
 
-void Epoch::computeExpectedSumStats(std::unique_ptr<VectorInterface>& y)
+void Epoch::computeExpectedSumStatsDiscrete(const MatrixEngine::VectorVariantEigen& y)
 {
-  for(size_t i = 0; i < duration(); ++i)
-    y = transitionMatrix_->multiply(y.get());
+  auto result = std::visit([&](const auto& vec) -> decltype(vec)
+  {
+    using Scalar = typename std::decay_t<decltype(vec)>::Scalar;
 
-  updateMoments(y);
+    const Eigen::SparseMatrix<Scalar> M = std::get<Eigen::SparseMatrix<Scalar>>(engine_->getRawMatrix());
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y = vec;
+
+    for(size_t i = 0; i < duration(); ++i)
+      y = M * y;
+
+    return y;
+  }, y);
+
+  updateMoments(result);
 }
 
 std::vector<size_t> Epoch::fetchSelectedPopIds()
@@ -73,30 +58,40 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
 }
 
 // copies moment expectations from previous epoch into y, respecting ancestry relationships
-void Epoch::transferStatistics(std::unique_ptr<VectorInterface>& y) // y comes from previous Epoch
+void Epoch::transferStatistics(MatrixEngine::VectorVariantEigen& y) const
 {
-  // y and tmp have potentially different sizes due to number of Populations and/or Order(1-2p)
-  auto tmp = y->cloneWithSize(ssl_.getBasis().size()); // maintains the derived class of y
-
-  // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
-  // this follows the ancestry patterns of moments according to population history, see Model::linkMoments_()
-  for(size_t i = 0; i < tmp->size(); ++i)
+  std::visit([&](auto& vecPrev)
   {
-    size_t parentPos = ssl_.getBasis()[i]->getParent()->getPosition();
-    setValue(tmp.get(), i, getValue(y.get(), parentPos)); // inline function above
-  }
+    using VectorType = std::decay_t<decltype(vecPrev)>;
+    using Scalar = typename VectorType::Scalar;
 
-  y = std::move(tmp);
+    // y and tmp have potentially different sizes due to number of Populations and/or Order(1-2p)
+    const size_t newSize = ssl_.getBasis().size();
+    VectorType vecNew(newSize);
+
+    // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
+    // this follows the ancestry patterns of moments according to population history, see Model::linkMoments_()
+    for(size_t i = 0; i < newSize; ++i)
+    {
+      size_t parentPos = ssl_.getBasis()[i]->getParent()->getPosition();
+      vecNew(i) = vecPrev(parentPos);
+    }
+
+    vecPrev = std::move(vecNew);  // overwrite original vector in-place
+  }, y);
 }
 
-void Epoch::updateMoments(const std::unique_ptr<VectorInterface>& y)
+void Epoch::updateMoments(const MatrixEngine::VectorVariantEigen& y)
 {
-  assert(y.size() == static_cast<int>(ssl_.getBasis().size()));
+  std::visit([&](const auto& vec)
+  {
+    using VectorType = std::decay_t<decltype(vec)>;
+    assert(vec.size() == static_cast<int>(ssl_.getBasis().size()));
 
-  // double precision is fine as expections in ssl_-> moments_ / basis_ exist just for organization / printing
-  for(int i = 0; i < y.size(); ++i)
-    ssl_.getBasis()[i]->setValue(y->get(i));
+    for(int i = 0; i < vec.size(); ++i)
+      ssl_.getBasis()[i]->setValue(static_cast<double>(vec(i)));
 
+  }, y);
 }
 
 void Epoch::printMoments(std::ostream& stream)
@@ -104,37 +99,67 @@ void Epoch::printMoments(std::ostream& stream)
   std::vector<std::shared_ptr<Moment>> tmp = getSslib().getBasis();
 
   for(auto& m : tmp)
-    stream << std::setprecision(24) << m->getName() << " = " << m->getValue() << "\n";
+    stream << std::setprecision(16) << m->getName() << " = " << m->getValue() << "\n";
 }
 
-// prints expectations of Hl and Hr over time
-void Epoch::printHetMomentsIntermediate(std::unique_ptr<VectorInterface>& y, const std::string& modelName, size_t interval)
+void Epoch::printMomentsIntermediate(
+  MatrixEngine::VectorVariantEigen& y,
+  const std::string& modelName,
+  size_t interval,
+  const std::vector<std::string>& momNames)
 {
-  // NOTE method could be adapted to take moment names as input
-  transferStatistics(y); // since different Epochs may use different Order
+  transferStatistics(y);  // adjust vector to match current Epoch's basis
 
-  std::string fileName = modelName + "_" + name_ + "_hets_time.txt";
-  std::ofstream fout(fileName);
+  std::string fileName = modelName + "_" + name_ + "_moments.csv.gz";
+  std::ofstream rawFile(fileName, std::ios_base::out | std::ios_base::binary);
+  boost::iostreams::filtering_ostream fout;
+  fout.push(boost::iostreams::gzip_compressor());
+  fout.push(rawFile);
 
-  const std::vector<std::shared_ptr<Moment>>& basis = getSslib().getBasis();
-  size_t steps = duration() / interval + 1; // prints every interval generations
+  const auto& basis = getSslib().getBasis();
+  const size_t steps = duration() / interval + 1; // prints every interval generations
 
-  for(size_t i = 0; i < steps; ++i)
+  // column indices for chosen moments
+  std::vector<size_t> indices;
+  for(size_t i = 0; i < basis.size(); ++i)
   {
-    for(size_t j = 0; j < basis.size(); ++j)
-    {
-      // precision not terribly importantly here
-      if(basis[j]->getName() == "Hr_0_0" || basis[j]->getName() == "Hl_0_0")
-        fout << basis[j]->getName() << " = " << y->get(j) << " " << startGen_ - i * interval << "\n";
-    }
-
-    if(i < steps - 1) { // not to advance further than needed, important when there are > 2 Epochs
-      for(size_t k = 0; k < interval; ++k)
-        y = transitionMatrix_->multiply(y.get());
-    }
+    const std::string& name = basis[i]->getName();
+    if(std::find(momNames.begin(), momNames.end(), name) != momNames.end())
+      chosen.push_back(i);
   }
 
-  fout.close();
+  fout << "Generation";
+  for(const auto& name : momNames)
+    fout << "," << name;
+  fout << "\n";
+
+  std::visit([&](auto& vec)
+  {
+    using VectorType = std::decay_t<decltype(vec)>;
+    using Scalar = typename VectorType::Scalar;
+
+    for(size_t i = 0; i < steps; ++i)
+    {
+      fout << (startGen_ - i * interval);  // gen column
+
+      for(size_t idx : chosen)
+        fout << "," << static_cast<double>(vec(idx));  // mom values
+
+      fout << "\n";
+
+      if(i < steps - 1) // not to advance further than needed, important when there are > 2 Epochs
+      {
+        for (size_t k = 0; k < interval; ++k)
+        {
+          const auto& M = std::get<Eigen::SparseMatrix<Scalar>>(engine_->getRawMatrix());
+          vec = M * vec;
+        }
+      }
+    }
+  }, y);
+
+  fout.reset();  // flush and close gzip stream
+  rawFile.close();
 }
 
 void Epoch::printRecursions(std::ostream& stream)
@@ -197,106 +222,109 @@ void Epoch::computeEigenSteadyState()
     throw bpp::Exception("Epoch::Leading Eigenvalue > 1! Consider using a smaller order of 1-2p factors.\n");
   }
 
-  // deducing type of steadYstate_ from the type of transitionMatrix_
-  if(dynamic_cast<MatrixMPReal*>(transitionMatrix_.get()))
-    steadYstate_ = std::make_unique<VectorMPReal>(res.vector);
+  // Deduce scalar type from engine's matrix and construct steady state vector
+  std::visit([&](const auto& mat) {
+    using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
-  else if(dynamic_cast<MatrixDouble*>(transitionMatrix_.get()))
-  {
-    Eigen::VectorXd vecDouble(res.vector.size());
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> converted(res.vector.size());
+
     for(Eigen::Index i = 0; i < res.vector.size(); ++i)
-      vecDouble(i) = res.vector(i).toDouble();
+      converted(i) = static_cast<Scalar>(res.vector(i));
 
-    steadYstate_ = std::make_unique<VectorDouble>(vecDouble);
-  }
+    engine_->setVector(MatrixEngine::VectorVariant{Vector<Scalar>(converted)});
+  }, engine_->getMatrixVariant());
 
-  // I moment embodies scaling constant used by Eigen
-  //steadYstate_ = es.eigenvectors().col(idx).real();
-  //steadYstate_ /= steadYstate_(ssl_.findCompressedIndex(ssl_.getMoment("I")));
-  updateMoments(steadYstate_);
+  updateMoments(engine_->getVectorVariant());
 }
 
 // assumes discrete-time treatment is adequate
-void Epoch::computePseudoSteadyState()
+void Epoch::computePseudoSteadyState(double tol = 1e-6)
 {
-  if(dynamic_cast<MatrixDouble*>(transitionMatrix_.get()))
-    steadYstate_ = std::make_unique<VectorDouble>(transitionMatrix_.size());
+  bool converged = false;
 
-  else if(dynamic_cast<MatrixMPReal*>(transitionMatrix_.get()))
-    steadYstate_ = std::make_unique<VectorMPReal>(transitionMatrix_.size());
+  std::visit([&](const auto& mat) {
+    using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
-  else
-    throw bpp::Exception("Epoch::Mis-cast transition matrix!");
+    Vector<Scalar> y(mat.mat_.rows());
 
-  size_t pop = ssl_.getPopIndices()[0];
-  double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
-  double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
-  size_t twoN = static_cast<size_t>(1 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+    size_t pop = ssl_.getPopIndices()[0];
+    double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
+    double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
+    size_t twoN = static_cast<size_t>(1 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
 
-  // rough guesses for starting values to help w/ convergence
-  double hr = twoN * mu;
-  double hl = hr;
+    size_t maxIterations = 20 * twoN;
 
-  if(static_cast<double>(twoN * s) < -5)
-  {
-    double p = mu / -s;
-    hl = p * (1-p);
-  }
+    double hr = twoN * mu;
+    double hl = hr;
 
-  for(size_t i = 0; i < steadYstate_.size(); ++i)
-  {
-    const std::string& prefix = ssl_.getBasis()[i]->getPrefix();
-
-    if(prefix == "Hl")
-      steadYstate_->set(i, hl);
-
-    else if(prefix == "Hr")
-      steadYstate_->set(i, hr);
-
-    else if(prefix == "pi2")
-      steadYstate_->set(i, hr * hl);
-
-    else if(prefix == "I")
-      steadYstate_->set(i, 1.);
-
-    else // DD and Dr
-      steadYstate_->set(i, hr * hl * 1e-1);
-  }
-  
-  double tol = 1e-3;
-  auto prev = steadYstate_->clone();  // deep copy if needed
-
-  auto notConverged = [&](size_t i)
-  {
-    double prevVal = prev->get(i);
-    double currVal = steadYstate_->get(i);
-    double relDiff = std::abs(currVal - prevVal) / std::max(1.0, std::abs(prevVal));
-    return relDiff > tol;
-  };
-
-  while(true)
-  {
-    bool converged = true;
-    for(size_t i = 0; i < steadYstate_->size(); ++i)
+    if(static_cast<double>(twoN * s) < -5)
     {
-      if(notConverged(i))
+      double p = mu / -s;
+      hl = p * (1 - p);
+    }
+
+    for(size_t i = 0; i < y->size(); ++i)
+    {
+      const std::string& prefix = ssl_.getBasis()[i]->getPrefix();
+
+      if (prefix == "Hl")
+        y.set(i, Scalar(hl));
+      else if (prefix == "Hr")
+        y.set(i, Scalar(hr));
+      else if (prefix == "pi2")
+        y.set(i, Scalar(hr * hl));
+      else if (prefix == "I")
+        y.set(i, Scalar(1.0));
+      else
+        y.set(i, Scalar(hr * hl * 1e-1));
+    }
+
+    auto prev = y->clone();
+
+    auto notConverged = [&](size_t i) {
+      double prevVal = prev->get(i).toDouble();
+      double currVal = y->get(i).toDouble();
+      double relDiff = std::abs(currVal - prevVal) / std::max(1.0, std::abs(prevVal));
+      return relDiff > tol;
+    };
+
+    for(size_t iter = 0; iter < maxIterations; ++iter)
+    {
+      bool allConverged = true;
+      for(size_t i = 0; i < y->size(); ++i)
       {
-        converged = false;
+        if(notConverged(i))
+        {
+          allConverged = false;
+          break;
+        }
+      }
+
+      if(allConverged)
+      {
+        converged = true;
         break;
       }
+
+      prev = y->clone();
+      y = mat.multiply(y);
     }
 
     if(converged)
-      break;
+     engine_->setVector(y);
+  }, engine_->getMatrixVariant());
 
-    prev = steadYstate_->clone();  // update previous guess
-    steadYstate_ = transitionMatrix_->multiply(steadYstate_.get());
+  if(!converged)
+  {
+    std::cerr << "Epoch::Pseudo steady state did not converge. Falling back to eigen-based steady state.\n";
+    computeEigenSteadyState();
+    return;
   }
 
-  updateMoments(steadYstate_);
+  updateMoments(engine_->getVectorVariant());
 }
 
-// in models with gene-flow
+// test existence of steady-state in models with gene-flow
 void Epoch::testSteadyState()
 {
   /*
@@ -313,44 +341,136 @@ void Epoch::testSteadyState()
   */
 }
 
-std::unique_ptr<VectorInterface> Epoch::integrate(std::unique_ptr<VectorInterface> moms, double dt, size_t steps) const
+template<typename Scalar>
+Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Epoch::integrateTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms) const
 {
-  if(!transitionMatrix_ || !steadyState_) {
-    throw bpp::Exception("Epoch not initialized!\n");
+  using MatrixType = Eigen::SparseMatrix<Scalar>;
+  using VectorType = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 
-  auto I = transitionMatrix_->identity();
-  auto halfDtM = transitionMatrix_->clone();
+  const MatrixType M = std::get<MatrixType>(engine_->getRawMatrix());
 
-  // "splits" original matrix in two
-  auto halfDtM->scale(dt / 2.0);
-  auto A = I->add(*halfDtM->scale(-1.0));  // A = I - dt/2 * M
-  auto B = I->add(*halfDtM);               // B = I + dt/2 * M
+  MatrixType I(M.rows(), M.cols());
+  I.setIdentity();
 
-  std::unique_ptr<VectorInterface> y = moms->clone();
+  MatrixType halfDtM = dt_ / 2.0 * M;
+  MatrixType A = I - halfDtM;
+  MatrixType B = I + halfDtM;
 
-  for(size_t i = 0; i < steps; ++i)
+  VectorType y = moms;
+
+  Eigen::SparseLU<MatrixType> solver;
+  solver.compute(A);
+  if(solver.info() != Eigen::Success)
+    throw bpp::Exception("Epoch::Matrix decomposition failed during integration.");
+
+  for(size_t i = 0; i < steps_; ++i)
   {
-    auto rhs = B->multiply(*y);
-    y = A->solve(*rhs);
+    VectorType rhs = B * y;
+    y = solver.solve(rhs);
+    if (solver.info() != Eigen::Success)
+      throw bpp::Exception("Epoch::Linear solve failed during integration.");
   }
 
   return y;
 }
 
-void Epoch::init_()
+MatrixEngine::VectorVariantEigen Epoch::integrate(const MatrixEngine::VectorVariantEigen& moms) const
 {
-  auto mat = operators_[0]->getTransitionMatrix(); // "delta" matrix
+  return std::visit([&](const auto& vec) -> MatrixEngine::VectorVariantEigen
+  {
+    using Scalar = typename std::decay_t<decltype(vec)>::Scalar;
+    return integrateTyped<Scalar>(vec);
+  }, moms);
+}
 
-  for(size_t i = 1; i < operators_.size(); ++i) {
-    mat->add(operators_[i]->getTransitionMatrix()); // summing rather than multiplying together
-    mat.makeCompressed();
+template<typename Scalar>
+Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Epoch::integrateAdaptiveTyped(
+  const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
+  double dtMin = 1e-6,
+  double dtMax = 1.0) const
+{
+  using MatrixType = Eigen::SparseMatrix<Scalar>;
+  using VectorType = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+
+  MatrixType M = std::get<MatrixType>(engine_->getRawMatrix());
+
+  MatrixType I(M.rows(), M.cols());
+  I.setIdentity();
+
+  VectorType y = moms;
+  double t = 0.0;
+  double dt = dt_;
+
+  while(t < totalTime_)
+  {
+    if(t + dt > totalTime_)
+      dt = totalTime_ - t;
+
+    MatrixType halfDtM = dt / 2.0 * M;
+    MatrixType A = I - halfDtM;
+    MatrixType B = I + halfDtM;
+
+    Eigen::SparseLU<MatrixType> solver;
+    solver.compute(A);
+
+    if(solver.info() != Eigen::Success)
+      throw bpp::Exception("Epoch::Matrix decomposition failed during adaptive integration.");
+
+    VectorType y_full = solver.solve(B * y);
+
+    // Two half steps
+    double halfDt = dt / 2.0;
+    MatrixType halfDtM_half = halfDt * M;
+    MatrixType A_half = I - halfDtM_half;
+    MatrixType B_half = I + halfDtM_half;
+
+    Eigen::SparseLU<MatrixType> solver_half;
+    solver_half.compute(A_half);
+
+    if(solver_half.info() != Eigen::Success)
+      throw bpp::Exception("Epoch::Matrix decomposition failed for half step.");
+
+    VectorType y_half1 = solver_half.solve(B_half * y);
+    VectorType y_half2 = solver_half.solve(B_half * y_half1);
+
+    double error = (y_full - y_half2).norm() / y_half2.norm();
+
+    if(error < tolerance_)
+    {
+      y = y_half2;
+      t += dt;
+      dt = std::min(dt * 1.5, dtMax);
+    }
+
+    else
+      dt = std::max(dt / 2.0, dtMin);
   }
 
-  mat->add(operators_[0]->getIdentity()); // sums Identity to convert from "delta" to transition matrix
-  mat.prune(0.0);  // removes converted zeros
-  mat.makeCompressed();
-  transitionMatrix_ = mat;
-
-  //testSteadyState();
+  return y;
 }
+
+MatrixEngine::VectorVariantEigen Epoch::integrateAdaptive(const MatrixEngine::VectorVariantEigen& moms) const
+{
+  return std::visit([&](const auto& vec) -> MatrixEngine::VectorVariantEigen
+  {
+    using Scalar = typename std::decay_t<decltype(vec)>::Scalar;
+    return integrateAdaptiveTyped<Scalar>(vec);
+  }, moms);
+}
+
+void Epoch::init_()
+{
+  if(operators_.empty())
+    throw bpp::Exception("Epoch::init_() called with no operators.");
+
+  engine_->setMatrix(operators_[0]->getTransitionMatrix().getMatrixVariant());
+  for(size_t i = 1; i < operators_.size(); ++i)
+    engine_->addMatrixInPlace(operators_[i]->getTransitionMatrix().getMatrixVariant());
+
+  engine_->addIdentityInPlace(); // sums Identity to convert from "delta" to transition matrix
+  engine_->pruneInPlace();
+  engine_->compressInPlace();
+  // testSteadyState();
+}
+
 

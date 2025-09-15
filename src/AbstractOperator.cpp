@@ -15,7 +15,7 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName)
   matFile.open(fileName);
 
   if(!matFile.is_open())
-    throw std::runtime_error("Failed to open file: " + fileName);
+    throw std::runtime_error("Operator::Failed to open file: " + fileName);
 
   MatrixVariant combined = matrices_[0]->getMatrixVariant();
 
@@ -72,12 +72,5 @@ void AbstractOperator::assembleTransitionMatrix_()
   }
 
   transition_->setMatrix(combined);
-
-  if(!identityInitialized_)
-  {
-    identityMatrix_ = transition_->identityMatrix();
-    identityInitialized_ = true;
-  }
-
-  transition_->addMatrixInPlace(identityMatrix_); // convert delta → transition
+  transition_->addIdentityInPlace(); // convert delta → transition
 }

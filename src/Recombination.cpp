@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/09/2025
+ * Last modified: 15/09/2025
  *
  */
 
@@ -12,11 +12,11 @@
 void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
 {
   const size_t numPops = getParameters().size();
-  const size_t sizeOfBasis = sslib.getSizeOfBasis();
+  const size_t basisSize = sslib.getSizeOfBasis();
   matrices_.reserve(numPops);
 
   const auto& basis = sslib.getBasis();
-  const size_t basisSize = basis.size();
+  const size_t numThreads = omp_get_max_threads();
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -24,12 +24,15 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecis
     const std::string paramName = "r_" + bpp::TextTools::toString(id);
     const double recombRate = getParameterValue(paramName);
 
-    // prepare thread-local triplet buffers
-    const size_t numThreads = omp_get_max_threads();
-    std::vector<std::vector<Eigen::Triplet<double>>> threadTriplets(numThreads);
+    // Deduce scalar type
+    using Scalar = std::conditional_t<true, mpfr::mpreal, double>;
+    if(!highPrecision) using Scalar = double;
+
+    std::vector<std::vector<Eigen::Triplet<Scalar>>> threadTriplets(numThreads);
+    std::vector<std::string> invalidPrefixes;
 
     #pragma omp parallel for
-    for(size_t row = 0; row < static_cast<int>(basisSize); ++row)
+    for(size_t row = 0; row < basisSize; ++row)
     {
       const auto& moment = basis[row];
       const std::string& prefix = moment->getPrefix();
@@ -38,50 +41,37 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecis
 
       if(prefix == "DD")
       {
-        size_t f = static_cast<int>(moment->countInstances(id));
-        localTriplets.emplace_back(row, row, -f);
+        size_t f = moment->countInstances(id);
+        localTriplets.emplace_back(row, row, Scalar(-f));
       }
-
       else if(prefix == "Dr" || prefix == "D")
       {
         int f = (moment->getPopIndices()[0] == id);
-        localTriplets.emplace_back(row, row, -f);
+        localTriplets.emplace_back(row, row, Scalar(-f));
       }
-
       else if(prefix != "I" && prefix != "Hl" && prefix != "Hr" && prefix != "pi2")
       {
         #pragma omp critical
-        {
-          throw bpp::Exception("Recombination::mis-specified Moment prefix: " + prefix);
-        }
+        invalidPrefixes.push_back(prefix);
       }
     }
 
-    // merge thread-local triplets
-    std::vector<Eigen::Triplet<double>> coeffs;
+    if(!invalidPrefixes.empty())
+      throw bpp::Exception("Recombination::mis-specified Moment prefix: " + invalidPrefixes.front());
+
+    // Merge thread-local triplets
+    std::vector<Eigen::Triplet<Scalar>> coeffs;
     for(auto& vec : threadTriplets)
-      coeffs.insert(coeffs.end(), vec.begin(), vec.end());
+      coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
-    if(highPrecision)
-    {
-      auto mat = std::make_unique<MatrixMPReal>(numStats, numStats);
-      mat.setFromTriplets(coeffs.begin(), coeffs.end());
-      mat.makeCompressed();
-      mat->scale(recombRate);
-      matrices_.emplace_back(std::move(mat));
-    }
+    // Create and store matrix
+    auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
+    mat->setFromTriplets(coeffs.begin(), coeffs.end());
+    mat->makeCompressed();
+    mat->scale(Scalar(recombRate));
+    matrices_.emplace_back(std::move(mat));
+  }
 
-    else
-    {
-      auto mat = std::make_unique<MatrixDouble>(numStats, numStats);
-      mat.setFromTriplets(coeffs.begin(), coeffs.end());
-      mat.makeCompressed();
-      mat->scale(recombRate);
-      matrices_.emplace_back(std::move(mat));
-    }
-  } // ends loop over populations
-
-  setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
 }
 

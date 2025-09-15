@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 12/09/2025
+ * Last modified: 15/09/2025
  *
  */
 
@@ -20,7 +20,8 @@
 #include <stdexcept>
 
 template<typename Scalar>
-class Vector {
+class Vector
+{
 public:
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> vec_;
 
@@ -38,10 +39,18 @@ public:
       setZero();
     }
 
-    VectorMPReal(Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>&& other):
+    Vector(Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&& other):
     vec_(std::move(other))
     {
       setZero();
+    }
+
+    Vector<Scalar>& operator=(const Vector<Scalar>& other)
+    {
+      if(this != &other)
+        vec_ = other.vec_;  // Eigen handles deep copy
+
+      return *this;
     }
 
     void set(size_t index, Scalar value)

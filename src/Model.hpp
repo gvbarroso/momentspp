@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 09/09/2025
+ * Last modified: 15/09/2025
  *
  */
 
@@ -30,6 +30,7 @@
 #include <Bpp/Numeric/ParameterList.h>
 #include <Bpp/Numeric/Function/Functions.h>
 
+#include "Vector.hpp"
 #include "Epoch.hpp"
 #include "Data.hpp"
 
@@ -42,7 +43,7 @@ private:
   std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own set of params and operators
   std::shared_ptr<Data> data_;
 
-  std::unique_ptr<VectorInterface> expected_;
+  MatrixEngine::VectorVariantEigen expected_;
   double compLogLikelihood_;
 
 public:
@@ -52,7 +53,7 @@ public:
   frozenParams_(0),
   epochs_(epochs),
   data_(data),
-  expected_(),
+  expected_(0),
   compLogLikelihood_(-1.)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
@@ -84,22 +85,22 @@ public:
     AbstractParameterAliasable::setParametersValues(params);
   }
 
-  double getValue() const
+  double getValue() const override // NOTE override added on 15/09/2025
   {
     return -compLogLikelihood_;
   }
   
-  const std::string& getName()
+  const std::string& getName() const
   {
     return name_;
   }
 
-  const std::vector<std::shared_ptr<Epoch>>& getEpochs()
+  const std::vector<std::shared_ptr<Epoch>>& getEpochs() const
   {
     return epochs_;
   }
 
-  const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& getExpectedStats()
+  const MatrixEngine::VectorVariantEigen& getExpectedStats() const
   {
     return expected_;
   }
@@ -143,11 +144,24 @@ public:
     return unfrozen;
   }
 
-  void computeExpectedSumStats();
+  void computeExpectedSumStats(bool continuousTime)
+  {
+    if(continuousTime)
+      computeExpectedSumStatsAdaptive(); // default is to use adaptive scheme to determine optimal dt
+
+    else
+      computeExpectedSumStatsDiscrete();
+  }
+
+  void computeExpectedSumStatsDiscrete();
+
+  void computeExpectedSumStatsContinuous();
+
+  void computeExpectedSumStatsAdaptive();
 
   void printAliasedMomentsPerEpoch(const std::string& modelName);
 
-  void printHetMomentsIntermediate(const std::string& modelName, size_t interval);
+  void printMomentsIntermediate(const std::string& modelName, size_t interval, const std::vector<std::string>& momNames);
 
   void printAliasedMoments(std::ostream& stream);
 

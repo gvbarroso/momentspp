@@ -13,11 +13,11 @@
 void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
 {
   const size_t numPops = getParameters().size();
-  const size_t sizeOfBasis = sslib.getSizeOfBasis();
+  const size_t basisSize = sslib.getSizeOfBasis();
   matrices_.reserve(numPops);
 
   const auto& basis = sslib.getBasis();
-  const size_t basisSize = basis.size();
+  const size_t numThreads = omp_get_max_threads();
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -25,12 +25,15 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
     const std::string paramName = "u_" + bpp::TextTools::toString(id);
     const double mutationRate = getParameterValue(paramName);
 
-    // prepare thread-local triplet buffers
-    const size_t numThreads = omp_get_max_threads();
-    std::vector<std::vector<Eigen::Triplet<double>>> threadTriplets(numThreads);
+    // Deduce scalar type
+    using Scalar = std::conditional_t<true, mpfr::mpreal, double>;
+    if (!highPrecision) using Scalar = double;
+
+    std::vector<std::vector<Eigen::Triplet<Scalar>>> threadTriplets(numThreads);
+    std::vector<std::string> invalidPrefixes;
 
     #pragma omp parallel for
-    for(size_t row = 0; row < static_cast<size_t>(basisSize); ++row)
+    for(size_t row = 0; row < basisSize; ++row)
     {
       const auto& moment = basis[row];
       const std::string& prefix = moment->getPrefix();
@@ -41,59 +44,48 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
       if(prefix == "Hl" || prefix == "Hr")
       {
         const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
-        const double factor = (prefix == "Hl") ? leftFactor_ * popIdCount / 2.0 : popIdCount / 2.0;
+        Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0) : Scalar(popIdCount / 2.0);
         localTriplets.emplace_back(row, col, factor);
       }
 
       else if(prefix == "pi2")
       {
         const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
-        if(!tmpPi2)
-          continue;  // skip invalid cast
+        if(!tmpPi2) continue;
 
         const auto tempLeft = tmpPi2->getLeftHetStat();
         const auto tempRight = tmpPi2->getRightHetStat();
 
-        localTriplets.emplace_back(row, tempLeft->getPosition(), tempLeft->countInstances(id) / 2.0);
-        localTriplets.emplace_back(row, tempRight->getPosition(), tempRight->countInstances(id) / 2.0);
+        localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
+        localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
       }
 
       else if(prefix != "I" && prefix != "DD" && prefix != "Dr" && prefix != "D")
       {
         #pragma omp critical
-        {
-          throw bpp::Exception("Mutation::mis-specified Moment prefix: " + prefix);
-        }
+        invalidPrefixes.push_back(prefix);
       }
     }
 
-    // merge thread-local triplets
-    std::vector<Eigen::Triplet<double>> coeffs;
+    if(!invalidPrefixes.empty())
+      throw bpp::Exception("Mutation::mis-specified Moment prefix: " + invalidPrefixes.front());
+
+    // Merge thread-local triplets
+    std::vector<Eigen::Triplet<Scalar>> coeffs;
     for(auto& vec : threadTriplets)
-      coeffs.insert(coeffs.end(), vec.begin(), vec.end());
+      coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
-    if(highPrecision)
-    {
-      auto mat = std::make_unique<MatrixMPReal>(numStats, numStats);
-      mat.setFromTriplets(coeffs.begin(), coeffs.end());
-      mat.makeCompressed();
-      mat->scale(mutationRate);
-      matrices_.emplace_back(std::move(mat));
-    }
+    // Create and store matrix
+    auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
+    mat->setFromTriplets(coeffs.begin(), coeffs.end());
+    mat->makeCompressed();
+    mat->scale(Scalar(mutationRate));
+    matrices_.emplace_back(std::move(mat));
+  }
 
-    else
-    {
-      auto mat = std::make_unique<MatrixDouble>(numStats, numStats);
-      mat.setFromTriplets(coeffs.begin(), coeffs.end());
-      mat.makeCompressed();
-      mat->scale(mutationRate);
-      matrices_.emplace_back(std::move(mat));
-    }
-  } // ends loop over populations
-
-  setIdentity_(sizeOfBasis);
   assembleTransitionMatrix_();
 }
+
 
 void Mutation::updateMatrices_()
 {

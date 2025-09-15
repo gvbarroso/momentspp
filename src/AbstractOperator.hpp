@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 12/09/2025
+ * Last modified: 15/09/2025
  *
  */
 
@@ -48,8 +48,7 @@ protected:
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)
   std::vector<std::unique_ptr<MatrixEngine>> matrices_; // "delta" matrix(ces)
   std::unique_ptr<MatrixEngine> transition_;  // "transition" matrix
-  MatrixVariant identityMatrix_;
-  bool identityInitialized_;
+
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
   std::vector<size_t> popIndices_;
 
@@ -58,8 +57,6 @@ public:
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   transition_(nullptr),
-  identityMatrix_(),
-  identityInitialized_(false),
   prevParams_(),
   popIndices_(0)
   { }
@@ -68,8 +65,6 @@ public:
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   transition_(nullptr),
-  identityMatrix_(),
-  identityInitialized_(false),
   prevParams_(),
   popIndices_(popIndices)
   { }
@@ -97,22 +92,32 @@ public:
       updateMatrices_();
   }
 
-  const std::vector<std::unique_ptr<MatrixEngine>>& getMatrices()
+  const std::vector<size_t>& getPopIndices() const
+  {
+    return popIndices_;
+  }
+
+  const std::vector<std::unique_ptr<MatrixEngine>>& getMatrices() const
   {
     return matrices_;
   }
 
-  const std::unique_ptr<MatrixEngine>& getMatrix(size_t index)
+  const MatrixEngine& getMatrix(size_t index) const
   {
-    return matrices_[index];
+    return *matrices_[index];
   }
 
-  const std::unique_ptr<MatrixEngine>& getTransitionMatrix()
+  MatrixEngine::MatrixVariant getTransitionMatrixVariant() const
   {
-    return transition_;
+    return transition_->getMatrixVariant();
   }
 
   virtual void printDeltaLDMat(const std::string& fileName);
+
+  void scaleMatrix(double scale)
+  {
+    transition_->scaleMatrix(scale);
+  }
 
 protected:
   // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator
