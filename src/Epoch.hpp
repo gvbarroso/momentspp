@@ -303,7 +303,7 @@ public:
 
   void printTransitionMat(const std::string& fileName) const;
 
-  void computePseudoSteadyState();
+  void computePseudoSteadyStateDiscrete();
 
   void computeEigenSteadyState();
 

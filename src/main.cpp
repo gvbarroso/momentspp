@@ -47,6 +47,11 @@ int main(int argc, char *argv[]) {
   std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
 
   /*
+   * TODO homogenous/in-homogenous system (remove I moment?)
+   * TODO refactor Selection operator
+   * TODO add method to scale matrices by 2N
+   * TODO remove continuous-time integration variables from Epoch (dt_ et al), refactor continuous-time integration methods
+   *
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
    * 2. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
    *    https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
@@ -185,7 +190,7 @@ int main(int argc, char *argv[]) {
       epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) +"_transitions.csv");
       epochs.back()->printConditionNumber();
 
-      epochs.back()->computePseudoSteadyState();
+      epochs.back()->computePseudoSteadyStateDiscrete();
       std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
       epochs.back()->printMoments(pseudo);
       pseudo.close();
@@ -198,7 +203,14 @@ int main(int argc, char *argv[]) {
   } // ends loop over epochs
 
   if(options.getInitStatsFilePath() == "none")
-    epochs.front()->computeEigenSteadyState(); // only need steady state in the deep-most epoch
+  {
+    // only need steady state in the deep-most epoch (epoch.front())
+    if(options.continuousTime())
+      epochs.front()->computePseudoSteadyStateContinuous();
+
+    else
+      epochs.front()->computePseudoSteadyStateDiscrete();
+  }
 
   else
     epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath()); // NOTE mind Order of (1-2p) factors

@@ -238,7 +238,7 @@ void Epoch::computeEigenSteadyState()
 }
 
 // assumes discrete-time treatment is adequate
-void Epoch::computePseudoSteadyState(double tol = 1e-6)
+void Epoch::computePseudoSteadyStateDiscrete(double tol = 1e-6)
 {
   bool converged = false;
 
@@ -250,40 +250,55 @@ void Epoch::computePseudoSteadyState(double tol = 1e-6)
     size_t pop = ssl_.getPopIndices()[0];
     double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
     double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
-    size_t twoN = static_cast<size_t>(1 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+    size_t twoN = static_cast<size_t>(1. / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
 
     size_t maxIterations = 20 * twoN;
 
     double hr = twoN * mu;
-    double hl = hr;
+    double hl = 2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.) - mu / s; // eq. solution
 
-    if(static_cast<double>(twoN * s) < -5)
-    {
-      double p = mu / -s;
-      hl = p * (1 - p);
-    }
+    double f = 1.; // helps approximating with increasing Order of 1-2p factors
 
+    // inits to a rough guess of the steady-state expectations
     for(size_t i = 0; i < y->size(); ++i)
     {
       const std::string& prefix = ssl_.getBasis()[i]->getPrefix();
 
-      if (prefix == "Hl")
-        y.set(i, Scalar(hl));
-      else if (prefix == "Hr")
-        y.set(i, Scalar(hr));
-      else if (prefix == "pi2")
-        y.set(i, Scalar(hr * hl));
-      else if (prefix == "I")
+      if(prefix == "Hl")
+        y.set(i, Scalar(hl * f));
+
+      else if(prefix == "Hr")
+        y.set(i, Scalar(hr * f));
+
+      else if(prefix == "pi2")
+        y.set(i, Scalar(hr * hl * f));
+
+      else if(prefix == "I")
+
         y.set(i, Scalar(1.0));
+
       else
-        y.set(i, Scalar(hr * hl * 1e-1));
+        y.set(i, Scalar(hr * hl * f * 1e-1));
+
+      if(i > 0 && prefix == ssl_.getBasis()[i-1]->getPrefix()) // same prefix, higher factor 1-2p
+      {
+        f = f * 0.925; // decays
+      }
+
+      else
+        f = 1.; // resets
     }
 
+    // "burn-in" to speed-up process (need not check for convergence)
+    for(size_t b = 0; b < twoN / 10; ++b)
+      y = mat.multiply(y);
+
+    // now we start checking
     auto prev = y->clone();
 
     auto notConverged = [&](size_t i) {
-      double prevVal = prev->get(i).toDouble();
-      double currVal = y->get(i).toDouble();
+      double prevVal = static_cast<double>(prev->get(i));
+      double currVal = static_cast<double>(y->get(i));
       double relDiff = std::abs(currVal - prevVal) / std::max(1.0, std::abs(prevVal));
       return relDiff > tol;
     };
@@ -302,6 +317,7 @@ void Epoch::computePseudoSteadyState(double tol = 1e-6)
 
       if(allConverged)
       {
+        std::cout << "Pseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
         converged = true;
         break;
       }
@@ -316,13 +332,112 @@ void Epoch::computePseudoSteadyState(double tol = 1e-6)
 
   if(!converged)
   {
-    std::cerr << "Epoch::Pseudo steady state did not converge. Falling back to eigen-based steady state.\n";
+    std::cerr << "Epoch::Pseudo steady-state did not converge. Falling back to eigen-based steady-state.\n";
     computeEigenSteadyState();
     return;
   }
 
   updateMoments(engine_->getVectorVariant());
 }
+
+void Epoch::computePseudoSteadyStateContinuous(double tol = 1e-6)
+{
+  bool converged = false;
+
+  std::visit([&](const auto& mat) {
+    using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
+
+    const size_t dim = mat.rows();
+    Vector<Scalar> y(dim);
+
+    size_t pop = ssl_.getPopIndices()[0];
+    double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
+    double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
+    size_t twoN = static_cast<size_t>(1. / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+
+    double hr = twoN * mu;
+    double hl = 2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.) - mu / s;
+
+    double f = 1.0;
+
+    for(size_t i = 0; i < y->size(); ++i)
+    {
+      const std::string& prefix = ssl_.getBasis()[i]->getPrefix();
+
+      if (prefix == "Hl")
+        y.set(i, Scalar(hl * f));
+
+      else if (prefix == "Hr")
+        y.set(i, Scalar(hr * f));
+
+      else if (prefix == "pi2")
+        y.set(i, Scalar(hr * hl * f));
+
+      else if (prefix == "I")
+        y.set(i, Scalar(1.0));
+
+      else
+        y.set(i, Scalar(hr * hl * f * 1e-1));
+
+      if(i > 0 && prefix == ssl_.getBasis()[i - 1]->getPrefix()) // same prefix, higher factor 1-2p
+        f *= 0.925; // decays
+      else
+        f = 1.0; // resets
+    }
+
+    const double burnInTime = 0.1; // in units of 2N
+    const double dt = 1e-3;
+    const size_t burnInSteps = static_cast<size_t>(burnInTime / dt);
+
+    for(size_t i = 0; i < burnInSteps; ++i)
+      y.vec_ = integrateTyped<Scalar>(y.vec_);
+
+    auto prev = y->clone();
+
+    auto notConverged = [&](size_t i) {
+      double prevVal = static_cast<double>(prev->get(i));
+      double currVal = static_cast<double>(y->get(i));
+      double relDiff = std::abs(currVal - prevVal) / std::max(1.0, std::abs(prevVal));
+      return relDiff > tol;
+    };
+
+    for(size_t iter = 0; iter < steps_; ++iter)
+    {
+      prev = y->clone();
+      y.vec_ = integrateTyped<Scalar>(y.vec_); // Crank-Nicolson step
+
+      bool allConverged = true;
+      for(size_t i = 0; i < y->size(); ++i)
+      {
+        if(notConverged(i))
+        {
+          allConverged = false;
+          break;
+        }
+      }
+
+      if(allConverged)
+      {
+        std::cout << "Crank-Nicolson steady-state converged after " << iter << " steps, " << name_ << "\n";
+        converged = true;
+        break;
+      }
+    }
+
+    if (converged)
+      engine_->setVector(y);
+  }, engine_->getMatrixVariant());
+
+  if (!converged)
+  {
+    std::cerr << "Epoch::Crank-Nicolson steady-state did not converge. Falling back to eigen-based steady-state.\n";
+    computeEigenSteadyState();
+    return;
+  }
+
+  updateMoments(engine_->getVectorVariant());
+}
+
 
 // test existence of steady-state in models with gene-flow
 void Epoch::testSteadyState()
