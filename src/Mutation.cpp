@@ -19,73 +19,61 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
   const auto& basis = sslib.getBasis();
   const size_t numThreads = omp_get_max_threads();
 
-  for(size_t i = 0; i < numPops; ++i)
+  std::visit([&](const auto& mat)
   {
-    const size_t id = popIndices_[i];
-    const std::string paramName = "u_" + bpp::TextTools::toString(id);
-    const double mutationRate = getParameterValue(paramName);
+    using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
-    // Deduce scalar type
-    using Scalar = std::conditional_t<true, mpfr::mpreal, double>;
-    if (!highPrecision) using Scalar = double;
-
-    std::vector<std::vector<Eigen::Triplet<Scalar>>> threadTriplets(numThreads);
-    std::vector<std::string> invalidPrefixes;
-
-    #pragma omp parallel for
-    for(size_t row = 0; row < basisSize; ++row)
+    for(size_t i = 0; i < numPops; ++i)
     {
-      const auto& moment = basis[row];
-      const std::string& prefix = moment->getPrefix();
-      const size_t popIdCount = static_cast<size_t>(moment->countInstances(id));
-      const size_t tid = omp_get_thread_num();
-      auto& localTriplets = threadTriplets[tid];
+      const size_t id = popIndices_[i];
+      const std::string paramName = "u_" + bpp::TextTools::toString(id);
+      const double mutationRate = getParameterValue(paramName);
 
-      if(prefix == "Hl" || prefix == "Hr")
+      std::vector<std::vector<Eigen::Triplet<Scalar>>> threadTriplets(numThreads);
+
+      #pragma omp parallel for
+      for(size_t row = 0; row < basisSize; ++row)
       {
-        const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
-        Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0) : Scalar(popIdCount / 2.0);
-        localTriplets.emplace_back(row, col, factor);
+        const auto& moment = basis[row];
+        const std::string& prefix = moment->getPrefix();
+        const size_t popIdCount = static_cast<size_t>(moment->countInstances(id));
+        const size_t tid = omp_get_thread_num();
+        auto& localTriplets = threadTriplets[tid];
+
+        if(prefix == "Hl" || prefix == "Hr")
+        {
+          const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
+          Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0) : Scalar(popIdCount / 2.0);
+          localTriplets.emplace_back(row, col, factor);
+        }
+
+        else if(prefix == "pi2")
+        {
+          const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
+          if(!tmpPi2) continue;
+
+          const auto tempLeft = tmpPi2->getLeftHetStat();
+          const auto tempRight = tmpPi2->getRightHetStat();
+
+          localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
+          localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
+        }
       }
 
-      else if(prefix == "pi2")
-      {
-        const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
-        if(!tmpPi2) continue;
+      std::vector<Eigen::Triplet<Scalar>> coeffs;
+      for(auto& vec : threadTriplets)
+        coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
-        const auto tempLeft = tmpPi2->getLeftHetStat();
-        const auto tempRight = tmpPi2->getRightHetStat();
-
-        localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
-        localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
-      }
-
-      else if(prefix != "I" && prefix != "DD" && prefix != "Dr" && prefix != "D")
-      {
-        #pragma omp critical
-        invalidPrefixes.push_back(prefix);
-      }
+      auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
+      mat->setFromTriplets(coeffs.begin(), coeffs.end());
+      mat->makeCompressed();
+      mat->scale(Scalar(mutationRate));
+      matrices_.emplace_back(std::move(mat));
     }
-
-    if(!invalidPrefixes.empty())
-      throw bpp::Exception("Mutation::mis-specified Moment prefix: " + invalidPrefixes.front());
-
-    // Merge thread-local triplets
-    std::vector<Eigen::Triplet<Scalar>> coeffs;
-    for(auto& vec : threadTriplets)
-      coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
-
-    // Create and store matrix
-    auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-    mat->setFromTriplets(coeffs.begin(), coeffs.end());
-    mat->makeCompressed();
-    mat->scale(Scalar(mutationRate));
-    matrices_.emplace_back(std::move(mat));
-  }
+  }, transition_->getMatrixVariant());
 
   assembleTransitionMatrix_();
 }
-
 
 void Mutation::updateMatrices_()
 {
