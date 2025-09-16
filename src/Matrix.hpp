@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 12/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -56,7 +56,7 @@ public:
       std::ofstream out(fileName);
 
       if(!out)
-        throw bpp::Exception("Failed to open file: " + fileName);
+        throw bpp::Exception("Matrix::Failed to open file: " + fileName);
 
       for(int i = 0; i < mat_.outerSize(); ++i)
       {
@@ -121,11 +121,10 @@ public:
       return I;
     }
 
-    template<typename Scalar>
     std::unique_ptr<Vector<Scalar>> multiply(const Vector<Scalar>& vec) const
     {
       if(cols() != vec.size())
-        throw bpp::Exception("Matrix and vector dimensions do not match");
+        throw bpp::Exception("Matrix::and vector dimensions do not match");
 
       auto result = std::make_unique<Vector<Scalar>>(rows());
       result->vec_ = mat_ * vec.vec_;
@@ -135,7 +134,7 @@ public:
     std::unique_ptr<Matrix<Scalar>> multiply(const Matrix<Scalar>& other) const
     {
       if(cols() != other.rows())
-        throw bpp::Exception("Matrix dimensions incompatible for multiplication");
+        throw bpp::Exception("Matrix::dimensions incompatible for multiplication");
 
       Eigen::SparseMatrix<Scalar> result = mat_ * other.mat_;
       return std::make_unique<Matrix<Scalar>>(result);
@@ -144,7 +143,7 @@ public:
     std::unique_ptr<Matrix<Scalar>> add(const Matrix<Scalar>& other) const
     {
       if(rows() != other.rows() || cols() != other.cols())
-        throw bpp::Exception("Matrix dimensions must match for addition");
+        throw bpp::Exception("Matrix::dimensions must match for addition");
 
       Eigen::SparseMatrix<Scalar> result = mat_ + other.mat_;
       return std::make_unique<Matrix<Scalar>>(result);
@@ -153,13 +152,12 @@ public:
     void addInPlace(const Matrix<Scalar>& other)
     {
       if(rows() != other.rows() || cols() != other.cols())
-        throw bpp::Exception("Matrix dimensions must match for in-place addition");
+        throw bpp::Exception("Matrix::dimensions must match for in-place addition");
 
       mat_ += other.mat_;
       makeCompressed();
     }
 
-    template<typename Scalar>
     std::unique_ptr<Vector<Scalar>> solve(const Vector<Scalar>& rhs) const
     {
       if(rows() != rhs.size())
@@ -169,19 +167,22 @@ public:
 
       if constexpr(std::is_same_v<Scalar, double>)
       {
-        // SparseLU for double
+        // Sparse LU for double
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
         solver.compute(mat_);
 
         if(solver.info() != Eigen::Success)
-          throw bpp::Exception("Matrix decomposition failed");
+          throw bpp::Exception("Matrix::decomposition failed");
 
         result.vec_ = solver.solve(rhs.vec_);
 
         if(solver.info() != Eigen::Success)
-          throw bpp::Exception("Solving failed");
+          throw bpp::Exception("Matrix::Solving failed");
       }
 
+      // NOTE since matrix entries are well represented with double precision,
+      // is it better (faster) to convert to double, perform Sparse LU decomposition,
+      // then convert back to mpreal? May depend on condition number.
       else if constexpr(std::is_same_v<Scalar, mpfr::mpreal>)
       {
         // Dense LU for mpreal
@@ -196,12 +197,11 @@ public:
       }
 
       else
-        throw bpp::Exception("Unsupported scalar type for solve()");
+        throw bpp::Exception("Matrix::Unsupported scalar type for solve()");
 
       return std::make_unique<Vector<Scalar>>(result);
     }
 };
-
 
 
 #endif

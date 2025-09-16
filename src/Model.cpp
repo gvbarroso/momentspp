@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -40,7 +40,7 @@ void Model::computeExpectedSumStatsContinuous()
   for(size_t i = 1; i < epochs_.size(); ++i)
   {
     epochs_[i]->transferStatistics(y);
-    y = epochs_[i]->integrate(y);
+    y = epochs_[i]->integrate(y, dt_, totalTime_);
     epochs_[i]->updateMoments(y);
   }
 
@@ -54,20 +54,23 @@ void Model::computeExpectedSumStatsAdaptive()
   for(size_t i = 1; i < epochs_.size(); ++i)
   {
     epochs_[i]->transferStatistics(y);
-    y = epochs_[i]->integrateAdaptive(y);
+    y = epochs_[i]->integrateAdaptive(y, dt_, totalTime_, errorTolerance_);
     epochs_[i]->updateMoments(y);
   }
 
   expected_ = y;
 }
 
-
-void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
+void Model::printAliasedMomentsPerEpoch(const std::string& modelName) const
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // epochs are sorted from past to present
   {
     std::string fileName = modelName + "_" +  epochs_[i]->getName() + "_expectations.txt";
     std::ofstream fout(fileName);
+
+    if(!fout)
+      throw bpp::Exception("Model::Failed to open file: " + fileName);
+
 
     epochs_[i]->printMoments(fout);
     fout.close();
@@ -75,7 +78,7 @@ void Model::printAliasedMomentsPerEpoch(const std::string& modelName)
 }
 
 // prints expectations over time (for each epoch)
-void Model::printMomentsIntermediate(const std::string& modelName, size_t interval, const std::vector<std::string>& momNames)
+void Model::printMomentsIntermediate(const std::string& modelName, size_t interval, const std::vector<std::string>& momNames) const
 {
   MatrixEngine::VectorVariantEigen y = epochs_[0]->getSteadyStateVector();
 

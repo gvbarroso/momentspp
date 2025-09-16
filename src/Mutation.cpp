@@ -36,7 +36,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
       {
         const auto& moment = basis[row];
         const std::string& prefix = moment->getPrefix();
-        const size_t popIdCount = static_cast<size_t>(moment->countInstances(id));
+        const size_t popIdCount = moment->countInstances(id);
         const size_t tid = omp_get_thread_num();
         auto& localTriplets = threadTriplets[tid];
 

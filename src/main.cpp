@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 15/09/2025
+ * Last modified: 16/09/2025
  * Source code for moments++
  *
  */
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 15/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 16/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -95,6 +95,7 @@ int main(int argc, char *argv[]) {
     for(size_t i = 1; i < numEpochs; ++i)
       factorOrder.push_back(factorOrder[0]);
   }
+
   else if(factorOrder.size() != numEpochs)
     throw bpp::Exception("Main::Number of Factor Orders must be either 1 or equal to the number of Epochs in the model!");
 
@@ -223,20 +224,27 @@ int main(int argc, char *argv[]) {
     {
       std::cout << "\nNo obs_stats_file provided, moments++ will\noutput expectations for input parameters.\n\n";
 
-      std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs);
+      std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(),
+                                                             epochs,
+                                                             options.continuousTime(),
+                                                             options.getDt(),
+                                                             options.getTotalTimeIntegration(),
+                                                             options.getToleranceIntegration());
       model->getIndependentParameters().printParameters(std::cout);
-      model->computeExpectedSumStats(options.continuousTime());
+      model->computeExpectedSumStats();
 
       std::string fileName = model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_expectations.txt";
       std::ofstream fout(fileName);
 
       model->printAliasedMoments(fout);
+
+      fout.close();
+
       if(numEpochs > 1 && options.getTimeSteps() > 0)
         model->printMomentsIntermediate(model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]),
                                         options.getTimeSteps(),
                                         options.getMomNamesIntermediate());
 
-      fout.close();
       std::cout << "\nCheck output file " << fileName << "\n\n";
     }
 

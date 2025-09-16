@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -46,20 +46,43 @@ private:
   MatrixEngine::VectorVariantEigen expected_;
   double compLogLikelihood_;
 
+  // for continuous-time integration
+  // (members to make computeExpectedSumStats() work smoothly within fireParameterChanged)
+  bool continuousTime_;
+  double dt_;
+  double totalTime_;
+  double errorTolerance_; // error tolerance for adaptive integration
+
 public:
-  Model(const std::string& name, const std::vector<std::shared_ptr<Epoch>>& epochs, std::shared_ptr<Data> data = nullptr):
+  Model(const std::string& name,
+        const std::vector<std::shared_ptr<Epoch>>& epochs,
+        std::shared_ptr<Data> data = nullptr,
+        bool continuousTime, double dt, double totTime, double tol):
   AbstractParameterAliasable(""),
   name_(name),
   frozenParams_(0),
   epochs_(epochs),
   data_(data),
   expected_(0),
-  compLogLikelihood_(-1.)
+  compLogLikelihood_(-1.),
+  continuousTime_(continuousTime),
+  dt_(dt),
+  totalTime_(totTime),
+  errorTolerance_(tol)
   {
     for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
       addParameters_((*it)->getParameters());
 
     linkMoments_();
+
+    if(dt_ <= 0.0 || dt_ > 1.)
+      throw bpp::Exception("Model::Invalid time step dt_! Must be in (0, 1].");
+
+    if(totalTime_ <= 0.0 || !std::isfinite(totalTime_))
+      throw bpp::Exception("Model::Invalid totalTime_! Must be positive and finite.");
+
+    if(errorTolerance_ <= 0.0 || errorTolerance_ > 1.0)
+      throw bpp::Exception("Model::Invalid errorTolerance_! Must be in (0, 1].");
   }
 
   ~Model()
@@ -73,7 +96,7 @@ public:
     deleteParameters_(paramNames);
   }
 
-  Model* clone() const
+  Model* clone() const override
   {
     return new Model(*this);
   }
@@ -98,6 +121,31 @@ public:
   const std::vector<std::shared_ptr<Epoch>>& getEpochs() const
   {
     return epochs_;
+  }
+
+  std::shared_ptr<Data> getData() const
+  {
+    return data_;
+  }
+
+  bool continuousTime() const
+  {
+    return continuousTime_;
+  }
+
+  double getDt() const
+  {
+    return dt_;
+  }
+
+  double getTotalTime() const
+  {
+    return totalTime_;
+  }
+
+  double getErrorTolerance() const
+  {
+    return errorTolerance_;
   }
 
   const MatrixEngine::VectorVariantEigen& getExpectedStats() const
@@ -131,7 +179,7 @@ public:
       throw bpp::Exception("Model::Attempted to unfreeze non-existing parameter " + name);
   }
 
-  bpp::ParameterList getUnfrozenParameters()
+  bpp::ParameterList getUnfrozenParameters() const
   {
     bpp::ParameterList unfrozen = getIndependentParameters();
 
@@ -144,10 +192,10 @@ public:
     return unfrozen;
   }
 
-  void computeExpectedSumStats(bool continuousTime)
+  void computeExpectedSumStats()
   {
-    if(continuousTime)
-      computeExpectedSumStatsAdaptive(); // default is to use adaptive scheme to determine optimal dt
+    if(continuousTime_)
+      computeExpectedSumStatsAdaptive();  // default to adaptive scheme to determine optimal dt
 
     else
       computeExpectedSumStatsDiscrete();
@@ -159,9 +207,9 @@ public:
 
   void computeExpectedSumStatsAdaptive();
 
-  void printAliasedMomentsPerEpoch(const std::string& modelName);
+  void printAliasedMomentsPerEpoch(const std::string& modelName) const;
 
-  void printMomentsIntermediate(const std::string& modelName, size_t interval, const std::vector<std::string>& momNames);
+  void printMomentsIntermediate(const std::string& modelName, size_t interval, const std::vector<std::string>& momNames) const;
 
   void printAliasedMoments(std::ostream& stream);
 
@@ -177,7 +225,3 @@ private:
 };
 
 #endif
-
-
-
-

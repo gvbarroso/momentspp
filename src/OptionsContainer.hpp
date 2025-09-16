@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -44,7 +44,6 @@ private:
 
   // for continuous-time integration, see Epoch class
   double dt_; // default time step for fixed integration
-  size_t stepsIntegration_; // default number of steps
   double totalTimeIntegration_; // default total time for adaptive integration
   double toleranceIntegration_;  // default error tolerance in adaptive (continuous-time) integration
 
@@ -64,12 +63,11 @@ public:
   computeCI_(bpp::ApplicationTools::getParameter<bool>("ci", options, true, "", true, 4)),
   verbose_(bpp::ApplicationTools::getParameter<bool>("verbose", options, false, "", true, 4)),
   continuousTime_(bpp::ApplicationTools::getParameter<bool>("continuous_time", options, false, "", true, 4)),
-  digits_(bpp::ApplicationTools::getParameter<size_t>("digits", options, 0, "", true, 4)),
+  digits_(bpp::ApplicationTools::getParameter<size_t>("digits", options, 16, "", true, 4)),
   numThreads_(bpp::ApplicationTools::getParameter<size_t>("num_threads", options, std::thread::hardware_concurrency() / 2, "", true, 4)),
   timeSteps_(bpp::ApplicationTools::getParameter<size_t>("time_steps", options, 0, "", true, 4)),
   factorOrder_(bpp::ApplicationTools::getVectorParameter<size_t>("factor_order", options, ',', "10", "", true, 0)),
   dt_(bpp::ApplicationTools::getDoubleParameter("dt", options, 1e-3, "", true, 4)),
-  stepsIntegration_(bpp::ApplicationTools::getParameter<size_t>("steps_integration", options, 1000, "", true, 4)),
   totalTimeIntegration_(bpp::ApplicationTools::getDoubleParameter("time_integration", options, 1., "", 0, 4)),
   toleranceIntegration_(bpp::ApplicationTools::getDoubleParameter("tolerance_integration", options, 1e-6, "", 0, 4)),
   momNames_(bpp::ApplicationTools::getVectorParameter<size_t>("moms_intermediate", options, ',', "Hl_0_0,Hr_0_0", "", true, 0)) // NOTE check passing default values
@@ -141,7 +139,7 @@ public:
 
   bool highPrecision() const
   {
-    return digits_ > 0; // default = 0 (unspecified precision, use double
+    return digits_ > 16; // default = 16 (double)
   }
 
   size_t getDigits() const
@@ -167,11 +165,6 @@ public:
   double getDt() const
   {
     return dt_;
-  }
-
-  size_t getStepsIntegration()
-  {
-    return stepsIntegration_;
   }
 
   double getTotalTimeIntegration()

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 15/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -57,12 +57,6 @@ private:
    // engine_ holds the steady state vector as well as all sparse operators summed into a Sparse matrix
   std::unique_ptr<MatrixEngine> engine_;
 
-  // for continuous-time integration
-  double dt_;         // default time step for fixed integration
-  size_t steps_;      // default number of steps
-  double totalTime_;  // default total time for adaptive integration
-  double tolerance_;  // default error tolerance
-
 public:
   Epoch():
   bpp::AbstractParameterAliasable(""),
@@ -72,17 +66,12 @@ public:
   endGen_(0),
   pops_(0),
   operators_(0),
-  engine_(std::make_unique<MatrixEngine>(false)),
-  dt_(0.),
-  steps_(0),
-  totalTime_(0.),
-  tolerance_(0.)
+  engine_(std::make_unique<MatrixEngine>(false))
   { }
 
   Epoch(const std::string& name, const SumStatsLibrary& ssl, size_t start, size_t end,
         const std::vector<std::shared_ptr<Population>>& pops,
-        const std::vector<std::shared_ptr<AbstractOperator>>& ops,
-        double dt = 1e-3, size_t steps = 1e+3, double totalTime = 1., double tol = 1e-6):
+        const std::vector<std::shared_ptr<AbstractOperator>>& ops):
   bpp::AbstractParameterAliasable(""),
   name_(name),
   ssl_(ssl),
@@ -90,11 +79,7 @@ public:
   endGen_(end),
   pops_(pops),
   operators_(ops),
-  engine_(std::make_unique<MatrixEngine>(false)),
-  dt_(dt),
-  steps_(steps),
-  totalTime_(totalTime),
-  tolerance_(tol)
+  engine_(std::make_unique<MatrixEngine>(false))
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       addParameters_((*it)->getParameters());
@@ -114,7 +99,7 @@ public:
     deleteParameters_(paramNames);
   }
 
-  Epoch* clone() const
+  Epoch* clone() const override
   {
     return new Epoch(*this);
   }
@@ -136,44 +121,24 @@ public:
     return *engine_;
   }
 
-  const std::string& getName()
+  const std::string& getName() const
   {
     return name_;
   }
 
-  size_t start()
+  size_t start() const
   {
     return startGen_;
   }
 
-  size_t end()
+  size_t end() const
   {
     return endGen_;
   }
 
-  size_t duration()
+  size_t duration() const
   {
     return startGen_ - endGen_;
-  }
-
-  double getDt()
-  {
-    return dt_;
-  }
-
-  size_t getSteps()
-  {
-    return steps_;
-  }
-
-  double getTotalTime()
-  {
-    return totalTime_;
-  }
-
-  double getTolerance()
-  {
-    return tolerance_;
   }
 
   auto getTransitionMatrix() const -> MatrixEngine::SparseMatrixVariant
@@ -186,29 +151,9 @@ public:
     return engine_->getRawVector();
   }
 
-  size_t getNumPops()
+  size_t getNumPops() const
   {
     return pops_.size();
-  }
-
-  void setDt(double dt)
-  {
-    dt_ = dt;
-  }
-
-  void setNumSteps(size_t numSteps)
-  {
-    steps_ = steps;
-  }
-
-  void setTotalTime(double time)
-  {
-    totalTime_ = time;
-  }
-
-  void setTolerance(double tol)
-  {
-    tolerance_ = tol;
   }
 
   const std::vector<std::shared_ptr<Population>>& getPops()
@@ -220,14 +165,14 @@ public:
   {
     stream << name_ << ", from " << startGen_ << " to " << endGen_ << "\n";
 
-    for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
+    for(const auto& pop : pops_)
     {
       stream << "\t";
-      (*it)->printAttributes(stream);
+      pop->printAttributes(stream);
     }
   }
 
-  std::shared_ptr<Population> fetchPop(size_t id)
+  std::shared_ptr<Population> fetchPop(size_t id) const
   {
     std::shared_ptr<Population> pop = nullptr;
     for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
@@ -240,7 +185,7 @@ public:
     return pop;
   }
 
-  std::shared_ptr<Population> fetchPop(const std::string& name)
+  std::shared_ptr<Population> fetchPop(const std::string& name) const
   {
     std::shared_ptr<Population> pop = nullptr;
     for(auto it = std::begin(pops_); it != std::end(pops_); ++it)
@@ -294,10 +239,10 @@ public:
   void printMoments(std::ostream& stream);
 
   void printMomentsIntermediate(
-  MatrixEngine::VectorVariantEigen& y,
-  const std::string& modelName,
-  size_t interval,
-  const std::vector<std::string>& momNames);
+    MatrixEngine::VectorVariantEigen& y,
+    const std::string& modelName,
+    size_t interval,
+    const std::vector<std::string>& momNames);
 
   void printRecursions(std::ostream& stream);
 
@@ -310,17 +255,30 @@ public:
   void testSteadyState();
 
   template<typename Scalar>
-  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> integrateTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms) const;
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> integrateTyped(
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
+    double dt,
+    double totalTime) const;
 
-  MatrixEngine::VectorVariantEigen integrate(const MatrixEngine::VectorVariantEigen& moms) const;
+  MatrixEngine::VectorVariantEigen integrate(
+    const MatrixEngine::VectorVariantEigen& moms,
+    double dt,
+    double totalTime) const;
 
   template<typename Scalar>
   Eigen::Matrix<Scalar, Eigen::Dynamic, 1> integrateAdaptiveTyped(
-  const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
-  double dtMin = 1e-6,
-  double dtMax = 1.0) const;
+    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
+    double dt,
+    double totalTime,
+    double tolerance,
+    double dtMin = 1e-6,
+    double dtMax = 1.0) const;
 
-  MatrixEngine::VectorVariantEigen integrateAdaptive(const MatrixEngine::VectorVariantEigen& moms) const;
+  MatrixEngine::VectorVariantEigen integrateAdaptive(
+    const MatrixEngine::VectorVariantEigen& moms,
+    double dt,
+    double totalTime,
+    double tolerance) const;
 
   void printConditionNumber()
   {
