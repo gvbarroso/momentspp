@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 11/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -28,8 +28,7 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 
-#include "MatrixInterface.hpp"
-#include "VectorInterface.hpp"
+#include "MatrixEngine.hpp"
 #include "Population.hpp"
 #include "SumStatsLibrary.hpp"
 #include "OptionsContainer.hpp"
@@ -39,7 +38,7 @@ class Data // observed data
 
 private:
   SumStatsLibrary ssl_; // the moments in Data naturally refer to Population indices among sampled individuals
-  std::unique_ptr<MatrixInterface> covar_; // covariance matrix of observed sum stats (from sampled populations); ssl_.fetchYvec() will get the expectations
+  MatrixEngine::MatrixVariant covar_; // covariance matrix of observed sum stats (from sampled populations); ssl_.fetchYvec() will get the expectations
   std::map<std::string, double> variances_; // bootstrapped, moment name -> moment var
 
 public:
@@ -57,19 +56,18 @@ public:
     return ssl_;
   }
 
-  const std::unique_ptr<MatrixInterface>& getCovarMatrix()
+  const MatrixEngine::MatrixVariant& getCovarMatrix()
   {
     return covar_;
   }
 
-  std::unique_ptr<VectorInterface> getY(bool highPrecision)
+  std::unique_ptr<MatrixEngine::VectorVariant> getY(bool highPrecision)
   {
     return ssl_.fetchYvec(highPrecision);
   }
 
 private:
   void parse_(const std::string& file);
-
 };
 
 #endif

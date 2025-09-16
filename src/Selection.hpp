@@ -5,31 +5,31 @@
  *
  */
 
-
 #ifndef _SELECTION_H_
 #define _SELECTION_H_
 
 #include "AbstractOperator.hpp"
 #include "SumStatsLibrary.hpp"
 
-class Selection: public AbstractOperator
+class Selection : public AbstractOperator
 {
 
 public:
-  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib, bool highPrecision):
-  AbstractOperator(sslib.getPopIndices())
+  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib, bool highPrecision)
+    : AbstractOperator(sslib.getPopIndices())
   {
     includeParameters_(selParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib, highPrecision);
   }
 
-  Selection(const std::vector<long double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices())
+  Selection(const std::vector<long double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib)
+    : AbstractOperator(sslib.getPopIndices())
   {
     // for each population modeled in the epoch *this operator belongs to, add s parameter
     for(size_t i = 0; i < popIndices_.size(); ++i)
-      addParameter_(new bpp::Parameter("s_" + bpp::TextTools::toString(popIndices_[i]), vals[i], ic));
+      addParameter_(
+          new bpp::Parameter("s_" + bpp::TextTools::toString(popIndices_[i]), vals[i], ic));
 
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);
@@ -43,7 +43,6 @@ public:
   void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) override;
 
   void updateMatrices_() override;
-
 };
 
 #endif

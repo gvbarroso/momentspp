@@ -5,14 +5,13 @@
  *
  */
 
-
 #ifndef _DRIFT_H_
 #define _DRIFT_H_
 
 #include "AbstractOperator.hpp"
 #include "SumStatsLibrary.hpp"
 
-class Drift: public AbstractOperator
+class Drift : public AbstractOperator
 {
 
 public:

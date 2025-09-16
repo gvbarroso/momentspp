@@ -29,7 +29,8 @@ void OptimizationWrapper::fitModel(std::shared_ptr<Model> model)
   if(options_.getOptimMethod() == "Powell")
   {
     std::shared_ptr<bpp::ReparametrizationFunctionWrapper> rfw =
-    std::make_shared<bpp::ReparametrizationFunctionWrapper>(model, model->getUnfrozenParameters());
+        std::make_shared<bpp::ReparametrizationFunctionWrapper>(model,
+                                                                model->getUnfrozenParameters());
 
     optimizer.reset(new bpp::PowellMultiDimensions(rfw));
     optimizer->init(rfw->getParameters());
@@ -38,7 +39,7 @@ void OptimizationWrapper::fitModel(std::shared_ptr<Model> model)
   else if(options_.getOptimMethod() == "BFGS")
   {
     std::shared_ptr<bpp::ThreePointsNumericalDerivative> tpnd =
-    std::make_shared<bpp::ThreePointsNumericalDerivative>(model);
+        std::make_shared<bpp::ThreePointsNumericalDerivative>(model);
 
     tpnd->setParametersToDerivate(model->getUnfrozenParameters().getParameterNames());
     tpnd->enableFirstOrderDerivatives(true);
@@ -51,23 +52,26 @@ void OptimizationWrapper::fitModel(std::shared_ptr<Model> model)
   }
 
   else
-    throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer " + options_.getOptimMethod());
+    throw bpp::Exception("OptimizationWrapper::Mis-specified numerical optimizer " +
+                         options_.getOptimMethod());
 
   /* NOTE this needs to be ported to bpp-core 3.0.0
-  std::unique_ptr<std::ofstream> prof = std::make_unique<std::ofstream>("profile.txt", std::ios::out);
-  std::unique_ptr<std::ofstream> mess = std::make_unique<std::ofstream>("messages.txt", std::ios::out);
+  std::unique_ptr<std::ofstream> prof = std::make_unique<std::ofstream>("profile.txt",
+  std::ios::out); std::unique_ptr<std::ofstream> mess =
+  std::make_unique<std::ofstream>("messages.txt", std::ios::out);
 
   std::unique_ptr<std::ostream> prof_ptr = std::move(prof);
   std::unique_ptr<std::ostream> mess_ptr = std::move(mess);
 
   std::shared_ptr<bpp::StlOutputStream> profiler = std::make_shared<bpp::StlOutputStream>(prof_ptr);
-  std::shared_ptr<bpp::StlOutputStream> messenger = std::make_shared<bpp::StlOutputStream>(mess_ptr);
+  std::shared_ptr<bpp::StlOutputStream> messenger =
+  std::make_shared<bpp::StlOutputStream>(mess_ptr);
 
   optimizer->setProfiler(profiler);
   optimizer->setMessageHandler(messenger);
 
-  std::shared_ptr<bpp::OptimizationStopCondition> stopCond;// = std::make_shared<bpp::OptimizationStopCondition>();
-  stopCond->setOptimizer(optimizer.get());
+  std::shared_ptr<bpp::OptimizationStopCondition> stopCond;// =
+  std::make_shared<bpp::OptimizationStopCondition>(); stopCond->setOptimizer(optimizer.get());
   stopCond->setTolerance(options_.getTolerance());
   optimizer->setStopCondition(stopCond);
   */
@@ -79,15 +83,15 @@ void OptimizationWrapper::fitModel(std::shared_ptr<Model> model)
 
   catch(bpp::Exception& e)
   {
-    std::cout << "\nError during optimization, convergence might not be reached!\nmoments++ will proceed, but check log files.\n";
+    std::cout << "\nError during optimization, convergence might not be reached!\nmoments++ will "
+                 "proceed, but check log files.\n";
   }
 }
 
 /*void OptimizationWrapper::computeCI()
 {
   // TODO use Godambe Information Matrix
-  // Matrix operations with BPP tools (instead of Eigen) to make our lives easier w.r.t. compatibility
-  std::cout << std::endl << "Computing 95% confidence intervals of parameter estimates..." << std::endl;
+  // Matrix operations with BPP tools (instead of Eigen) to make our lives easier w.r.t. compatibility std::cout << std::endl << "Computing 95% confidence intervals of parameter estimates..." << std::endl;
 
   bpp::ParameterList optimParams = model -> fetchModelParameters();
   std::vector<std::string> paramNames = optimParams.getParameterNames();
@@ -159,7 +163,7 @@ void OptimizationWrapper::writeEstimatesToFile_(std::shared_ptr<Model> model)
   std::ofstream file;
   file.open(model->getName() + "_estimates.txt");
 
-  file << "CLL = " << - model->getValue() << "\n\n";
+  file << "CLL = " << -model->getValue() << "\n\n";
 
   for(size_t i = 0; i < model->getEpochs().size(); ++i)
   {

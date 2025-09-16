@@ -16,7 +16,8 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
   matrices_.reserve(getParameters().size()); // max. one matrix per population
 
   if(numPops > 2)
-    throw bpp::Exception("Admixture operator cannot model more than 2 populations in the general case! Try NeutralAdmixture instead.");
+    throw bpp::Exception("Admixture operator cannot model more than 2 populations in the general "
+                         "case! Try NeutralAdmixture instead.");
 
   for(size_t i = 0; i < numPops; ++i)
   {
@@ -48,7 +49,8 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
           int col = -1; // inits column index to out-of-bounds
 
           // contributions from moments of the same prefix
-          for(auto it2nd = std::begin(sslib.getMoments()); it2nd != std::end(sslib.getMoments()); ++it2nd)
+          for(auto it2nd = std::begin(sslib.getMoments()); it2nd != std::end(sslib.getMoments());
+              ++it2nd)
           {
             if((*it)->isAdmixAdjacent(*it2nd, ancFromId, ancToId))
             {
@@ -56,7 +58,8 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
 
               mpfr::mpreal mig = (*it)->countInstances(ancToId) - (*it2nd)->countInstances(ancToId);
               mpfr::mpreal nat = (*it2nd)->countInstances(ancToId);
-              mpfr::mpreal y = std::pow((1. - f), nat) * std::pow(f, mig) / ((*it)->getNumberOfAliases() + 1);
+              mpfr::mpreal y =
+                  std::pow((1. - f), nat) * std::pow(f, mig) / ((*it)->getNumberOfAliases() + 1);
 
               coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, y));
             }
@@ -71,10 +74,20 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
               p1 = (*it)->getPopIndices()[1];
 
             // reference moments to help track which other Dr/pi2 moments contribute to focal DD
-            std::shared_ptr<DrMoment> syntheticDr = std::make_shared<DrMoment>("Dr_" + bpp::TextTools::toString(p1) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId), 0.);
-            std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId), 0., nullptr, nullptr);
+            std::shared_ptr<DrMoment> syntheticDr = std::make_shared<DrMoment>(
+                "Dr_" + bpp::TextTools::toString(p1) + "_" + bpp::TextTools::toString(ancToId) +
+                    "_" + bpp::TextTools::toString(ancToId),
+                0.);
+            std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>(
+                "pi2_" + bpp::TextTools::toString(ancToId) + "_" +
+                    bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString(ancToId) +
+                    "_" + bpp::TextTools::toString(ancToId),
+                0.,
+                nullptr,
+                nullptr);
 
-            for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
+            for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments());
+                ++itCmp)
             {
               // contributions from Dr moments
               if(syntheticDr->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
@@ -89,16 +102,19 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                 if((*itCmp)->getPopIndices()[0] == ancFromId)
                   c *= -1.;
 
-                mpfr::mpreal x = (0.25 * (*it)->countInstances(ancToId) * c * std::pow((1. - f), a) * std::pow(f, b)) / ((*it)->getNumberOfAliases() + 1);
+                mpfr::mpreal x = (0.25 * (*it)->countInstances(ancToId) * c *
+                                  std::pow((1. - f), a) * std::pow(f, b)) /
+                                 ((*it)->getNumberOfAliases() + 1);
 
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, x));
               }
 
               // contributions from pi2 moments
-              else if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId) && (*it)->countInstances(ancToId) == 2)
+              else if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId) &&
+                      (*it)->countInstances(ancToId) == 2)
               {
                 col = sslib.findCompressedIndex(*itCmp);
-                size_t parentPopIdCount =(*itCmp)->countInstances(ancFromId);
+                size_t parentPopIdCount = (*itCmp)->countInstances(ancFromId);
                 mpfr::mpreal x = std::pow((1. - f), 2.) * std::pow(f, 2.);
                 mpfr::mpreal y = std::pow(-1., parentPopIdCount) * x;
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, y));
@@ -111,98 +127,163 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
             if((*it)->getPopIndices()[0] == ancToId) // has pi2 contributions
             {
               // a reference pi2 moment to help track which other pi2 moments contribute to focal Dr
-              std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>("pi2_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" + bpp::TextTools::toString(ancToId) + "_" + bpp::TextTools::toString((*it)->getPopIndices()[2]), 0., nullptr, nullptr);
+              std::shared_ptr<Pi2Moment> syntheticPi2 = std::make_shared<Pi2Moment>(
+                  "pi2_" + bpp::TextTools::toString(ancToId) + "_" +
+                      bpp::TextTools::toString((*it)->getPopIndices()[1]) + "_" +
+                      bpp::TextTools::toString(ancToId) + "_" +
+                      bpp::TextTools::toString((*it)->getPopIndices()[2]),
+                  0.,
+                  nullptr,
+                  nullptr);
 
               // case 1: Dr TTT
               if((*it)->countInstances(ancToId) == 3)
               {
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 4. * std::pow(f, 3.) * (1. - f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId, p));
+                coeffs.emplace_back(
+                    Eigen::Triplet<mpfr::mpreal>(row, col, 4. * std::pow(f, 3.) * (1. - f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancFromId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancFromId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancToId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, 2. * std::pow(f, 2.) * (1. - f) * (1. - 2 * f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -4. * std::pow(f, 2.) * std::pow(1. - f, 2.)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancFromId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -4. * std::pow(f, 2.) * std::pow(1. - f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancToId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, -4. * std::pow(f, 2.) * std::pow(1. - f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancToId, ancFromId, ancFromId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, -4. * std::pow(f, 2.) * std::pow(1. - f, 2.)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancToId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancFromId, ancToId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancToId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancToId, ancFromId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancFromId, ancToId, ancFromId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, f * (1. - f) * std::pow(1. - 2. * f, 2.)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancFromId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancToId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancToId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancFromId, ancToId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancToId, ancFromId, ancToId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancToId, ancToId, ancFromId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancToId, ancToId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancFromId, ancToId, ancToId, p));
+                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(
+                    row, col, -2. * f * std::pow(1. - f, 2.) * (1. - 2. * f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancToId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 4. * f * std::pow(1. - f, 3.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancToId, ancToId, ancToId, p));
+                coeffs.emplace_back(
+                    Eigen::Triplet<mpfr::mpreal>(row, col, 4. * f * std::pow(1. - f, 3.)));
               }
 
-              // case 2: Dr TFT / TTF NOTE "forced" through some differences with the "naive" Mathematica notebook to match moments.LD admix matrix
-              else if(((*it)->getPopIndices()[1] == ancToId && (*it)->getPopIndices()[2] == ancFromId) || ((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancToId))
+              // case 2: Dr TFT / TTF NOTE "forced" through some differences with the "naive"
+              // Mathematica notebook to match moments.LD admix matrix
+              else if(((*it)->getPopIndices()[1] == ancToId &&
+                       (*it)->getPopIndices()[2] == ancFromId) ||
+                      ((*it)->getPopIndices()[1] == ancFromId &&
+                       (*it)->getPopIndices()[2] == ancToId))
               {
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 2. * std::pow(f, 2.) * (1. - f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId, p));
+                coeffs.emplace_back(
+                    Eigen::Triplet<mpfr::mpreal>(row, col, 2. * std::pow(f, 2.) * (1. - f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 2. * f * (1. - f) * (1. - 3. * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId, p));
+                coeffs.emplace_back(
+                    Eigen::Triplet<mpfr::mpreal>(row, col, 2. * f * (1. - f) * (1. - 3. * f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * std::pow(1. - f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancToId, p));
+                coeffs.emplace_back(
+                    Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * std::pow(1. - f, 2.)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * (1. - f) * (1. - 2. * f)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId, p));
+                coeffs.emplace_back(
+                    Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * (1. - f) * (1. - 2. * f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancToId, ancFromId, ancToId, p));
-                coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 2. * f * std::pow(1. - f, 2.)));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancToId, ancFromId, ancToId, p));
+                coeffs.emplace_back(
+                    Eigen::Triplet<mpfr::mpreal>(row, col, 2. * f * std::pow(1. - f, 2.)));
               }
 
               // case 3: Dr TFF
-              else if((*it)->getPopIndices()[1] == ancFromId && (*it)->getPopIndices()[2] == ancFromId)
+              else if((*it)->getPopIndices()[1] == ancFromId &&
+                      (*it)->getPopIndices()[2] == ancFromId)
               {
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancFromId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, 4. * f * (1. - f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancFromId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * (1. - f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancFromId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancFromId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * (1. - f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancFromId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancToId, ancFromId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * (1. - f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancToId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancFromId, ancFromId, ancToId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, -2. * f * (1. - f)));
 
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancFromId, ancToId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancFromId, ancToId, ancToId, ancFromId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancFromId, ancToId, ancToId, ancFromId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancToId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancFromId, ancFromId, ancToId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f)));
-                col = sslib.findCompressedIndex(sslib.findPi2Index(ancToId, ancFromId, ancToId, ancFromId, p));
+                col = sslib.findCompressedIndex(
+                    sslib.findPi2Index(ancToId, ancFromId, ancToId, ancFromId, p));
                 coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, f * (1. - f)));
               }
 
               // case 4: Dr TTx / TxT
               else if((*it)->getPopIndices()[1] == ancToId || (*it)->getPopIndices()[2] == ancToId)
               {
-                for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
+                for(auto itCmp = std::begin(sslib.getMoments());
+                    itCmp != std::end(sslib.getMoments());
+                    ++itCmp)
                 {
                   if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
                   {
@@ -210,10 +291,13 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
                     col = sslib.findCompressedIndex(tmp);
 
                     mpfr::mpreal c = std::pow(-1., tmp->countInstances(ancToId) + 1);
-                    mpfr::mpreal z = (tmp->getLeftHetStat()->isCrossPop() && tmp->getRightHetStat()->isCrossPop());
-                    mpfr::mpreal x = 1 + (tmp->getLeftHetStat()->countInstances(ancFromId) == 2 || tmp->getRightHetStat()->countInstances(ancFromId) == 2);
+                    mpfr::mpreal z = (tmp->getLeftHetStat()->isCrossPop() &&
+                                      tmp->getRightHetStat()->isCrossPop());
+                    mpfr::mpreal x = 1 + (tmp->getLeftHetStat()->countInstances(ancFromId) == 2 ||
+                                          tmp->getRightHetStat()->countInstances(ancFromId) == 2);
                     mpfr::mpreal y = 3. - z - x;
-                    mpfr::mpreal w = std::pow(f, x) * std::pow((1. - f), y) * std::pow(1. - 2 * f, z);
+                    mpfr::mpreal w =
+                        std::pow(f, x) * std::pow((1. - f), y) * std::pow(1. - 2 * f, z);
 
                     if(z == 0)
                     {
@@ -228,16 +312,20 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
               }
 
               // case 5: Dr TFx / TxF
-              else if((*it)->getPopIndices()[1] == ancFromId || (*it)->getPopIndices()[2] == ancFromId)
+              else if((*it)->getPopIndices()[1] == ancFromId ||
+                      (*it)->getPopIndices()[2] == ancFromId)
               {
-                for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
+                for(auto itCmp = std::begin(sslib.getMoments());
+                    itCmp != std::end(sslib.getMoments());
+                    ++itCmp)
                 {
                   if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
                   {
                     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*itCmp);
                     col = sslib.findCompressedIndex(tmp);
                     mpfr::mpreal c = std::pow(-1., tmp->countInstances(ancToId));
-                    coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, c * 2 * f * (1. - f)));
+                    coeffs.emplace_back(
+                        Eigen::Triplet<mpfr::mpreal>(row, col, c * 2 * f * (1. - f)));
                   }
                 }
               }
@@ -245,15 +333,19 @@ void Admixture::setUpMatrices_(const SumStatsLibrary& sslib)
               // case 6: Dr Txx / Txx
               else
               {
-                for(auto itCmp = std::begin(sslib.getMoments()); itCmp != std::end(sslib.getMoments()); ++itCmp)
+                for(auto itCmp = std::begin(sslib.getMoments());
+                    itCmp != std::end(sslib.getMoments());
+                    ++itCmp)
                 {
                   if(syntheticPi2->isAdmixAdjacent(*itCmp, ancFromId, ancToId))
                   {
                     auto tmp = std::dynamic_pointer_cast<Pi2Moment>(*itCmp);
                     col = sslib.findCompressedIndex(tmp);
                     mpfr::mpreal c = std::pow(-1., tmp->countInstances(ancToId));
-                    mpfr::mpreal d = 2. * (1. + ((*it)->getPopIndices()[1] == (*it)->getPopIndices()[2]));
-                    coeffs.emplace_back(Eigen::Triplet<mpfr::mpreal>(row, col, c * d * f * (1. - f)));
+                    mpfr::mpreal d =
+                        2. * (1. + ((*it)->getPopIndices()[1] == (*it)->getPopIndices()[2]));
+                    coeffs.emplace_back(
+                        Eigen::Triplet<mpfr::mpreal>(row, col, c * d * f * (1. - f)));
                   }
                 }
               }
@@ -299,7 +391,8 @@ void Admixture::updateMatrices_()
 
           else
           {
-            paramName = "a_" + bpp::TextTools::toString(jd) + "_" + bpp::TextTools::toString(id); // switch order
+            paramName = "a_" + bpp::TextTools::toString(jd) + "_" +
+                        bpp::TextTools::toString(id); // switch order
             mpfr::mpreal newVal = getParameterValue(paramName);
             littleAdmixMat_(i, j) = 1. - newVal;
           }
@@ -308,7 +401,7 @@ void Admixture::updateMatrices_()
     }
   }
 
-  //setUpMatrices_(sslib); // WARNING inefficient
+  // setUpMatrices_(sslib); // WARNING inefficient
   assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
 }

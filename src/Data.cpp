@@ -5,12 +5,9 @@
  *
  */
 
-
 #include "Data.hpp"
-
 
 void Data::parse_(const std::string& file)
 {
   ssl_.readStatsFromFile(file);
 }
-

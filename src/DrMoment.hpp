@@ -4,18 +4,17 @@
  *
  */
 
-
 #ifndef _DZ_MOMENT_H_
 #define _DZ_MOMENT_H_
 
 #include "Moment.hpp"
 
-
-class DrMoment: public Moment
+class DrMoment : public Moment
 {
 
 private:
-  bool isConstrained_; // does j in Dr_i_j_k concern a population with selection on the derived allele?
+  bool isConstrained_; // does j in Dr_i_j_k concern a population with selection on the derived
+                       // allele?
 
 public:
   DrMoment():
@@ -60,7 +59,6 @@ public:
 
     return test;
   }
-
 };
 
 #endif

@@ -5,23 +5,21 @@
  *
  */
 
-
 #ifndef _NEUTRAL_MIGRATION_H_
 #define _NEUTRAL_MIGRATION_H_
 
 #include "AbstractOperator.hpp"
 #include "Graph.hpp"
 
-class NeutralMigration: public AbstractOperator
+class NeutralMigration : public AbstractOperator
 {
 
 private:
   Eigen::MatrixXd littleMigMat_; // P x P
 
 public:
-  NeutralMigration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices()),
-  littleMigMat_()
+  NeutralMigration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib)
+    : AbstractOperator(sslib.getPopIndices()), littleMigMat_()
   {
     includeParameters_(migParams);
     prevParams_.addParameters(getParameters());
@@ -29,9 +27,8 @@ public:
     setUpMatrices_(sslib);
   }
 
-  NeutralMigration(const Eigen::MatrixXd& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices()),
-  littleMigMat_(migMat)
+  NeutralMigration(const Eigen::MatrixXd& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib)
+    : AbstractOperator(sslib.getPopIndices()), littleMigMat_(migMat)
   {
     // for each pair of populations modeled in the epoch to which *this operator belongs
     for(size_t i = 0; i < popIndices_.size(); ++i)
@@ -43,7 +40,10 @@ public:
         size_t jd = popIndices_[j];
 
         if(id != jd)
-          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd), littleMigMat_(i, j), ic));
+          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString(id) + "_" +
+                                               bpp::TextTools::toString(jd),
+                                           littleMigMat_(i, j),
+                                           ic));
       }
     }
 
@@ -71,7 +71,6 @@ private:
   void setLittleMat_();
 
   size_t fetchNumPops_();
-
 };
 
 #endif

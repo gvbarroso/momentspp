@@ -1,9 +1,8 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 11/09/2025
+ * Last modified: 16/09/2025
  */
-
 
 #ifndef _SUMSTATSLIBRARY_H_
 #define _SUMSTATSLIBRARY_H_
@@ -31,12 +30,7 @@
 
 #include <Bpp/Text/TextTools.h>
 
-#include "VectorInterface.hpp"
-#include "VectorMPReal.hpp"
-#include "VectorDouble.hpp"
-#include "MatrixInterface.hpp"
-#include "MatrixMPReal.hpp"
-#include "MatrixDouble.hpp"
+#include "MatrixEngine.hpp"
 #include "Population.hpp"
 #include "Moment.hpp"
 #include "DdMoment.hpp"
@@ -44,8 +38,8 @@
 #include "HetMoment.hpp"
 #include "Pi2Moment.hpp"
 
-
-// intent is to have one instance of SumStatsLibrary per Epoch because each Epoch potentially has unique population sets
+// intent is to have one instance of SumStatsLibrary per Epoch because each Epoch potentially has
+// unique population sets
 class SumStatsLibrary
 {
 
@@ -157,7 +151,7 @@ public:
 
   void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
 
-  std::unique_ptr<VectorInterface> fetchYvec(bool highPrecision);
+  std::unique_ptr<MatrixEngine::VectorVariant> fetchYvec(bool highPrecision);
 
   void printMoments(std::ostream& stream);
 
@@ -166,7 +160,7 @@ public:
   void readStatsFromFile(const std::string& fileName);
 
   // NOTE this assumes a maximum population count of 2 (speed constraint imposed by selection)
-  // and is used for convenience in the Drift operator
+  // and is used for convenience in the Drift and Selection operators
   size_t fetchOtherId(size_t id)
   {
     assert(popIndices_.size() == 2);
@@ -257,12 +251,11 @@ private:
   // assigns two HetMoment pointers to each Pi2Moment (left and right loci)
   void linkPi2HetStats_();
 
-  // exploits symmetry among statistics to reduce size of basis, given constraints imposed by selection
+  // exploits symmetry among statistics to reduce size of basis, given constraints imposed by
+  // selection
   void aliasMoments_();
 
   void compressBasis_();
-
 };
 
 #endif
-

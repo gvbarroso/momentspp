@@ -4,7 +4,6 @@
  *
  */
 
-
 #ifndef _PI2_MOMENT_H_
 #define _PI2_MOMENT_H_
 
@@ -13,11 +12,11 @@
 #include "Moment.hpp"
 #include "HetMoment.hpp"
 
-class Pi2Moment: public Moment
+class Pi2Moment : public Moment
 {
 
 private:
-  std::shared_ptr<HetMoment> left_; // left locus
+  std::shared_ptr<HetMoment> left_;  // left locus
   std::shared_ptr<HetMoment> right_; // right locus
 
 public:
@@ -115,7 +114,6 @@ public:
 
     return test;
   }
-
 };
 
 #endif

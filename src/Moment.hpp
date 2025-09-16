@@ -4,7 +4,6 @@
  *
  */
 
-
 #ifndef _MOMENT_H_
 #define _MOMENT_H_
 
@@ -22,7 +21,6 @@
 
 #include <Bpp/Text/TextTools.h>
 #include <Bpp/Exceptions.h>
-
 
 class Moment
 {
@@ -223,7 +221,8 @@ public:
 
   bool hasPopIndex(size_t index)
   {
-    return !(std::find(std::begin(popIndices_), std::end(popIndices_), index) == std::end(popIndices_));
+    return !(std::find(std::begin(popIndices_), std::end(popIndices_), index) ==
+             std::end(popIndices_));
   }
 
   bool hasAnyOfPopIndices(const std::vector<size_t>& ids) const
@@ -268,7 +267,8 @@ public:
     return pos != std::end(aliases_);
   }
 
-  std::vector<size_t> fetchDiffPopIds(size_t focalPopId) // fetches pop IDs different from focalPopId
+  std::vector<size_t>
+  fetchDiffPopIds(size_t focalPopId) // fetches pop IDs different from focalPopId
   {
     std::vector<size_t> ret(0);
 

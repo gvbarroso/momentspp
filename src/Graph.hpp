@@ -15,7 +15,7 @@
 #include <stack>
 
 // based on https://www.geeksforgeeks.org/tarjan-algorithm-find-strongly-connected-components/
-template<typename ValueType>
+template <typename ValueType>
 class Graph
 {
 
@@ -38,7 +38,7 @@ public:
 
   ~Graph()
   {
-    delete [] adj_;
+    delete[] adj_;
   }
 
 public:
@@ -53,7 +53,6 @@ public:
   }
 
   bool isReachable(ValueType source, ValueType destination);
-
 };
 
 #endif

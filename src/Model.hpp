@@ -5,7 +5,6 @@
  *
  */
 
-
 #ifndef _MODEL_H_
 #define _MODEL_H_
 
@@ -34,7 +33,7 @@
 #include "Epoch.hpp"
 #include "Data.hpp"
 
-class Model: public bpp::AbstractParameterAliasable, public bpp::FunctionInterface
+class Model : public bpp::AbstractParameterAliasable, public bpp::FunctionInterface
 {
 
 private:
@@ -112,7 +111,7 @@ public:
   {
     return -compLogLikelihood_;
   }
-  
+
   const std::string& getName() const
   {
     return name_;
@@ -195,7 +194,7 @@ public:
   void computeExpectedSumStats()
   {
     if(continuousTime_)
-      computeExpectedSumStatsAdaptive();  // default to adaptive scheme to determine optimal dt
+      computeExpectedSumStatsAdaptive(); // default to adaptive scheme to determine optimal dt
 
     else
       computeExpectedSumStatsDiscrete();
@@ -221,7 +220,6 @@ private:
   void updateEpochs_(const bpp::ParameterList& params);
 
   void computeCompositeLogLikelihood_();
-
 };
 
 #endif

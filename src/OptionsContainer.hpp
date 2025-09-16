@@ -5,7 +5,6 @@
  *
  */
 
-
 #ifndef _OPTIONSCONTAINER_H_
 #define _OPTIONSCONTAINER_H_
 
@@ -24,14 +23,14 @@ class OptionsContainer
 private:
   std::string label_;
   std::string demesFilePath_;
-  std::string dataFilePath_; // observed sum stats, for most recent Epoch
+  std::string dataFilePath_;      // observed sum stats, for most recent Epoch
   std::string initStatsFilePath_; // e.g. steady-state sum stats for deep-most Epoch
   std::string numericalOptimizer_;
 
   double toleranceOptim_; // for numerical optimization
 
   bool aliasOverEpochs_; // whether to alias parameters (r_*, u_*, s_*) over Epochs, see Model::compressParameters()
-  bool aliasOverPops_; // whether to alias parameters (r_*, u_*, s_*) over Populations, see Model::compressParameters()
+  bool aliasOverPops_;   // whether to alias parameters (r_*, u_*, s_*) over Populations, see Model::compressParameters()
   bool compressMoments_; // see moments_ vs compressedBasis_ inside SumStatsLibrary::initMoments_()
   bool computeCI_;
   bool verbose_;
@@ -45,9 +44,9 @@ private:
   // for continuous-time integration, see Epoch class
   double dt_; // default time step for fixed integration
   double totalTimeIntegration_; // default total time for adaptive integration
-  double toleranceIntegration_;  // default error tolerance in adaptive (continuous-time) integration
+  double toleranceIntegration_; // default error tolerance in adaptive (continuous-time) integration
 
-  std::vector<std::string>> momNames_; // moments to print at intermediate time steps
+  std::vector<std::string> momNames_; // moments to print at intermediate time steps
 
 public:
   OptionsContainer(const std::map<std::string, std::string>& options):
@@ -70,12 +69,12 @@ public:
   dt_(bpp::ApplicationTools::getDoubleParameter("dt", options, 1e-3, "", true, 4)),
   totalTimeIntegration_(bpp::ApplicationTools::getDoubleParameter("time_integration", options, 1., "", 0, 4)),
   toleranceIntegration_(bpp::ApplicationTools::getDoubleParameter("tolerance_integration", options, 1e-6, "", 0, 4)),
-  momNames_(bpp::ApplicationTools::getVectorParameter<size_t>("moms_intermediate", options, ',', "Hl_0_0,Hr_0_0", "", true, 0)) // NOTE check passing default values
+  momNames_(bpp::ApplicationTools::getVectorParameter<std::string>("moms_intermediate", options, ',', "Hl_0_0,Hr_0_0", "", true, 0)) // NOTE check passing default values
   {
     if(label_ == "moments++")
       label_ = demesFilePath_.substr(0, demesFilePath_.find(".yaml")); // convenience
   }
-  
+
 public:
   const std::string& getLabel() const
   {
@@ -177,11 +176,10 @@ public:
     return toleranceIntegration_;
   }
 
-  const std::vector<std::string>>& getMomNamesIntermediate() const
+  const std::vector<std::string>& getMomNamesIntermediate() const
   {
     return momNames_;
   }
-
 };
 
 #endif

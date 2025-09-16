@@ -5,7 +5,6 @@
  *
  */
 
-
 // The Migration operator on the selection basis (restricted to 2 populations)
 #ifndef _MIGRATION_H_
 #define _MIGRATION_H_
@@ -13,16 +12,15 @@
 #include "AbstractOperator.hpp"
 #include "Graph.hpp"
 
-class Migration: public AbstractOperator
+class Migration : public AbstractOperator
 {
 
 private:
   Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleMigMat_; // 2 x 2
 
 public:
-  Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices()),
-  littleMigMat_()
+  Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib)
+    : AbstractOperator(sslib.getPopIndices()), littleMigMat_()
   {
     includeParameters_(migParams);
     prevParams_.addParameters(getParameters());
@@ -30,9 +28,10 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Migration(const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& migMat, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices()),
-  littleMigMat_(migMat)
+  Migration(const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& migMat,
+            std::shared_ptr<bpp::IntervalConstraint> ic,
+            const SumStatsLibrary& sslib)
+    : AbstractOperator(sslib.getPopIndices()), littleMigMat_(migMat)
   {
     // for each pair of populations modeled in the epoch to which *this operator belongs
     for(size_t i = 0; i < popIndices_.size(); ++i)
@@ -44,7 +43,10 @@ public:
         size_t jd = popIndices_[j];
 
         if(id != jd)
-          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd), littleMigMat_(i, j), ic));
+          addParameter_(new bpp::Parameter("m_" + bpp::TextTools::toString(id) + "_" +
+                                               bpp::TextTools::toString(jd),
+                                           littleMigMat_(i, j),
+                                           ic));
       }
     }
 
@@ -72,7 +74,6 @@ private:
   void setLittleMat_();
 
   size_t fetchNumPops_();
-
 };
 
 #endif

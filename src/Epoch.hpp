@@ -5,7 +5,6 @@
  *
  */
 
-
 #ifndef _EPOCH_H_
 #define _EPOCH_H_
 
@@ -40,7 +39,7 @@ struct EigenResult
   Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vector;
 };
 
-class Epoch: public bpp::AbstractParameterAliasable
+class Epoch : public bpp::AbstractParameterAliasable
 {
 
 private:
@@ -52,9 +51,11 @@ private:
   size_t endGen_;
 
   std::vector<std::shared_ptr<Population>> pops_;
-  std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
+  std::vector<std::shared_ptr<AbstractOperator>>
+      operators_; // each operator contains matrices and a subset of the parameters
 
-   // engine_ holds the steady state vector as well as all sparse operators summed into a Sparse matrix
+  // engine_ holds the steady state vector as well as all sparse operators summed into a Sparse
+  // matrix
   std::unique_ptr<MatrixEngine> engine_;
 
 public:
@@ -238,11 +239,9 @@ public:
 
   void printMoments(std::ostream& stream);
 
-  void printMomentsIntermediate(
-    MatrixEngine::VectorVariantEigen& y,
-    const std::string& modelName,
-    size_t interval,
-    const std::vector<std::string>& momNames);
+  void printMomentsIntermediate(MatrixEngine::VectorVariantEigen& y,
+                                const std::string& modelName, size_t interval,
+                                const std::vector<std::string>& momNames);
 
   void printRecursions(std::ostream& stream);
 
@@ -254,31 +253,28 @@ public:
 
   void testSteadyState();
 
-  template<typename Scalar>
-  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> integrateTyped(
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
-    double dt,
-    double totalTime) const;
+  template <typename Scalar>
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+  integrateTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
+                 double dt,
+                 double totalTime) const;
 
-  MatrixEngine::VectorVariantEigen integrate(
-    const MatrixEngine::VectorVariantEigen& moms,
-    double dt,
-    double totalTime) const;
+  MatrixEngine::VectorVariantEigen integrate(const MatrixEngine::VectorVariantEigen& moms,
+                                             double dt,
+                                             double totalTime) const;
 
-  template<typename Scalar>
-  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> integrateAdaptiveTyped(
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
-    double dt,
-    double totalTime,
-    double tolerance,
-    double dtMin = 1e-6,
-    double dtMax = 1.0) const;
+  template <typename Scalar>
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+  integrateAdaptiveTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
+                         double dt,
+                         double totalTime,
+                         double tolerance,
+                         double dtMin = 1e-6, double dtMax = 1.0) const;
 
-  MatrixEngine::VectorVariantEigen integrateAdaptive(
-    const MatrixEngine::VectorVariantEigen& moms,
-    double dt,
-    double totalTime,
-    double tolerance) const;
+  MatrixEngine::VectorVariantEigen integrateAdaptive(const MatrixEngine::VectorVariantEigen& moms,
+                                                     double dt,
+                                                     double totalTime,
+                                                     double tolerance) const;
 
   void printConditionNumber()
   {
@@ -338,10 +334,10 @@ public:
 
       // Convert to mpreal for consistency
       Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vec.size());
-      for (size_t i = 0; i < vec.size(); ++i)
-        vecMP(i) = mpfr::mpreal(vec(i));
+      for(size_t i = 0; i < vec.size(); ++i)
+      vecMP(i) = mpfr::mpreal(vec(i));
 
-      return { idx, mpfr::mpreal(es.eigenvalues().real()(idx)), vecMP };
+      return {idx, mpfr::mpreal(es.eigenvalues().real()(idx)), vecMP};
     }, engine_->getMatrixVariant());
   }
 
@@ -353,7 +349,6 @@ private:
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)
       (*it)->fireParameterChanged(params);
   }
-
 };
 
 #endif

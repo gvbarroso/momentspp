@@ -1,5 +1,5 @@
 /*
- * Authors: Gustavo V. Barroso 
+ * Authors: Gustavo V. Barroso
  * Created: 21/10/2022
  * Last modified: 04/04/2023
  *
@@ -32,7 +32,6 @@ public:
   {
     startTimePoint_ = std::chrono::high_resolution_clock::now();
   }
-  
 };
 
 #endif

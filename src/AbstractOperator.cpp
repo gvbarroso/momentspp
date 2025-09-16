@@ -5,9 +5,7 @@
  *
  */
 
-
 #include "AbstractOperator.hpp"
-
 
 void AbstractOperator::printDeltaLDMat(const std::string& fileName)
 {
@@ -22,9 +20,9 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName)
   for(size_t i = 1; i < matrices_.size(); ++i)
   {
     combined = std::visit([](auto& a, auto& b) -> MatrixVariant
-    {
-      return *a.add(b);
-    }, combined, matrices_[i]->getMatrixVariant());
+                          { return *a.add(b); },
+                          combined,
+                          matrices_[i]->getMatrixVariant());
   }
 
   std::visit([&](auto& mat)
@@ -35,7 +33,7 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName)
       {
         matFile << mat.mat_.coeff(i, j);
 
-        if (j < mat.cols() - 1)
+        if(j < mat.cols() - 1)
           matFile << ",";
       }
 
@@ -46,7 +44,8 @@ void AbstractOperator::printDeltaLDMat(const std::string& fileName)
   matFile.close();
 }
 
-// adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
+// adds together the different matrices that make up an operator (one per population for Drift;
+// population-pair for Migration, etc)
 void AbstractOperator::assembleTransitionMatrix_()
 {
   MatrixVariant combined = matrices_[0]->getMatrixVariant();
@@ -54,21 +53,22 @@ void AbstractOperator::assembleTransitionMatrix_()
   for(size_t i = 1; i < matrices_.size(); ++i)
   {
     combined = std::visit([](auto& a, auto& b) -> MatrixVariant
-    {
-      return *a.add(b);
-    }, combined, matrices_[i]->getMatrixVariant());
+                          { return *a.add(b); },
+                          combined,
+                          matrices_[i]->getMatrixVariant());
   }
 
   if(!transition_)
   {
     transition_ = std::make_unique<MatrixEngine>(matrices_[0]->useMPReal);
-    transition_->initialize(matrices_[0]->getMatrixVariant().index() == 0 ?
-                            std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).rows() :
-                            std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).rows(),
-                            matrices_[0]->getMatrixVariant().index() == 0 ?
-                            std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).cols() :
-                            std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).cols(),
-                            0);
+    transition_->initialize(
+        matrices_[0]->getMatrixVariant().index() == 0
+            ? std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).rows()
+            : std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).rows(),
+        matrices_[0]->getMatrixVariant().index() == 0
+            ? std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).cols()
+            : std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).cols(),
+        0);
   }
 
   transition_->setMatrix(combined);

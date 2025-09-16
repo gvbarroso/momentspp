@@ -4,14 +4,12 @@
  *
  */
 
-
 #ifndef _HET_MOMENT_H_
 #define _HET_MOMENT_H_
 
 #include "Moment.hpp"
 
-
-class HetMoment: public Moment
+class HetMoment : public Moment
 {
 
 private:
@@ -63,7 +61,6 @@ public:
 
     return test;
   }
-
 };
 
 #endif

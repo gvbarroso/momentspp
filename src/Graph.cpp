@@ -10,14 +10,14 @@
 #include "Moment.hpp"
 #include "Graph.hpp"
 
-template<typename ValueType>
+template <typename ValueType>
 bool Graph<ValueType>::isReachable(ValueType source, ValueType dest)
 {
   if(source == dest)
     return true;
 
   // mark all the vertices as not visited
-  bool *visited = new bool[numVertices_];
+  bool* visited = new bool[numVertices_];
   for(size_t i = 0; i < numVertices_; i++)
     visited[i] = false;
 
@@ -43,7 +43,7 @@ bool Graph<ValueType>::isReachable(ValueType source, ValueType dest)
       // if this adjacent node is the destination node, then
       if(*it == dest)
       {
-        delete [] visited;
+        delete[] visited;
         return true;
       }
 
@@ -56,11 +56,11 @@ bool Graph<ValueType>::isReachable(ValueType source, ValueType dest)
     }
   }
 
-  delete [] visited;
+  delete[] visited;
 
   // If BFS is complete without visiting dest
   return false;
 }
 
 template class Graph<int>;
-//template class Graph<std::shared_ptr<Moment>>;
+// template class Graph<std::shared_ptr<Moment>>;

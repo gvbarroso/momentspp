@@ -25,7 +25,8 @@
 
 #include "TwoLocusPop.hpp"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
 
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -44,11 +45,13 @@ int main(int argc, char *argv[]) {
   std::cout << "******************************************************************" << std::endl;
 
   std::cout << "\nCompiled on: " << __DATE__ << std::endl;
-  std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
+  std::cout << "Compiled at: " << __TIME__ << std::endl
+            << std::endl;
 
   if(argc == 1)
   {
-    std::cout << "To use TwoLocusSim, fill in a text file with the following options and execute from the command line:\ntwolocussim params=file_name\n\n";
+    std::cout << "To use TwoLocusSim, fill in a text file with the following options and execute "
+                 "from the command line:\ntwolocussim params=file_name\n\n";
 
     std::cout << "L = \n";
     std::cout << "Ne = \n";
@@ -57,7 +60,7 @@ int main(int argc, char *argv[]) {
     std::cout << "s = \n";
 
     std::cout << "\nFor more information, please email gvbarroso@gmail.com " << std::endl;
-    return(0);
+    return (0);
   }
 
   bpp::BppApplication twoLocusSim(argc, argv, "TwoLocusSim");
@@ -71,7 +74,8 @@ int main(int argc, char *argv[]) {
   double u = bpp::ApplicationTools::getParameter<double>("u", params, 1e-8, "", 0);
   double r = bpp::ApplicationTools::getParameter<double>("r", params, 1e-7, "", 0);
   double s = bpp::ApplicationTools::getParameter<double>("s", params, 0., "", 0);
-  std::string label = bpp::ApplicationTools::getStringParameter("label", params, "test", "", true, 4);
+  std::string label =
+      bpp::ApplicationTools::getStringParameter("label", params, "test", "", true, 4);
 
   std::cout << "\nSimulation setup:\n";
   std::cout << "\t" << L << " loci\n";
@@ -100,7 +104,7 @@ int main(int argc, char *argv[]) {
 
   std::cout << "random seed = " << seed << "\n";
 
-  const gsl_rng_type * T;
+  const gsl_rng_type* T;
   gsl_rng* gen;
 
   gsl_rng_env_setup();
@@ -122,10 +126,11 @@ int main(int argc, char *argv[]) {
   }
 
   TwoLocusPop p1 = root; // population 1
-  //TwoLocusPop p2 = root; // population 2
+  // TwoLocusPop p2 = root; // population 2
 
   std::cout << "done.\n";
-  std::cout << "Evolving population(s) (" << G << " generations)..."; std::cout.flush();
+  std::cout << "Evolving population(s) (" << G << " generations)...";
+  std::cout.flush();
 
   /*boost::iostreams::filtering_ostream stream_D;
 
@@ -151,9 +156,9 @@ int main(int argc, char *argv[]) {
   /*
   boost::iostreams::filtering_ostream stream_hap;
 
-  std::string hap_file = "hap_trajectories_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
-  std::ofstream file_hap;
-  file_hap.open(hap_file + ".gz", std::ios_base::out | std::ios_base::binary);
+  std::string hap_file = "hap_trajectories_" + label + "_" + bpp::TextTools::toString(seed) +
+  ".txt"; std::ofstream file_hap; file_hap.open(hap_file + ".gz", std::ios_base::out |
+  std::ios_base::binary);
 
   stream_hap.push(boost::iostreams::gzip_compressor());
   stream_hap.push(file_hap);
@@ -165,8 +170,8 @@ int main(int argc, char *argv[]) {
     p1.evolve(u, r, s, gen);
     p1.cleanup();
 
-    //if(p1.getX().size() > 0)
-      //p1.printX(stream_hap);
+    // if(p1.getX().size() > 0)
+    // p1.printX(stream_hap);
 
     p1.computeStats();
 
@@ -179,12 +184,12 @@ int main(int argc, char *argv[]) {
     sum_Dsqr += p1.getSumDsqr();
     sum_pi2 += p1.getSumPi2();
 
-    //if(i % Ne == 0)
-      //p1.tabulate_Ds(stream_D);
+    // if(i % Ne == 0)
+    // p1.tabulate_Ds(stream_D);
   }
 
-  //boost::iostreams::close(stream_D);
-  //boost::iostreams::close(stream_hap);
+  // boost::iostreams::close(stream_D);
+  // boost::iostreams::close(stream_hap);
 
   std::string file = "stats_" + label + "_" + bpp::TextTools::toString(seed) + ".txt";
   std::ofstream fout(file);

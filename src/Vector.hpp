@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 15/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include <Eigen/Core>
-#include <unsupported/Eigen/MPRealSupport>
+#include <eigen3/Eigen/Core>
+#include <eigen3/unsupported/Eigen/MPRealSupport>
 #include <mpreal.h>
 #include <memory>
 #include <vector>
@@ -19,97 +19,127 @@
 #include <fstream>
 #include <stdexcept>
 
-template<typename Scalar>
+template <typename T>
 class Vector
 {
 public:
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> vec_;
+  using Scalar = T;
+  Eigen::Matrix<T, Eigen::Dynamic, 1> vec_;
 
-    Vector() = default;
+  Vector() = default;
 
-    explicit Vector(size_t size):
-    vec_(size)
-    {
-      setZero();
-    }
+  explicit Vector(size_t size) : vec_(size)
+  {
+    setZero();
+  }
 
-    Vector(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& v):
-    vec_(v)
-    {
-      setZero();
-    }
+  Vector(const Vector& other) : vec_(other.vec_)
+  {
+  }
 
-    Vector(Eigen::Matrix<Scalar, Eigen::Dynamic, 1>&& other):
-    vec_(std::move(other))
-    {
-      setZero();
-    }
+  Vector<T>& operator=(Vector<T>&& other) noexcept
+  {
+    vec_ = std::move(other.vec_);
+    return *this;
+  }
 
-    Vector<Scalar>& operator=(const Vector<Scalar>& other)
-    {
-      if(this != &other)
-        vec_ = other.vec_;  // Eigen handles deep copy
+  Vector(const Eigen::Matrix<T, Eigen::Dynamic, 1>& v) : vec_(v)
+  {
+    setZero();
+  }
 
-      return *this;
-    }
+  Vector(Eigen::Matrix<T, Eigen::Dynamic, 1>&& other) : vec_(std::move(other))
+  {
+    setZero();
+  }
 
-    void set(size_t index, Scalar value)
-    {
-      if(index >= vec_.size())
-        throw std::out_of_range("Vector index out of bounds");
+  Vector<T>& operator=(const Vector<T>& other)
+  {
+    if(this != &other)
+      vec_ = other.vec_; // Eigen handles deep copy
 
-      vec_(index) = value;
-    }
+    return *this;
+  }
 
-    void setZero()
-    {
-      vec_.setZero();
-    }
+  bool operator==(const Vector<T>& other) const
+  {
+    return vec_.isApprox(other.vec_);
+  }
 
-    Scalar get(size_t index) const
-    {
-      if(index >= vec_.size())
-        throw std::out_of_range("Vector index out of bounds");
+  void set(size_t index, T value)
+  {
+    if(index >= vec_.size())
+      throw std::out_of_range("Vector index out of bounds");
 
-      return vec_(index);
-    }
+    vec_(index) = value;
+  }
 
-    mpfr::mpreal getMPReal(size_t index) const
-    {
-      return static_cast<mpfr::mpreal>(get(index));
-    }
+  void setZero()
+  {
+    vec_.setZero();
+  }
 
-    size_t size() const
-    {
-      return vec_.size();
-    }
+  void resize(size_t newSize)
+  {
+    vec_.resize(newSize);
+  }
 
-    void scale(Scalar scalar)
-    {
-      vec_ *= scalar;
-    }
+  T get(size_t index) const
+  {
+    if(index >= vec_.size())
+      throw std::out_of_range("Vector index out of bounds");
 
-    void print() const
-    {
-      for(size_t i = 0; i < vec_.size(); ++i)
-        std::cout << i << ": " << vec_(i) << "\n";
-    }
+    return vec_(index);
+  }
 
-    std::unique_ptr<Vector<Scalar>> clone() const
-    {
-      return std::make_unique<Vector<Scalar>>(vec_);
-    }
+  mpfr::mpreal getMPReal(size_t index) const
+  {
+    return static_cast<mpfr::mpreal>(get(index));
+  }
 
-    std::unique_ptr<Vector<Scalar>> cloneWithSize(size_t newSize) const
-    {
-      auto newVec = std::make_unique<Vector<Scalar>>(newSize);
-      newVec->setZero();
-      return newVec;
-    }
+  size_t size() const
+  {
+    return vec_.size();
+  }
 
-    const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& eigen() const { return vec_; }
-    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& eigen() { return vec_; }
+  void scale(T scalar)
+  {
+    vec_ *= scalar;
+  }
+
+  void normalize()
+  {
+    T norm = vec_.norm();
+    if(norm != T(0))
+      vec_ /= norm;
+  }
+
+  void print() const
+  {
+    for(size_t i = 0; i < vec_.size(); ++i)
+      std::cout << i << ": " << vec_(i) << "\n";
+  }
+
+  std::unique_ptr<Vector<T>> clone() const
+  {
+    return std::make_unique<Vector<T>>(vec_);
+  }
+
+  std::unique_ptr<Vector<T>> cloneWithSize(size_t newSize) const
+  {
+    auto newVec = std::make_unique<Vector<T>>(newSize);
+    newVec->setZero();
+    return newVec;
+  }
+
+  const Eigen::Matrix<T, Eigen::Dynamic, 1>& eigen() const
+  {
+    return vec_;
+  }
+  Eigen::Matrix<T, Eigen::Dynamic, 1>& eigen()
+  {
+    return vec_;
+  }
 };
-
 
 #endif

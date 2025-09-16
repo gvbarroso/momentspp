@@ -5,13 +5,12 @@
  *
  */
 
-
 #ifndef _RECOMBINATION_H_
 #define _RECOMBINATION_H_
 
 #include "AbstractOperator.hpp"
 
-class Recombination: public AbstractOperator
+class Recombination : public AbstractOperator
 {
 
 public:
@@ -42,7 +41,6 @@ public:
   void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) override;
 
   void updateMatrices_() override;
-
 };
 
 #endif

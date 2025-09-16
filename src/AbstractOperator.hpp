@@ -5,7 +5,6 @@
  *
  */
 
-
 #ifndef _OPERATOR_H_
 #define _OPERATOR_H_
 
@@ -38,18 +37,21 @@
 #include "SumStatsLibrary.hpp"
 #include "Log.hpp"
 
-class AbstractOperator: public bpp::AbstractParameterAliasable
+class AbstractOperator : public bpp::AbstractParameterAliasable
 {
 
 protected:
-  // flexible vector: one matrix per population (Drift, Mutation, Recombination and Selection) or pair thereof (Migration, Admixture)
-  // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
-  // they are then multiplied by parameters (1/2N_i for Drift, m_ij for Migration etc) and finally added into transition_
-  // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)
+  // flexible vector: one matrix per population (Drift, Mutation, Recombination and Selection) or
+  // pair thereof (Migration, Admixture) the overal strategy is that matrices_ are built with
+  // coefficients only, and assigned indices that depend on the number of populations they are then
+  // multiplied by parameters (1/2N_i for Drift, m_ij for Migration etc) and finally added into
+  // transition_ this way the matrices_ need not be rebuilt during optimization when parameters
+  // change (see updateMatrices_() inside each derived class)
   std::vector<std::unique_ptr<MatrixEngine>> matrices_; // "delta" matrix(ces)
-  std::unique_ptr<MatrixEngine> transition_;  // "transition" matrix
+  std::unique_ptr<MatrixEngine> transition_;            // "transition" matrix
 
-  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
+  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for
+                                  // fast matrix updates)
   std::vector<size_t> popIndices_;
 
 public:
@@ -120,14 +122,14 @@ public:
   }
 
 protected:
-  // this method sets up so-called "delta" matrices which govern the *change* in Y due to the operator
-  virtual void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) = 0;  // called only once in order to set the coefficients
+  // sets up so-called "delta" matrices which govern the *change* in Y due to the operator
+  virtual voidsetUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) = 0; // called only once in order to set the coefficients
 
-  virtual void updateMatrices_() = 0; // scales coefficients of "delta" matrices by (new) parameters during optimization
+  // scales coefficients of "delta" matrices by (new) parameters during optimization
+  virtual void updateMatrices_() = 0;
 
   // adds together the different matrices that make up an operator (one per population for Drift; population-pair for Migration, etc)
   virtual void assembleTransitionMatrix_();
-
 };
 
 #endif

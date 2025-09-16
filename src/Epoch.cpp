@@ -31,7 +31,8 @@ void Epoch::computeExpectedSumStatsDiscrete(const MatrixEngine::VectorVariantEig
   {
     using Scalar = typename std::decay_t<decltype(vec)>::Scalar;
 
-    const Eigen::SparseMatrix<Scalar> M = std::get<Eigen::SparseMatrix<Scalar>>(engine_->getRawMatrix());
+    const Eigen::SparseMatrix<Scalar> M =
+    std::get<Eigen::SparseMatrix<Scalar>>(engine_->getRawMatrix());
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y = vec;
 
     for(size_t i = 0; i < duration(); ++i)
@@ -65,19 +66,21 @@ void Epoch::transferStatistics(MatrixEngine::VectorVariantEigen& y) const
     using VectorType = std::decay_t<decltype(vecPrev)>;
     using Scalar = typename VectorType::Scalar;
 
-    // y and tmp have potentially different sizes due to number of Populations and/or Order(1-2p)
+    // y and tmp have potentially different sizes due to number of Populations and/or
+    // Order(1-2p)
     const size_t newSize = ssl_.getBasis().size();
     VectorType vecNew(newSize);
 
-    // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
-    // this follows the ancestry patterns of moments according to population history, see Model::linkMoments_()
+    // for each Moment in *this Epoch, we assign its value from its parental Moment from the
+    // previous Epoch this follows the ancestry patterns of moments according to population
+    // history, see Model::linkMoments_()
     for(size_t i = 0; i < newSize; ++i)
     {
       size_t parentPos = ssl_.getBasis()[i]->getParent()->getPosition();
       vecNew(i) = vecPrev(parentPos);
     }
 
-    vecPrev = std::move(vecNew);  // overwrite original vector in-place
+    vecPrev = std::move(vecNew); // overwrite original vector in-place
   }, y);
 }
 
@@ -90,7 +93,6 @@ void Epoch::updateMoments(const MatrixEngine::VectorVariantEigen& y)
 
     for(size_t i = 0; i < vec.size(); ++i)
       ssl_.getBasis()[i]->setValue(static_cast<double>(vec(i)));
-
   }, y);
 }
 
@@ -102,13 +104,12 @@ void Epoch::printMoments(std::ostream& stream)
     stream << std::setprecision(16) << m->getName() << " = " << m->getValue() << "\n";
 }
 
-void Epoch::printMomentsIntermediate(
-  MatrixEngine::VectorVariantEigen& y,
-  const std::string& modelName,
-  size_t interval,
-  const std::vector<std::string>& momNames)
+void Epoch::printMomentsIntermediate(MatrixEngine::VectorVariantEigen& y,
+                                     const std::string& modelName,
+                                     size_t interval,
+                                     const std::vector<std::string>& momNames)
 {
-  transferStatistics(y);  // adjust vector to match current Epoch's basis
+  transferStatistics(y); // adjust vector to match current Epoch's basis
 
   std::string fileName = modelName + "_" + name_ + "_moments.csv.gz";
   std::ofstream rawFile(fileName, std::ios_base::out | std::ios_base::binary);
@@ -124,13 +125,16 @@ void Epoch::printMomentsIntermediate(
   for(size_t i = 0; i < basis.size(); ++i)
   {
     const std::string& name = basis[i]->getName();
+
     if(std::find(momNames.begin(), momNames.end(), name) != momNames.end())
       indices.push_back(i);
   }
 
   fout << "Generation";
+
   for(const auto& name : momNames)
     fout << "," << name;
+
   fout << "\n";
 
   std::visit([&](auto& vec)
@@ -140,16 +144,16 @@ void Epoch::printMomentsIntermediate(
 
     for(size_t i = 0; i < steps; ++i)
     {
-      fout << (startGen_ - i * interval);  // gen column
+      fout << (startGen_ - i * interval); // gen column
 
       for(size_t idx : indices)
-        fout << "," << static_cast<double>(vec(idx));  // mom values
+        fout << "," << static_cast<double>(vec(idx)); // mom values
 
       fout << "\n";
 
       if(i < steps - 1) // not to advance further than needed, important when there are > 2 Epochs
       {
-        for (size_t k = 0; k < interval; ++k)
+        for(size_t k = 0; k < interval; ++k)
         {
           const auto& M = std::get<Eigen::SparseMatrix<Scalar>>(engine_->getRawMatrix());
           vec = M * vec;
@@ -158,7 +162,7 @@ void Epoch::printMomentsIntermediate(
     }
   }, y);
 
-  fout.reset();  // flush and close gzip stream
+  fout.reset(); // flush and close gzip stream
   rawFile.close();
 }
 
@@ -218,12 +222,15 @@ void Epoch::computeEigenSteadyState()
   {
     double cond = fetchConditionNumber();
     std::cout << "\nCondition Number of transition matrix = " << cond << "\n";
-    std::cout << "\nLeading eigenvalue of full transition matrix = " << res.value.toDouble() << "\n";
+    std::cout << "\nLeading eigenvalue of full transition matrix = " << res.value.toDouble()
+              << "\n";
+
     throw bpp::Exception("Epoch::Leading Eigenvalue > 1! Consider using a smaller order of 1-2p factors.\n");
   }
 
   // Deduce scalar type from engine's matrix and construct steady state vector
-  std::visit([&](const auto& mat) {
+  std::visit([&](const auto& mat)
+  {
     using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> converted(res.vector.size());
@@ -242,7 +249,8 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol = 1e-6)
 {
   bool converged = false;
 
-  std::visit([&](const auto& mat) {
+  std::visit([&](const auto& mat)
+  {
     using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
     Vector<Scalar> y(mat.mat_.rows());
@@ -255,7 +263,7 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol = 1e-6)
     size_t maxIterations = 20 * twoN;
 
     double hr = twoN * mu;
-    double hl = 2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.) - mu / s; // eq. solution
+    double hl = 2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.) -mu / s; // eq. solution
 
     double f = 1.; // helps approximating with increasing Order of 1-2p factors
 
@@ -274,16 +282,14 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol = 1e-6)
         y.set(i, Scalar(hr * hl * f));
 
       else if(prefix == "I")
-
         y.set(i, Scalar(1.0));
 
       else
         y.set(i, Scalar(hr * hl * f * 1e-1));
 
-      if(i > 0 && prefix == ssl_.getBasis()[i-1]->getPrefix()) // same prefix, higher factor 1-2p
-      {
+      // done, updates factor
+      if(i > 0 && prefix == ssl_.getBasis()[i - 1]->getPrefix()) // same prefix, higher factor 1-2p
         f = f * 0.925; // decays
-      }
 
       else
         f = 1.; // resets
@@ -291,12 +297,13 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol = 1e-6)
 
     // "burn-in" to speed-up process (need not check for convergence)
     for(size_t b = 0; b < twoN / 10; ++b)
-      y = mat.multiply(y);
+        y = mat.multiply(y);
 
     // now we start checking
     auto prev = y->clone();
 
-    auto notConverged = [&](size_t i) {
+    auto notConverged = [&](size_t i)
+    {
       double prevVal = static_cast<double>(prev->get(i));
       double currVal = static_cast<double>(y->get(i));
       double relDiff = std::abs(currVal - prevVal) / std::max(1.0, std::abs(prevVal));
@@ -327,7 +334,7 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol = 1e-6)
     }
 
     if(converged)
-     engine_->setVector(y);
+      engine_->setVector(y);
   }, engine_->getMatrixVariant());
 
   if(!converged)
@@ -344,7 +351,8 @@ void Epoch::computePseudoSteadyStateContinuous(double burnInTime = 0.1, double d
 {
   bool converged = false;
 
-  std::visit([&](const auto& mat) {
+  std::visit([&](const auto& mat)
+  {
     using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
     const size_t dim = mat.rows();
@@ -364,21 +372,22 @@ void Epoch::computePseudoSteadyStateContinuous(double burnInTime = 0.1, double d
     {
       const std::string& prefix = ssl_.getBasis()[i]->getPrefix();
 
-      if (prefix == "Hl")
+      if(prefix == "Hl")
         y.set(i, Scalar(hl * f));
 
-      else if (prefix == "Hr")
+      else if(prefix == "Hr")
         y.set(i, Scalar(hr * f));
 
-      else if (prefix == "pi2")
+      else if(prefix == "pi2")
         y.set(i, Scalar(hr * hl * f));
 
-      else if (prefix == "I")
+      else if(prefix == "I")
         y.set(i, Scalar(1.0));
 
       else
         y.set(i, Scalar(hr * hl * f * 1e-1));
 
+      // done, updates factor
       if(i > 0 && prefix == ssl_.getBasis()[i - 1]->getPrefix()) // same prefix, higher factor 1-2p
         f *= 0.925; // decays
 
@@ -389,11 +398,12 @@ void Epoch::computePseudoSteadyStateContinuous(double burnInTime = 0.1, double d
     const size_t burnInSteps = static_cast<size_t>(burnInTime / dt);
 
     for(size_t i = 0; i < burnInSteps; ++i)
-      y.vec_ = integrateTyped<Scalar>(y.vec_);
+        y.vec_ = integrateTyped<Scalar>(y.vec_);
 
     auto prev = y->clone();
 
-    auto notConverged = [&](size_t i) {
+    auto notConverged = [&](size_t i)
+    {
       double prevVal = static_cast<double>(prev->get(i));
       double currVal = static_cast<double>(y->get(i));
       double relDiff = std::abs(currVal - prevVal) / std::max(1.0, std::abs(prevVal));
@@ -456,10 +466,9 @@ void Epoch::testSteadyState()
   */
 }
 
-template<typename Scalar>
-Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Epoch::integrateTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
-  double dt,
-  double totalTime) const
+template <typename Scalar>
+Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+Epoch::integrateTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms, double dt, double totalTime) const
 {
   using MatrixType = Eigen::SparseMatrix<Scalar>;
   using VectorType = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
@@ -486,17 +495,16 @@ Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Epoch::integrateTyped(const Eigen::Matr
   {
     VectorType rhs = B * y;
     y = solver.solve(rhs);
-    if (solver.info() != Eigen::Success)
+
+    if(solver.info() != Eigen::Success)
       throw bpp::Exception("Epoch::Linear solve failed during integration.");
   }
 
   return y;
 }
 
-MatrixEngine::VectorVariantEigen Epoch::integrate(
-  const MatrixEngine::VectorVariantEigen& moms,
-  double dt,
-  double totalTime) const
+MatrixEngine::VectorVariantEigen Epoch::integrate(const MatrixEngine::VectorVariantEigen& moms,
+                                                  double dt, double totalTime) const
 {
   return std::visit([&](const auto& vec) -> MatrixEngine::VectorVariantEigen
   {
@@ -505,14 +513,10 @@ MatrixEngine::VectorVariantEigen Epoch::integrate(
   }, moms);
 }
 
-template<typename Scalar>
-Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Epoch::integrateAdaptiveTyped(
-  const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
-  double dt,
-  double totalTime,
-  double tolerance,
-  double dtMin = 1e-6,
-  double dtMax = 1.0) const
+template <typename Scalar>
+Eigen::Matrix<Scalar, Eigen::Dynamic, 1>
+Epoch::integrateAdaptiveTyped(const Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& moms,
+                              double dt, double totalTime, double tolerance, double dtMin = 1e-6, double dtMax = 1.0) const
 {
   using MatrixType = Eigen::SparseMatrix<Scalar>;
   using VectorType = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
@@ -574,10 +578,8 @@ Eigen::Matrix<Scalar, Eigen::Dynamic, 1> Epoch::integrateAdaptiveTyped(
   return y;
 }
 
-MatrixEngine::VectorVariantEigen Epoch::integrateAdaptive(const MatrixEngine::VectorVariantEigen& moms,
-  double dt,
-  double totalTime,
-  double tolerance) const
+MatrixEngine::VectorVariantEigen
+Epoch::integrateAdaptive(const MatrixEngine::VectorVariantEigen& moms, double dt, double totalTime, double tolerance) const
 {
   return std::visit([&](const auto& vec) -> MatrixEngine::VectorVariantEigen
   {

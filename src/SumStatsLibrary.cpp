@@ -89,11 +89,13 @@ std::unique_ptr<VectorInterface> SumStatsLibrary::fetchYvec(bool highPrecision)
 
   if(highPrecision)
     y = std::make_unique<VectorMPReal>(moments_.size());
+
   else
     y = std::make_unique<VectorDouble>(moments_.size());
 
   for(size_t i = 0; i < moments_.size(); ++i)
-    y->set(i, moments_[i]->getValue()); // loses mpreal precision (if used) but that's not an issue in this method
+    y->set(i, moments_[i]->getValue()); // loses mpreal precision (if used) but that's not an issue
+                                        // in this method
 
   return y;
 }
@@ -136,7 +138,8 @@ void SumStatsLibrary::readStatsFromFile(const std::string& fileName)
   while(std::getline(boostStream, line))
   {
     // NOTE assumes "mom = val" are space-separated
-    boost::split(splitLine, line, [](char c) { return c == ' '; });
+    boost::split(splitLine, line, [](char c)
+                 { return c == ' '; });
 
     std::string name = splitLine[0];
     long double val = std::stod(splitLine[2]);
@@ -156,7 +159,8 @@ void SumStatsLibrary::initMoments_(bool compress)
     std::string nameD = "D_" + asString(*itI); // naked signed D
     moments_.emplace_back(std::make_shared<Moment>(nameD, 0.));
 
-    for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE D stats include two factors of (1-2p) more than other stats
+    for(size_t i = 1; i < (factorOrder_ + 3);
+        ++i) // NOTE D stats include two factors of (1-2p) more than other stats
     {
       std::vector<size_t> factorIds(i);
 
@@ -322,7 +326,9 @@ void SumStatsLibrary::initMoments_(bool compress)
   }
 }
 
-std::string SumStatsLibrary::assembleName_(const std::string& prefix, const std::vector<size_t>& popIds, const std::vector<size_t>& factorIds) const
+std::string SumStatsLibrary::assembleName_(const std::string& prefix,
+                                           const std::vector<size_t>& popIds,
+                                           const std::vector<size_t>& factorIds) const
 {
   std::string name = prefix;
   for(size_t i = 0; i < popIds.size(); ++i)
@@ -346,13 +352,16 @@ void SumStatsLibrary::cleanBasis_()
 {
   assert(moments_.size() != 0);
 
-  // determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
+  // determines the ascending lexicographical order of stats in the rows/cols of matrices inside
+  // AbstractOperators
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
 
   // deletes duplicates introduced by clumsy creation of moments
-  moments_.erase(std::unique(std::begin(moments_), std::end(moments_),
+  moments_.erase(std::unique(std::begin(moments_),
+                             std::end(moments_),
                              [=](std::shared_ptr<Moment> a, std::shared_ptr<Moment> b)
-                             { return (a->getName() == b->getName() ? true : false); }), std::end(moments_));
+                             { return (a->getName() == b->getName() ? true : false); }),
+                 std::end(moments_));
 
   for(size_t i = 0; i < moments_.size(); ++i)
     moments_[i]->setPosition(i);
@@ -377,8 +386,9 @@ void SumStatsLibrary::linkPi2HetStats_()
       popsRight.emplace_back(tmpPi2->getPopIndices()[2]);
       popsRight.emplace_back(tmpPi2->getPopIndices()[3]);
 
-      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(getMoment("Hl", popsLeft, tmpPi2->getFactorIndices()));
-      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, { }));
+      auto tmpHetLeft = std::dynamic_pointer_cast<HetMoment>(
+          getMoment("Hl", popsLeft, tmpPi2->getFactorIndices()));
+      auto tmpHetRight = std::dynamic_pointer_cast<HetMoment>(getMoment("Hr", popsRight, {}));
 
       assert(tmpHetLeft != nullptr && tmpHetRight != nullptr);
 
@@ -403,7 +413,8 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
       pops.emplace_back(moments_[i]->getPopIndices()[1]);
       pops.emplace_back(moments_[i]->getPopIndices()[0]);
 
-      auto candidate = getMoment(assembleName_(moments_[i]->getPrefix(), pops, moments_[i]->getFactorIndices()));
+      auto candidate =
+          getMoment(assembleName_(moments_[i]->getPrefix(), pops, moments_[i]->getFactorIndices()));
 
       if(pops[0] != pops[1])
         moments_[i]->insertAlias(candidate);

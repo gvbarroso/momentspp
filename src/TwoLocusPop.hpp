@@ -4,7 +4,6 @@
  * Last modified: 28/10/2024
  */
 
-
 #ifndef _TWO_LOCUS_POP_H_
 #define _TWO_LOCUS_POP_H_
 
@@ -28,11 +27,11 @@ class TwoLocusPop
 
 private:
   size_t id_;
-  size_t l_; // length of "segment"
-  unsigned int ne_; // pop size
+  size_t l_;                             // length of "segment"
+  unsigned int ne_;                      // pop size
   std::vector<std::array<double, 4>> x_; // in order: fAB, fAb, faB, fab
-  std::vector<double> xl_; // allele freqs. at (independent) left locus
-  std::vector<double> xr_; // allele freqs. at (independent) right locus
+  std::vector<double> xl_;               // allele freqs. at (independent) left locus
+  std::vector<double> xr_;               // allele freqs. at (independent) right locus
 
   std::vector<double> hl_;
   std::vector<double> hr_;
@@ -44,38 +43,13 @@ private:
   std::vector<double> pi2_;
 
 public:
-  TwoLocusPop():
-  id_(0),
-  l_(1),
-  ne_(1000),
-  x_(0),
-  xl_(0),
-  xr_(0),
-  hl_(0),
-  hr_(0),
-  d_(0),
-  dr_(0),
-  dl_(0),
-  dz_(0),
-  dsqr_(0),
-  pi2_(0)
-  { }
+  TwoLocusPop()
+    : id_(0), l_(1), ne_(1000), x_(0), xl_(0), xr_(0), hl_(0), hr_(0), d_(0), dr_(0), dl_(0), dz_(0), dsqr_(0), pi2_(0)
+  {
+  }
 
-  TwoLocusPop(size_t id, size_t l, unsigned int ne):
-  id_(id),
-  l_(l),
-  ne_(ne),
-  x_(0),
-  xl_(0),
-  xr_(0),
-  hl_(0),
-  hr_(0),
-  d_(0),
-  dr_(0),
-  dl_(0),
-  dz_(0),
-  dsqr_(0),
-  pi2_(0)
+  TwoLocusPop(size_t id, size_t l, unsigned int ne)
+    : id_(id), l_(l), ne_(ne), x_(0), xl_(0), xr_(0), hl_(0), hr_(0), d_(0), dr_(0), dl_(0), dz_(0), dsqr_(0), pi2_(0)
   {
     x_.reserve(10 * l);
     xl_.reserve(10 * l);
@@ -264,7 +238,8 @@ public:
     dsqr_.resize(x_.size());
 
     for(size_t i = 0; i < x_.size(); ++i)
-      dsqr_[i] = (x_[i][0] * x_[i][3] - x_[i][1] * x_[i][2]) * (x_[i][0] * x_[i][3] - x_[i][1] * x_[i][2]);
+      dsqr_[i] =
+          (x_[i][0] * x_[i][3] - x_[i][1] * x_[i][2]) * (x_[i][0] * x_[i][3] - x_[i][1] * x_[i][2]);
   }
 
   void compute_Pi2s()
@@ -392,7 +367,7 @@ public:
     for(size_t i = 0; i < x_.size(); ++i)
     {
       unsigned int next[4];
-      double probs[4] = { x_[i][0], x_[i][1], x_[i][2], x_[i][3] };
+      double probs[4] = {x_[i][0], x_[i][1], x_[i][2], x_[i][3]};
 
       gsl_ran_multinomial(gen, 4, 2 * ne_, probs, next);
 
@@ -548,8 +523,6 @@ public:
 
 private:
   void migrate_(TwoLocusPop& other, double m);
-
 };
 
 #endif
-

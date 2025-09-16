@@ -9,7 +9,8 @@
 
 void Demes::parse_(const std::string& fileName)
 {
-  std::cout << "\nParsing " << fileName << "..."; std::cout.flush();
+  std::cout << "\nParsing " << fileName << "...";
+  std::cout.flush();
 
   model_ = YAML::LoadFile(fileName);
 
@@ -48,7 +49,8 @@ void Demes::parse_(const std::string& fileName)
       if(pops[i]["start_time"] && pops[i]["start_time"].as<std::string>() != ".inf")
         startTime = pops[i]["start_time"].as<int>();
 
-      std::vector<std::shared_ptr<Population>> singlePopOverTime(0); // deme i is represented by a series of populations of piece-wise constant Ne
+      std::vector<std::shared_ptr<Population>> singlePopOverTime(
+          0); // deme i is represented by a series of populations of piece-wise constant Ne
       YAML::Node popEpochs = pops[i]["epochs"];
 
       for(size_t j = 0; j < popEpochs.size(); ++j) // epochs of focal pop i as they appear in the Demes file
@@ -66,7 +68,8 @@ void Demes::parse_(const std::string& fileName)
             throw bpp::Exception("Demes::[start_size] and [end_size] must be equal within each epoch!");
         }
 
-        // each instance of pop i (one per epoch) is treated as a different Population object in moments++
+        // each instance of pop i (one per epoch) is treated as a different Population object in
+        // moments++
         singlePopOverTime.push_back(std::make_shared<Population>(name, des, i, startTime, endTime, popSize, true));
       }
 
@@ -163,7 +166,10 @@ void Demes::parse_(const std::string& fileName)
           }
 
           if(child->getLeftParent() == nullptr || child->getRightParent() == nullptr)
-            throw bpp::Exception("Demes::demes::could not find ancestors of pop " + child->getName() + " (both must have an epoch's end_time matching " + child->getName() + "'s start_time)");
+            throw bpp::Exception("Demes::demes::could not find ancestors of pop " +
+                                 child->getName() +
+                                 " (both must have an epoch's end_time matching " +
+                                 child->getName() + "'s start_time)");
         }
 
         else if(pops[i]["ancestors"].size() > 2)
@@ -279,7 +285,7 @@ void Demes::parse_(const std::string& fileName)
       mat.setZero();
 
       migRates_[i] = mat; // littleMigMat_ inside Migration class
-      pulses_[i] = mat; // littleAdmixMat_ inside Admixture class
+      pulses_[i] = mat;   // littleAdmixMat_ inside Admixture class
 
       for(size_t j = 0; j < pops_[i].size(); ++j)
       {
@@ -293,7 +299,7 @@ void Demes::parse_(const std::string& fileName)
     // then apply Admixture as if it were a pulse (c.f. Model::linkMoments_())
     for(size_t j = 1; j < numEpochs; ++j)
     {
-      for(size_t k = 0; k < pops_[j].size(); ++ k)
+      for(size_t k = 0; k < pops_[j].size(); ++k)
       {
         int row = -1;
         int col = k;
@@ -301,9 +307,11 @@ void Demes::parse_(const std::string& fileName)
         if(pops_[j][k]->hasDistinctParents()) // admixture forms a new population
         {
           // search for (left) ancestral population in the current (1-generation) epoch
-          for(size_t l = 0; l < pops_[j].size(); ++ l)
+          for(size_t l = 0; l < pops_[j].size(); ++l)
+          {
             if(pops_[j][l]->getName() == pops_[j][k]->getLeftParent()->getName())
               row = l;
+          }
 
           pulses_[j](row, col) = pops_[j][k]->getProportions().first;
         }
@@ -356,7 +364,7 @@ void Demes::parse_(const std::string& fileName)
           int row = -1;
           int col = -1;
 
-          for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
+          for(size_t k = 0; k < pops_[j - 1].size(); ++k)
           {
             if(pops_[j - 1][k]->getName() == source)
               row = k;
@@ -393,7 +401,8 @@ void Demes::parse_(const std::string& fileName)
         source = sources[0].as<std::string>();
 
       else
-        throw bpp::Exception("Demes::pulses::only a single 'source' pop. (specified within brackets) per admixture 'pulse' is allowed!");
+        throw bpp::Exception("Demes::pulses::only a single 'source' pop. (specified within "
+                             "brackets) per admixture 'pulse' is allowed!");
 
       if(proportions.size() == 1)
         f = proportions[0].as<long double>();
@@ -414,7 +423,7 @@ void Demes::parse_(const std::string& fileName)
           int row = -1;
           int col = -1;
 
-          for(size_t k = 0; k < pops_[j - 1].size(); ++ k)
+          for(size_t k = 0; k < pops_[j - 1].size(); ++k)
           {
             // ancestral populations are found in the previous epoch
             if(pops_[j - 1][k]->getName() == dest)
@@ -427,7 +436,7 @@ void Demes::parse_(const std::string& fileName)
           if(row == -1 || col == -1)
             throw bpp::Exception("Demes::pulses::could not find admixing populations " + source + " & " + dest + " in epoch " + bpp::TextTools::toString(j - 1) + "!");
 
-          pulses_[j - 1](row, col) = f;  // "from" (f), "to" (1-f, ommited)
+          pulses_[j - 1](row, col) = f; // "from" (f), "to" (1-f, ommited)
         }
       }
 
@@ -463,7 +472,7 @@ void Demes::parse_(const std::string& fileName)
         if(j > 0)
           startTime = rateEpochs[j - 1]["end_time"].as<int>();
 
-        //std::cout << name << ": " << startTime << "-" << endTime << "\n";
+        // std::cout << name << ": " << startTime << "-" << endTime << "\n";
         if(rateEpochs[j]["rates"])
         {
           YAML::Node rates = rateEpochs[j]["rates"]; // one rate per pop present in epoch j

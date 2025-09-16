@@ -5,13 +5,12 @@
  *
  */
 
-
 #ifndef _MUTATION_H_
 #define _MUTATION_H_
 
 #include "AbstractOperator.hpp"
 
-class Mutation: public AbstractOperator
+class Mutation : public AbstractOperator
 {
 
 private:
@@ -19,8 +18,7 @@ private:
 
 public:
   Mutation(double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib, bool highPrecision):
-  AbstractOperator(sslib.getPopIndices()),
-  leftFactor_(leftFactor)
+  AbstractOperator(sslib.getPopIndices()), leftFactor_(leftFactor)
   {
     includeParameters_(mutParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
@@ -28,8 +26,7 @@ public:
   }
 
   Mutation(double leftFactor, const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices()),
-  leftFactor_(leftFactor)
+  AbstractOperator(sslib.getPopIndices()), leftFactor_(leftFactor)
   {
     // for each population modeled in the epoch *this operator belongs to, add mu parameter
     for(size_t i = 0; i < popIndices_.size(); ++i)
@@ -52,7 +49,6 @@ public:
   void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) override;
 
   void updateMatrices_() override;
-
 };
 
 #endif

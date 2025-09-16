@@ -42,21 +42,23 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
 
         if(prefix == "Hl" || prefix == "Hr")
         {
-          const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
-          Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0) : Scalar(popIdCount / 2.0);
-          localTriplets.emplace_back(row, col, factor);
+            const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
+            Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0)
+                                            : Scalar(popIdCount / 2.0);
+            localTriplets.emplace_back(row, col, factor);
         }
 
         else if(prefix == "pi2")
         {
-          const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
-          if(!tmpPi2) continue;
+            const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
+            if(!tmpPi2)
+            continue;
 
-          const auto tempLeft = tmpPi2->getLeftHetStat();
-          const auto tempRight = tmpPi2->getRightHetStat();
+            const auto tempLeft = tmpPi2->getLeftHetStat();
+            const auto tempRight = tmpPi2->getRightHetStat();
 
-          localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
-          localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
+            localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
+            localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
         }
       }
 
@@ -92,4 +94,3 @@ void Mutation::updateMatrices_()
   assembleTransitionMatrix_();
   prevParams_.matchParametersValues(getParameters());
 }
-

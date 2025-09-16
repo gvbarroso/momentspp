@@ -5,7 +5,6 @@
  *
  */
 
-
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
@@ -27,14 +26,12 @@ class Utils
 {
 
 private:
-
 public:
   Utils():
   { }
 
 public:
   std::vector<bpp::ParameterList> fetchParamsTable(const std::string& fileName);
-
 };
 
 #endif

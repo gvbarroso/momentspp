@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 15/09/2025
+ * Last modified: 16/09/2025
  *
  */
 
@@ -18,7 +18,8 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecis
   const auto& basis = sslib.getBasis();
   const size_t numThreads = omp_get_max_threads();
 
-  std::visit([&](const auto& mat) {
+  std::visit([&](const auto& mat)
+  {
     using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
     for(size_t i = 0; i < numPops; ++i)
@@ -52,14 +53,14 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecis
 
       std::vector<Eigen::Triplet<Scalar>> coeffs;
       for(auto& vec : threadTriplets)
-      coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
+        coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
       auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
       mat->setFromTriplets(coeffs.begin(), coeffs.end());
       mat->makeCompressed();
       mat->scale(Scalar(recombRate));
       matrices_.emplace_back(std::move(mat));
-    }
+   }
   }, transition_->getMatrixVariant());
 
   assembleTransitionMatrix_();
@@ -72,8 +73,8 @@ void Recombination::updateMatrices_()
     size_t id = popIndices_[i];
     std::string paramName = "r_" + bpp::TextTools::toString(id);
 
-    mpfr::mpreal prevVal = prevParams_.getParameterValue(paramName);
-    mpfr::mpreal newVal = getParameterValue(paramName);
+    double prevVal = prevParams_.getParameterValue(paramName);
+    double newVal = getParameterValue(paramName);
 
     if(newVal != prevVal)
       matrices_[i] *= (newVal / prevVal);

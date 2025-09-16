@@ -5,7 +5,6 @@
  *
  */
 
-
 #ifndef _DEMES_H_
 #define _DEMES_H_
 
@@ -225,7 +224,6 @@ public:
 
 private:
   void parse_(const std::string& fileName);
-
 };
 
 #endif

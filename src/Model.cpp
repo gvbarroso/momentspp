@@ -5,7 +5,6 @@
  *
  */
 
-
 #include "Model.hpp"
 
 void Model::fireParameterChanged(const bpp::ParameterList& params)
@@ -25,9 +24,9 @@ void Model::computeExpectedSumStatsDiscrete()
   // propagates through
   for(size_t i = 1; i < epochs_.size(); ++i)
   {
-    epochs_[i]->transferStatistics(y);         // map ancestry from previous epoch
-    epochs_[i]->computeExpectedSumStats(y);    // applies transition matrix
-    epochs_[i]->updateMoments(y);              // updates inside sslib
+    epochs_[i]->transferStatistics(y);      // map ancestry from previous epoch
+    epochs_[i]->computeExpectedSumStats(y); // applies transition matrix
+    epochs_[i]->updateMoments(y);           // updates inside sslib
   }
 
   expected_ = y;
@@ -65,12 +64,11 @@ void Model::printAliasedMomentsPerEpoch(const std::string& modelName) const
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // epochs are sorted from past to present
   {
-    std::string fileName = modelName + "_" +  epochs_[i]->getName() + "_expectations.txt";
+    std::string fileName = modelName + "_" + epochs_[i]->getName() + "_expectations.txt";
     std::ofstream fout(fileName);
 
     if(!fout)
       throw bpp::Exception("Model::Failed to open file: " + fileName);
-
 
     epochs_[i]->printMoments(fout);
     fout.close();
@@ -109,8 +107,7 @@ void Model::computeCompositeLogLikelihood_()
   /*for(auto it = std::begin(recBins_); it != std::end(recBins_); ++it)
   {
     Eigen::Matrix<long double, Eigen::Dynamic, 1> obsMeans = data_->getY();
-    Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> obsCovarMat = data_->getCovarMatrix();
-    cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected_ - means).transpose() * covarMat^(-1)*(expected_ - means);
+    Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> obsCovarMat = data_->getCovarMatrix(); cll += det(2*covarMat)^(-1/2) * exp(-1/2 * (expected_ - means).transpose() * covarMat^(-1)*(expected_ - means);
   }*/
 
   compLogLikelihood_ = cll;
@@ -178,7 +175,10 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
       for(size_t j = 0; j < epochs_[i]->getNumPops(); ++j)
       {
         size_t jd = epochs_[i]->getPops()[j]->getId();
-        size_t pd = epochs_[i]->getPops()[j]->getLeftParent()->getId(); // WARNING getLeftParent() [dangerous when there is admixture]
+        size_t pd = epochs_[i]
+                        ->getPops()[j]
+                        ->getLeftParent()
+                        ->getId(); // WARNING getLeftParent() [dangerous when there is admixture]
 
         // rates from population jd
         std::string rj = "r_" + bpp::TextTools::toString(jd);
@@ -191,13 +191,19 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
         std::string sp = "s_" + bpp::TextTools::toString(pd);
 
         // only alias if populations share NAME
-        if(epochs_[i]->hasIndependentParameter(rj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+        if(epochs_[i]->hasIndependentParameter(rj) &&
+           epochs_[i]->getPops()[j]->getName() ==
+               epochs_[i]->getPops()[j]->getLeftParent()->getName())
           aliasParameters(epochs_[i - 1]->getName() + "." + rp, epochs_[i]->getName() + "." + rj);
 
-        if(epochs_[i]->hasIndependentParameter(uj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+        if(epochs_[i]->hasIndependentParameter(uj) &&
+           epochs_[i]->getPops()[j]->getName() ==
+               epochs_[i]->getPops()[j]->getLeftParent()->getName())
           aliasParameters(epochs_[i - 1]->getName() + "." + up, epochs_[i]->getName() + "." + uj);
 
-        if(epochs_[i]->hasIndependentParameter(sj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
+        if(epochs_[i]->hasIndependentParameter(sj) &&
+           epochs_[i]->getPops()[j]->getName() ==
+               epochs_[i]->getPops()[j]->getLeftParent()->getName())
           aliasParameters(epochs_[i - 1]->getName() + "." + sp, epochs_[i]->getName() + "." + sj);
       }
     }
@@ -205,14 +211,16 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
 }
 
 /*
- * this method defines the relationships among moments from different epochs (w.r.t population indices)
- * when focal pop has 2 (different) ancestors, pick one of them, then apply Admixture as if it were a pulse
+ * this method defines the relationships among moments from different epochs (w.r.t population
+ * indices) when focal pop has 2 (different) ancestors, pick one of them, then apply Admixture as if
+ * it were a pulse
  */
 void Model::linkMoments_()
 {
   for(size_t i = 1; i < epochs_.size(); ++i) // for each epoch starting from the 2nd
   {
-    // for each moment in focal epoch, set "parent" moment in previous epoch using population ancestry
+    // for each moment in focal epoch, set "parent" moment in previous epoch using population
+    // ancestry
     for(auto it = std::begin(epochs_[i]->getBasis()); it != std::end(epochs_[i]->getBasis()); ++it)
     {
       std::vector<size_t> factorIds = (*it)->getFactorIndices();
@@ -259,7 +267,7 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        std::vector<size_t> popIds = { prevP1, prevP2 };
+        std::vector<size_t> popIds = {prevP1, prevP2};
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("DD", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
@@ -280,7 +288,7 @@ void Model::linkMoments_()
         else
           prevP = pRightParentId;
 
-        std::vector<size_t>  popIds = { prevP };
+        std::vector<size_t> popIds = {prevP};
         size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("D", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
@@ -312,8 +320,9 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        std::vector<size_t> popIds = { prevP1, prevP2 };
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Dr", popIds, factorIds));
+        std::vector<size_t> popIds = {prevP1, prevP2};
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(
+            epochs_[i - 1]->getSslib().getMoment("Dr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -343,8 +352,9 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        std::vector<size_t> popIds = { prevP1, prevP2 };
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hl", popIds, factorIds));
+        std::vector<size_t> popIds = {prevP1, prevP2};
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(
+            epochs_[i - 1]->getSslib().getMoment("Hl", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -374,8 +384,9 @@ void Model::linkMoments_()
         else
           prevP2 = p2RightParentId;
 
-        std::vector<size_t> popIds = { prevP1, prevP2 };
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("Hr", popIds, factorIds));
+        std::vector<size_t> popIds = {prevP1, prevP2};
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(
+            epochs_[i - 1]->getSslib().getMoment("Hr", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 
@@ -427,8 +438,9 @@ void Model::linkMoments_()
         else
           prevP4 = p4RightParentId;
 
-        std::vector<size_t> popIds = { prevP1, prevP2, prevP3, prevP4 };
-        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(epochs_[i - 1]->getSslib().getMoment("pi2", popIds, factorIds));
+        std::vector<size_t> popIds = {prevP1, prevP2, prevP3, prevP4};
+        size_t idx = epochs_[i - 1]->getSslib().findCompressedIndex(
+            epochs_[i - 1]->getSslib().getMoment("pi2", popIds, factorIds));
         (*it)->setParent(epochs_[i - 1]->getSslib().getBasis()[idx]);
       }
 

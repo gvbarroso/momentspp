@@ -239,7 +239,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   const auto& basis = sslib.getBasis();
   const size_t numThreads = omp_get_max_threads();
 
-  std::visit([&](const auto& mat) {
+  std::visit([&](const auto& mat)
+  {
     using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
     for(size_t i = 0; i < numPops; ++i)
@@ -278,7 +279,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               while(factorIds.size() > sslib.getFactorOrder()) // NOTE truncation
                 factorIds.pop_back();
 
-              col = sslib.findCompressedIndex(sslib.getMoment("DD",  { id, id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("DD", {id, id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(4. * popIdPower));
 
               if(popIdPower > 1)
@@ -286,7 +287,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
                 factorIds = moment->getFactorIndices();
                 sslib.dropFactorIds(factorIds, id, 2);
 
-                col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, id }, factorIds));
+                col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
                 localTriplets.emplace_back(row, col, Scalar((popIdPower * (popIdPower - 1)) / 2.));
               }
             }
@@ -299,7 +300,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = moment->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 2);
 
-              int col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, sslib.fetchOtherId(id) }, factorIds));
+              int col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar((popIdPower * (popIdPower - 1)) / 2.));
             }
 
@@ -311,7 +312,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               while(factorIds.size() > sslib.getFactorOrder()) // NOTE truncation
                 factorIds.pop_back();
 
-              col = sslib.findCompressedIndex(sslib.getMoment("DD",  { id, sslib.fetchOtherId(id) }, factorIds));
+              col = sslib.findCompressedIndex(
+              sslib.getMoment("DD", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(4. * popIdPower));
 
               if(popIdPower > 1)
@@ -319,7 +321,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
                 factorIds = moment->getFactorIndices();
                 sslib.dropFactorIds(factorIds, id, 2);
 
-                col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, sslib.fetchOtherId(id) }, factorIds));
+                col = sslib.findCompressedIndex(
+                sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
                 localTriplets.emplace_back(row, col, Scalar((popIdPower * (popIdPower - 1)) / 2.));
               }
             }
@@ -330,10 +333,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             std::vector<size_t> factorIds = moment->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 2);
 
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { sslib.fetchOtherId(id), sslib.fetchOtherId(id) }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", {sslib.fetchOtherId(id), sslib.fetchOtherId(id)}, factorIds));
             localTriplets.emplace_back(row, col, Scalar((popIdPower * (popIdPower - 1)) / 2.));
           }
-        }
+        } // ends Dr prefix
 
         #ifdef NAKED_D
         else if(prefix == "D")
@@ -360,11 +363,11 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
           if(popIdCount == 2)
           {
             std::vector<size_t> factorIds = moment->getFactorIndices();
-            col = sslib.findCompressedIndex(sslib.getMoment("pi2", { id, id, id, id }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("pi2", {id, id, id, id}, factorIds));
             localTriplets.emplace_back(row, col, Scalar(1.));
 
             factorIds.push_back(id);
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, id }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
             localTriplets.emplace_back(row, col, Scalar(1.));
           }
 
@@ -373,10 +376,10 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             std::vector<size_t> factorIds = moment->getFactorIndices();
             sslib.dropFactorIds(factorIds, id, 2);
 
-            col = sslib.findCompressedIndex(sslib.getMoment("DD",  { id, id }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("DD", {id, id}, factorIds));
             localTriplets.emplace_back(row, col, Scalar((popIdPower * (popIdPower - 1)) / 2.));
           }
-        }
+        } // ends DD prefix
 
         else if(prefix == "Hl")
         {
@@ -402,17 +405,17 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             col = sslib.findCompressedIndex(sslib.getMoment("Hl", moment->getPopIndices(), factorIds));
             localTriplets.emplace_back(row, col, Scalar((popIdPower * (popIdPower - 1)) / 2.));
           }
-        }
+        } // ends Hl prefix
 
         else if(prefix == "Hr")
         {
           if(popIdCount == 2)
             localTriplets.emplace_back(row, row, Scalar(-1.));
-        }
+        } // ends Hr prefix
 
         else if(prefix == "pi2")
         {
-          auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>moment;
+          auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment> moment;
           assert(tmpPi2 != nullptr);
 
           size_t countLeft = tmpPi2->getLeftHetStat()->countInstances(id);
@@ -429,14 +432,14 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             std::vector<size_t> factorIds = moment->getFactorIndices();
             factorIds.push_back(id);
 
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, id }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
             localTriplets.emplace_back(row, col, Scalar(1. + popIdPower / 2.));
 
             if(popIdPower > 0)
             {
               sslib.dropFactorIds(factorIds, id, 2);
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr",  { id, id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-popIdPower / 4.));
 
               if(popIdPower > 1)
@@ -452,12 +455,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             std::vector<size_t> factorIds = moment->getFactorIndices();
             factorIds.push_back(id);
 
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
             localTriplets.emplace_back(row, col, f * Scalar((1. / 4. + popIdPower / 8.)));
 
             #ifdef NAKED_D
             int signD = std::pow(-1, moment->getPopIndices()[3] == id);
-            col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("D", {id}, factorIds));
             localTriplets.emplace_back(row, col, f * signD * Scalar((1. / 4. + popIdPower / 8.)));
             #endif
 
@@ -465,11 +468,11 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             {
               sslib.dropFactorIds(factorIds, id, 2);
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-f * popIdPower / 8.));
 
               #ifdef NAKED_D
-              col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("D", {id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-f * signD * popIdPower / 8.));
               #endif
 
@@ -500,12 +503,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             int sign = std::pow(-1, moment->getPopIndices()[0] != id); // sign of contributions that would cancel out if p1(1-p0) == p0(1-p1)
             std::vector<size_t> factorIds = moment->getFactorIndices();
 
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
             localTriplets.emplace_back(row, col, sign * Scalar((1. / 4. + popIdPower / 4.)));
 
             factorIds.push_back(sslib.fetchOtherId(id));
 
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
             localTriplets.emplace_back(row, col, Scalar(1. / 4. + popIdPower / 4.));
 
             factorIds.pop_back();
@@ -517,12 +520,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               col = sslib.findCompressedIndex(sslib.getMoment("pi2", moment->getPopIndices(), factorIds));
               localTriplets.emplace_back(row, col, Scalar(-sign * popIdPower));
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-popIdPower / 4.));
 
               factorIds.push_back(sslib.fetchOtherId(id));
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-sign * popIdPower / 4.));
 
               if(popIdPower > 1)
@@ -541,7 +544,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
             std::vector<size_t> factorIds = moment->getFactorIndices();
 
             // (1-2p_id)^k
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+            col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
             localTriplets.emplace_back(row, col, Scalar(f * sign * (popIdPower + 1) / 8.));
 
             /* cancel out due to right-locus permutation
@@ -554,7 +557,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
             factorIds.push_back(sslib.fetchOtherId(id));
 
-            col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+            col = sslib.findCompressedIndex(
+                sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
             localTriplets.emplace_back(row, col, Scalar(f * (popIdPower + 1) / 8.));
 
             /* cancel out due to right-locus permutation
@@ -571,7 +575,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               // (1-2p_id)^(k-1)
               sslib.dropFactorIds(factorIds, id, 1);
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(f * sign * (popIdPower + 1) / 8.));
 
               /* cancel out due to right-locus permutation
@@ -583,7 +587,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
               factorIds.push_back(sslib.fetchOtherId(id));
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(f * sign * (popIdPower - 1) / 8.));
 
               /* cancel out due to right-locus permutation
@@ -615,7 +619,8 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = moment->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
-              int sign = std::pow(-1, moment->getPopIndices()[0] == id); // sign of contributions that would cancel out if p1(1-p0) == p0(1-p1)
+              int sign = std::pow(-1, moment->getPopIndices()[0] == id); // sign of contributions that would cancel out if
+                                                                        // p1(1-p0) == p0(1-p1)
               col = sslib.findCompressedIndex(sslib.getMoment("pi2", moment->getPopIndices(), factorIds));
               localTriplets.emplace_back(row, col, Scalar(sign * popIdPower));
 
@@ -636,13 +641,13 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = moment->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-popIdPower / 4.));
 
               factorIds.push_back(sslib.fetchOtherId(id));
               factorIds.push_back(sslib.fetchOtherId(id));
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(popIdPower / 4.));
 
               if(popIdPower > 1)
@@ -663,23 +668,23 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = moment->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 1);
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-f * popIdPower / 8.));
 
               #ifdef NAKED_D
               int signD = std::pow(-1, moment->getPopIndices()[3] == id);
-              col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("D", {id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(-f * signD * (-popIdPower) / 8.));
               #endif
 
               factorIds.push_back(sslib.fetchOtherId(id));
               factorIds.push_back(sslib.fetchOtherId(id));
 
-              col = sslib.findCompressedIndex(sslib.getMoment("Dr", { id, sslib.fetchOtherId(id) }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(f * popIdPower / 8.));
 
               #ifdef NAKED_D
-              col = sslib.findCompressedIndex(sslib.getMoment("D", { id }, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("D", {id}, factorIds));
               localTriplets.emplace_back(row, col, Scalar(f * signD * (-popIdPower) / 8.));
               #endif
 

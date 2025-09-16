@@ -4,14 +4,12 @@
  *
  */
 
-
 #ifndef _DD_MOMENT_H_
 #define _DD_MOMENT_H_
 
 #include "Moment.hpp"
 
-
-class DdMoment: public Moment
+class DdMoment : public Moment
 {
 
 private:
@@ -40,7 +38,6 @@ public:
 
     return test;
   }
-
 };
 
 #endif

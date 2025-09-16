@@ -5,7 +5,6 @@
  *
  */
 
-
 #ifndef _OPTIMIZATIONWRAPPER_H_
 #define _OPTIMIZATIONWRAPPER_H_
 
@@ -29,24 +28,22 @@
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
 
-
 class OptimizationWrapper
 {
-    
+
 private:
   OptionsContainer options_;
-  
+
 public:
   OptimizationWrapper(const OptionsContainer& opt):
   options_(opt)
   { }
-  
+
 public:
   void fitModel(std::shared_ptr<Model> model);
 
 private:
   void writeEstimatesToFile_(std::shared_ptr<Model> model);
-  
 };
 
 #endif

@@ -8,24 +8,25 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//#include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
+// #include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
 
 #include "SumStatsLibrary.hpp"
 #include "Mutation.hpp"
 #include "Recombination.hpp"
 #include "Drift.hpp"
 #include "Selection.hpp"
-//#include "NeutralMigration.hpp"
-//#include "NeutralAdmixture.hpp"
-//#include "Migration.hpp"
-//#include "Admixture.hpp"
+// #include "NeutralMigration.hpp"
+// #include "NeutralAdmixture.hpp"
+// #include "Migration.hpp"
+// #include "Admixture.hpp"
 #include "OptimizationWrapper.hpp"
 #include "OptionsContainer.hpp"
 #include "Model.hpp"
 #include "Data.hpp"
 #include "Demes.hpp"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
 
   std::cout << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -44,16 +45,15 @@ int main(int argc, char *argv[]) {
   std::cout << "******************************************************************" << std::endl;
 
   std::cout << "\nCompiled on: " << __DATE__ << std::endl;
-  std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
+  std::cout << "Compiled at: " << __TIME__ << std::endl
+            << std::endl;
 
   /*
    * TODO homogenous/in-homogenous system (remove I moment?)
-   * TODO refactor Selection operator
-   * TODO add method to scale matrices by 2N
-   * TODO remove continuous-time integration variables from Epoch (dt_ et al), refactor continuous-time integration methods
-   *
+   * TODO add method to scale matrices by 2Nanc
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
-   * 2. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing corresponding row and column:
+   * 2. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing
+   * corresponding row and column:
    *    https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
    */
 
@@ -62,10 +62,12 @@ int main(int argc, char *argv[]) {
     std::cout << "Usage:\n";
     std::cout << "momentspp param=opt.bpp\n\n";
 
-    std::cout << "\nThe github repository contains instructions on how to write the options file:\n";
-    std::cout << "https://github.com/gvbarroso/momentspp/tree/main/doc" << std::endl << std::endl;
+    std::cout
+        << "\nThe github repository contains instructions on how to write the options file:\n";
+    std::cout << "https://github.com/gvbarroso/momentspp/tree/main/doc" << std::endl
+              << std::endl;
     std::cout << "\nIf you have any doubts, please email gvbarroso@gmail.com " << std::endl;
-    return(0);
+    return (0);
   }
 
   bpp::BppApplication momentspp(argc, argv, "moments++");
@@ -83,13 +85,15 @@ int main(int argc, char *argv[]) {
 
   Demes demes(options.getDemesFilePath());
 
-  std::cout << "Assembling Operators and Epoch objects..."; std::cout.flush();
+  std::cout << "Assembling Operators and Epoch objects...";
+  std::cout.flush();
 
   size_t numEpochs = demes.getNumEpochs();
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  std::vector<size_t> factorOrder = options.getFactorOrder(); // one value per epoch to avoid underflow e.g. after a bottleneck
+  std::vector<size_t> factorOrder =
+      options.getFactorOrder(); // one value per epoch to avoid underflow e.g. after a bottleneck
   if(factorOrder.size() == 1)
   {
     for(size_t i = 1; i < numEpochs; ++i)
@@ -97,12 +101,15 @@ int main(int argc, char *argv[]) {
   }
 
   else if(factorOrder.size() != numEpochs)
-    throw bpp::Exception("Main::Number of Factor Orders must be either 1 or equal to the number of Epochs in the model!");
+    throw bpp::Exception("Main::Number of Factor Orders must be either 1 or equal to the number of "
+                         "Epochs in the model!");
 
-  if(std::any_of(std::begin(factorOrder), std::end(factorOrder), [](size_t x) { return x < 1; }))
-    throw bpp::Exception("Main::All Factor Orders must be greather than zero!");
+  if(std::any_of(std::begin(factorOrder), std::end(factorOrder), [](size_t x)
+                 { return x < 1; }))
+    throw bpp::Exception("Main::All Factor Orders must be greater than zero!");
 
-  auto finder = std::adjacent_find(std::begin(factorOrder), std::end(factorOrder), std::less<size_t>());
+  auto finder =
+      std::adjacent_find(std::begin(factorOrder), std::end(factorOrder), std::less<size_t>());
   if(finder != std::end(factorOrder))
     throw bpp::Exception("Main::Factor Orders can not increase over time!");
 
@@ -111,24 +118,27 @@ int main(int argc, char *argv[]) {
     std::string id = "e_" + bpp::TextTools::toString(i);
 
     size_t start = demes.getPopsVec()[i].front()->getStartTime(); // shared by all pops in epoch i
-    size_t end = demes.getPopsVec()[i].front()->getEndTime(); // shared by all pops in epoch i
+    size_t end = demes.getPopsVec()[i].front()->getEndTime();     // shared by all pops in epoch i
 
     SumStatsLibrary sslib(demes.getPopsVec()[i], factorOrder[i], options.compressMoments());
 
     std::vector<std::shared_ptr<AbstractOperator>> operators(0);
 
-    /* Epoch-specific operators (concern populations present in each epoch, hence parameters must follow suit)
-     * Must have epoch-specific recombination and mutation operators because they depend on pop indices,
-     * even though inside Model class we often choose to alias r and mu across epochs and pops.
+    /* Epoch-specific operators (concern populations present in each epoch, hence parameters must
+     * follow suit) Must have epoch-specific recombination and mutation operators because they
+     * depend on pop indices, even though inside Model class we often choose to alias r and mu
+     * across epochs and pops.
      */
 
-    // NOTE this current implementation generates a problem if the user wants other 1-gen epochs for some reason
+    // NOTE this current implementation generates a problem if the user wants other 1-gen epochs for
+    // some reason
     if((start - end) == 1) // Admixture is modeled as the only operator in an epoch of 1 generation
     {
       /*if(!demes.getPulse(i).isZero(0))
       {
         operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
-        //operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv", sslib);
+        //operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv",
+      sslib);
       }
 
       else
@@ -155,8 +165,8 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getLeftFactor(), demes.getMus(i), ic, sslib);
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
 
-        /*// only *allow* model to include mig params in epochs where the demes model has non-zero mig
-        if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
+        /*// only *allow* model to include mig params in epochs where the demes model has non-zero
+        mig if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
           //operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv");
@@ -170,10 +180,13 @@ int main(int argc, char *argv[]) {
         if(options.verbose())
         {
           for(size_t j = 0; j < operators.size(); ++j)
-            operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_op_" + bpp::TextTools::toString(j) + ".csv");
+            operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_O_" +
+                                          bpp::TextTools::toString(factorOrder[0]) + "_op_" +
+                                          bpp::TextTools::toString(j) + ".csv");
         }
 
-        // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
+        // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by
+        // incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
           ++start;
       }
@@ -188,16 +201,20 @@ int main(int argc, char *argv[]) {
     if(options.verbose())
     {
       epochs.back()->printRecursions(std::cout);
-      epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) +"_transitions.csv");
+      epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" +
+                                        bpp::TextTools::toString(factorOrder[0]) +
+                                        "_transitions.csv");
       epochs.back()->printConditionNumber();
 
       epochs.back()->computePseudoSteadyStateDiscrete();
-      std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
+      std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" +
+                           bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
       epochs.back()->printMoments(pseudo);
       pseudo.close();
 
       epochs.back()->computeEigenSteadyState();
-      std::ofstream eigen(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
+      std::ofstream eigen(options.getLabel() + "_" + id + "_O_" +
+                          bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
       epochs.back()->printMoments(eigen);
       eigen.close();
     }
