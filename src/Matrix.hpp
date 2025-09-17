@@ -196,14 +196,13 @@ public:
 
   std::unique_ptr<Vector<T>> solve(const Vector<T>& rhs) const
   {
-    if(rows() != rhs.size())
-      throw bpp::Exception("Matrix and RHS dimensions do not match");
+    if(cols() != rhs.size())
+      throw bpp::Exception("Matrix::Matrix and RHS dimensions do not match");
 
-    Vector<T> result(cols());
+    Vector<T> result(rows());
 
     if constexpr(std::is_same_v<T, double>)
     {
-      // Sparse LU for double
       Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
       solver.compute(mat_);
 
@@ -216,20 +215,43 @@ public:
         throw bpp::Exception("Matrix::Solving failed");
     }
 
-    // NOTE since matrix entries are well represented with double precision,
-    // is it better (faster) to convert to double, perform Sparse LU decomposition,
-    // then convert back to mpreal? May depend on condition number.
     else if constexpr(std::is_same_v<T, mpfr::mpreal>)
     {
-      // Dense LU for mpreal
-      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> dense = mat_.toDense();
-      Eigen::FullPivLU<decltype(dense)> solver;
-      solver.compute(dense);
+      // converts matrix to double to make use of sparse LU decomposition
+      // since matrix entries are well represented with double precision,
+      // this strategy should improve computational efficiency,
+      // but NOTE the contidion number of matrices to check for numerical instability
+      Eigen::SparseMatrix<double> matDouble(mat_.rows(), mat_.cols());
+      matDouble.reserve(mat_.nonZeros());
 
-      if(!solver.isInvertible())
-        throw bpp::Exception("Matrix is not invertible");
+      for(int k = 0; k < mat_.outerSize(); ++k)
+      {
+        for(typename Eigen::SparseMatrix<T>::InnerIterator it(mat_, k); it; ++it)
+          matDouble.coeffRef(it.row(), it.col()) = static_cast<double>(it.value());
+      }
 
-      result.vec_ = solver.solve(rhs.vec_);
+      matDouble.makeCompressed();
+
+      // Convert RHS to double
+      Eigen::VectorXd rhsDouble(rhs.size());
+      for(Eigen::Index i = 0; i < rhs.size(); ++i)
+        rhsDouble(i) = static_cast<double>(rhs.vec_(i));
+
+      // Solve in double
+      Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+      solver.compute(matDouble);
+
+      if(solver.info() != Eigen::Success)
+        throw bpp::Exception("Matrix::decomposition failed");
+
+      Eigen::VectorXd xDouble = solver.solve(rhsDouble);
+
+      if(solver.info() != Eigen::Success)
+        throw bpp::Exception("Matrix::Solving failed");
+
+      // Convert solution back to mpreal
+      for(Eigen::Index i = 0; i < xDouble.size(); ++i)
+        result.vec_(i) = mpfr::mpreal(xDouble(i));
     }
 
     else
@@ -237,6 +259,7 @@ public:
 
     return std::make_unique<Vector<T>>(result);
   }
+
 };
 
 #endif

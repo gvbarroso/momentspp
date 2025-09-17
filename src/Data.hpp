@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 06/09/2022
- * Last modified: 16/09/2025
+ * Last modified: 17/09/2025
  *
  */
 
@@ -63,7 +63,7 @@ public:
 
   std::unique_ptr<MatrixEngine::VectorVariant> getY(bool highPrecision)
   {
-    return ssl_.fetchYvec(highPrecision);
+    return std::make_unique<MatrixEngine::VectorVariant>(ssl_.fetchYvec(highPrecision));
   }
 
 private:

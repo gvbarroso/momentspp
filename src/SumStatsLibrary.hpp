@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 05/08/2022
- * Last modified: 16/09/2025
+ * Last modified: 17/09/2025
  */
 
 #ifndef _SUMSTATSLIBRARY_H_
@@ -151,7 +151,7 @@ public:
 
   void dropFactorIds(std::vector<size_t>& factorIds, size_t focalPopId, int removeCount) const;
 
-  std::unique_ptr<MatrixEngine::VectorVariant> fetchYvec(bool highPrecision);
+  MatrixEngine::VectorVariant fetchYvec(bool highPrecision) const;
 
   void printMoments(std::ostream& stream);
 
