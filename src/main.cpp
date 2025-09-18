@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 16/09/2025
+ * Last modified: 18/09/2025
  * Source code for moments++
  *
  */
@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 16/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 18/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -101,15 +101,12 @@ int main(int argc, char* argv[])
   }
 
   else if(factorOrder.size() != numEpochs)
-    throw bpp::Exception("Main::Number of Factor Orders must be either 1 or equal to the number of "
-                         "Epochs in the model!");
+    throw bpp::Exception("Main::Number of Factor Orders must be either 1 or equal to the number of Epochs in the model!");
 
-  if(std::any_of(std::begin(factorOrder), std::end(factorOrder), [](size_t x)
-                 { return x < 1; }))
+  if(std::any_of(std::begin(factorOrder), std::end(factorOrder), [](size_t x) { return x < 1; }))
     throw bpp::Exception("Main::All Factor Orders must be greater than zero!");
 
-  auto finder =
-      std::adjacent_find(std::begin(factorOrder), std::end(factorOrder), std::less<size_t>());
+  auto finder = std::adjacent_find(std::begin(factorOrder), std::end(factorOrder), std::less<size_t>());
   if(finder != std::end(factorOrder))
     throw bpp::Exception("Main::Factor Orders can not increase over time!");
 

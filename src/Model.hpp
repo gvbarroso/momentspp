@@ -107,7 +107,7 @@ public:
     AbstractParameterAliasable::setParametersValues(params);
   }
 
-  double getValue() const override // NOTE override added on 15/09/2025
+  double getValue() const override
   {
     return -compLogLikelihood_;
   }

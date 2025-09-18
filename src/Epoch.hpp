@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 16/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -24,6 +24,12 @@
 
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
+
+#include "eigen_access.hpp"
+
+using momentspp::eigen_access::visit_eigen;
+using momentspp::eigen_access::eigen_ref;
+using momentspp::eigen_access::eigen_cref;
 
 #include "AbstractOperator.hpp"
 #include "Admixture.hpp"
@@ -51,11 +57,9 @@ private:
   size_t endGen_;
 
   std::vector<std::shared_ptr<Population>> pops_;
-  std::vector<std::shared_ptr<AbstractOperator>>
-      operators_; // each operator contains matrices and a subset of the parameters
+  std::vector<std::shared_ptr<AbstractOperator>> operators_; // each operator contains matrices and a subset of the parameters
 
-  // engine_ holds the steady state vector as well as all sparse operators summed into a Sparse
-  // matrix
+  // engine_ holds the steady state vector as well as all sparse operators summed into a Sparse matrix
   std::unique_ptr<MatrixEngine> engine_;
 
 public:
@@ -89,6 +93,81 @@ public:
     init_();
   }
 
+  Epoch(const Epoch& other):
+  bpp::AbstractParameterAliasable(""),
+  name_(other.name_),
+  ssl_(other.ssl_),
+  startGen_(other.startGen_),
+  endGen_(other.endGen_),
+  pops_(other.pops_),
+  operators_(),
+  engine_(other.engine_ ? other.engine_->clone() : nullptr)
+  {
+    operators_.reserve(other.operators_.size());
+    for(const auto& op : other.operators_)
+      operators_.push_back(op ? std::shared_ptr<AbstractOperator>(op->clone()) : nullptr);
+
+    // copy parameters and namespace exactly as constructor does
+    for(const auto& op : operators_)
+    {
+      if(op)
+        addParameters_(op->getParameters());
+    }
+
+    bpp::AbstractParameterAliasable::setNamespace(name_ + ".");
+    // init_ may be optional if engine_ already cloned appropriately
+  }
+
+  Epoch& operator=(const Epoch& other)
+  {
+    if(this != &other)
+    {
+      // clear current parameters registered under this namespace
+      std::vector<std::string> paramNames;
+      paramNames.reserve(getParameters().size());
+
+      for(size_t i = 0; i < getParameters().size(); ++i)
+        paramNames.emplace_back(getParameters()[i].getName());
+
+      deleteParameters_(paramNames);
+
+      name_ = other.name_;
+      ssl_ = other.ssl_;
+      startGen_ = other.startGen_;
+      endGen_ = other.endGen_;
+      pops_ = other.pops_;
+
+      // clone operators
+      operators_.clear();
+      operators_.reserve(other.operators_.size());
+      for(const auto& op : other.operators_)
+      {
+        if(op)
+          operators_.push_back(std::shared_ptr<AbstractOperator>(op->clone()));
+
+        else
+          operators_.push_back(nullptr);
+      }
+
+      // clone engine
+      engine_ = other.engine_ ? other.engine_->clone() : nullptr;
+
+      // re-register parameters
+      for(const auto& op : operators_)
+      {
+        if(op)
+          addParameters_(op->getParameters());
+      }
+
+      bpp::AbstractParameterAliasable::setNamespace(name_ + ".");
+    }
+
+    return *this;
+  }
+
+  Epoch(Epoch&&) noexcept = default;
+  Epoch& operator=(Epoch&&) noexcept = default;
+
   ~Epoch()
   {
     std::vector<std::string> paramNames(0);
@@ -105,7 +184,7 @@ public:
     return new Epoch(*this);
   }
 
-  void fireParameterChanged(const bpp::ParameterList& params);
+  void fireParameterChanged(const bpp::ParameterList& params) override;
 
   void setParameters(const bpp::ParameterList& params)
   {
@@ -142,14 +221,14 @@ public:
     return startGen_ - endGen_;
   }
 
-  auto getTransitionMatrix() const -> MatrixEngine::SparseMatrixVariant
+  auto getTransitionMatrix() const -> MatrixEngine::MatrixVariantEigen
   {
-    return engine_->getRawMatrix();
+    return engine_->toEigenMatrixVariant();
   }
 
   auto getSteadyStateVector() const -> MatrixEngine::VectorVariantEigen
   {
-    return engine_->getRawVector();
+    return engine_->toEigenVectorVariant();
   }
 
   size_t getNumPops() const
@@ -247,7 +326,9 @@ public:
 
   void printTransitionMat(const std::string& fileName) const;
 
-  void computePseudoSteadyStateDiscrete();
+  void computePseudoSteadyStateDiscrete(double tol = 1e-6);
+
+  void computePseudoSteadyStateContinuous(double burnInTime = 0.1, double dt = 1e-3, double tol = 1e-6);
 
   void computeEigenSteadyState();
 
@@ -295,50 +376,57 @@ public:
     return fetchNu(popId, pops_[popId]->getParent()->getSize());
   }
 
-  inline double fetchConditionNumber() const
+  inline double Epoch::fetchConditionNumber() const
   {
-    return std::visit([](const auto& mat)
+    return std::visit([](auto const& M) -> double
     {
-      using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
-      using DenseMatrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
+      using MatT   = std::decay_t<decltype(M)>;
+      using Dense  = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 
-      DenseMatrix dense(mat.mat_); // convert sparse to dense
-      Eigen::JacobiSVD<DenseMatrix> svd(dense);
+      Dense dense = M.template cast<double>();
+      Eigen::JacobiSVD<Dense> svd(dense);
 
-      const auto& singularValues = svd.singularValues();
-      return singularValues(0).toDouble() / singularValues(singularValues.size() - 1).toDouble();
-    }, engine_->getMatrixVariant());
+      if(svd.info() != Eigen::Success)
+        throw bpp::Exception("SVD failed");
+
+      auto s = svd.singularValues();
+      return s.size() > 1 ? s(0)/s(s.size()-1) : 0.0;
+    }, engine_->toEigenMatrixVariant());
   }
 
-  inline EigenResult findLeadingEigenpair() const
+  inline EigenResult Epoch::findLeadingEigenpair() const
   {
-    return std::visit([](const auto& mat) -> EigenResult
+    return std::visit([](auto const& M) -> EigenResult
     {
-      using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
-      using DenseMatrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
+      using MatT      = std::decay_t<decltype(M)>;
+      using Scalar    = typename MatT::Scalar;
+      using DenseD    = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
+      using VecD      = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 
-      DenseMatrix dense(mat.mat_); // convert sparse to dense
-      Eigen::EigenSolver<DenseMatrix> es(dense);
+      DenseD dense = M.template cast<double>();
+      Eigen::EigenSolver<DenseD> es(dense);
 
-      // Find index of largest real eigenvalue
-      size_t idx = 0;
-      for(size_t i = 1; i < es.eigenvalues().size(); ++i)
+      if(es.info() != Eigen::Success)
+        throw bpp::Exception("EigenSolver failed");
+
+      auto evals = es.eigenvalues().real();
+      Eigen::Index idx = 0;
+      for(Eigen::Index i = 1; i < evals.size(); ++i)
       {
-        if(es.eigenvalues().real()(i) > es.eigenvalues().real()(idx))
+        if(evals(i) > evals(idx))
           idx = i;
       }
 
-      // Extract and normalize the corresponding eigenvector
-      auto vec = es.eigenvectors().col(idx).real();
-      vec.normalize();
+      VecD  vecD = es.eigenvectors().col(idx).real();
+      vecD.normalize();
 
-      // Convert to mpreal for consistency
-      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vec.size());
-      for(size_t i = 0; i < vec.size(); ++i)
-      vecMP(i) = mpfr::mpreal(vec(i));
+      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
 
-      return {idx, mpfr::mpreal(es.eigenvalues().real()(idx)), vecMP};
-    }, engine_->getMatrixVariant());
+      for(int i = 0; i < vecD.size(); ++i)
+        vecMP(i) = mpfr::mpreal(vecD(i));
+
+      return EigenResult{size_t(idx), mpfr::mpreal(evals(idx)), vecMP};
+    }, engine_->toEigenMatrixVariant());
   }
 
 private:

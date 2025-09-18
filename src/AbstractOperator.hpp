@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 15/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -50,8 +50,7 @@ protected:
   std::vector<std::unique_ptr<MatrixEngine>> matrices_; // "delta" matrix(ces)
   std::unique_ptr<MatrixEngine> transition_;            // "transition" matrix
 
-  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for
-                                  // fast matrix updates)
+  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
   std::vector<size_t> popIndices_;
 
 public:
@@ -63,7 +62,7 @@ public:
   popIndices_(0)
   { }
 
-  AbstractOperator(const std::vector<size_t>& popIndices):
+  explicit AbstractOperator(const std::vector<size_t>& popIndices):
   bpp::AbstractParameterAliasable(""),
   matrices_(0),
   transition_(nullptr),
@@ -71,7 +70,46 @@ public:
   popIndices_(popIndices)
   { }
 
+protected:
+  AbstractOperator(const AbstractOperator& other):
+  bpp::AbstractParameterAliasable(""),
+  popIndices_(other.popIndices_),
+  prevParams_(other.prevParams_)
+  {
+    matrices_.reserve(other.matrices_.size());
+
+    for(const auto& matPtr : other.matrices_)
+      matrices_.emplace_back(matPtr ? matPtr->clone() : nullptr);
+
+    transition_ = other.transition_ ? other.transition_->clone() : nullptr;
+  }
+
+  AbstractOperator(AbstractOperator&& other) noexcept:
+  bpp::AbstractParameterAliasable(""),
+  matrices_(std::move(other.matrices_)),
+  transition_(std::move(other.transition_)),
+  prevParams_(std::move(other.prevParams_)),
+  popIndices_(std::move(other.popIndices_))
+  { }
+
+  AbstractOperator& operator=(const AbstractOperator&) = default;
+
+  void swap(AbstractOperator& other) noexcept
+  {
+    using std::swap;
+    swap(matrices_, other.matrices_);
+    swap(transition_, other.transition_);
+    swap(prevParams_, other.prevParams_);
+    swap(popIndices_, other.popIndices_);
+    // base part (AbstractParameterAliasable) intentionally left default
+  }
+
 public:
+  friend void swap(AbstractOperator& a, AbstractOperator& b) noexcept
+  {
+    a.swap(b);
+  }
+
   virtual ~AbstractOperator()
   {
     std::vector<std::string> paramNames(0);
@@ -94,6 +132,13 @@ public:
       updateMatrices_();
   }
 
+  AbstractOperator* clone() const override;
+
+  std::unique_ptr<AbstractOperator> cloneOperator(const AbstractOperator& op)
+  {
+    return std::unique_ptr<AbstractOperator>(op.clone());
+  }
+
   const std::vector<size_t>& getPopIndices() const
   {
     return popIndices_;
@@ -114,6 +159,14 @@ public:
     return transition_->getMatrixVariant();
   }
 
+  MatrixEngine::MatrixVariantEigen getTransitionMatrixVariantEigen() const
+  {
+    if(!transition_)
+      return MatrixEngine::MatrixVariantEigen{}; // empty default-constructed variant
+
+    return transition_->toEigenMatrixVariant();
+  }
+
   virtual void printDeltaLDMat(const std::string& fileName);
 
   void scaleMatrix(double scale)
@@ -123,7 +176,7 @@ public:
 
 protected:
   // sets up so-called "delta" matrices which govern the *change* in Y due to the operator
-  virtual voidsetUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) = 0; // called only once in order to set the coefficients
+  virtual void setUpMatrices_(const SumStatsLibrary& sslib) = 0; // called only once in order to set the coefficients
 
   // scales coefficients of "delta" matrices by (new) parameters during optimization
   virtual void updateMatrices_() = 0;

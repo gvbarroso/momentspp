@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 08/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -15,16 +15,16 @@ class Selection : public AbstractOperator
 {
 
 public:
-  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib, bool highPrecision)
-    : AbstractOperator(sslib.getPopIndices())
+  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getPopIndices())
   {
     includeParameters_(selParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(sslib, highPrecision);
+    setUpMatrices_(sslib);
   }
 
-  Selection(const std::vector<long double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib)
-    : AbstractOperator(sslib.getPopIndices())
+  Selection(const std::vector<long double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
+  AbstractOperator(sslib.getPopIndices())
   {
     // for each population modeled in the epoch *this operator belongs to, add s parameter
     for(size_t i = 0; i < popIndices_.size(); ++i)
@@ -35,12 +35,19 @@ public:
     setUpMatrices_(sslib);
   }
 
-  virtual Selection* clone() const override
+  Selection(const Selection& other):
+  AbstractOperator(other) // invokes base copy constructor
+  {
+    // no need to call setUpMatrices_ again — matrices_ and transition_ are already cloned
+    // parameters are already copied via AbstractOperator's copy constructor
+  }
+
+  Selection* clone() const override
   {
     return new Selection(*this);
   }
 
-  void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) override;
+  void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
 };

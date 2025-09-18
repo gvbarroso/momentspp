@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 08/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -15,12 +15,12 @@ class Drift : public AbstractOperator
 {
 
 public:
-  Drift(const bpp::ParameterList driftParams, const SumStatsLibrary& sslib, bool highPrecision):
+  Drift(const bpp::ParameterList driftParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices())
   {
     includeParameters_(driftParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(sslib, highPrecision);
+    setUpMatrices_(sslib);
   }
 
   Drift(const std::vector<long double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
@@ -34,10 +34,14 @@ public:
     setUpMatrices_(sslib);
   }
 
-  virtual Drift* clone() const override
+  Drift(const Drift& other):
+  AbstractOperator(other) // invokes base copy constructor
   {
-    return new Drift(*this);
+    // no need to call setUpMatrices_ again — matrices_ and transition_ are already cloned
+    // parameters are already copied via AbstractOperator's copy constructor
   }
+
+  Drift* clone() const override { return new Drift(*this); }
 
 private:
   int computeDMainDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
@@ -52,7 +56,7 @@ private:
 
   int computePi2OffDiagContribution_(std::shared_ptr<Moment> mom, size_t id);
 
-  void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) override;
+  void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
 };

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 12/09/2025
- * Last modified: 16/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -25,6 +25,9 @@ public:
   using MatrixVariant = std::variant<Matrix<double>, Matrix<mpfr::mpreal>>;
   using VectorVariant = std::variant<Vector<double>, Vector<mpfr::mpreal>>;
 
+  using MatrixVariantEigen = std::variant<Eigen::SparseMatrix<double>, Eigen::SparseMatrix<mpfr::mpreal>>;
+  using VectorVariantEigen = std::variant<Eigen::VectorXd, Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>>;
+
   MatrixVariant matrix;
   VectorVariant vector;
   bool useMPRealFlag;
@@ -33,90 +36,42 @@ public:
   useMPRealFlag(useMPRealPrecision)
   { }
 
-  bool useMPReal() const
+  MatrixEngine(std::variant<Matrix<double>, Matrix<mpfr::mpreal>> mat)
   {
-    return useMPRealFlag;
+    matrix = std::move(mat);
   }
 
-  void setMatrix(const MatrixVariant& newMatrix)
+  MatrixEngine& operator*=(double scalar)
   {
-    matrix = newMatrix;
-  }
-
-  void setVector(const VectorVariant& newVector)
-  {
-    vector = newVector;
-  }
-
-  void resetVector()
-  {
-    std::visit([](auto& vec)
-               { vec.setZero(); },
-               vector);
-  }
-
-  void setMatrixFromEigen(const Eigen::SparseMatrix<double>& mat)
-  {
-    std::visit([&](auto& m)
+    std::visit([scalar](auto& mat)
     {
-      using Scalar = typename std::decay_t<decltype(m)>::Scalar;
-      Eigen::SparseMatrix<Scalar> converted(mat.rows(), mat.cols());
-
-      std::vector<Eigen::Triplet<Scalar>> triplets;
-      for(int k = 0; k < mat.outerSize(); ++k)
-      {
-        for(Eigen::SparseMatrix<double>::InnerIterator it(mat, k); it; ++it)
-          triplets.emplace_back(it.row(), it.col(), static_cast<Scalar>(it.value()));
-      }
-
-      converted.setFromTriplets(triplets.begin(), triplets.end());
-      m.mat_ = converted;
+      mat *= scalar;
     }, matrix);
+
+    std::visit([scalar](auto& vec)
+    {
+      vec *= scalar;
+    }, vector);
+
+    return *this;
   }
 
-  void setMatrixFromDense(const Eigen::MatrixXd& mat)
+  MatrixEngine& operator/=(double scalar)
   {
-    std::visit([&](auto& m)
+    if(scalar == 0.0)
+      throw bpp::Exception("Division by zero in MatrixEngine::operator/=");
+
+    std::visit([scalar](auto& mat)
     {
-      using Scalar = typename std::decay_t<decltype(m)>::Scalar;
-      Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> converted(mat.rows(), mat.cols());
-
-      for(int i = 0; i < mat.rows(); ++i)
-      {
-        for(int j = 0; j < mat.cols(); ++j)
-          converted(i, j) = static_cast<Scalar>(mat(i, j));
-      }
-
-      m.mat_ = converted.sparseView(); // convert to sparse if needed
+      mat /= scalar;
     }, matrix);
-  }
 
-  void setVectorFromEigen(const Eigen::VectorXd& vec)
-  {
-    std::visit([&](auto& v)
+    std::visit([scalar](auto& vec)
     {
-      using Scalar = typename std::decay_t<decltype(v)>::Scalar;
-      Eigen::Matrix<Scalar, Eigen::Dynamic, 1> converted(vec.size());
-
-      for(int i = 0; i < vec.size(); ++i)
-        converted(i) = static_cast<Scalar>(vec(i));
-
-      v.vec_ = converted;
+      vec /= scalar;
     }, vector);
-  }
 
-  void setVectorFromMPReal(const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& vec)
-  {
-    std::visit([&](auto& v)
-    {
-      using Scalar = typename std::decay_t<decltype(v)>::Scalar;
-      Eigen::Matrix<Scalar, Eigen::Dynamic, 1> converted(vec.size());
-
-      for(int i = 0; i < vec.size(); ++i)
-        converted(i) = static_cast<Scalar>(vec(i));
-
-      v.vec_ = converted;
-    }, vector);
+    return *this;
   }
 
   MatrixVariant& getMatrixVariant()
@@ -139,6 +94,150 @@ public:
     return vector;
   }
 
+  bool useMPReal() const
+  {
+    return useMPRealFlag;
+  }
+
+  VectorVariantEigen toEigenVectorVariant() const
+  {
+    return std::visit([](const auto& vec) -> VectorVariantEigen
+    {
+      return VectorVariantEigen(vec.eigen());
+    }, vector);
+  }
+
+  MatrixVariantEigen toEigenMatrixVariant() const
+  {
+    return std::visit([](const auto& mat) -> MatrixVariantEigen {
+      return MatrixVariantEigen(mat.eigen());
+    }, matrix);
+  }
+
+  void setMatrix(const MatrixVariant& newMatrix)
+  {
+    matrix = newMatrix;
+  }
+
+  void setMatrix(std::unique_ptr<MatrixVariant> newMatrix)
+  {
+    setMatrix(*newMatrix);
+  }
+
+  void setVector(const VectorVariant& newVector)
+  {
+    vector = newVector;
+  }
+
+  void setVector(std::unique_ptr<VectorVariant> newVector)
+  {
+    vector = std::move(*newVector);
+  }
+
+  void resetVector()
+  {
+    std::visit([](auto& vec)
+               { vec.setZero(); },
+               vector);
+  }
+
+  void setMatrixFromEigen(const MatrixVariantEigen& eigenVar)
+  {
+    std::visit([&](auto const& matEigen)
+    {
+      using EigenMatT = std::decay_t<decltype(matEigen)>;
+      using Scalar    = typename EigenMatT::Scalar;
+
+      // Construct your Matrix<Scalar> wrapper directly from the Eigen sparse matrix
+      Matrix<Scalar> wrapper(matEigen);
+
+      // Properly construct the internal variant by specifying in_place_type
+      MatrixVariant mv(std::in_place_type<Matrix<Scalar>>, std::move(wrapper));
+
+      // Call the existing setter
+      setMatrix(mv);
+    }, eigenVar);
+  }
+
+  void setMatrixFromEigen(MatrixVariantEigen&& eigenVar)
+  {
+    // Forward to the const-lvalue overload
+    setMatrixFromEigen(static_cast<const MatrixVariantEigen&>(eigenVar));
+  }
+
+
+  void setMatrixFromDense(const Eigen::MatrixXd& mat)
+  {
+    std::visit([&](auto& m) -> void
+    {
+      using WrapT = std::decay_t<decltype(m)>;
+      using Scalar = typename WrapT::Scalar;
+
+      Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> denseConv(mat.rows(), mat.cols());
+      for(int i = 0; i < mat.rows(); ++i)
+      {
+        for(int j = 0; j < mat.cols(); ++j)
+          denseConv(i, j) = static_cast<Scalar>(mat(i, j));
+      }
+
+      m.eigen() = denseConv.sparseView();
+    }, matrix);
+  }
+
+  void setVectorFromEigen(const VectorVariantEigen& eigenVar)
+  {
+    std::visit([&](auto const& vecEigen)
+    {
+      using EigenVecT = std::decay_t<decltype(vecEigen)>;
+      using Scalar    = typename EigenVecT::Scalar;
+
+      // Build Vector<Scalar> wrapper and assign the Eigen vector
+      Vector<Scalar> wrapper(static_cast<size_t>(vecEigen.size()));
+      wrapper.eigen() = vecEigen;
+
+      // Construct the internal variant correctly
+      VectorVariant vv(std::in_place_type<Vector<Scalar>>, std::move(wrapper));
+      setVector(vv);
+    }, eigenVar);
+  }
+
+  void setVectorFromEigen(VectorVariantEigen&& eigenVar)
+  {
+    setVectorFromEigen(static_cast<const VectorVariantEigen&>(eigenVar));
+  }
+
+  void setVectorFromMPReal(const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& vec)
+  {
+    std::visit([&](auto& v) -> void
+    {
+      using WrapT = std::decay_t<decltype(v)>;
+      using Scalar = typename WrapT::Scalar;
+
+      Eigen::Matrix<Scalar, Eigen::Dynamic, 1> converted(vec.size());
+      for(int i = 0; i < vec.size(); ++i)
+        converted(i) = static_cast<Scalar>(vec(i));
+
+      v.eigen() = std::move(converted);
+    }, vector);
+  }
+
+  std::unique_ptr<MatrixEngine> clone() const
+  {
+    auto copy = std::make_unique<MatrixEngine>(useMPRealFlag);
+
+    copy->matrix = std::visit([](const auto& mat) -> MatrixVariant
+    {
+        return MatrixVariant{*mat.clone()};
+    }, matrix);
+
+    copy->vector = std::visit([](const auto& vec) -> VectorVariant
+    {
+        return VectorVariant{*vec.clone()};
+    }, vector);
+
+    return copy;
+  }
+
   void normalizeVector()
   {
     std::visit([](auto& vec)
@@ -154,22 +253,6 @@ public:
     }, matrix);
   }
 
-  using VectorVariantEigen = std::variant<Eigen::VectorXd, Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>>;
-  VectorVariantEigen getRawVector() const
-  {
-    return std::visit([](const auto& vec) -> VectorVariantEigen
-    { return vec.vec_;
-    }, vector);
-  }
-
-  using SparseMatrixVariant = std::variant<Eigen::SparseMatrix<double>, Eigen::SparseMatrix<mpfr::mpreal>>;
-  SparseMatrixVariant getRawMatrix() const
-  {
-    return std::visit([](const auto& mat) -> SparseMatrixVariant
-        { return mat.mat_; },
-                      matrix);
-  }
-
   template <typename Scalar>
   Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> getMatrixAsDense() const
   {
@@ -177,7 +260,7 @@ public:
     {
       using MatScalar = typename std::decay_t<decltype(mat)>::Scalar;
       static_assert(std::is_same_v<MatScalar, Scalar>, "Requested type does not match stored matrix type.");
-      return Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>(mat.mat_);
+      return Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>(mat.eigen());
     }, matrix);
   }
 
@@ -312,7 +395,7 @@ public:
       const Eigen::Index size = mat.rows();
 
       for(Eigen::Index i = 0; i < size; ++i)
-        mat.mat_.coeffRef(i, i) += Scalar(1);
+        mat.eigen().coeffRef(i, i) += Scalar(1);
     }, matrix);
   }
 

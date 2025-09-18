@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 16/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -25,33 +25,62 @@
 template <typename T>
 class Matrix
 {
+private:
+  Eigen::SparseMatrix<T> mat_;
+
 public:
   using Scalar = T;
-  Eigen::SparseMatrix<T> mat_;
+  using EigenSparse = Eigen::SparseMatrix<T>;
 
   Matrix() = default;
 
-  Matrix(size_t rows, size_t cols) : mat_(rows, cols)
-  {
-  }
+  Matrix(size_t rows, size_t cols):
+  mat_(rows, cols)
+  { }
 
-  Matrix(const Eigen::SparseMatrix<T>& mat) : mat_(mat)
-  {
-  }
+  Matrix(const Eigen::SparseMatrix<T>& mat):
+  mat_(mat)
+  { }
 
-  Matrix(Eigen::SparseMatrix<T>&& mat) : mat_(std::move(mat))
-  {
-  }
+  Matrix(Eigen::SparseMatrix<T>&& mat):
+  mat_(std::move(mat))
+  { }
 
   bool operator==(const Matrix<T>& other) const
   {
-    return mat_.isApprox(other.mat_);
+    return mat_.isApprox(other.eigen());
+  }
+
+  Matrix<T>& operator*=(const T& scalar)
+  {
+    mat_ *= scalar;
+    return *this;
+  }
+
+  Matrix<T>& operator/=(const T& scalar)
+  {
+    if(scalar == T(0))
+      throw bpp::Exception("Division by zero in Matrix::operator/=");
+
+    mat_ /= scalar;
+    return *this;
+  }
+
+  EigenSparse& eigen()
+  {
+    return mat_;
+
+  }
+  const EigenSparse& eigen() const
+  {
+    return mat_;
   }
 
   size_t rows() const
   {
     return mat_.rows();
   }
+
   size_t cols() const
   {
     return mat_.cols();
@@ -160,11 +189,16 @@ public:
   std::unique_ptr<Vector<T>> multiply(const Vector<T>& vec) const
   {
     if(cols() != vec.size())
-      throw bpp::Exception("Matrix::Matrix and vector dimensions do not match");
+       throw bpp::Exception("Matrix::Matrix and vector dimensions do not match");
 
     auto result = std::make_unique<Vector<T>>(rows());
-    result->vec_ = mat_ * vec.vec_;
+    result->eigen() = mat_ * vec.eigen();
     return result;
+  }
+
+  std::unique_ptr<Vector<T>> multiply(std::unique_ptr<Vector<T>> vec) const
+  {
+    return multiply(*vec);
   }
 
   std::unique_ptr<Matrix<T>> multiply(const Matrix<T>& other) const
@@ -172,8 +206,13 @@ public:
     if(cols() != other.rows())
       throw bpp::Exception("Matrix::dimensions incompatible for multiplication!");
 
-    Eigen::SparseMatrix<T> result = mat_ * other.mat_;
+    Eigen::SparseMatrix<T> result = mat_ * other.eigen();
     return std::make_unique<Matrix<T>>(result);
+  }
+
+  std::unique_ptr<Matrix<T>> multiply(std::unique_ptr<Matrix<T>> other) const
+  {
+    return multiply(*other);
   }
 
   std::unique_ptr<Matrix<T>> add(const Matrix<T>& other) const
@@ -181,7 +220,7 @@ public:
     if(rows() != other.rows() || cols() != other.cols())
       throw bpp::Exception("Matrix::dimensions must match for addition");
 
-    Eigen::SparseMatrix<T> result = mat_ + other.mat_;
+    Eigen::SparseMatrix<T> result = mat_ + other.eigen();
     return std::make_unique<Matrix<T>>(result);
   }
 
@@ -190,7 +229,7 @@ public:
     if(rows() != other.rows() || cols() != other.cols())
       throw bpp::Exception("Matrix::dimensions must match for in-place addition");
 
-    mat_ += other.mat_;
+    mat_ += other.eigen();
     makeCompressed();
   }
 
@@ -204,12 +243,13 @@ public:
     if constexpr(std::is_same_v<T, double>)
     {
       Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
-      solver.compute(mat_);
+      const Eigen::SparseMatrix<double>& A = eigen();
+      solver.compute(A);
 
       if(solver.info() != Eigen::Success)
         throw bpp::Exception("Matrix::decomposition failed");
 
-      result.vec_ = solver.solve(rhs.vec_);
+      result.eigen() = solver.solve(rhs.eigen());
 
       if(solver.info() != Eigen::Success)
         throw bpp::Exception("Matrix::Solving failed");
@@ -217,41 +257,41 @@ public:
 
     else if constexpr(std::is_same_v<T, mpfr::mpreal>)
     {
-      // converts matrix to double to make use of sparse LU decomposition
-      // since matrix entries are well represented with double precision,
-      // this strategy should improve computational efficiency,
-      // but NOTE the contidion number of matrices to check for numerical instability
-      Eigen::SparseMatrix<double> matDouble(mat_.rows(), mat_.cols());
-      matDouble.reserve(mat_.nonZeros());
+      // convert matrix to double to use SparseLU
+      const Eigen::SparseMatrix<mpfr::mpreal>& A_mp = eigen();
+      Eigen::SparseMatrix<double> A_d(A_mp.rows(), A_mp.cols());
+      A_d.reserve(A_mp.nonZeros());
 
-      for(int k = 0; k < mat_.outerSize(); ++k)
+      for(int k = 0; k < A_mp.outerSize(); ++k)
       {
-        for(typename Eigen::SparseMatrix<T>::InnerIterator it(mat_, k); it; ++it)
-          matDouble.coeffRef(it.row(), it.col()) = static_cast<double>(it.value());
+        for(typename Eigen::SparseMatrix<mpfr::mpreal>::InnerIterator it(A_mp, k); it; ++it)
+          A_d.coeffRef(it.row(), it.col()) = static_cast<double>(it.value());
       }
 
-      matDouble.makeCompressed();
+      A_d.makeCompressed();
 
-      // Convert RHS to double
-      Eigen::VectorXd rhsDouble(rhs.size());
-      for(Eigen::Index i = 0; i < rhs.size(); ++i)
-        rhsDouble(i) = static_cast<double>(rhs.vec_(i));
+      // convert RHS to double
+      const Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1>& rhs_mp = rhs.eigen();
+      Eigen::VectorXd rhs_d(rhs_mp.size());
 
-      // Solve in double
+      for(Eigen::Index i = 0; i < rhs_mp.size(); ++i)
+        rhs_d(i) = static_cast<double>(rhs_mp(i));
+
+      // solve in double
       Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
-      solver.compute(matDouble);
+      solver.compute(A_d);
 
       if(solver.info() != Eigen::Success)
         throw bpp::Exception("Matrix::decomposition failed");
 
-      Eigen::VectorXd xDouble = solver.solve(rhsDouble);
+      Eigen::VectorXd x_d = solver.solve(rhs_d);
 
       if(solver.info() != Eigen::Success)
         throw bpp::Exception("Matrix::Solving failed");
 
-      // Convert solution back to mpreal
-      for(Eigen::Index i = 0; i < xDouble.size(); ++i)
-        result.vec_(i) = mpfr::mpreal(xDouble(i));
+      // convert solution back to mpfr
+      for(Eigen::Index i = 0; i < x_d.size(); ++i)
+        result.eigen()(i) = mpfr::mpreal(x_d(i));
     }
 
     else

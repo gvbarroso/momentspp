@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 15/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -415,7 +415,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
 
         else if(prefix == "pi2")
         {
-          auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment> moment;
+          auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
           assert(tmpPi2 != nullptr);
 
           size_t countLeft = tmpPi2->getLeftHetStat()->countInstances(id);
@@ -718,10 +718,12 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
         coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
       auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-      mat->setFromTriplets(coeffs.begin(), coeffs.end());
+      mat->setFromTriplets(coeffs);
       mat->makeCompressed();
       mat->scale(Scalar(coalRate));
-      matrices_.emplace_back(std::move(mat));
+
+      auto engine = std::make_unique<MatrixEngine>(std::variant<Matrix<double>, Matrix<mpfr::mpreal>>(std::move(*mat)));
+      matrices_.emplace_back(std::move(engine));
     } // ends loop over pops
   }, transition_->getMatrixVariant());
 
@@ -735,11 +737,11 @@ void Drift::updateMatrices_()
     size_t id = popIndices_[i];
     std::string paramName = "1/2N_" + bpp::TextTools::toString(id);
 
-    mpfr::mpreal prevVal = prevParams_.getParameterValue(paramName);
-    mpfr::mpreal newVal = getParameterValue(paramName);
+    double prevVal = prevParams_.getParameterValue(paramName);
+    double newVal = getParameterValue(paramName);
 
     if(newVal != prevVal)
-      matrices_[i] *= (newVal / prevVal);
+      *matrices_[i] *= (newVal / prevVal);
   }
 
   assembleTransitionMatrix_();

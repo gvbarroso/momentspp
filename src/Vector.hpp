@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 16/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -9,6 +9,8 @@
 #define _VECINTERFACE_H_
 
 #pragma once
+
+#include <Bpp/Exceptions.h>
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/unsupported/Eigen/MPRealSupport>
@@ -22,20 +24,23 @@
 template <typename T>
 class Vector
 {
+private:
+  Eigen::Matrix<T, Eigen::Dynamic, 1> vec_;
+
 public:
   using Scalar = T;
-  Eigen::Matrix<T, Eigen::Dynamic, 1> vec_;
+  using EigenVector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
   Vector() = default;
 
-  explicit Vector(size_t size) : vec_(size)
+  explicit Vector(size_t size):
+  vec_(size)
   {
     setZero();
   }
 
   Vector(const Vector& other) : vec_(other.vec_)
-  {
-  }
+  { }
 
   Vector<T>& operator=(Vector<T>&& other) noexcept
   {
@@ -61,17 +66,34 @@ public:
     return *this;
   }
 
+  Vector<T>& operator*=(const T& scalar)
+  {
+    vec_ *= scalar;
+    return *this;
+  }
+
+  Vector<T>& operator/=(const T& scalar)
+  {
+    if (scalar == T(0))
+      throw bpp::Exception("Division by zero in Vector::operator/=");
+
+    vec_ /= scalar;
+    return *this;
+  }
+
   bool operator==(const Vector<T>& other) const
   {
     return vec_.isApprox(other.vec_);
   }
 
-  void set(size_t index, T value)
+  T get(size_t i) const
   {
-    if(index >= vec_.size())
-      throw std::out_of_range("Vector index out of bounds");
+    return vec_(static_cast<Eigen::Index>(i));
+  }
 
-    vec_(index) = value;
+  void set(size_t i, const T& v)
+  {
+    vec_(static_cast<Eigen::Index>(i)) = v;
   }
 
   void setZero()
@@ -82,14 +104,6 @@ public:
   void resize(size_t newSize)
   {
     vec_.resize(newSize);
-  }
-
-  T get(size_t index) const
-  {
-    if(index >= vec_.size())
-      throw std::out_of_range("Vector index out of bounds");
-
-    return vec_(index);
   }
 
   mpfr::mpreal getMPReal(size_t index) const
@@ -136,6 +150,7 @@ public:
   {
     return vec_;
   }
+
   Eigen::Matrix<T, Eigen::Dynamic, 1>& eigen()
   {
     return vec_;

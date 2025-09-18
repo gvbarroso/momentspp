@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 08/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -10,7 +10,7 @@
 #include "Mutation.hpp"
 
 // assumes both the infinite sites model as well as equal mutation rates across pops.
-void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
+void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   const size_t numPops = getParameters().size();
   const size_t basisSize = sslib.getSizeOfBasis();
@@ -42,23 +42,23 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
 
         if(prefix == "Hl" || prefix == "Hr")
         {
-            const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
-            Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0)
+          const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
+          Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0)
                                             : Scalar(popIdCount / 2.0);
-            localTriplets.emplace_back(row, col, factor);
+          localTriplets.emplace_back(row, col, factor);
         }
 
         else if(prefix == "pi2")
         {
-            const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
-            if(!tmpPi2)
-            continue;
+          const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
+          if(!tmpPi2)
+          continue;
 
-            const auto tempLeft = tmpPi2->getLeftHetStat();
-            const auto tempRight = tmpPi2->getRightHetStat();
+          const auto tempLeft = tmpPi2->getLeftHetStat();
+          const auto tempRight = tmpPi2->getRightHetStat();
 
-            localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
-            localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
+          localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
+          localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
         }
       }
 
@@ -67,10 +67,12 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
         coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
       auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-      mat->setFromTriplets(coeffs.begin(), coeffs.end());
+      mat->setFromTriplets(coeffs);
       mat->makeCompressed();
       mat->scale(Scalar(mutationRate));
-      matrices_.emplace_back(std::move(mat));
+
+      auto engine = std::make_unique<MatrixEngine>(std::variant<Matrix<double>, Matrix<mpfr::mpreal>>(std::move(*mat)));
+      matrices_.emplace_back(std::move(engine));
     }
   }, transition_->getMatrixVariant());
 
@@ -88,7 +90,7 @@ void Mutation::updateMatrices_()
     double newVal = getParameterValue(paramName);
 
     if(newVal != prevVal)
-      matrices_[i]->scale(newVal / prevVal);
+      *matrices_[i] *= (newVal / prevVal);
   }
 
   assembleTransitionMatrix_();

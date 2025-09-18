@@ -24,9 +24,9 @@ void Model::computeExpectedSumStatsDiscrete()
   // propagates through
   for(size_t i = 1; i < epochs_.size(); ++i)
   {
-    epochs_[i]->transferStatistics(y);      // map ancestry from previous epoch
-    epochs_[i]->computeExpectedSumStats(y); // applies transition matrix
-    epochs_[i]->updateMoments(y);           // updates inside sslib
+    epochs_[i]->transferStatistics(y); // map ancestry from previous epoch
+    epochs_[i]->computeExpectedSumStatsDiscrete(y); // applies transition matrix
+    epochs_[i]->updateMoments(y); // updates inside sslib
   }
 
   expected_ = y;

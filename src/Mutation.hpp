@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 08/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -17,12 +17,12 @@ private:
   double leftFactor_; // ratio uL / uR
 
 public:
-  Mutation(double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib, bool highPrecision):
+  Mutation(double leftFactor, const bpp::ParameterList mutParams, const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()), leftFactor_(leftFactor)
   {
     includeParameters_(mutParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
-    setUpMatrices_(sslib, highPrecision);
+    setUpMatrices_(sslib);
   }
 
   Mutation(double leftFactor, const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
@@ -36,17 +36,22 @@ public:
     setUpMatrices_(sslib);
   }
 
-  virtual Mutation* clone() const override
+  Mutation(const Mutation& other):
+  AbstractOperator(other),
+  leftFactor_(other.leftFactor_)
   {
-    return new Mutation(*this);
+    // no need to call setUpMatrices_ again — matrices_ and transition_ are already cloned
+    // parameters are already copied via AbstractOperator's copy constructor
   }
+
+  Mutation* clone() const override { return new Mutation(*this); }
 
   double getLeftFactor()
   {
     return leftFactor_;
   }
 
-  void setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision) override;
+  void setUpMatrices_(const SumStatsLibrary& sslib) override;
 
   void updateMatrices_() override;
 };

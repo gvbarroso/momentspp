@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 16/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -30,7 +30,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
           std::vector<std::vector<Eigen::Triplet<Scalar>>> threadTriplets(numThreads);
 
-#pragma omp parallel for
+          #pragma omp parallel for
           for(size_t row = 0; row < basisSize; ++row)
           {
             int col = -1;
@@ -670,7 +670,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
                 col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, popIds[0]}, factorIds));
                 localTriplets.emplace_back(row, col, Scalar(-1. / 8.));
 
-#ifdef NAKED_D
+                #ifdef NAKED_D
                 factorIds = moment->getFactorIndices(); // reset
 
                 col = sslib.findCompressedIndex(sslib.getMoment("D", {id}, factorIds));
@@ -681,7 +681,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
 
                 col = sslib.findCompressedIndex(sslib.getMoment("D", {id}, factorIds));
                 localTriplets.emplace_back(row, col, Scalar(-1. / 8.));
-#endif
+                #endif
               }
             } // ends pi2 prefix
 
@@ -694,10 +694,12 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
             coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
           auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-          mat->setFromTriplets(coeffs.begin(), coeffs.end());
+          mat->setFromTriplets(coeffs);
           mat->makeCompressed();
           mat->scale(Scalar(s));
-          matrices_.emplace_back(std::move(mat));
+
+          auto engine = std::make_unique<MatrixEngine>(std::variant<Matrix<double>, Matrix<mpfr::mpreal>>(std::move(*mat)));
+          matrices_.emplace_back(std::move(engine));
         } // ends loop over pops
       },
       transition_->getMatrixVariant());
@@ -712,11 +714,11 @@ void Selection::updateMatrices_()
     size_t id = popIndices_[i];
     std::string paramName = "s_" + bpp::TextTools::toString(id);
 
-    mpfr::mpreal prevVal = prevParams_.getParameterValue(paramName);
-    mpfr::mpreal newVal = getParameterValue(paramName);
+    double prevVal = prevParams_.getParameterValue(paramName);
+    double newVal = getParameterValue(paramName);
 
     if(newVal != prevVal)
-      matrices_[i] *= (newVal / prevVal);
+      *matrices_[i] *= (newVal / prevVal);
   }
 
   assembleTransitionMatrix_();

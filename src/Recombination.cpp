@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 16/09/2025
+ * Last modified: 18/09/2025
  *
  */
 
@@ -9,7 +9,7 @@
 
 #include "Recombination.hpp"
 
-void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecision)
+void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 {
   const size_t numPops = getParameters().size();
   const size_t basisSize = sslib.getSizeOfBasis();
@@ -56,10 +56,12 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib, bool highPrecis
         coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
       auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-      mat->setFromTriplets(coeffs.begin(), coeffs.end());
+      mat->setFromTriplets(coeffs);
       mat->makeCompressed();
       mat->scale(Scalar(recombRate));
-      matrices_.emplace_back(std::move(mat));
+
+      auto engine = std::make_unique<MatrixEngine>(std::variant<Matrix<double>, Matrix<mpfr::mpreal>>(std::move(*mat)));
+      matrices_.emplace_back(std::move(engine));
    }
   }, transition_->getMatrixVariant());
 
@@ -77,7 +79,7 @@ void Recombination::updateMatrices_()
     double newVal = getParameterValue(paramName);
 
     if(newVal != prevVal)
-      matrices_[i] *= (newVal / prevVal);
+      *matrices_[i] *= (newVal / prevVal);
   }
 
   assembleTransitionMatrix_();
