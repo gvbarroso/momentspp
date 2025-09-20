@@ -159,10 +159,10 @@ public:
     return transition_->getMatrixVariant();
   }
 
-  MatrixEngine::MatrixVariantEigen getTransitionMatrixVariantEigen() const
+  MatrixEngine::MatrixEigenVariant getTransitionMatrixVariantEigen() const
   {
     if(!transition_)
-      return MatrixEngine::MatrixVariantEigen{}; // empty default-constructed variant
+      return MatrixEngine::MatrixEigenVariant{}; // empty default-constructed variant
 
     return transition_->toEigenMatrixVariant();
   }

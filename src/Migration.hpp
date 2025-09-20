@@ -16,7 +16,7 @@ class Migration : public AbstractOperator
 {
 
 private:
-  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleMigMat_; // 2 x 2
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> littleMigMat_; // 2 x 2
 
 public:
   Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
@@ -28,7 +28,7 @@ public:
     setUpMatrices_(sslib);
   }
 
-  Migration(const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& migMat,
+  Migration(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& migMat,
             std::shared_ptr<bpp::IntervalConstraint> ic,
             const SumStatsLibrary& sslib):
   AbstractOperator(sslib.getPopIndices()), littleMigMat_(migMat)
@@ -61,9 +61,12 @@ public:
     // parameters are already copied via AbstractOperator's copy constructor
   }
 
-  Migration* clone() const override { return new Migration(*this); }
+  Migration* clone() const override
+  {
+    return new Migration(*this);
+  }
 
-  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getLittleMigMat()
+  const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& getLittleMigMat()
   {
     return littleMigMat_;
   }
