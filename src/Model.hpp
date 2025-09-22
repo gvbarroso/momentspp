@@ -42,7 +42,7 @@ private:
   std::vector<std::shared_ptr<Epoch>> epochs_; // each contains its own set of params and operators
   std::shared_ptr<Data> data_;
 
-  MatrixEngine::VectorVariantEigen expected_;
+  MatrixEngine::VectorVariant expected_;
   double compLogLikelihood_;
 
   // for continuous-time integration
@@ -55,14 +55,14 @@ private:
 public:
   Model(const std::string& name,
         const std::vector<std::shared_ptr<Epoch>>& epochs,
-        std::shared_ptr<Data> data = nullptr,
+        std::shared_ptr<Data> data,
         bool continuousTime, double dt, double totTime, double tol):
   AbstractParameterAliasable(""),
   name_(name),
-  frozenParams_(0),
+  frozenParams_(),
   epochs_(epochs),
   data_(data),
-  expected_(0),
+  expected_(),
   compLogLikelihood_(-1.),
   continuousTime_(continuousTime),
   dt_(dt),
@@ -147,7 +147,7 @@ public:
     return errorTolerance_;
   }
 
-  const MatrixEngine::VectorVariantEigen& getExpectedStats() const
+  const MatrixEngine::VectorVariant& getExpectedStats() const
   {
     return expected_;
   }

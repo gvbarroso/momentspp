@@ -19,45 +19,46 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStatsDiscrete()
 {
-  auto y = epochs_[0]->getSteadyStateVector(); // resets moments to the "deep past"
+    // start from deep‐past steady state (wrapper variant)
+    auto y = epochs_[0]->getSteadyStateVector();
 
-  // propagates through
-  for(size_t i = 1; i < epochs_.size(); ++i)
-  {
-    epochs_[i]->transferStatistics(y); // map ancestry from previous epoch
-    epochs_[i]->computeExpectedSumStatsDiscrete(y); // applies transition matrix
-    epochs_[i]->updateMoments(y); // updates inside sslib
-  }
+    // step through epochs in discrete time
+    for (size_t i = 1; i < epochs_.size(); ++i)
+    {
+        epochs_[i]->transferStatistics(y);
+        epochs_[i]->computeExpectedSumStatsDiscrete(y);
+        epochs_[i]->updateMoments(y);
+    }
 
-  expected_ = y;
+    expected_ = std::move(y);
 }
 
 void Model::computeExpectedSumStatsContinuous()
 {
-  MatrixEngine::VectorVariantEigen y = epochs_[0]->getSteadyStateVector();
+    auto y = epochs_[0]->getSteadyStateVector();
 
-  for(size_t i = 1; i < epochs_.size(); ++i)
-  {
-    epochs_[i]->transferStatistics(y);
-    y = epochs_[i]->integrate(y, dt_, totalTime_);
-    epochs_[i]->updateMoments(y);
-  }
+    for (size_t i = 1; i < epochs_.size(); ++i)
+    {
+        epochs_[i]->transferStatistics(y);
+        y = epochs_[i]->integrate(y, dt_, totalTime_);
+        epochs_[i]->updateMoments(y);
+    }
 
-  expected_ = y;
+    expected_ = std::move(y);
 }
 
 void Model::computeExpectedSumStatsAdaptive()
 {
-  MatrixEngine::VectorVariantEigen y = epochs_[0]->getSteadyStateVector();
+    auto y = epochs_[0]->getSteadyStateVector();
 
-  for(size_t i = 1; i < epochs_.size(); ++i)
-  {
-    epochs_[i]->transferStatistics(y);
-    y = epochs_[i]->integrateAdaptive(y, dt_, totalTime_, errorTolerance_);
-    epochs_[i]->updateMoments(y);
-  }
+    for (size_t i = 1; i < epochs_.size(); ++i)
+    {
+        epochs_[i]->transferStatistics(y);
+        y = epochs_[i]->integrateAdaptive(y, dt_, totalTime_, errorTolerance_);
+        epochs_[i]->updateMoments(y);
+    }
 
-  expected_ = y;
+    expected_ = std::move(y);
 }
 
 void Model::printAliasedMomentsPerEpoch(const std::string& modelName) const
@@ -78,7 +79,7 @@ void Model::printAliasedMomentsPerEpoch(const std::string& modelName) const
 // prints expectations over time (for each epoch)
 void Model::printMomentsIntermediate(const std::string& modelName, size_t interval, const std::vector<std::string>& momNames) const
 {
-  MatrixEngine::VectorVariantEigen y = epochs_[0]->getSteadyStateVector();
+  auto y = epochs_[0]->getSteadyStateVector();
 
   for(size_t i = 1; i < epochs_.size(); ++i)
     epochs_[i]->printMomentsIntermediate(y, modelName, interval, momNames);
