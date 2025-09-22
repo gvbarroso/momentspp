@@ -41,33 +41,33 @@ protected:
 
 public:
   // Default ctor: empty operator
-  AbstractOperator() noexcept
-    : bpp::AbstractParameterAliasable(""),
-      matrices_(),
-      transition_(nullptr),
-      prevParams_(),
-      popIndices_()
-  {}
+  AbstractOperator() noexcept:
+  bpp::AbstractParameterAliasable(""),
+  matrices_(),
+  transition_(nullptr),
+  prevParams_(),
+  popIndices_()
+  { }
 
   // Main ctor: specify which populations to touch
-  explicit AbstractOperator(const std::vector<size_t>& popIndices) noexcept
-    : bpp::AbstractParameterAliasable(""),
-      matrices_(),
-      transition_(nullptr),
-      prevParams_(),
-      popIndices_(popIndices)
-  {}
+  explicit AbstractOperator(const std::vector<size_t>& popIndices) noexcept:
+  bpp::AbstractParameterAliasable(""),
+  matrices_(),
+  transition_(nullptr),
+  prevParams_(),
+  popIndices_(popIndices)
+  { }
 
   // Deep-copy: clone each MatrixEngine
-  AbstractOperator(const AbstractOperator& other)
-    : bpp::AbstractParameterAliasable(""),
-      popIndices_(other.popIndices_),
-      prevParams_(other.prevParams_)
+  AbstractOperator(const AbstractOperator& other):
+  bpp::AbstractParameterAliasable(""),
+  popIndices_(other.popIndices_),
+  prevParams_(other.prevParams_)
   {
     matrices_.reserve(other.matrices_.size());
-    for (auto const& matPtr : other.matrices_) {
+    for(auto const& matPtr : other.matrices_)
       matrices_.emplace_back(matPtr ? matPtr->clone() : nullptr);
-    }
+
     transition_ = other.transition_ ? other.transition_->clone() : nullptr;
   }
 

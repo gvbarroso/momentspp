@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 18/09/2025
+ * Last modified: 22/09/2025
  * Source code for moments++
  *
  */
@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 18/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 22/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
         std::shared_ptr<bpp::IntervalConstraint> icRec = std::make_shared<bpp::IntervalConstraint>(0., 0.5 + 1e-6, true, true);
         std::shared_ptr<bpp::IntervalConstraint> icSel = std::make_shared<bpp::IntervalConstraint>(-1e-2, 0., true, true);
 
-        std::vector<long double> drift(0);
+        std::vector<double> drift(0);
         drift.reserve(demes.getPopsVec()[i].size());
 
         // from (diploid) population sizes (N_j, not 2N_j) to drift parameters
@@ -193,14 +193,12 @@ int main(int argc, char* argv[])
     }
 
     // time flows from left to right, with epoch[0] (epoch.front()) => most ancient epoch
-    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, operators, demes.getPopsVec()[i]));
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, demes.getPopsVec()[i], operators));
 
     if(options.verbose())
     {
       epochs.back()->printRecursions(std::cout);
-      epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" +
-                                        bpp::TextTools::toString(factorOrder[0]) +
-                                        "_transitions.csv");
+      epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_transitions.csv");
       epochs.back()->printConditionNumber();
 
       epochs.back()->computePseudoSteadyStateDiscrete();
@@ -210,8 +208,7 @@ int main(int argc, char* argv[])
       pseudo.close();
 
       epochs.back()->computeEigenSteadyState();
-      std::ofstream eigen(options.getLabel() + "_" + id + "_O_" +
-                          bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
+      std::ofstream eigen(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
       epochs.back()->printMoments(eigen);
       eigen.close();
     }
@@ -267,7 +264,14 @@ int main(int argc, char* argv[])
       std::cout << "\nStats_file provided, moments++ will optimize parameters for input data.\n";
 
       std::shared_ptr<Data> data = std::make_shared<Data>(options.getDataFilePath());
-      std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(), epochs, data);
+      std::shared_ptr<Model> model = std::make_shared<Model>(options.getLabel(),
+                                                             epochs,
+                                                             data,
+                                                             options.continuousTime(),
+                                                             options.getDt(),
+                                                             options.getTotalTimeIntegration(),
+                                                             options.getToleranceIntegration());
+
       model->compressParameters(options.aliasEpochsParams(), options.aliasPopsParams());
 
       std::cout << "\n\nList of parameters to be optimized:\n";

@@ -55,6 +55,36 @@ private:
 public:
   Model(const std::string& name,
         const std::vector<std::shared_ptr<Epoch>>& epochs,
+        bool continuousTime, double dt, double totTime, double tol):
+  AbstractParameterAliasable(""),
+  name_(name),
+  frozenParams_(),
+  epochs_(epochs),
+  data_(nullptr),
+  expected_(),
+  compLogLikelihood_(-1.),
+  continuousTime_(continuousTime),
+  dt_(dt),
+  totalTime_(totTime),
+  errorTolerance_(tol)
+  {
+    for(auto it = std::begin(epochs); it != std::end(epochs); ++it)
+      addParameters_((*it)->getParameters());
+
+    linkMoments_();
+
+    if(dt_ <= 0.0 || dt_ > 1.)
+      throw bpp::Exception("Model::Invalid time step dt_! Must be in (0, 1].");
+
+    if(totalTime_ <= 0.0 || !std::isfinite(totalTime_))
+      throw bpp::Exception("Model::Invalid totalTime_! Must be positive and finite.");
+
+    if(errorTolerance_ <= 0.0 || errorTolerance_ > 1.0)
+      throw bpp::Exception("Model::Invalid errorTolerance_! Must be in (0, 1].");
+  }
+
+  Model(const std::string& name,
+        const std::vector<std::shared_ptr<Epoch>>& epochs,
         std::shared_ptr<Data> data,
         bool continuousTime, double dt, double totTime, double tol):
   AbstractParameterAliasable(""),
