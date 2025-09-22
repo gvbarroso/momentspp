@@ -40,7 +40,7 @@ void Model::computeExpectedSumStatsContinuous()
     for (size_t i = 1; i < epochs_.size(); ++i)
     {
         epochs_[i]->transferStatistics(y);
-        y = epochs_[i]->integrate(y, dt_, totalTime_);
+        y = epochs_[i]->integrate(dt_, totalTime_);
         epochs_[i]->updateMoments(y);
     }
 
@@ -54,7 +54,7 @@ void Model::computeExpectedSumStatsAdaptive()
     for (size_t i = 1; i < epochs_.size(); ++i)
     {
         epochs_[i]->transferStatistics(y);
-        y = epochs_[i]->integrateAdaptive(y, dt_, totalTime_, errorTolerance_);
+        y = epochs_[i]->integrateAdaptive(dt_, totalTime_, errorTolerance_);
         epochs_[i]->updateMoments(y);
     }
 

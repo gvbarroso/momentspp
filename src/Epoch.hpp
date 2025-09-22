@@ -343,7 +343,7 @@ public:
 
   MatrixEngine::VectorVariant integrate(double dt, double totalTime) const;
 
-  MatrixEngine::VectorVariant integrateAdaptive(double dt, double totalTime, double tol, double dtMin, double dtMax) const;
+  MatrixEngine::VectorVariant integrateAdaptive(double dt, double totalTime, double tol, double dtMin = 1e-6, double dtMax = 1e-2) const;
 
   void printConditionNumber()
   {

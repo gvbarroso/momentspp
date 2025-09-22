@@ -607,7 +607,7 @@ Epoch::integrateAdaptive(double dt,
                          double dtMin,
                          double dtMax) const
 {
-    if (dtMin <= 0.0 || dtMax <= 0.0 || dtMin > dtMax)
+    if (dtMin <= 0.0 || dtMax <= 0.0 || dtMin > dtMax) // TODO improve condition checking
         throw bpp::Exception("Epoch::integrateAdaptive: invalid dtMin/dtMax");
     if (tol < 0.0)
         throw bpp::Exception("Epoch::integrateAdaptive: tol must be >=0");
