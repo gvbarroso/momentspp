@@ -239,7 +239,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   const auto& basis = sslib.getBasis();
   const size_t numThreads = omp_get_max_threads();
 
-  std::visit([&](const auto& mat)
+  std::visit(overloaded{[&](auto const& mat)
   {
     using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
@@ -300,7 +300,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
               std::vector<size_t> factorIds = moment->getFactorIndices();
               sslib.dropFactorIds(factorIds, id, 2);
 
-              int col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
+              col = sslib.findCompressedIndex(sslib.getMoment("Dr", {id, sslib.fetchOtherId(id)}, factorIds));
               localTriplets.emplace_back(row, col, Scalar((popIdPower * (popIdPower - 1)) / 2.));
             }
 
@@ -717,14 +717,16 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
       for(auto& vec : threadTriplets)
         coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
-      auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-      mat->setFromTriplets(coeffs);
-      mat->makeCompressed();
-      mat->scale(Scalar(coalRate));
+      auto matrix = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
+      matrix->setFromTriplets(coeffs);
+      matrix->makeCompressed();
+      matrix->scale(Scalar(coalRate));
 
-      auto engine = std::make_unique<MatrixEngine>(std::variant<Matrix<double>, Matrix<mpfr::mpreal>>(std::move(*mat)));
+      MatrixEngine::MatrixVariant mv(std::move(*matrix));
+      auto engine = std::make_unique<MatrixEngine>(mv, MatrixEngine::VectorVariant{});
       matrices_.emplace_back(std::move(engine));
     } // ends loop over pops
+  }
   }, transition_->getMatrixVariant());
 
   assembleTransitionMatrix_();

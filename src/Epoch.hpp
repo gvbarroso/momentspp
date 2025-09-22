@@ -18,6 +18,7 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/SVD>
 #include <eigen3/Eigen/Eigenvalues>
 #include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <eigen3/unsupported/Eigen/MPRealSupport>
@@ -25,7 +26,7 @@
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 
-#include "visit_same_scalar.hpp"
+#include "VariantUtils.hpp"
 #include "EpochIntegrators.hpp"
 #include "AbstractOperator.hpp"
 #include "Admixture.hpp"
@@ -140,7 +141,6 @@ public:
       {
         if(op)
           operators_.push_back(std::shared_ptr<AbstractOperator>(op->clone()));
-
         else
           operators_.push_back(nullptr);
       }
@@ -217,14 +217,14 @@ public:
     return startGen_ - endGen_;
   }
 
-  auto getTransitionMatrix() const -> MatrixEngine::MatrixVariantEigen
+  auto getTransitionMatrix() const -> MatrixEngine::MatrixEigenVariant
   {
     return engine_->toEigenMatrixVariant();
   }
 
-  auto getSteadyStateVector() const -> MatrixEngine::VectorVariantEigen
+  auto getSteadyStateVector() const -> MatrixEngine::VectorVariant
   {
-    return engine_->toEigenVectorVariant();
+    return engine_->getVectorVariant();
   }
 
   size_t getNumPops() const
@@ -306,15 +306,16 @@ public:
 
   std::vector<size_t> fetchSelectedPopIds(); // for *this epoch
 
-  void computeExpectedSumStatsDiscrete(const MatrixEngine::VectorVariantEigen& y);
+  void computeExpectedSumStatsDiscrete(const MatrixEngine::VectorVariant& y);
 
-  void transferStatistics(MatrixEngine::VectorVariantEigen& y) const;
+  void transferStatistics(const MatrixEngine::VectorVariant& y);
 
-  void updateMoments(const MatrixEngine::VectorVariantEigen& y);
+  void updateMoments(const MatrixEngine::VectorVariant& y);
 
   void printMoments(std::ostream& stream);
 
-  void printMomentsIntermediate(MatrixEngine::VectorVariantEigen& y,
+  void printMomentsIntermediate(MatrixEngine::VectorVariant
+& y,
                                 const std::string& modelName, size_t interval,
                                 const std::vector<std::string>& momNames);
 
@@ -367,70 +368,74 @@ public:
 
 inline double fetchConditionNumber() const
 {
-  // Grab the engine’s sparse‐matrix variant
-  auto matVar = engine_->toEigenMatrixVariant();
+  // 1) get a variant holding either sparse<double> or sparse<mpreal>
+  auto const& eigenVar = engine_->toEigenMatrixVariant();
 
-  // Compute cond‐number in double precision via SVD
-  return std::visit([](auto const& M) -> double {
-    using Dense = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
+  // 2) visit both cases with one lambda
+  return std::visit(overloaded {
+    [](auto const& M) -> double {
+      using Dense = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 
-    // Cast sparse (double or mpfr) → sparse<double> → dense<double>
-    Dense dense = M.template cast<double>();
+      // sparse<double> or sparse<mpreal> → sparse<double> → dense<double>
+      Dense dense = M.template cast<double>();
 
-    // Compute singular values
-    Eigen::JacobiSVD<Dense> svd(dense, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    if (svd.info() != Eigen::Success)
-      throw bpp::Exception("fetchConditionNumber(): SVD failed");
+      // compute singular values
+      Eigen::JacobiSVD<Dense> svd(dense,
+        Eigen::ComputeThinU | Eigen::ComputeThinV);
+      if (svd.info() != Eigen::Success)
+        throw bpp::Exception("fetchConditionNumber(): SVD failed");
 
-    auto s = svd.singularValues();
-    return (s.size() > 1)
+      auto s = svd.singularValues();
+      return (s.size() > 1)
            ? static_cast<double>(s(0) / s(s.size() - 1))
            : 0.0;
-  }, matVar);
+    }
+  }, eigenVar);
 }
 
 inline EigenResult findLeadingEigenpair() const
 {
-  // Grab the engine’s sparse‐matrix variant
-  auto matVar = engine_->toEigenMatrixVariant();
+  // 1) extract the same variant
+  auto const& eigenVar = engine_->toEigenMatrixVariant();
 
-  // Compute leading eigenvalue/eigenvector in double, then convert to mpfr
-  return std::visit([](auto const& M) -> EigenResult {
-    using DenseD = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
-    using VecD   = Eigen::Matrix<double, Eigen::Dynamic, 1>;
+  // 2) visit and compute in double, then lift to mpreal
+  return std::visit(overloaded {
+    [](auto const& M) -> EigenResult {
+      using DenseD = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
+      using VecD   = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 
-    // Cast sparse (double or mpfr) → sparse<double> → dense<double>
-    DenseD dense = M.template cast<double>();
+      // to dense<double>
+      DenseD dense = M.template cast<double>();
 
-    // Solve eigenproblem
-    Eigen::EigenSolver<DenseD> es(dense);
-    if (es.info() != Eigen::Success)
-      throw bpp::Exception("findLeadingEigenpair(): EigenSolver failed");
+      // solve eigenproblem
+      Eigen::EigenSolver<DenseD> es(dense);
+      if (es.info() != Eigen::Success)
+        throw bpp::Exception("findLeadingEigenpair(): EigenSolver failed");
 
-    // Pick the largest real eigenvalue
-    auto evals = es.eigenvalues().real();
-    Eigen::Index idx = 0;
-    for (Eigen::Index i = 1; i < evals.size(); ++i)
-      if (evals(i) > evals(idx))
-        idx = i;
+      // pick largest real eigenvalue
+      auto evals = es.eigenvalues().real();
+      Eigen::Index idx = 0;
+      for (Eigen::Index i = 1; i < evals.size(); ++i)
+        if (evals(i) > evals(idx))
+          idx = i;
 
-    // Extract and normalize the corresponding eigenvector
-    VecD vecD = es.eigenvectors().col(idx).real();
-    vecD.normalize();
+      // normalize its eigenvector
+      VecD vecD = es.eigenvectors().col(idx).real();
+      vecD.normalize();
 
-    // Convert eigenvector and eigenvalue to high‐precision
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
-    for (Eigen::Index i = 0; i < vecD.size(); ++i)
-      vecMP(i) = mpfr::mpreal(vecD(i));
+      // convert to high precision
+      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
+      for (Eigen::Index i = 0; i < vecD.size(); ++i)
+        vecMP(i) = mpfr::mpreal(vecD(i));
 
-    return EigenResult{
-      size_t(idx),
-      mpfr::mpreal(evals(idx)),
-      vecMP
-    };
-  }, matVar);
+      return EigenResult{
+        size_t(idx),
+        mpfr::mpreal(evals(idx)),
+        vecMP
+      };
+    }
+  }, eigenVar);
 }
-
 
 private:
   void init_();

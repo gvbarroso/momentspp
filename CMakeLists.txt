@@ -12,7 +12,7 @@ option(NAKED_D "Enable naked D mode" OFF)
 option(VERBOSE "Enable verbose mode" OFF)
 
 # Base compiler flags
-set(BASE_CXX_FLAGS "-std=c++20 -Weffc++ -Wshadow -Wall -Wextra -g -O3")
+set(BASE_CXX_FLAGS "-std=c++23 -Weffc++ -Wshadow -Wall -Wextra -g -O3")
 
 # Platform-specific optimization
 if(NativeBuild)

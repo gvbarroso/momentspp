@@ -1,79 +1,36 @@
-/*
- * Authors: Gustavo V. Barroso
- * Created: 04/04/2023
- * Last modified: 18/09/2025
- *
- */
-
+// ==== AbstractOperator.cpp ====
 #include "AbstractOperator.hpp"
+
+#include <fstream>
 
 void AbstractOperator::printDeltaLDMat(const std::string& fileName)
 {
-  std::ofstream matFile;
-  matFile.open(fileName);
+    // 1) Open file
+    std::ofstream matFile(fileName);
+    if (!matFile.is_open())
+        throw bpp::Exception("AbstractOperator::failed to open file: " + fileName);
 
-  if(!matFile.is_open())
-    throw bpp::Exception("AbstractOperator::failed to open file: " + fileName);
+    // 2) Ensure we have a transition matrix
+    if (!transition_)
+        throw bpp::Exception("AbstractOperator::attempted to print un-initialized transition matrix!");
 
-  if(transition_)
-  {
-    std::visit([&](auto& mat)
-    {
-      for(int i = 0; i < mat.rows(); ++i)
-      {
-        for(int j = 0; j < mat.cols(); ++j)
-        {
-          matFile << mat.eigen().coeff(i, j);
+    // 3) Extract an Eigen‐variant view of the transition
+    auto eigenVar = transition_->toEigenMatrixVariant();
 
-          if(j < mat.cols() - 1)
-            matFile << ",";
+    // 4) Visit whichever underlying Eigen type it is
+    std::visit(overloaded{
+        [&](const auto& mat) {
+            const int rows = mat.rows();
+            const int cols = mat.cols();
+            for (int i = 0; i < rows; ++i) {
+                for (int j = 0; j < cols; ++j) {
+                    matFile << mat.coeff(i, j);
+                    if (j + 1 < cols) matFile << ",";
+                }
+                matFile << "\n";
+            }
         }
-
-        matFile << "\n";
-      }
-    }, transition_->getMatrixVariant());
+    }, eigenVar);
 
     matFile.close();
-  }
-
-  else
-    throw bpp::Exception("AbstractOperator::attempted to print un-initialized transition matrix!");
-}
-
-// adds together the different matrices that make up an operator (one per population for Drift;
-// population-pair for Migration, etc)
-void AbstractOperator::assembleTransitionMatrix_()
-{
-  MatrixEngine::MatrixVariant combined = matrices_[0]->getMatrixVariant();
-
-  for(size_t i = 1; i < matrices_.size(); ++i)
-  {
-    combined = std::visit([](auto& a, auto& b) -> MatrixEngine::MatrixVariant
-    {
-      using AType = std::decay_t<decltype(a)>;
-      using BType = std::decay_t<decltype(b)>;
-
-      if constexpr(std::is_same_v<typename AType::Scalar, typename BType::Scalar>)
-        return MatrixEngine::MatrixVariant{*a.add(b)};
-      else
-        throw bpp::Exception("AbstractOperator::add mismatched scalar types between matrices.");
-    }, combined, matrices_[i]->getMatrixVariant());
-  }
-
-
-  if(!transition_)
-  {
-    transition_ = std::make_unique<MatrixEngine>(matrices_[0]->useMPReal());
-    transition_->initialize(
-        matrices_[0]->getMatrixVariant().index() == 0
-            ? std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).rows()
-            : std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).rows(),
-        matrices_[0]->getMatrixVariant().index() == 0
-            ? std::get<Matrix<double>>(matrices_[0]->getMatrixVariant()).cols()
-            : std::get<Matrix<mpfr::mpreal>>(matrices_[0]->getMatrixVariant()).cols(),
-        0);
-  }
-
-  transition_->setMatrix(combined);
-  transition_->addIdentityInPlace(); // convert delta → transition
 }

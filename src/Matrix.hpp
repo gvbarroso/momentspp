@@ -300,6 +300,27 @@ public:
     return std::make_unique<Vector<T>>(result);
   }
 
+  // Add identity: M ← I + M
+  void addIdentity()
+  {
+    for (size_t i = 0; i < rows(); ++i)
+      mat_.coeffRef(i, i) += T(1);
+    makeCompressed();
+  }
+
+  // Alias for makeCompressed (named compress in MatrixEngine)
+  void compress()
+  {
+    makeCompressed();
+  }
+
+  /// operator+= so MatrixEngine can do `A += B;`
+  Matrix<T>& operator+=(const Matrix<T>& other)
+  {
+    addInPlace(other);
+    return *this;
+  }
+
 };
 
 #endif

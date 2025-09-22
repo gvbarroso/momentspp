@@ -1,6 +1,6 @@
 ## Dependencies:
 - A C++ compiler, both gcc and clang should work. Recent versions are required, with support for C++20
-- CMake >= 3.1 for building
+- CMake >= 3.7 for building
 - The Boost C++ libraries >= 1.71, available in https://www.boost.org/
 - The Threads library (usually provided along with the C++ compiler installation)
 - The Bio++ libraries >= 3.0 (bpp-core, bpp-seq, bpp-phyl), available in https://github.com/BioPP

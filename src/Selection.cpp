@@ -17,9 +17,8 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
   const auto& basis = sslib.getBasis();
   const size_t numThreads = omp_get_max_threads();
 
-  std::visit(
-      [&](const auto& mat)
-      {
+  std::visit(overloaded{[&](auto const& mat)
+  {
         using Scalar = typename std::decay_t<decltype(mat)>::Scalar;
 
         for(size_t i = 0; i < numPops; ++i)
@@ -698,9 +697,11 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
           mat->makeCompressed();
           mat->scale(Scalar(s));
 
-          auto engine = std::make_unique<MatrixEngine>(std::variant<Matrix<double>, Matrix<mpfr::mpreal>>(std::move(*mat)));
+          MatrixEngine::MatrixVariant mv(std::move(*mat));
+          auto engine = std::make_unique<MatrixEngine>(mv, MatrixEngine::VectorVariant{});
           matrices_.emplace_back(std::move(engine));
         } // ends loop over pops
+  }
       },
       transition_->getMatrixVariant());
 
