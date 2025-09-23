@@ -3,72 +3,110 @@
 #   Gustavo V. Barroso and Copilot
 # Created: 28/07/2022
 
-cmake_minimum_required(VERSION 3.14)
-project(momentspp LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.23)
+project(momentspp VERSION 0.0.1 LANGUAGES CXX)
 
-# Options
+# 0) Tell CMake where to find your Bio++ install
+list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local")
+link_directories("$ENV{HOME}/.local/lib")
+
+# 1) Suppress the “FindBoost module is removed” warning
+if (POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
+#------------------------------------------------------------------------------
+# 2) User options & C++ standard
+#------------------------------------------------------------------------------
 option(NativeBuild "Enable CPU-specific optimization flags" OFF)
-option(NAKED_D "Enable naked D mode" OFF)
-option(VERBOSE "Enable verbose mode" OFF)
+option(VERBOSE     "Enable verbose mode"                OFF)
+option(NAKED_D     "Enable naked D mode"                OFF)
 
-# Base compiler flags
-set(BASE_CXX_FLAGS "-std=c++23 -Weffc++ -Wshadow -Wall -Wextra -g -O3")
+set(CMAKE_CXX_STANDARD      23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS    OFF)
 
-# Platform-specific optimization
-if(NativeBuild)
-  if(APPLE)
-    message(STATUS "Native build on macOS: using -mcpu=apple-m1")
-    set(NATIVE_OPT_FLAGS "-mcpu=apple-m1")
-  else()
-    message(STATUS "Native build on Linux: using -march=native")
-    set(NATIVE_OPT_FLAGS "-march=native")
-  endif()
+#------------------------------------------------------------------------------
+# 3) Compiler warnings & optimization flags
+#------------------------------------------------------------------------------
+set(BASE_FLAGS
+  -Wall
+  -Wextra
+  -pedantic
+  -Wshadow
+  -Weffc++
+)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  list(APPEND BASE_FLAGS -g)
 else()
-  message(STATUS "Native build disabled")
-  set(NATIVE_OPT_FLAGS "")
+  list(APPEND BASE_FLAGS -O3)
 endif()
 
-# OpenMP setup for macOS
-if(APPLE)
-  set(CMAKE_C_COMPILER "/opt/homebrew/opt/llvm/bin/clang")
-  set(CMAKE_CXX_COMPILER "/opt/homebrew/opt/llvm/bin/clang++")
-  set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/include")
-  set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/include")
-  set(OpenMP_C_LIB_NAMES "omp")
-  set(OpenMP_CXX_LIB_NAMES "omp")
-  set(OpenMP_omp_LIBRARY "/opt/homebrew/lib/libomp.dylib")
+if (NativeBuild)
+  message(STATUS "Native build: adding -march=native")
+  list(APPEND BASE_FLAGS -march=native)
 endif()
 
-find_package(OpenMP REQUIRED)
+add_compile_options(${BASE_FLAGS})
 
-# Final compiler flags
-set(CMAKE_CXX_FLAGS "${BASE_CXX_FLAGS} ${OpenMP_CXX_FLAGS} ${NATIVE_OPT_FLAGS}")
-
-# Macro definitions
-if(VERBOSE)
+if (VERBOSE)
   add_compile_definitions(VERBOSE)
 endif()
 
-if(NAKED_D)
+if (NAKED_D)
   add_compile_definitions(NAKED_D)
 endif()
 
-# Dependencies
-include(GNUInstallDirs)
+#------------------------------------------------------------------------------
+# 4) Boost (CONFIG mode → Boost::iostreams)
+#------------------------------------------------------------------------------
+set(Boost_FIND_CMAKE CONFIG)
+find_package(Boost 1.67 REQUIRED COMPONENTS iostreams)
 
-if(CMAKE_INSTALL_PREFIX)
-  list(APPEND CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}")
+#------------------------------------------------------------------------------
+# 5) OpenMP (module then Homebrew fallback on macOS)
+#------------------------------------------------------------------------------
+find_package(OpenMP)
+
+if (OpenMP_CXX_FOUND)
+  add_compile_options(${OpenMP_CXX_FLAGS})
+  set(OPENMP_LIBS OpenMP::OpenMP_CXX)
+elseif (APPLE)
+  find_path(OMP_INCLUDE_DIR omp.h
+    HINTS /opt/homebrew/opt/libomp/include
+          /usr/local/opt/libomp/include
+  )
+  find_library(OMP_LIBRARY NAMES omp libomp
+    HINTS /opt/homebrew/opt/libomp/lib
+          /usr/local/opt/libomp/lib
+  )
+  if (OMP_INCLUDE_DIR AND OMP_LIBRARY)
+    add_compile_options(-Xpreprocessor -fopenmp -I${OMP_INCLUDE_DIR})
+    set(OPENMP_LIBS ${OMP_LIBRARY})
+  else()
+    message(FATAL_ERROR "OpenMP not found. Install with: brew install libomp")
+  endif()
 endif()
 
-find_package(GSL REQUIRED)
-find_package(Eigen3 3.4 REQUIRED NO_MODULE)
-find_package(yaml-cpp REQUIRED)
-find_package(Boost 1.67 REQUIRED CONFIG COMPONENTS iostreams)
-find_library(MPFR_LIB mpfr REQUIRED)
-find_library(GMP_LIB gmp REQUIRED)
-find_package(bpp-core3 1.0.0 REQUIRED)
+#------------------------------------------------------------------------------
+# 6) GSL, Eigen3, yaml-cpp, MPFR, GMP
+#------------------------------------------------------------------------------
+find_package(GSL       REQUIRED)
+find_package(Eigen3    3.4 REQUIRED NO_MODULE)
+find_package(yaml-cpp  REQUIRED)
 
-# mpreal via FetchContent
+find_library(MPFR_LIB mpfr REQUIRED)
+find_library(GMP_LIB  gmp  REQUIRED)
+
+#------------------------------------------------------------------------------
+# 7) Bio++ core3 (+ numeric3 & app3 via CONFIG export)
+#------------------------------------------------------------------------------
+find_package(bpp-core3 CONFIG REQUIRED)
+
+#------------------------------------------------------------------------------
+# 8) mpreal (header-only)
+#------------------------------------------------------------------------------
 include(FetchContent)
 FetchContent_Declare(
   mpreal
@@ -77,41 +115,39 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(mpreal)
 
-# Include directories
-include_directories(
+#------------------------------------------------------------------------------
+# 9) Collect include paths & libraries
+#------------------------------------------------------------------------------
+set(EXTRA_INCLUDES
   ${Boost_INCLUDE_DIRS}
-  ${Eigen3_INCLUDE_DIRS}
-  ${YAML_CPP_INCLUDE_DIR}
+  ${EIGEN3_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIRS}
+  ${GSL_INCLUDE_DIRS}
+  ${bpp-core3_INCLUDE_DIRS}
+  ${mpreal_SOURCE_DIR}
 )
 
-# Link libraries
-set(LIBS
-  ${Boost_LIBRARIES}
-  ${Eigen3_LIBRARIES}
-  ${YAML_CPP_LIBRARIES}
-  ${GSL_LIBRARIES}
+set(EXTRA_LIBS
+  Boost::iostreams
+  yaml-cpp
+  GSL::gsl
+  GSL::gslcblas
   ${MPFR_LIB}
   ${GMP_LIB}
+  ${OPENMP_LIBS}
+
+  # Force Bio++ libraries from your ~/.local install
+  ${CMAKE_INSTALL_PREFIX}/lib/libbpp-core3.dylib
 )
 
-# Source
+#------------------------------------------------------------------------------
+# 10) Build & install src/
+#------------------------------------------------------------------------------
 add_subdirectory(src)
 
-# Packaging
-set(CPACK_PACKAGE_NAME "moments++")
-set(CPACK_PACKAGE_VENDOR "Gustavo V. Barroso")
-set(CPACK_PACKAGE_VERSION "0.0.1")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Fast and accurate prediction of two-locus statistics")
-set(CPACK_SOURCE_GENERATOR "TGZ")
-set(CPACK_SOURCE_IGNORE_FILES
-  "/build/"
-  "/\\.git/"
-  "/\\.gitignore"
+include(GNUInstallDirs)
+install(
+  TARGETS momentspp twoLocusSim
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${PROJECT_NAME}-${CPACK_PACKAGE_VERSION}")
 include(CPack)
-
-# Custom target (guarded to avoid duplication)
-if(NOT TARGET dist)
-  add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-endif()
