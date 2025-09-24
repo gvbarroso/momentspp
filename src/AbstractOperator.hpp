@@ -148,6 +148,11 @@ public:
     return *matrices_.at(idx);
   }
 
+  const MatrixEngine& getTransitionMatrix() const
+  {
+    return *transition_;
+  }
+
   // extracts the raw MatrixVariant — empty if no transition set
   MatrixEngine::MatrixVariant getTransitionMatrixVariant() const
   {

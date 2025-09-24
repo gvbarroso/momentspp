@@ -48,7 +48,8 @@ cmake -S . -B "$BUILD_DIR" \
 # Step 3: Build with parallel jobs
 #------------------------------------------------------------------------------
 echo "🔨 Building project..."
-cmake --build "$BUILD_DIR" -- -j"$(nproc)"
+NUM_CORES=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+cmake --build "$BUILD_DIR" -- -j"$NUM_CORES"
 
 #------------------------------------------------------------------------------
 # Step 4: Install to user prefix

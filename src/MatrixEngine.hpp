@@ -254,22 +254,24 @@ public:
   }
 
   // prints type held by instance of MatrixVariant
-  std::string printMatrixType()
+  std::string printMatrixType() const
   {
     switch(matWrap_.index())
     {
      case 0: return "double";
      case 1: return "mpreal";
+     default: throw bpp::Exception("MatrixEngine::unexpected MatrixVariant index");
     }
   }
 
   // prints type held by instance of VectorVariant
-  std::string printMatrixType()
+  std::string printVectorType() const
   {
     switch(vecWrap_.index())
     {
      case 0: return "double";
      case 1: return "mpreal";
+     default: throw bpp::Exception("MatrixEngine::unexpected VectorVariant index");
     }
   }
 
@@ -280,27 +282,35 @@ private:
   void setMatrixFromEigen(MatrixEigenVariant newM)
   {
     MatrixVariant converted = std::visit(overloaded{
-      [](DoubleMatrixEigen const &Me) -> MatrixVariant {
+      [](DoubleMatrixEigen const &Me) -> MatrixVariant
+      {
         return MatrixVariant{ DoubleMatrixWrap(Me) };
       },
-      [](MPRealMatrixEigen const &Me) -> MatrixVariant {
+
+      [](MPRealMatrixEigen const &Me) -> MatrixVariant
+      {
         return MatrixVariant{ MPRealMatrixWrap(Me) };
       }
     }, std::move(newM));
 
     matWrap_ = std::move(converted);
-    std::visit(overloaded{
-      [&](auto const &M){ rows_ = M.rows(); cols_ = M.cols(); }
+    std::visit(overloaded{[&](auto const &M)
+    { rows_ = M.rows();
+          cols_ = M.cols();
+    }
     }, matWrap_);
   }
 
   void setVectorFromEigen(VectorEigenVariant newV)
   {
     VectorVariant converted = std::visit(overloaded{
-      [](DoubleVectorEigen const &ve) -> VectorVariant {
+      [](DoubleVectorEigen const &ve) -> VectorVariant
+      {
         return VectorVariant{ DoubleVectorWrap(ve) };
       },
-      [](MPRealVectorEigen const &ve) -> VectorVariant {
+
+      [](MPRealVectorEigen const &ve) -> VectorVariant
+      {
         return VectorVariant{ MPRealVectorWrap(ve) };
       }
     }, std::move(newV));
