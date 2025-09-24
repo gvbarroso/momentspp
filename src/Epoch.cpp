@@ -16,6 +16,8 @@
 #include <iomanip>
 #include <fstream>
 
+#include <cxxabi.h>
+
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/SparseLU>  // for double‐type LU
 #include <eigen3/Eigen/LU>
@@ -692,17 +694,37 @@ void Epoch::init_()
     if(!engine_)
       throw bpp::Exception("Epoch::init_() called with null engine_.");
 
+    auto demangle = [](const std::type_info& ti)
+    {
+      int status;
+      char* demangled = abi::__cxa_demangle(ti.name(), nullptr, nullptr, &status);
+      std::string result = (status == 0 && demangled) ? demangled : ti.name();
+      free(demangled);
+      return result;
+    };
+
     MatrixEngine::MatrixVariant accWrap = operators_.front()->getTransitionMatrixVariant();
 
-    operators_.front()->getParameters().printParameters(std::cout);
-    std::cout << operators_.front()->getTransitionMatrix().getMatrixType() << std::endl;
+    //operators_.front()->getParameters().printParameters(std::cout);
+    //std::cout << operators_.front()->getTransitionMatrix().getMatrixType() << std::endl;
 
     for(size_t i = 1; i < operators_.size(); ++i)
     {
       MatrixEngine::MatrixVariant nextWrap = operators_[i]->getTransitionMatrixVariant();
 
-      operators_[i]->getParameters().printParameters(std::cout);
-      std::cout << operators_[0]->getTransitionMatrix().getMatrixType() << std::endl;
+      std::cout << "accWrap index: " << accWrap.index() << "\n";
+      std::cout << "nextWrap index: " << nextWrap.index() << "\n";
+
+      std::visit([&](auto const& x) {
+        std::cout << "accWrap holds: " << demangle(typeid(x)) << "\n";
+      }, accWrap);
+
+      std::visit([&](auto const& x) {
+        std::cout << "nextWrap holds: " << demangle(typeid(x)) << "\n";
+      }, nextWrap);
+
+      //operators_[i]->getParameters().printParameters(std::cout);
+      //std::cout << operators_[0]->getTransitionMatrix().getMatrixType() << std::endl;
 
       visitSameType(accWrap, nextWrap, [&](auto& A, auto const& B)
       {
