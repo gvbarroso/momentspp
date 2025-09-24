@@ -712,8 +712,8 @@ void Epoch::init_()
     {
       MatrixEngine::MatrixVariant nextWrap = operators_[i]->getTransitionMatrixVariant();
 
-      std::cout << "accWrap index: " << accWrap.index() << "\n";
-      std::cout << "nextWrap index: " << nextWrap.index() << "\n";
+      std::cout << "accWrap type hash: " << typeid(x).hash_code() << "\n";
+      std::cout << "nextWrap type hash: " << typeid(y).hash_code() << "\n";
 
       std::visit([&](auto const& x) {
         std::cout << "accWrap holds: " << demangle(typeid(x)) << "\n";

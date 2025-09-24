@@ -92,6 +92,16 @@ public:
     return std::make_unique<MatrixEngine>(*this);
   }
 
+  MatrixVariant&& moveMatrixVariant()
+  {
+    return std::move(matWrap_);
+  }
+
+  MatrixVariant&& moveVectorVariant()
+  {
+    return std::move(vecWrap_);
+  }
+
   //----------------------------------------------------------------------
   // Accessors for wrapper variants (used by AbstractOperator)
   //----------------------------------------------------------------------

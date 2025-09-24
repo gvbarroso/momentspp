@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 18/09/2025
- * Last modified: 22/09/2025
+ * Last modified: 24/09/2025
  *
  * Helpers to make Eigen compile safely
  */
@@ -55,11 +55,14 @@ void visitSameType(V1 &a, V2 const &b, Fn&& fn)
 
   std::visit([&](auto &x, auto const &y)
   {
-    if constexpr(!std::is_same_v<decltype(x), decltype(y)>)
-      throw bpp::Exception("visitSameType: scalar-type mismatch");
+    using X = std::decay_t<decltype(x)>;
+    using Y = std::decay_t<decltype(y)>;
 
-    else
-      fn(x, y);
+   if constexpr(!std::is_same_v<X, Y>)
+     throw bpp::Exception("visitSameType: scalar-type mismatch");
+
+   else
+    fn(x, y);
   },a, b);
 }
 
