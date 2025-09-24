@@ -84,8 +84,7 @@ int main(int argc, char* argv[])
 
   Demes demes(options.getDemesFilePath());
 
-  std::cout << "Assembling Operators and Epoch objects...";
-  std::cout.flush();
+  std::cout << "Assembling Operators and Epoch objects...\n";
 
   size_t numEpochs = demes.getNumEpochs();
   std::vector<std::shared_ptr<Epoch>> epochs(0);
@@ -235,7 +234,7 @@ int main(int argc, char* argv[])
   else
     epochs.front()->getSslib().readStatsFromFile(options.getInitStatsFilePath()); // NOTE mind Order of (1-2p) factors
 
-  std::cout << "done.\n\nBuilding Model now.";
+  std::cout << "\nDone with Epochs.\n\nBuilding Model now.";
 
   try
   {

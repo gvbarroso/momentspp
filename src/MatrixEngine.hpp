@@ -253,6 +253,26 @@ public:
     });
   }
 
+  // prints type held by instance of MatrixVariant
+  std::string printMatrixType()
+  {
+    switch(matWrap_.index())
+    {
+     case 0: return "double";
+     case 1: return "mpreal";
+    }
+  }
+
+  // prints type held by instance of VectorVariant
+  std::string printMatrixType()
+  {
+    switch(vecWrap_.index())
+    {
+     case 0: return "double";
+     case 1: return "mpreal";
+    }
+  }
+
 private:
   //----------------------------------------------------------------------
   // Overwrite wrappers from raw Eigen variants (used by Epoch after solve)

@@ -60,6 +60,7 @@ public:
   {
     matrices_.clear();
     matrices_.reserve(other.matrices_.size());
+
     for(auto const& matPtr : other.matrices_)
       matrices_.emplace_back(matPtr ? matPtr->clone() : nullptr);
 

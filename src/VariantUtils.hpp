@@ -50,18 +50,17 @@ struct always_false : std::false_type
 template<class V1, class V2, class Fn>
 void visitSameType(V1 &a, V2 const &b, Fn&& fn)
 {
-  if (a.index() != b.index())
+  if(a.index() != b.index())
     throw bpp::Exception("visitSameType: variant-index mismatch");
 
-  std::visit(
-    [&](auto &x, auto const &y) {
-      if constexpr (!std::is_same_v<decltype(x), decltype(y)>)
-        throw bpp::Exception("visitSameType: scalar-type mismatch");
-      else
-        fn(x, y);
-    },
-    a, b
-  );
+  std::visit([&](auto &x, auto const &y)
+  {
+    if constexpr(!std::is_same_v<decltype(x), decltype(y)>)
+      throw bpp::Exception("visitSameType: scalar-type mismatch");
+
+    else
+      fn(x, y);
+  },a, b);
 }
 
 #endif // VARIANTUTILS_HPP

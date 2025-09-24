@@ -694,9 +694,15 @@ void Epoch::init_()
 
     MatrixEngine::MatrixVariant accWrap = operators_.front()->getTransitionMatrixVariant();
 
+    operators_.front()->printParameters(std::cout);
+    accWrap.printMatrixType();
+
     for(size_t i = 1; i < operators_.size(); ++i)
     {
       MatrixEngine::MatrixVariant nextWrap = operators_[i]->getTransitionMatrixVariant();
+
+      operators_[i]->printParameters(std::cout);
+      nextWrap.printMatrixType();
 
       visitSameType(accWrap, nextWrap, [&](auto& A, auto const& B)
       {
