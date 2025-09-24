@@ -151,7 +151,7 @@ public:
   MatrixEngine::MatrixVariant getTransitionMatrixVariant() const
   {
     if(!transition_)
-      return MatrixEngine::MatrixVariant{};
+      rthrow bpp::Exception("Operator::getTransitionMatrixVariant() called with null transition_!");
 
     return transition_->getMatrixVariant();
   }
@@ -160,7 +160,7 @@ public:
   MatrixEngine::MatrixEigenVariant getTransitionMatrixVariantEigen() const
   {
     if(!transition_)
-      return MatrixEngine::MatrixEigenVariant{};
+      throw bpp::Exception("Operator::getTransitionMatrixVariantEigen() called with null transition_!");
 
     return transition_->toEigenMatrixVariant();
   }
@@ -172,7 +172,7 @@ public:
   void scaleMatrix(double factor)
   {
     if(!transition_)
-      throw bpp::Exception("scaleMatrix: transition matrix is not set");
+      throw bpp::Exception("Operator::attempted to scale empty transition matrix!");
 
     transition_->scaleMatrix(factor);
   }
@@ -195,21 +195,22 @@ protected:
   virtual void assembleTransitionMatrix_()
   {
     if(matrices_.empty())
-    {
-      transition_.reset();
-      return;
-    }
+      throw bpp::Exception("Operator::attempted to assemble transition_ from empty matrices_!");
 
-    // clones first delta as the base
-    transition_ = matrices_[0]
-      ? matrices_[0]->clone()
-      : nullptr;
+    if(!matrices_[0])
+      throw bpp::Exception("Operator::matrices_[0] is null — cannot initialize transition_!");
 
-    // adds all others via your variant‐safe helper
+    auto expectedIndex = matrices_[0]->getMatrixVariant().index();
+    transition_ = matrices_[0]->clone();
+
+    // sums them together
     for(size_t i = 1; i < matrices_.size(); ++i)
     {
       if(!matrices_[i])
-        continue;
+        throw bpp::Exception("Operator::attempted to sum null matrix!");
+
+      if(matrices_[i]->getMatrixVariant().index() != expectedIndex)
+         throw bpp::Exception("Operator::scalar-type mismatch in transition matrix assembly!");
 
       transition_->addToMatrix(matrices_[i]->getMatrixVariant());
     }

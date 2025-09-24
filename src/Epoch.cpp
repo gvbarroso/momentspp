@@ -649,34 +649,33 @@ Epoch::integrateAdaptive(double dt,
                          double dtMin,
                          double dtMax) const
 {
-    if (dtMin <= 0.0 || dtMax <= 0.0 || dtMin > dtMax) // TODO improve condition checking
-        throw bpp::Exception("Epoch::integrateAdaptive: invalid dtMin/dtMax");
-    if (tol < 0.0)
-        throw bpp::Exception("Epoch::integrateAdaptive: tol must be >=0");
+    if(dtMin <= 0.0 || dtMax <= 0.0 || dtMin > dtMax) // TODO improve condition checking
+      throw bpp::Exception("Epoch::integrateAdaptive: invalid dtMin/dtMax");
+
+    if(tol < 0.0)
+      throw bpp::Exception("Epoch::integrateAdaptive: tol must be >=0");
 
     const auto& matVar = engine_->getMatrixVariant();
     const auto& vecVar = engine_->getVectorVariant();
     MatrixEngine::VectorVariant result;
 
-    visitSameType(matVar, vecVar, [&](auto const& M, auto const& V) {
-        using Scalar = typename std::decay_t<decltype(M)>::Scalar;
+    visitSameType(matVar, vecVar, [&](auto const& M, auto const& V)
+    {
+      using Scalar = typename std::decay_t<decltype(M)>::Scalar;
 
-        // Cast time args into Scalar
-        Scalar dtS    = static_cast<Scalar>(dt);
-        Scalar Ttot   = static_cast<Scalar>(totalTime);
-        Scalar tolS   = static_cast<Scalar>(tol);
-        Scalar dtMinS = static_cast<Scalar>(dtMin);
-        Scalar dtMaxS = static_cast<Scalar>(dtMax);
+      // Cast time args into Scalar
+      Scalar dtS = static_cast<Scalar>(dt);
+      Scalar Ttot = static_cast<Scalar>(totalTime);
+      Scalar tolS = static_cast<Scalar>(tol);
+      Scalar dtMinS = static_cast<Scalar>(dtMin);
+      Scalar dtMaxS = static_cast<Scalar>(dtMax);
 
-        if constexpr (std::is_same_v<Scalar, double>) {
-            result = integrateAdaptiveDoubleCN(
-                M, V, dt, totalTime, tol, dtMin, dtMax
-            );
-        } else {
-            result = integrateAdaptiveMpfrCN(
-                M, V, dtS, Ttot, tolS, dtMinS, dtMaxS
-            );
-        }
+      if constexpr (std::is_same_v<Scalar, double>)
+        result = integrateAdaptiveDoubleCN(M, V, dt, totalTime, tol, dtMin, dtMax);
+
+      else
+        result = integrateAdaptiveMpfrCN(M, V, dtS, Ttot, tolS, dtMinS, dtMaxS);
+
     });
 
     return result;
@@ -687,47 +686,27 @@ Epoch::integrateAdaptive(double dt,
 //------------------------------------------------------------------------------
 void Epoch::init_()
 {
-    // Preconditions
-    if (operators_.empty())
-        throw bpp::Exception("Epoch::init_() called with no operators.");
-    if (!engine_)
-        throw bpp::Exception("Epoch::init_() called with null engine_.");
+    if(operators_.empty())
+      throw bpp::Exception("Epoch::init_() called with no operators.");
 
-    //
-    // 1) Sum up all operator transition‐matrices directly
-    //    into the wrapper MatrixVariant
-    //
-    MatrixEngine::MatrixVariant accWrap =
-        operators_.front()->getTransitionMatrixVariant();
+    if(!engine_)
+      throw bpp::Exception("Epoch::init_() called with null engine_.");
 
-    for (size_t i = 1; i < operators_.size(); ++i)
+    MatrixEngine::MatrixVariant accWrap = operators_.front()->getTransitionMatrixVariant();
+
+    for(size_t i = 1; i < operators_.size(); ++i)
     {
-        MatrixEngine::MatrixVariant nextWrap =
-            operators_[i]->getTransitionMatrixVariant();
+      MatrixEngine::MatrixVariant nextWrap = operators_[i]->getTransitionMatrixVariant();
 
-        visitSameType(
-            accWrap,
-            nextWrap,
-            [&](auto& A, auto const& B)
-            {
-                // A and B are the same Matrix<T> type
-                A += B;
-            }
-        );
+      visitSameType(accWrap, nextWrap, [&](auto& A, auto const& B)
+      {
+        A += B;  // A and B are the same Matrix<T> type
+      });
     }
 
-    //
-    // 2) Commit the summed wrapper variant to the engine
-    //    and perform post‐processing
-    //
     engine_->setMatrix(std::move(accWrap));
     engine_->addIdentityInPlace();
     engine_->pruneInPlace();
     engine_->compressInPlace();
 }
-
-
-
-
-
 
