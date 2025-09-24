@@ -95,8 +95,15 @@ public:
   //----------------------------------------------------------------------
   // Accessors for wrapper variants (used by AbstractOperator)
   //----------------------------------------------------------------------
-  const MatrixVariant& getMatrixVariant() const { return matWrap_; }
-  const VectorVariant& getVectorVariant() const { return vecWrap_; }
+  const MatrixVariant& getMatrixVariant() const
+  {
+    return matWrap_;
+  }
+
+  const VectorVariant& getVectorVariant() const
+  {
+    return vecWrap_;
+  }
 
   //----------------------------------------------------------------------
   // Expose pure‐Eigen variants (used by Epoch::integrate, printTransitionMat)
@@ -104,7 +111,8 @@ public:
   MatrixEigenVariant toEigenMatrixVariant() const
   {
     MatrixEigenVariant out;
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleMatrixWrap const &W) { out = W.eigen(); },
       [&](MPRealMatrixWrap const &W) { out = W.eigen(); }
     }, matWrap_);
@@ -114,16 +122,23 @@ public:
   VectorEigenVariant toEigenVectorVariant() const
   {
     VectorEigenVariant out;
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleVectorWrap const &W) { out = W.eigen(); },
       [&](MPRealVectorWrap const &W) { out = W.eigen(); }
     }, vecWrap_);
     return out;
   }
 
-  void setVector(VectorVariant&& v) { vecWrap_ = std::move(v); }
+  void setVector(VectorVariant&& v)
+  {
+    vecWrap_ = std::move(v);
+  }
 
-  void setMatrix(MatrixVariant&& m) { matWrap_ = std::move(m); }
+  void setMatrix(MatrixVariant&& m)
+  {
+    matWrap_ = std::move(m);
+  }
 
   //std::unique_ptr<MatrixEngine> me = MatrixEngine::createEmpty<double>(size);
   //std::unique_ptr<MatrixEngine> me = MatrixEngine::createEmpty<mpfr::mpreal>(size)
@@ -144,7 +159,8 @@ public:
   //----------------------------------------------------------------------
   void addIdentityInPlace()
   {
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleMatrixWrap &W){ W.addIdentity(); },
       [&](MPRealMatrixWrap &W){ W.addIdentity(); }
     }, matWrap_);
@@ -152,7 +168,8 @@ public:
 
   void pruneInPlace()
   {
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleMatrixWrap &W){ W.prune(); },
       [&](MPRealMatrixWrap &W){ W.prune(); }
     }, matWrap_);
@@ -160,7 +177,8 @@ public:
 
   void compressInPlace()
   {
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleMatrixWrap &W){ W.compress(); },
       [&](MPRealMatrixWrap &W){ W.compress(); }
     }, matWrap_);
@@ -185,11 +203,13 @@ public:
 
   MatrixEngine& operator*=(double s)
   {
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleMatrixWrap &M){ M *= s; },
       [&](MPRealMatrixWrap &M){ M *= mpfr::mpreal(s); }
     }, matWrap_);
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleVectorWrap &v){ v *= s; },
       [&](MPRealVectorWrap &v){ v *= mpfr::mpreal(s); }
     }, vecWrap_);
@@ -212,7 +232,8 @@ public:
   {
     VectorVariant out;
     visitSameType(matWrap_, v,
-                  [&](auto const &M, auto const &vec){
+                  [&](auto const &M, auto const &vec)
+                  {
                     out = M * vec;
                   });
     return out;
@@ -222,7 +243,8 @@ public:
   VectorVariant solveSystem() const
   {
     VectorVariant sol;
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleMatrixWrap const &M){
         auto up = M.solve(std::get<DoubleVectorWrap>(vecWrap_));
         sol   = *up;
@@ -238,7 +260,8 @@ public:
   /// scale only the transition matrix (not the vector)
   void scaleMatrix(double s)
   {
-    std::visit(overloaded{
+    std::visit(overloaded
+    {
       [&](DoubleMatrixWrap &M){ M *= s; },
       [&](MPRealMatrixWrap &M){ M *= mpfr::mpreal(s); }
     }, matWrap_);
@@ -254,7 +277,7 @@ public:
   }
 
   // prints type held by instance of MatrixVariant
-  std::string printMatrixType() const
+  std::string getMatrixType() const
   {
     switch(matWrap_.index())
     {
@@ -265,7 +288,7 @@ public:
   }
 
   // prints type held by instance of VectorVariant
-  std::string printVectorType() const
+  std::string getVectorType() const
   {
     switch(vecWrap_.index())
     {
@@ -281,7 +304,8 @@ private:
   //----------------------------------------------------------------------
   void setMatrixFromEigen(MatrixEigenVariant newM)
   {
-    MatrixVariant converted = std::visit(overloaded{
+    MatrixVariant converted = std::visit(overloaded
+    {
       [](DoubleMatrixEigen const &Me) -> MatrixVariant
       {
         return MatrixVariant{ DoubleMatrixWrap(Me) };
@@ -295,8 +319,9 @@ private:
 
     matWrap_ = std::move(converted);
     std::visit(overloaded{[&](auto const &M)
-    { rows_ = M.rows();
-          cols_ = M.cols();
+    {
+      rows_ = M.rows();
+      cols_ = M.cols();
     }
     }, matWrap_);
   }
@@ -316,7 +341,8 @@ private:
     }, std::move(newV));
 
     vecWrap_ = std::move(converted);
-    int sz = std::visit(overloaded{
+    int sz = std::visit(overloaded
+    {
       [&](DoubleVectorWrap const &V){ return V.size(); },
       [&](MPRealVectorWrap const &V){ return V.size(); }
     }, vecWrap_);

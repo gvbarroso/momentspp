@@ -148,7 +148,7 @@ public:
     return *matrices_.at(idx);
   }
 
-  const MatrixEngine& getTransitionMatrix() const
+  const MatrixEngine& getTransitionMatrix() const // TODO change name to getTransitionEngine()
   {
     return *transition_;
   }
