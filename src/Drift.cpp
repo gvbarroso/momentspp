@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -729,6 +729,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   }
   }, transition_->getMatrixVariant());
 
+  std::cout << "Drift -- assembled individual matrices.\n"
   assembleTransitionMatrix_();
 }
 

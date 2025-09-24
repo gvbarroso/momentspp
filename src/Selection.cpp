@@ -693,6 +693,7 @@ void Selection::setUpMatrices_(const SumStatsLibrary& sslib)
     } // overloaded
   }, transition_->getMatrixVariant());
 
+  std::cout << "Selection -- assembled individual matrices.\n"
   assembleTransitionMatrix_();
 }
 

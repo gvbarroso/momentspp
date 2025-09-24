@@ -78,6 +78,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
   } // overloaded
   }, transition_->getMatrixVariant());
 
+  std::cout << "Mutation -- assembled individual matrices.\n"
   assembleTransitionMatrix_();
 }
 
