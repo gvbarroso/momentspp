@@ -729,7 +729,7 @@ void Drift::setUpMatrices_(const SumStatsLibrary& sslib)
   }
   }, transition_->getMatrixVariant());
 
-  std::cout << "Drift -- assembled individual matrices.\n"
+  std::cout << "Drift -- assembled individual matrices.\n";
   assembleTransitionMatrix_();
 }
 

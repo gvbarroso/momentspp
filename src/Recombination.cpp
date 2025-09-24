@@ -67,7 +67,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
     } // overloaded
   }, transition_->getMatrixVariant());
 
-  std::cout << "Recombination -- assembled individual matrices.\n"
+  std::cout << "Recombination -- assembled individual matrices.\n";
   assembleTransitionMatrix_();
 }
 

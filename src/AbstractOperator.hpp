@@ -151,7 +151,7 @@ public:
   MatrixEngine::MatrixVariant getTransitionMatrixVariant() const
   {
     if(!transition_)
-      rthrow bpp::Exception("Operator::getTransitionMatrixVariant() called with null transition_!");
+      throw bpp::Exception("Operator::getTransitionMatrixVariant() called with null transition_!");
 
     return transition_->getMatrixVariant();
   }
