@@ -1,13 +1,21 @@
+/*
+ * Authors: Gustavo V. Barroso
+ * Created: 08/09/2025
+ * Last modified: 24/09/2025
+ *
+ */
+
+
 #ifndef _MATRIXENGINE_HPP_
 #define _MATRIXENGINE_HPP_
 
-#include "VariantUtils.hpp"   // brings in overloaded<…> and visitSameType
-#include "Matrix.hpp"         // your Matrix<Scalar> wrapper
-#include "Vector.hpp"         // your Vector<Scalar> wrapper
+#include "VariantUtils.hpp"
+#include "Matrix.hpp" //  Matrix<Scalar> wrapper
+#include "Vector.hpp" // Vector<Scalar> wrapper
 
 #include <variant>
 #include <memory>
-#include <Bpp/Exceptions.h>   // for bpp::Exception
+#include <Bpp/Exceptions.h>
 
 class MatrixEngine
 {
@@ -31,46 +39,52 @@ public:
   //----------------------------------------------------------------------
   // Variants
   //----------------------------------------------------------------------
-  using MatrixVariant      = std::variant<DoubleMatrixWrap, MPRealMatrixWrap>;
-  using VectorVariant      = std::variant<DoubleVectorWrap, MPRealVectorWrap>;
+  using MatrixVariant = std::variant<DoubleMatrixWrap, MPRealMatrixWrap>;
+  using VectorVariant = std::variant<DoubleVectorWrap, MPRealVectorWrap>;
   using MatrixEigenVariant = std::variant<DoubleMatrixEigen, MPRealMatrixEigen>;
   using VectorEigenVariant = std::variant<DoubleVectorEigen, MPRealVectorEigen>;
 
 private:
   MatrixVariant matWrap_;
   VectorVariant vecWrap_;
-  int           rows_{0}, cols_{0};
+
+  int rows_{0};
+  int cols_{0};
 
 public:
-  //----------------------------------------------------------------------
-  // Constructors & clone
-  //----------------------------------------------------------------------
-  explicit
-  MatrixEngine(bool useMPReal = false)
+  explicit MatrixEngine(bool useMPReal = false)
   {
-    if (useMPReal)
+    if(useMPReal)
       matWrap_ = MPRealMatrixWrap{};
+
     else
       matWrap_ = DoubleMatrixWrap{};
 
-    std::visit(overloaded{
-      [&](auto const &M){ rows_ = M.rows(); cols_ = M.cols(); }
+    std::visit(overloaded{ [&](auto const &M)
+    {
+      rows_ = M.rows();
+      cols_ = M.cols();
+    }
     }, matWrap_);
   }
 
-  MatrixEngine(const MatrixVariant &Mwrap,
-               const VectorVariant &Vwrap = VectorVariant{})
-    : matWrap_(Mwrap), vecWrap_(Vwrap)
+  MatrixEngine(const MatrixVariant& Mwrap, const VectorVariant& Vwrap = VectorVariant{}):
+  matWrap_(Mwrap),
+  vecWrap_(Vwrap)
   {
-    std::visit(overloaded{
-      [&](auto const &M){ rows_ = M.rows(); cols_ = M.cols(); }
+    std::visit(overloaded{[&](auto const &M)
+    {
+      rows_ = M.rows();
+      cols_ = M.cols();
+    }
     }, matWrap_);
   }
 
-  MatrixEngine(const MatrixEngine&)            = default;
-  MatrixEngine(MatrixEngine&&) noexcept        = default;
+  MatrixEngine(const MatrixEngine&) = default;
+  MatrixEngine(MatrixEngine&&) noexcept = default;
   MatrixEngine& operator=(const MatrixEngine&) = default;
   MatrixEngine& operator=(MatrixEngine&&) noexcept = default;
+
   ~MatrixEngine() = default;
 
   std::unique_ptr<MatrixEngine> clone() const
@@ -110,6 +124,20 @@ public:
   void setVector(VectorVariant&& v) { vecWrap_ = std::move(v); }
 
   void setMatrix(MatrixVariant&& m) { matWrap_ = std::move(m); }
+
+  //std::unique_ptr<MatrixEngine> me = MatrixEngine::createEmpty<double>(size);
+  //std::unique_ptr<MatrixEngine> me = MatrixEngine::createEmpty<mpfr::mpreal>(size)
+  template <typename Scalar>
+  static std::unique_ptr<MatrixEngine> createEmpty(size_t dim) // only square matrices allowed
+  {
+    auto matrix = std::make_unique<Matrix<Scalar>>(dim, dim);
+    auto vector = std::make_unique<Vector<Scalar>>(dim);
+
+    MatrixVariant mv(std::move(*matrix));
+    VectorVariant vv(std::move(*vector));
+
+    return std::make_unique<MatrixEngine>(mv, vv);
+  }
 
   //----------------------------------------------------------------------
   // Transition‐matrix postprocessing (used by assembleTransitionMatrix_)
@@ -207,16 +235,6 @@ public:
     return sol;
   }
 
-  //====================================================================
-  // Legacy compatibility (so AbstractOperator can call old API)
-  //====================================================================
-
-  /// old name for getMatrixVariant()
-  const MatrixVariant& matrixVariant() const
-  {
-    return getMatrixVariant();
-  }
-
   /// scale only the transition matrix (not the vector)
   void scaleMatrix(double s)
   {
@@ -229,8 +247,10 @@ public:
   /// in‐place add another raw MatrixVariant
   void addToMatrix(const MatrixVariant &other)
   {
-    visitSameType(matWrap_, other,
-                  [&](auto &M, auto const &N){ M += N; });
+    visitSameType(matWrap_, other, [&](auto &M, auto const &N)
+    {
+      M += N;
+    });
   }
 
 private:

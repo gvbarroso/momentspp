@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -31,7 +31,9 @@ public:
   using Scalar = T;
   using EigenVector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
-  Vector() = default;
+  Vector():
+  vec_()
+  { }
 
   explicit Vector(size_t size):
   vec_(size)

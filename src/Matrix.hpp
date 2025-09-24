@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -25,6 +25,7 @@
 template <typename T>
 class Matrix
 {
+
 private:
   Eigen::SparseMatrix<T> mat_;
 
@@ -32,7 +33,9 @@ public:
   using Scalar = T;
   using EigenSparse = Eigen::SparseMatrix<T>;
 
-  Matrix() = default;
+  Matrix():
+  mat_()
+  { }
 
   Matrix(size_t rows, size_t cols):
   mat_(rows, cols)
@@ -303,7 +306,7 @@ public:
   // Add identity: M ← I + M
   void addIdentity()
   {
-    for (size_t i = 0; i < rows(); ++i)
+    for(size_t i = 0; i < rows(); ++i)
       mat_.coeffRef(i, i) += T(1);
     makeCompressed();
   }

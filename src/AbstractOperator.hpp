@@ -20,33 +20,20 @@
 #include <memory>
 #include <string>
 
-/*
-namespace bpp {
-  class ParameterList;
-  class Exception;
-}
-*/
 
-/// AbstractOperator drives one “step” of your pipeline by
-/// building per-population (or per-pair) delta-matrices, then
-/// assembling them into a single transition matrix.
 class AbstractOperator : public bpp::AbstractParameterAliasable
 {
 protected:
-  // One MatrixEngine per population or population-pair
-  std::vector<std::unique_ptr<MatrixEngine>> matrices_;
-
-  // Final sum of all `matrices_` after scaling by current params
-  std::unique_ptr<MatrixEngine> transition_;
-
-  // Track last parameters so updateMatrices_() knows when to rebuild
-  bpp::ParameterList prevParams_;
-
-  // Which populations this operator acts on
-  std::vector<size_t> popIndices_;
+  // flexible vector: one matrix per population (Drift, Mutation, Recombination and Selection) or pair thereof (Migration, Admixture)
+  // the overal strategy is that matrices_ are built with coefficients only, and assigned indices that depend on the number of populations
+  // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into transition_
+  // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)
+  std::vector<std::unique_ptr<MatrixEngine>> matrices_; // "delta" matrix(ces)
+  std::unique_ptr<MatrixEngine> transition_; // "transition" matrix in Sparse format (sum of all `matrices_` after scaling by current params_
+  bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
+  std::vector<size_t> popIndices_; // which populations *this operator acts on
 
 public:
-  // Default ctor: empty operator
   AbstractOperator() noexcept:
   bpp::AbstractParameterAliasable(""),
   matrices_(),
@@ -55,16 +42,17 @@ public:
   popIndices_()
   { }
 
-  // Main ctor: specify which populations to touch
-  explicit AbstractOperator(const std::vector<size_t>& popIndices) noexcept:
+  explicit AbstractOperator(const std::vector<size_t>& popIndices, bool highPrecision) noexcept:
   bpp::AbstractParameterAliasable(""),
   matrices_(),
   transition_(nullptr),
   prevParams_(),
   popIndices_(popIndices)
-  { }
+  {
+    initializeScalarType_(highPrecision);
+  }
 
-  // Deep-copy: clone each MatrixEngine
+  // Deep-copy: clones each MatrixEngine
   AbstractOperator(const AbstractOperator& other):
   bpp::AbstractParameterAliasable(""),
   prevParams_(other.prevParams_),
@@ -98,14 +86,13 @@ public:
     return *this;
   }
 
-  // Named swap for strong exception safety
+  // named swap for strong exception safety
   void swap(AbstractOperator& other) noexcept
   {
-    using std::swap;
-    swap(matrices_,    other.matrices_);
-    swap(transition_,  other.transition_);
-    swap(prevParams_,  other.prevParams_);
-    swap(popIndices_,  other.popIndices_);
+    std::swap(matrices_, other.matrices_);
+    std::swap(transition_, other.transition_);
+    std::swap(prevParams_, other.prevParams_);
+    std::swap(popIndices_, other.popIndices_);
     // base class swap is not needed
   }
 
@@ -114,10 +101,9 @@ public:
     a.swap(b);
   }
 
-  // Polymorphic clone
+  // polymorphic clone
   AbstractOperator* clone() const override = 0;
 
-  // Convenience wrapper
   std::unique_ptr<AbstractOperator> cloneOperator() const
   {
     return std::unique_ptr<AbstractOperator>(clone());
@@ -161,16 +147,16 @@ public:
     return *matrices_.at(idx);
   }
 
-  // Extract the raw MatrixVariant — empty if no transition set
+  // extracts the raw MatrixVariant — empty if no transition set
   MatrixEngine::MatrixVariant getTransitionMatrixVariant() const
   {
     if(!transition_)
       return MatrixEngine::MatrixVariant{};
 
-    return transition_->matrixVariant();
+    return transition_->getMatrixVariant();
   }
 
-  // Extract the Eigen‐view variant (dense/sparse) — empty if no transition
+  // extracts the Eigen‐view variant (dense/sparse) — empty if no transition
   MatrixEngine::MatrixEigenVariant getTransitionMatrixVariantEigen() const
   {
     if(!transition_)
@@ -179,10 +165,10 @@ public:
     return transition_->toEigenMatrixVariant();
   }
 
-  // Debug‐print the “delta log‐density” matrix to file
+  // mostly for debugging
   virtual void printDeltaLDMat(const std::string& fileName);
 
-  // Uniformly scale the assembled transition
+  // scales a matrix of coefficients (eg by parameter value)
   void scaleMatrix(double factor)
   {
     if(!transition_)
@@ -192,13 +178,20 @@ public:
   }
 
 protected:
-  // 1) Build raw delta‐matrices (one per pop or pop‐pair)
+  // so that setUpMatrices_() knows which Scalar type to use
+  void initializeScalarType_(bool highPrecision)
+  {
+    if(highPrecision)
+      transition_ = MatrixEngine::createEmpty<mpfr::mpreal>(1);
+
+    else
+      transition_ = MatrixEngine::createEmpty<double>(1);
+  }
+
   virtual void setUpMatrices_(const SumStatsLibrary& sslib) = 0;
 
-  // 2) Re-scale them by current parameters
   virtual void updateMatrices_() = 0;
 
-  // 3) Sum them into `transition_`; default implementation provided here
   virtual void assembleTransitionMatrix_()
   {
     if(matrices_.empty())
@@ -207,18 +200,18 @@ protected:
       return;
     }
 
-    // Clone first delta as the base
+    // clones first delta as the base
     transition_ = matrices_[0]
       ? matrices_[0]->clone()
       : nullptr;
 
-    // Add all others via your variant‐safe helper
+    // adds all others via your variant‐safe helper
     for(size_t i = 1; i < matrices_.size(); ++i)
     {
       if(!matrices_[i])
         continue;
 
-      transition_->addToMatrix(matrices_[i]->matrixVariant());
+      transition_->addToMatrix(matrices_[i]->getMatrixVariant());
     }
   }
 

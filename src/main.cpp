@@ -45,8 +45,7 @@ int main(int argc, char* argv[])
   std::cout << "******************************************************************" << std::endl;
 
   std::cout << "\nCompiled on: " << __DATE__ << std::endl;
-  std::cout << "Compiled at: " << __TIME__ << std::endl
-            << std::endl;
+  std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
 
   /*
    * TODO homogenous/in-homogenous system (remove I moment?)
@@ -75,10 +74,11 @@ int main(int argc, char* argv[])
 
   OptionsContainer options(params);
 
-  if(options.highPrecision())
+  if(options.highPrecision()) // if more than 16-digit precision (double)
     mpfr::mpreal::set_default_prec(mpfr::digits2bits(options.getDigits()));
 
   std::cout << "\nmoments++ is using " << options.getNumThreads() << " threads.\n";
+
   Eigen::setNbThreads(options.getNumThreads());
   omp_set_num_threads(options.getNumThreads());
 
@@ -131,7 +131,7 @@ int main(int argc, char* argv[])
     {
       /*if(!demes.getPulse(i).isZero(0))
       {
-        operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib));
+        operators.push_back(std::make_shared<Admixture>(demes.getPulse(i), sslib, highPrec));
         //operators.back()->printTransitionLDMat(options.getLabel() + "_" + id + "_admix.csv",
       sslib);
       }
@@ -155,15 +155,16 @@ int main(int argc, char* argv[])
         for(size_t j = 0; j < demes.getPopsVec()[i].size(); ++j)
           drift.emplace_back(1. / (2. * demes.getPopsVec()[i][j]->getSize()));
 
-        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeffs(i), icSel, sslib);
-        std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRecs(i), icRec, sslib);
-        std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getLeftFactor(), demes.getMus(i), ic, sslib);
-        std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib);
+        bool highPrec = options.highPrecision(); // is high precision?
+        std::shared_ptr<Selection> selOp = std::make_shared<Selection>(demes.getSelCoeffs(i), icSel, sslib, highPrec);
+        std::shared_ptr<Recombination> recOp = std::make_shared<Recombination>(demes.getRecs(i), icRec, sslib, highPrec);
+        std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getLeftFactor(), demes.getMus(i), ic, sslib, highPrec);
+        std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib, highPrec);
 
         /*// only *allow* model to include mig params in epochs where the demes model has non-zero
         mig if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
-          operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib));
+          operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib, highPrec));
           //operators.back()->printDeltaLDMat(options.getLabel() + "_" + id + "_mig.csv");
         }*/
 

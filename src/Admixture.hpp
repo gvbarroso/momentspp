@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/04/2023
- * Last modified: 04/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -16,25 +16,25 @@ class Admixture : public AbstractOperator
 {
 
 private:
-  Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic> littleAdmixMat_; // 2 x 2
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> littleAdmixMat_; // 2 x 2
 
 public:
-  Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib)
-    : AbstractOperator(sslib.getPopIndices()), littleAdmixMat_()
+  Admixture(const bpp::ParameterList admixParams, const SumStatsLibrary& sslib, bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision),
+  littleAdmixMat_()
   {
     includeParameters_(admixParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);
   }
 
-  Admixture(const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& admixMat,
-            const SumStatsLibrary& sslib)
-    : AbstractOperator(sslib.getPopIndices()), littleAdmixMat_(admixMat)
+  Admixture(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& admixMat, const SumStatsLibrary& sslib, bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision),
+  littleAdmixMat_(admixMat)
   {
-    // unlike model parameters in other operators, f->[0, 1] (ie, no "single event per generation"
-    // assumption)
-    std::shared_ptr<bpp::IntervalConstraint> ic =
-        std::make_shared<bpp::IntervalConstraint>(0., 1., true, true);
+    // unlike model parameters in other operators, f->[0, 1] (ie, no "single event per generation" assumption)
+    std::shared_ptr<bpp::IntervalConstraint> ic = std::make_shared<bpp::IntervalConstraint>(0., 1., true, true);
+
     // for each pair of populations modeled in the epoch to which *this operator belongs
     for(size_t i = 0; i < popIndices_.size(); ++i)
     {
@@ -46,10 +46,7 @@ public:
 
         if(id != jd && littleAdmixMat_(i, j) > 0.)
         {
-          addParameter_(new bpp::Parameter("a_" + bpp::TextTools::toString(id) + "_" +
-                                               bpp::TextTools::toString(jd),
-                                           littleAdmixMat_(i, j),
-                                           ic));
+          addParameter_(new bpp::Parameter("a_" + bpp::TextTools::toString(id) + "_" + bpp::TextTools::toString(jd), littleAdmixMat_(i, j), ic));
           break; // we don't include g (a.k.a. 1-f) as a model parameter
         }
       }
@@ -64,7 +61,7 @@ public:
     return new Admixture(*this);
   }
 
-  const Eigen::Matrix<long double, Eigen::Dynamic, Eigen::Dynamic>& getLittleAdmixMat()
+  const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& getLittleAdmixMat()
   {
     return littleAdmixMat_;
   }

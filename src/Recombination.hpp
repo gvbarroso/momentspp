@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -14,16 +14,16 @@ class Recombination : public AbstractOperator
 {
 
 public:
-  Recombination(const bpp::ParameterList recParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices())
+  Recombination(const bpp::ParameterList recParams, const SumStatsLibrary& sslib, bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision)
   {
     includeParameters_(recParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);
   }
 
-  Recombination(const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices())
+  Recombination(const std::vector<double>& initVals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib, bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision)
   {
     // for each population modeled in the epoch *this operator belongs to, add r parameter
     for(size_t i = 0; i < popIndices_.size(); ++i)

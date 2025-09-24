@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -19,8 +19,9 @@ private:
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> littleMigMat_; // 2 x 2
 
 public:
-  Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices()), littleMigMat_()
+  Migration(const bpp::ParameterList migParams, const SumStatsLibrary& sslib, bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision),
+  littleMigMat_()
   {
     includeParameters_(migParams);
     prevParams_.addParameters(getParameters());
@@ -30,8 +31,10 @@ public:
 
   Migration(const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& migMat,
             std::shared_ptr<bpp::IntervalConstraint> ic,
-            const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices()), littleMigMat_(migMat)
+            const SumStatsLibrary& sslib,
+            bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision),
+  littleMigMat_(migMat)
   {
     // for each pair of populations modeled in the epoch to which *this operator belongs
     for(size_t i = 0; i < popIndices_.size(); ++i)

@@ -88,16 +88,20 @@ MatrixEngine::VectorVariant SumStatsLibrary::fetchYvec(bool highPrecision) const
   if(highPrecision)
   {
     Vector<mpfr::mpreal> y(moments_.size());
+
     for(size_t i = 0; i < moments_.size(); ++i)
       y.set(i, mpfr::mpreal(moments_[i]->getValue()));
+
     return MatrixEngine::VectorVariant{std::move(y)};
   }
 
   else
   {
     Vector<double> y(moments_.size());
+
     for(size_t i = 0; i < moments_.size(); ++i)
       y.set(i, moments_[i]->getValue());
+
     return MatrixEngine::VectorVariant{std::move(y)};
   }
 }
@@ -161,8 +165,7 @@ void SumStatsLibrary::initMoments_(bool compress)
     std::string nameD = "D_" + asString(*itI); // naked signed D
     moments_.emplace_back(std::make_shared<Moment>(nameD, 0.));
 
-    for(size_t i = 1; i < (factorOrder_ + 3);
-        ++i) // NOTE D stats include two factors of (1-2p) more than other stats
+    for(size_t i = 1; i < (factorOrder_ + 3); ++i) // NOTE D stats include two factors of (1-2p) more than other stats
     {
       std::vector<size_t> factorIds(i);
 
@@ -333,6 +336,7 @@ std::string SumStatsLibrary::assembleName_(const std::string& prefix,
                                            const std::vector<size_t>& factorIds) const
 {
   std::string name = prefix;
+
   for(size_t i = 0; i < popIds.size(); ++i)
     name = name + "_" + asString(popIds[i]);
 
@@ -354,8 +358,7 @@ void SumStatsLibrary::cleanBasis_()
 {
   assert(moments_.size() != 0);
 
-  // determines the ascending lexicographical order of stats in the rows/cols of matrices inside
-  // AbstractOperators
+  // determines the ascending lexicographical order of stats in the rows/cols of matrices inside AbstractOperators
   std::sort(std::begin(moments_), std::end(moments_), compareMoments_);
 
   // deletes duplicates introduced by clumsy creation of moments
@@ -415,8 +418,7 @@ void SumStatsLibrary::aliasMoments_() // selection acts on the left locus by des
       pops.emplace_back(moments_[i]->getPopIndices()[1]);
       pops.emplace_back(moments_[i]->getPopIndices()[0]);
 
-      auto candidate =
-          getMoment(assembleName_(moments_[i]->getPrefix(), pops, moments_[i]->getFactorIndices()));
+      auto candidate = getMoment(assembleName_(moments_[i]->getPrefix(), pops, moments_[i]->getFactorIndices()));
 
       if(pops[0] != pops[1])
         moments_[i]->insertAlias(candidate);

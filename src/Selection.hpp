@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 22/08/2022
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -15,16 +15,16 @@ class Selection : public AbstractOperator
 {
 
 public:
-  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices())
+  Selection(const bpp::ParameterList selParams, const SumStatsLibrary& sslib, bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision)
   {
     includeParameters_(selParams);
     prevParams_.addParameters(getParameters()); // inits list of "previous" parameters
     setUpMatrices_(sslib);
   }
 
-  Selection(const std::vector<double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib):
-  AbstractOperator(sslib.getPopIndices())
+  Selection(const std::vector<double>& vals, std::shared_ptr<bpp::IntervalConstraint> ic, const SumStatsLibrary& sslib, bool highPrecision):
+  AbstractOperator(sslib.getPopIndices(), highPrecision)
   {
     // for each population modeled in the epoch *this operator belongs to, add s parameter
     for(size_t i = 0; i < popIndices_.size(); ++i)
