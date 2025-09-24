@@ -58,11 +58,15 @@ void visitSameType(V1 &a, V2 const &b, Fn&& fn)
     using X = std::decay_t<decltype(x)>;
     using Y = std::decay_t<decltype(y)>;
 
+   // NOTE:
+   // if constexpr(!std::is_same_v<decltype(x), decltype(y)>)
+   // throws because it considers const, volatile and reference qualifiers (too restrictive)
    if constexpr(!std::is_same_v<X, Y>)
      throw bpp::Exception("visitSameType: scalar-type mismatch");
 
    else
     fn(x, y);
+
   },a, b);
 }
 

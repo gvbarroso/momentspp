@@ -97,7 +97,7 @@ public:
     return std::move(matWrap_);
   }
 
-  MatrixVariant&& moveVectorVariant()
+  VectorVariant&& moveVectorVariant()
   {
     return std::move(vecWrap_);
   }
