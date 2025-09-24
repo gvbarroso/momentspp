@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 22/Sep/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 24/Sep/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -51,6 +51,7 @@ int main(int argc, char* argv[])
   /*
    * TODO homogenous/in-homogenous system (remove I moment?)
    * TODO add method to scale matrices by 2Nanc
+   *
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
    * 2. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing
    * corresponding row and column:
@@ -62,11 +63,9 @@ int main(int argc, char* argv[])
     std::cout << "Usage:\n";
     std::cout << "momentspp param=opt.bpp\n\n";
 
-    std::cout
-        << "\nThe github repository contains instructions on how to write the options file:\n";
-    std::cout << "https://github.com/gvbarroso/momentspp/tree/main/doc" << std::endl
-              << std::endl;
-    std::cout << "\nIf you have any doubts, please email gvbarroso@gmail.com " << std::endl;
+    std::cout << "\nThe github repository contains instructions on how to write the options file:\n";
+    std::cout << "https://github.com/gvbarroso/momentspp/tree/main/doc\n\n";
+    std::cout << "\nIf you have any doubts, please email gvbarroso@gmail.com\n";
     return (0);
   }
 
@@ -92,8 +91,7 @@ int main(int argc, char* argv[])
   std::vector<std::shared_ptr<Epoch>> epochs(0);
   epochs.reserve(numEpochs);
 
-  std::vector<size_t> factorOrder =
-      options.getFactorOrder(); // one value per epoch to avoid underflow e.g. after a bottleneck
+  std::vector<size_t> factorOrder = options.getFactorOrder(); // one value per epoch to avoid underflow e.g. after a bottleneck NOTE still?
   if(factorOrder.size() == 1)
   {
     for(size_t i = 1; i < numEpochs; ++i)
@@ -174,7 +172,7 @@ int main(int argc, char* argv[])
         operators.push_back(mutOp);
         operators.push_back(driftOp);
 
-        if(options.verbose())
+        if(options.verbose()) // logs "delta" matrices for each operator
         {
           for(size_t j = 0; j < operators.size(); ++j)
             operators[j]->printDeltaLDMat(options.getLabel() + "_" + id + "_O_" +
@@ -182,8 +180,7 @@ int main(int argc, char* argv[])
                                           bpp::TextTools::toString(j) + ".csv");
         }
 
-        // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by
-        // incrementing start
+        // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
         if(epochs.size() > 1 && epochs.back()->duration() == 1)
           ++start;
       }
@@ -195,22 +192,32 @@ int main(int argc, char* argv[])
     // time flows from left to right, with epoch[0] (epoch.front()) => most ancient epoch
     epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, demes.getPopsVec()[i], operators));
 
-    if(options.verbose())
+    if(options.verbose()) // logs transition matrices and steady-states for each epoch
     {
       epochs.back()->printRecursions(std::cout);
       epochs.back()->printTransitionMat(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_transitions.csv");
       epochs.back()->printConditionNumber();
 
-      epochs.back()->computePseudoSteadyStateDiscrete();
-      std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" +
-                           bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
-      epochs.back()->printMoments(pseudo);
-      pseudo.close();
-
       epochs.back()->computeEigenSteadyState();
       std::ofstream eigen(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_eigen_steady-state.txt");
       epochs.back()->printMoments(eigen);
       eigen.close();
+
+      if(options.continuousTime())
+      {
+        epochs.back()->computePseudoSteadyStateContinuous();
+        std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
+        epochs.back()->printMoments(pseudo);
+        pseudo.close();
+      }
+
+      else
+      {
+        epochs.back()->computePseudoSteadyStateDiscrete();
+        std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
+        epochs.back()->printMoments(pseudo);
+        pseudo.close();
+      }
     }
   } // ends loop over epochs
 

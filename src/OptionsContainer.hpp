@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -36,7 +36,7 @@ private:
   bool verbose_;
   bool continuousTime_; // integration of expected sum. stats. (see Epoch and Model classes)
 
-  size_t digits_; // if > 0 (DEFAULT), uses mpfr::mpreal, else uses double throughout the program execution
+  size_t digits_; // if > 16 (DEFAULT), uses mpfr::mpreal, else uses double throughout the program execution
   size_t numThreads_;
   size_t timeSteps_; // to print intermediate values for Hl_*_* and Hr_*_* (see interval arg in Epoch::printMomentsIntermediate())
   std::vector<size_t> factorOrder_; // how many (1-2p) factors to include (one value per Epoch; if only one value is provided, it will be used for every Epoch)
@@ -69,10 +69,13 @@ public:
   dt_(bpp::ApplicationTools::getDoubleParameter("dt", options, 1e-3, "", true, 4)),
   totalTimeIntegration_(bpp::ApplicationTools::getDoubleParameter("time_integration", options, 1., "", 0, 4)),
   toleranceIntegration_(bpp::ApplicationTools::getDoubleParameter("tolerance_integration", options, 1e-6, "", 0, 4)),
-  momNames_(bpp::ApplicationTools::getVectorParameter<std::string>("moms_intermediate", options, ',', "Hl_0_0,Hr_0_0", "", true, 0)) // NOTE check passing default values
+  momNames_(bpp::ApplicationTools::getVectorParameter<std::string>("moms_intermediate", options, ',', "Hl_0_0,Hr_0_0", "", true, 4)) // NOTE check passing default values
   {
     if(label_ == "moments++")
       label_ = demesFilePath_.substr(0, demesFilePath_.find(".yaml")); // convenience
+
+    if(digits_ < 16)
+      std::cout << "WARNING: specified number of precision digits < 16. Will use double precision instead.\n\n";
   }
 
 public:

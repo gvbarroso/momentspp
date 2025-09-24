@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -45,8 +45,7 @@ private:
   MatrixEngine::VectorVariant expected_;
   double compLogLikelihood_;
 
-  // for continuous-time integration
-  // (members to make computeExpectedSumStats() work smoothly within fireParameterChanged)
+  // for continuous-time integration (members to make computeExpectedSumStats() work smoothly within fireParameterChanged)
   bool continuousTime_;
   double dt_;
   double totalTime_;
@@ -130,9 +129,9 @@ public:
     return new Model(*this);
   }
 
-  void fireParameterChanged(const bpp::ParameterList& params);
+  void fireParameterChanged(const bpp::ParameterList& params) override;
 
-  void setParameters(const bpp::ParameterList& params)
+  void setParameters(const bpp::ParameterList& params) override
   {
     AbstractParameterAliasable::setParametersValues(params);
   }

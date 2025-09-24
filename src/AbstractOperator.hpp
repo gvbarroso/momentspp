@@ -1,10 +1,14 @@
+/*
+ * Authors: Gustavo V. Barroso
+ * Created: 09/08/2022
+ * Last modified: 24/09/2025
+ *
+ */
+
 #ifndef _OPERATOR_H_
 #define _OPERATOR_H_
 
-// ==== AbstractOperator.hpp ====
-#pragma once
-
-#include "VariantUtils.hpp"     // visitSameType + overloaded
+#include "VariantUtils.hpp"
 #include "MatrixEngine.hpp"
 #include "SumStatsLibrary.hpp"
 #include "Log.hpp"
@@ -16,10 +20,12 @@
 #include <memory>
 #include <string>
 
+/*
 namespace bpp {
   class ParameterList;
   class Exception;
 }
+*/
 
 /// AbstractOperator drives one “step” of your pipeline by
 /// building per-population (or per-pair) delta-matrices, then
@@ -61,9 +67,10 @@ public:
   // Deep-copy: clone each MatrixEngine
   AbstractOperator(const AbstractOperator& other):
   bpp::AbstractParameterAliasable(""),
-  popIndices_(other.popIndices_),
-  prevParams_(other.prevParams_)
+  prevParams_(other.prevParams_),
+  popIndices_(other.popIndices_)
   {
+    matrices_.clear();
     matrices_.reserve(other.matrices_.size());
     for(auto const& matPtr : other.matrices_)
       matrices_.emplace_back(matPtr ? matPtr->clone() : nullptr);
@@ -71,12 +78,29 @@ public:
     transition_ = other.transition_ ? other.transition_->clone() : nullptr;
   }
 
-  // Move-semantics
   AbstractOperator(AbstractOperator&&) noexcept = default;
-  AbstractOperator& operator=(const AbstractOperator&) = default;
+
+  AbstractOperator& operator=(const AbstractOperator& other)
+  {
+    if(this != &other)
+    {
+      matrices_.clear();
+      matrices_.reserve(other.matrices_.size());
+
+      for(auto const& matPtr : other.matrices_)
+        matrices_.emplace_back(matPtr ? matPtr->clone() : nullptr);
+
+      transition_ = other.transition_ ? other.transition_->clone() : nullptr;
+      prevParams_ = other.prevParams_;
+      popIndices_ = other.popIndices_;
+    }
+
+    return *this;
+  }
 
   // Named swap for strong exception safety
-  void swap(AbstractOperator& other) noexcept {
+  void swap(AbstractOperator& other) noexcept
+  {
     using std::swap;
     swap(matrices_,    other.matrices_);
     swap(transition_,  other.transition_);
@@ -84,7 +108,9 @@ public:
     swap(popIndices_,  other.popIndices_);
     // base class swap is not needed
   }
-  friend void swap(AbstractOperator& a, AbstractOperator& b) noexcept {
+
+  friend void swap(AbstractOperator& a, AbstractOperator& b) noexcept
+  {
     a.swap(b);
   }
 
@@ -92,11 +118,13 @@ public:
   AbstractOperator* clone() const override = 0;
 
   // Convenience wrapper
-  std::unique_ptr<AbstractOperator> cloneOperator() const {
+  std::unique_ptr<AbstractOperator> cloneOperator() const
+  {
     return std::unique_ptr<AbstractOperator>(clone());
   }
 
-  virtual ~AbstractOperator() {
+  virtual ~AbstractOperator()
+  {
     std::vector<std::string> paramNames(0);
     paramNames.reserve(getParameters().size());
 
@@ -107,34 +135,47 @@ public:
   }
 
   // Replace entire parameter set; triggers update if any changed
-  void setParameters(const bpp::ParameterList& params) {
+  void setParameters(const bpp::ParameterList& params)
+  {
     bpp::AbstractParameterAliasable::setParametersValues(params);
   }
-  void fireParameterChanged(const bpp::ParameterList& params) {
-    if (matchParametersValues(params))
+
+  void fireParameterChanged(const bpp::ParameterList& params) override
+  {
+    if(matchParametersValues(params))
       updateMatrices_();
   }
 
-  // Accessors
-  const std::vector<size_t>& getPopIndices() const noexcept {
+  const std::vector<size_t>& getPopIndices() const noexcept
+  {
     return popIndices_;
   }
-  const std::vector<std::unique_ptr<MatrixEngine>>& getMatrices() const noexcept {
+
+  const std::vector<std::unique_ptr<MatrixEngine>>& getMatrices() const noexcept
+  {
     return matrices_;
   }
-  const MatrixEngine& getMatrix(size_t idx) const {
+
+  const MatrixEngine& getMatrix(size_t idx) const
+  {
     return *matrices_.at(idx);
   }
 
   // Extract the raw MatrixVariant — empty if no transition set
-  MatrixEngine::MatrixVariant getTransitionMatrixVariant() const {
-    if (!transition_) return MatrixEngine::MatrixVariant{};
+  MatrixEngine::MatrixVariant getTransitionMatrixVariant() const
+  {
+    if(!transition_)
+      return MatrixEngine::MatrixVariant{};
+
     return transition_->matrixVariant();
   }
 
   // Extract the Eigen‐view variant (dense/sparse) — empty if no transition
-  MatrixEngine::MatrixEigenVariant getTransitionMatrixVariantEigen() const {
-    if (!transition_) return MatrixEngine::MatrixEigenVariant{};
+  MatrixEngine::MatrixEigenVariant getTransitionMatrixVariantEigen() const
+  {
+    if(!transition_)
+      return MatrixEngine::MatrixEigenVariant{};
+
     return transition_->toEigenMatrixVariant();
   }
 
@@ -142,9 +183,11 @@ public:
   virtual void printDeltaLDMat(const std::string& fileName);
 
   // Uniformly scale the assembled transition
-  void scaleMatrix(double factor) {
-    if (!transition_)
+  void scaleMatrix(double factor)
+  {
+    if(!transition_)
       throw bpp::Exception("scaleMatrix: transition matrix is not set");
+
     transition_->scaleMatrix(factor);
   }
 
@@ -156,8 +199,10 @@ protected:
   virtual void updateMatrices_() = 0;
 
   // 3) Sum them into `transition_`; default implementation provided here
-  virtual void assembleTransitionMatrix_() {
-    if (matrices_.empty()) {
+  virtual void assembleTransitionMatrix_()
+  {
+    if(matrices_.empty())
+    {
       transition_.reset();
       return;
     }
@@ -168,12 +213,15 @@ protected:
       : nullptr;
 
     // Add all others via your variant‐safe helper
-    for (size_t i = 1; i < matrices_.size(); ++i) {
-      if (!matrices_[i]) continue;
+    for(size_t i = 1; i < matrices_.size(); ++i)
+    {
+      if(!matrices_[i])
+        continue;
+
       transition_->addToMatrix(matrices_[i]->matrixVariant());
     }
   }
+
 };
 
 #endif
-// ==== END AbstractOperator.hpp ====

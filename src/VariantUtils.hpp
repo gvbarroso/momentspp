@@ -1,4 +1,11 @@
-#pragma once
+/*
+ * Authors: Gustavo V. Barroso
+ * Created: 18/09/2025
+ * Last modified: 22/09/2025
+ *
+ * Helpers to make Eigen compile safely
+ */
+
 #ifndef VARIANTUTILS_HPP
 #define VARIANTUTILS_HPP
 

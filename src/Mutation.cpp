@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 10/08/2022
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -60,22 +60,22 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
           localTriplets.emplace_back(row, tempLeft->getPosition(), Scalar(tempLeft->countInstances(id) / 2.0));
           localTriplets.emplace_back(row, tempRight->getPosition(), Scalar(tempRight->countInstances(id) / 2.0));
         }
-      }
+      } // ends loop over basis
 
       std::vector<Eigen::Triplet<Scalar>> coeffs;
       for(auto& vec : threadTriplets)
         coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
-      auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-      mat->setFromTriplets(coeffs);
-      mat->makeCompressed();
-      mat->scale(Scalar(mutationRate));
+      auto matrix = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
+      matrix->setFromTriplets(coeffs);
+      matrix->makeCompressed();
+      matrix->scale(Scalar(mutationRate));
 
-      MatrixEngine::MatrixVariant mv(std::move(*mat));
+      MatrixEngine::MatrixVariant mv(std::move(*matrix));
       auto engine = std::make_unique<MatrixEngine>(mv, MatrixEngine::VectorVariant{});
       matrices_.emplace_back(std::move(engine));
-    }
-  }
+    } // ends loop over pops
+  } // overloaded
   }, transition_->getMatrixVariant());
 
   assembleTransitionMatrix_();

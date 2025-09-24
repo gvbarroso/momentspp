@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 16/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -19,46 +19,46 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
 
 void Model::computeExpectedSumStatsDiscrete()
 {
-    // start from deep‐past steady state (wrapper variant)
-    auto y = epochs_[0]->getSteadyStateVector();
+  // start from deep‐past steady state (wrapper variant)
+  auto y = epochs_[0]->getSteadyStateVector();
 
-    // step through epochs in discrete time
-    for (size_t i = 1; i < epochs_.size(); ++i)
-    {
-        epochs_[i]->transferStatistics(y);
-        epochs_[i]->computeExpectedSumStatsDiscrete(y);
-        epochs_[i]->updateMoments(y);
-    }
+  // step through epochs in discrete time
+  for (size_t i = 1; i < epochs_.size(); ++i)
+  {
+    epochs_[i]->transferStatistics(y);
+    epochs_[i]->computeExpectedSumStatsDiscrete(y);
+    epochs_[i]->updateMoments(y);
+  }
 
-    expected_ = std::move(y);
+  expected_ = std::move(y);
 }
 
 void Model::computeExpectedSumStatsContinuous()
 {
-    auto y = epochs_[0]->getSteadyStateVector();
+  auto y = epochs_[0]->getSteadyStateVector();
 
-    for (size_t i = 1; i < epochs_.size(); ++i)
-    {
-        epochs_[i]->transferStatistics(y);
-        y = epochs_[i]->integrate(dt_, totalTime_);
-        epochs_[i]->updateMoments(y);
-    }
+  for(size_t i = 1; i < epochs_.size(); ++i)
+  {
+    epochs_[i]->transferStatistics(y);
+    y = epochs_[i]->integrate(dt_, totalTime_);
+    epochs_[i]->updateMoments(y);
+  }
 
-    expected_ = std::move(y);
+  expected_ = std::move(y);
 }
 
 void Model::computeExpectedSumStatsAdaptive()
 {
-    auto y = epochs_[0]->getSteadyStateVector();
+  auto y = epochs_[0]->getSteadyStateVector();
 
-    for (size_t i = 1; i < epochs_.size(); ++i)
-    {
-        epochs_[i]->transferStatistics(y);
-        y = epochs_[i]->integrateAdaptive(dt_, totalTime_, errorTolerance_);
-        epochs_[i]->updateMoments(y);
-    }
+  for(size_t i = 1; i < epochs_.size(); ++i)
+  {
+    epochs_[i]->transferStatistics(y);
+    y = epochs_[i]->integrateAdaptive(dt_, totalTime_, errorTolerance_);
+    epochs_[i]->updateMoments(y);
+  }
 
-    expected_ = std::move(y);
+  expected_ = std::move(y);
 }
 
 void Model::printAliasedMomentsPerEpoch(const std::string& modelName) const
@@ -176,10 +176,7 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
       for(size_t j = 0; j < epochs_[i]->getNumPops(); ++j)
       {
         size_t jd = epochs_[i]->getPops()[j]->getId();
-        size_t pd = epochs_[i]
-                        ->getPops()[j]
-                        ->getLeftParent()
-                        ->getId(); // WARNING getLeftParent() [dangerous when there is admixture]
+        size_t pd = epochs_[i]->getPops()[j]->getLeftParent()->getId(); // WARNING getLeftParent() [dangerous when there is admixture]
 
         // rates from population jd
         std::string rj = "r_" + bpp::TextTools::toString(jd);
@@ -192,19 +189,13 @@ void Model::compressParameters(bool aliasOverEpochs, bool aliasOverPops)
         std::string sp = "s_" + bpp::TextTools::toString(pd);
 
         // only alias if populations share NAME
-        if(epochs_[i]->hasIndependentParameter(rj) &&
-           epochs_[i]->getPops()[j]->getName() ==
-               epochs_[i]->getPops()[j]->getLeftParent()->getName())
+        if(epochs_[i]->hasIndependentParameter(rj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
           aliasParameters(epochs_[i - 1]->getName() + "." + rp, epochs_[i]->getName() + "." + rj);
 
-        if(epochs_[i]->hasIndependentParameter(uj) &&
-           epochs_[i]->getPops()[j]->getName() ==
-               epochs_[i]->getPops()[j]->getLeftParent()->getName())
+        if(epochs_[i]->hasIndependentParameter(uj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
           aliasParameters(epochs_[i - 1]->getName() + "." + up, epochs_[i]->getName() + "." + uj);
 
-        if(epochs_[i]->hasIndependentParameter(sj) &&
-           epochs_[i]->getPops()[j]->getName() ==
-               epochs_[i]->getPops()[j]->getLeftParent()->getName())
+        if(epochs_[i]->hasIndependentParameter(sj) && epochs_[i]->getPops()[j]->getName() == epochs_[i]->getPops()[j]->getLeftParent()->getName())
           aliasParameters(epochs_[i - 1]->getName() + "." + sp, epochs_[i]->getName() + "." + sj);
       }
     }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 20/09/2025
+ * Last modified: 23/09/2025
  *
  */
 
@@ -314,8 +314,7 @@ public:
 
   void printMoments(std::ostream& stream);
 
-  void printMomentsIntermediate(MatrixEngine::VectorVariant
-& y,
+  void printMomentsIntermediate(MatrixEngine::VectorVariant& y,
                                 const std::string& modelName, size_t interval,
                                 const std::vector<std::string>& momNames);
 
@@ -364,43 +363,33 @@ public:
     return fetchNu(popId, pops_[popId]->getParent()->getSize());
   }*/
 
-  // In Epoch.hpp or Epoch.cpp, wherever these are defined:
+  inline double fetchConditionNumber() const
+  {
+    auto const& eigenVar = engine_->toEigenMatrixVariant();
 
-inline double fetchConditionNumber() const
-{
-  // 1) get a variant holding either sparse<double> or sparse<mpreal>
-  auto const& eigenVar = engine_->toEigenMatrixVariant();
-
-  // 2) visit both cases with one lambda
-  return std::visit(overloaded {
-    [](auto const& M) -> double {
+    return std::visit(overloaded {[](auto const& M) -> double
+    {
       using Dense = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
 
       // sparse<double> or sparse<mpreal> → sparse<double> → dense<double>
       Dense dense = M.template cast<double>();
+      Eigen::JacobiSVD<Dense> svd(dense, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-      // compute singular values
-      Eigen::JacobiSVD<Dense> svd(dense,
-        Eigen::ComputeThinU | Eigen::ComputeThinV);
-      if (svd.info() != Eigen::Success)
+      if(svd.info() != Eigen::Success)
         throw bpp::Exception("fetchConditionNumber(): SVD failed");
 
       auto s = svd.singularValues();
-      return (s.size() > 1)
-           ? static_cast<double>(s(0) / s(s.size() - 1))
-           : 0.0;
+      return (s.size() > 1) ? static_cast<double>(s(0) / s(s.size() - 1)) : 0.0;
     }
   }, eigenVar);
 }
 
-inline EigenResult findLeadingEigenpair() const
-{
-  // 1) extract the same variant
-  auto const& eigenVar = engine_->toEigenMatrixVariant();
+  inline EigenResult findLeadingEigenpair() const
+  {
+    auto const& eigenVar = engine_->toEigenMatrixVariant();
 
-  // 2) visit and compute in double, then lift to mpreal
-  return std::visit(overloaded {
-    [](auto const& M) -> EigenResult {
+    return std::visit(overloaded {[](auto const& M) -> EigenResult
+    {
       using DenseD = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
       using VecD   = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 
@@ -415,9 +404,12 @@ inline EigenResult findLeadingEigenpair() const
       // pick largest real eigenvalue
       auto evals = es.eigenvalues().real();
       Eigen::Index idx = 0;
-      for (Eigen::Index i = 1; i < evals.size(); ++i)
-        if (evals(i) > evals(idx))
+
+      for(Eigen::Index i = 1; i < evals.size(); ++i)
+      {
+        if(evals(i) > evals(idx))
           idx = i;
+      }
 
       // normalize its eigenvector
       VecD vecD = es.eigenvectors().col(idx).real();
@@ -425,10 +417,11 @@ inline EigenResult findLeadingEigenpair() const
 
       // convert to high precision
       Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
-      for (Eigen::Index i = 0; i < vecD.size(); ++i)
+      for(Eigen::Index i = 0; i < vecD.size(); ++i)
         vecMP(i) = mpfr::mpreal(vecD(i));
 
-      return EigenResult{
+      return EigenResult
+      {
         size_t(idx),
         mpfr::mpreal(evals(idx)),
         vecMP

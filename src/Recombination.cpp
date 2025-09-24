@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 18/09/2025
+ * Last modified: 24/09/2025
  *
  */
 
@@ -49,22 +49,22 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
           int f = (moment->getPopIndices()[0] == id);
           localTriplets.emplace_back(row, row, Scalar(-f));
         }
-      }
+      } // ends loop over basis
 
       std::vector<Eigen::Triplet<Scalar>> coeffs;
       for(auto& vec : threadTriplets)
         coeffs.insert(coeffs.end(), std::make_move_iterator(vec.begin()), std::make_move_iterator(vec.end()));
 
-      auto mat = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
-      mat->setFromTriplets(coeffs);
-      mat->makeCompressed();
-      mat->scale(Scalar(recombRate));
+      auto matrix = std::make_unique<Matrix<Scalar>>(basisSize, basisSize);
+      matrix->setFromTriplets(coeffs);
+      matrix->makeCompressed();
+      matrix->scale(Scalar(recombRate));
 
-      MatrixEngine::MatrixVariant mv(std::move(*mat));
+      MatrixEngine::MatrixVariant mv(std::move(*matrix));
       auto engine = std::make_unique<MatrixEngine>(mv, MatrixEngine::VectorVariant{});
       matrices_.emplace_back(std::move(engine));
-    }
-    }
+    } // ends loop over pops
+    } // overloaded
   }, transition_->getMatrixVariant());
 
   assembleTransitionMatrix_();

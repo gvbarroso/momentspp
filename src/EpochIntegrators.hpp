@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 12/09/2025
- * Last modified: 18/09/2025
+ * Last modified: 22/09/2025
  *
  * Standalone Crank–Nicolson integrators for double and mpfr::mpreal
  */
@@ -154,9 +154,7 @@ inline Vector<mpfr::mpreal> integrateAdaptiveMpfrCN(
             h = totalTime - t;
         double h2 = h * 0.5;
 
-        //
         // Full‐step: force evaluation into a dense matrix before LU
-        //
         Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1 =
             (Iden - (mpfr::mpreal(h) * mpfr::mpreal(0.5)) * Ad).eval();
 
@@ -170,9 +168,7 @@ inline Vector<mpfr::mpreal> integrateAdaptiveMpfrCN(
         Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> yFull =
             solverFull.solve((M2 * y).eval());
 
-        //
         // Two half‐steps: again force eval before each LU
-        //
         Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1h =
             (Iden - (mpfr::mpreal(h2) * mpfr::mpreal(0.5)) * Ad).eval();
 
