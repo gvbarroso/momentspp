@@ -199,13 +199,15 @@ public:
   //----------------------------------------------------------------------
   MatrixEngine& operator+=(MatrixEngine const &rhs)
   {
-    visitSameType(matWrap_, rhs.matWrap_,
-                  [&](auto &A, auto const &B){ A += B; });
+    visitSameType(matWrap_, rhs.matWrap_, [&](auto &A, auto const &B)
+    {
+      A += B;
+    });
+
     return *this;
   }
 
-  friend MatrixEngine operator+(MatrixEngine lhs,
-                               MatrixEngine const &rhs)
+  friend MatrixEngine operator+(MatrixEngine lhs, MatrixEngine const &rhs)
   {
     lhs += rhs;
     return lhs;

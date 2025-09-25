@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 24/09/2025
+ * Last modified: 25/09/2025
  *
  */
 
@@ -17,7 +17,7 @@
 #include <mpreal.h>
 #include <vector>
 #include <string>
-#include <fstream>
+#include <ostream>
 #include <memory>
 #include <stdexcept>
 #include <iostream>
@@ -69,6 +69,13 @@ public:
     return *this;
   }
 
+  /// operator+= so MatrixEngine can do A += B;
+  Matrix<T>& operator+=(const Matrix<T>& other)
+  {
+    addInPlace(other);
+    return *this;
+  }
+
   EigenSparse& eigen()
   {
     return mat_;
@@ -94,19 +101,14 @@ public:
     mat_.coeffRef(row, col) = val;
   }
 
-  void print(const std::string& fileName) const
-  {
-    std::ofstream out(fileName);
-
-    if(!out)
-      throw bpp::Exception("Matrix::Failed to open file: " + fileName);
-
-    for(int i = 0; i < mat_.outerSize(); ++i)
-    {
-      for(typename Eigen::SparseMatrix<T>::InnerIterator it(mat_, i); it; ++it)
-        out << it.row() << " " << it.col() << " " << it.value() << "\n";
-    }
-  }
+ void print(std::ostream& out) const
+ {
+   for(int i = 0; i < mat_.outerSize(); ++i)
+   {
+     for(typename Eigen::SparseMatrix<T>::InnerIterator it(mat_, i); it; ++it)
+       out << it.row() << " " << it.col() << " " << it.value() << "\n";
+   }
+ }
 
   void zeroNegatives()
   {
@@ -315,13 +317,6 @@ public:
   void compress()
   {
     makeCompressed();
-  }
-
-  /// operator+= so MatrixEngine can do `A += B;`
-  Matrix<T>& operator+=(const Matrix<T>& other)
-  {
-    addInPlace(other);
-    return *this;
   }
 
 };

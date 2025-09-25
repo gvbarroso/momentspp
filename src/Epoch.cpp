@@ -688,53 +688,68 @@ Epoch::integrateAdaptive(double dt,
 //------------------------------------------------------------------------------
 void Epoch::init_()
 {
-    if(operators_.empty())
-      throw bpp::Exception("Epoch::init_() called with no operators.");
+  if(operators_.empty())
+    throw bpp::Exception("Epoch::init_() called with no operators.");
 
-    if(!engine_)
-      throw bpp::Exception("Epoch::init_() called with null engine_.");
+  if(!engine_)
+    throw bpp::Exception("Epoch::init_() called with null engine_.");
 
-    auto demangle = [](const std::type_info& ti)
+  #ifdef DEBUG
+  auto demangle = [](const std::type_info& ti)
+  {
+    int status;
+    char* demangled = abi::__cxa_demangle(ti.name(), nullptr, nullptr, &status);
+    std::string result = (status == 0 && demangled) ? demangled : ti.name();
+    free(demangled);
+    return result;
+  };
+
+  operators_.front()->getParameters().printParameters(std::cout);
+  #endif
+
+  MatrixEngine::MatrixVariant accWrap = operators_.front()->getTransitionMatrixVariant();
+
+  for(size_t i = 1; i < operators_.size(); ++i)
+  {
+    MatrixEngine::MatrixVariant nextWrap = operators_[i]->getTransitionMatrixVariant();
+
+    #ifdef DEBUG
+    operators_[i]->getParameters().printParameters(std::cout);
+
+    std::visit([&](auto const& x)
     {
-      int status;
-      char* demangled = abi::__cxa_demangle(ti.name(), nullptr, nullptr, &status);
-      std::string result = (status == 0 && demangled) ? demangled : ti.name();
-      free(demangled);
-      return result;
-    };
-
-    MatrixEngine::MatrixVariant accWrap = operators_.front()->getTransitionMatrixVariant();
-
-    //operators_.front()->getParameters().printParameters(std::cout);
-    //std::cout << operators_.front()->getTransitionMatrix().getMatrixType() << std::endl;
-
-    for(size_t i = 1; i < operators_.size(); ++i)
-    {
-      MatrixEngine::MatrixVariant nextWrap = operators_[i]->getTransitionMatrixVariant();
-
+      std::cout << "accWrap holds: " << demangle(typeid(x)) << "\n";
       std::cout << "accWrap type hash: " << typeid(x).hash_code() << "\n";
-      std::cout << "nextWrap type hash: " << typeid(y).hash_code() << "\n";
+      std::cout << "accWrap object address: " << static_cast<const void*>(&x) << "\n";
+      //x.print(std::cout);
+    }, accWrap);
 
-      std::visit([&](auto const& x) {
-        std::cout << "accWrap holds: " << demangle(typeid(x)) << "\n";
-      }, accWrap);
+    std::visit([&](auto const& x)
+    {
+      std::cout << "nextWrap holds: " << demangle(typeid(x)) << "\n";
+      std::cout << "nextWrap type hash: " << typeid(x).hash_code() << "\n";
+      std::cout << "nextWrap object address: " << static_cast<const void*>(&x) << "\n";
+      //x.print(std::cout);
+    }, nextWrap);
+    #endif
 
-      std::visit([&](auto const& x) {
-        std::cout << "nextWrap holds: " << demangle(typeid(x)) << "\n";
-      }, nextWrap);
+    visitSameType(accWrap, nextWrap, [&](auto& A, auto const& B)
+    {
+      A += B;  // A and B are the same Matrix<T> type
+    });
 
-      //operators_[i]->getParameters().printParameters(std::cout);
-      //std::cout << operators_[0]->getTransitionMatrix().getMatrixType() << std::endl;
+    #ifdef DEBUG
+    std::visit([&](auto const& x)
+    {
+      std::cout << "POST-AGG accWrap holds: " << demangle(typeid(x)) << "\n";
+      std::cout << "POST-AGG accWrap type hash: " << typeid(x).hash_code() << "\n";
+    }, accWrap);
+    #endif
+  }
 
-      visitSameType(accWrap, nextWrap, [&](auto& A, auto const& B)
-      {
-        A += B;  // A and B are the same Matrix<T> type
-      });
-    }
-
-    engine_->setMatrix(std::move(accWrap));
-    engine_->addIdentityInPlace();
-    engine_->pruneInPlace();
-    engine_->compressInPlace();
+  engine_->setMatrix(std::move(accWrap));
+  engine_->addIdentityInPlace();
+  engine_->pruneInPlace();
+  engine_->compressInPlace();
 }
 

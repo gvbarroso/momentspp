@@ -22,7 +22,7 @@ INSTALL_PREFIX="$HOME/.local"
 
 # Optional flags
 NATIVE_BUILD="ON"
-VERBOSE="OFF"
+DEBUG="OFF"
 NAKED_D="OFF"
 
 echo "🔧 Build type: $BUILD_TYPE"
