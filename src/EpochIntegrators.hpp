@@ -38,8 +38,9 @@ inline Vector<double> integrateDoubleCN(
     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver(M1);
 
     Eigen::VectorXd y = y0.eigen();
-    for (int k = 0; k < steps; ++k)
-        y = solver.solve(M2 * y);
+
+    for(int k = 0; k < steps; ++k)
+      y = solver.solve(M2 * y);
 
     return Vector<double>(std::move(y));
 }
@@ -57,20 +58,16 @@ inline Vector<mpfr::mpreal> integrateMpfrCN(
     int n = Ad.rows();
 
     // Build identity in full (dense) form for mpfr
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> Iden =
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>::Identity(n, n);
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> Iden = Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>::Identity(n, n);
 
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1 =
-        Iden - (dt * mpfr::mpreal(0.5)) * Ad;
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2 =
-        Iden + (dt * mpfr::mpreal(0.5)) * Ad;
-    Eigen::PartialPivLU<
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>
-    > solver(M1);
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1 = Iden - (dt * mpfr::mpreal(0.5)) * Ad;
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2 = Iden + (dt * mpfr::mpreal(0.5)) * Ad;
+
+    Eigen::PartialPivLU<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> solver(M1);
 
     auto y = y0.eigen();
-    for (int k = 0; k < steps; ++k)
-        y = solver.solve(M2 * y);
+    for(int k = 0; k < steps; ++k)
+      y = solver.solve(M2 * y);
 
     return Vector<mpfr::mpreal>(std::move(y));
 }

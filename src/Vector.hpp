@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 24/09/2025
+ * Last modified: 25/09/2025
  *
  */
 
@@ -55,7 +55,8 @@ public:
     setZero();
   }
 
-  Vector(Eigen::Matrix<T, Eigen::Dynamic, 1>&& other) : vec_(std::move(other))
+  Vector(Eigen::Matrix<T, Eigen::Dynamic, 1>&& other):
+  vec_(std::move(other))
   {
     setZero();
   }
@@ -86,6 +87,11 @@ public:
   bool operator==(const Vector<T>& other) const
   {
     return vec_.isApprox(other.vec_);
+  }
+
+  T operator[](size_t i) const
+  {
+    return eigen()(Eigen::Index(i));
   }
 
   T get(size_t i) const

@@ -22,7 +22,7 @@ endif()
 # 2) User options & C++ standard
 #------------------------------------------------------------------------------
 option(NativeBuild "Enable CPU-specific optimization flags" OFF)
-option(VERBOSE     "Enable verbose mode"                OFF)
+option(DEBUG     "Enable debug mode"                OFF)
 option(NAKED_D     "Enable naked D mode"                OFF)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -53,8 +53,9 @@ endif()
 
 add_compile_options(${BASE_FLAGS})
 
-if (VERBOSE)
-  add_compile_definitions(VERBOSE)
+if (DEBUG)
+  message(STATUS "DEBUG build: adding -DDEBUG=ON")
+  add_compile_definitions(DEBUG)
 endif()
 
 if (NAKED_D)

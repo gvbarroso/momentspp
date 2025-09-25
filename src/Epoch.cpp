@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 24/09/2025
+ * Last modified: 25/09/2025
  *
  */
 
@@ -19,14 +19,14 @@
 #include <cxxabi.h>
 
 #include <eigen3/Eigen/Sparse>
-#include <eigen3/Eigen/SparseLU>  // for double‐type LU
+#include <eigen3/Eigen/SparseLU>
 #include <eigen3/Eigen/LU>
 
 #include "Migration.hpp"
 #include "Epoch.hpp"
 
 #include "Epoch.hpp"
-#include "VariantUtils.hpp"   // for visitSameType
+#include "VariantUtils.hpp"
 
 //------------------------------------------------------------------------------
 // Responds to parameter updates by propagating to each operator and
@@ -46,23 +46,17 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 //------------------------------------------------------------------------------
 // Computes E[Y(t)] = A^duration * y0 for discrete‐time model.
 //------------------------------------------------------------------------------
-void Epoch::computeExpectedSumStatsDiscrete(const MatrixEngine::VectorVariant& y)
+void Epoch::computeExpectedSumStatsDiscrete(MatrixEngine::VectorVariant& y)
 {
   auto matVar = engine_->toEigenMatrixVariant();
-  MatrixEngine::VectorVariant result;
 
-  visitSameType(matVar, y, [&](auto const& A, auto const& vecWrap)
+  visitMatrixAndVector(matVar, y, [&](auto const& A, auto& vecWrap)
   {
-    //using Scalar = typename std::decay_t<decltype(vecWrap)>::Scalar;
-    auto tmp = vecWrap.eigen();
-
-    for(size_t k = 0; k < duration(); ++k)
-      tmp = A * tmp;
-
-    result = std::decay_t<decltype(vecWrap)>(std::move(tmp));
+    for (size_t k = 0; k < duration(); ++k)
+      vecWrap = A * vecWrap;
   });
 
-  updateMoments(result);
+  updateMoments(y);
 }
 
 //------------------------------------------------------------------------------
@@ -85,31 +79,30 @@ std::vector<size_t> Epoch::fetchSelectedPopIds()
 //------------------------------------------------------------------------------
 // Remaps moment‐expectation vector according to population ancestry relationships.
 //------------------------------------------------------------------------------
-void Epoch::transferStatistics(const MatrixEngine::VectorVariant& prevY)
+void Epoch::transferStatistics(MatrixEngine::VectorVariant& prevY)
 {
   MatrixEngine::VectorVariant newY = engine_->getVectorVariant();
-  size_t n = ssl_.getBasis().size();
+  size_t numStatsThisEpoch = ssl_.getBasis().size();
 
   visitSameType(newY, prevY, [&](auto& dstWrap, auto const& srcWrap)
   {
     auto& dst = dstWrap.eigen();
     const auto& src = srcWrap.eigen();
 
-    if(static_cast<size_t>(dst.size()) != n)
-      throw bpp::Exception("transferStatistics: size mismatch");
-
-    for(size_t i = 0; i < n; ++i)
+    // for each Moment in *this Epoch, we assign its value from its parental Moment from the previous Epoch
+    for(size_t i = 0; i < numStatsThisEpoch; ++i)
     {
-      size_t parent = ssl_.getBasis()[i]->getParent()->getPosition();
+      size_t parentPos = ssl_.getBasis()[i]->getParent()->getPosition();
 
-      if(parent >= static_cast<size_t>(src.size()))
+      if(parentPos >= static_cast<size_t>(src.size()))
         throw bpp::Exception("transferStatistics: out-of-range");
 
-      dst(Eigen::Index(i)) = src(Eigen::Index(parent));
+      dst(Eigen::Index(i)) = src(Eigen::Index(parentPos));
     }
   });
 
-  engine_->setVector(std::move(newY));
+  prevY = newY;
+  //engine_->setVector(std::move(newY));
 }
 
 //------------------------------------------------------------------------------
@@ -117,11 +110,12 @@ void Epoch::transferStatistics(const MatrixEngine::VectorVariant& prevY)
 //------------------------------------------------------------------------------
 void Epoch::updateMoments(const MatrixEngine::VectorVariant& y)
 {
-  std::visit([&](auto const& wrap) {
-  auto const& raw = wrap.eigen();   // Eigen::Matrix<T>
+  std::visit([&](auto const& wrap)
+  {
+    auto const& raw = wrap.eigen();
 
-  for(size_t i = 0; i < ssl_.getBasis().size(); ++i)
-    ssl_.getBasis()[i]->setValue(static_cast<double>(raw(Eigen::Index(i))));
+    for(size_t i = 0; i < ssl_.getBasis().size(); ++i)
+      ssl_.getBasis()[i]->setValue(static_cast<double>(raw(Eigen::Index(i))));
 
   }, y);
 }
@@ -177,11 +171,15 @@ void Epoch::printMomentsIntermediate(MatrixEngine::VectorVariant& yPrev,
   fout << "\n";
 
   auto matVar = engine_->toEigenMatrixVariant();
-  auto vecWrap = engine_->getVectorVariant();
+  auto vecWrap = MatrixEngine::VectorVariant(engine_->getVectorVariant()); // copy by value not to modify engine_
 
-  visitSameType(matVar, vecWrap, [&](auto const& M, auto& vWrap)
+  visitMatrixAndVector(matVar, vecWrap, [&](auto const& M, auto& vWrap)
   {
-    auto v = vWrap.eigen();
+    auto multiplyInPlace = [&](auto* vecPtr)
+    {
+      for(size_t k = 0; k < interval; ++k)
+        *vecPtr = M * (*vecPtr);
+    };
 
     for(size_t step = 0; step < steps; ++step)
     {
@@ -190,18 +188,13 @@ void Epoch::printMomentsIntermediate(MatrixEngine::VectorVariant& yPrev,
       fout << generation;
 
       for(size_t idx : indices)
-        fout << "," << static_cast<double>(v(Eigen::Index(idx)));
+        fout << "," << static_cast<double>(vWrap[idx]);
 
       fout << "\n";
 
       if(step + 1 < steps)
-      {
-        for(size_t k = 0; k < interval; ++k)
-          v = M * v;
-      }
+        multiplyInPlace(&vWrap);
     }
-
-    vWrap = std::decay_t<decltype(vWrap)>(std::move(v));
   });
 
   fout.reset();
@@ -239,10 +232,8 @@ void Epoch::printRecursions(std::ostream& stream)
         if(pval == 0.0)
         continue;
 
-        // 1) get the operator’s Eigen‐matrix variant
         auto eigenVar = op->getMatrix(k).toEigenMatrixVariant();
 
-        // 2) visit by scalar type and print nonzero terms
         std::visit(overloaded{[&](auto const& M)
         {
           using MatT = std::decay_t<decltype(M)>;
@@ -256,10 +247,10 @@ void Epoch::printRecursions(std::ostream& stream)
             Scalar coeff = M.coeff(pos, col) / scale;
 
             if(coeff == Scalar(0))
-            continue;
+              continue;
 
             if(!firstTerm && coeff > Scalar(0))
-            stream << '+';
+              stream << '+';
 
             stream << std::fixed << std::setprecision(3) << coeff << '*' << param.getName() << '*' << basis[size_t(col)]->getName() << ' ';
 
@@ -304,10 +295,9 @@ void Epoch::printTransitionMat(const std::string& fileName) const
         out << it.row() << ' ' << it.col() << ' ' << it.value() << '\n';
     }
   }
-  },
-  eigenVar);
+  }, eigenVar);
 
-  // restore formatting
+  // restores formatting
   out.flags(oldFlags);
   out.precision(oldPrec);
 }
@@ -317,27 +307,25 @@ void Epoch::printTransitionMat(const std::string& fileName) const
 //------------------------------------------------------------------------------
 void Epoch::computeEigenSteadyState()
 {
-  // 1) find the leading eigenpair via your helper
   EigenResult res = findLeadingEigenpair();
 
-  // 2) Build a VectorVariant (wrapper) matching the matrix’s scalar type
   auto matVar   = engine_->toEigenMatrixVariant();
   MatrixEngine::VectorVariant vecWrap;
 
   std::visit(overloaded{[&](auto const& M)
   {
     using Scalar = typename std::decay_t<decltype(M)>::Scalar;
-    // allocate an Eigen::Matrix<Scalar,Dynamic,1>
+
+    // allocates an Eigen::Matrix<Scalar,Dynamic,1>
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> v(M.cols());
+
     for(Eigen::Index i = 0; i < M.cols(); ++i)
       v(i) = static_cast<Scalar>(res.vector(i));
 
-    // wrap it
     vecWrap = Vector<Scalar>(std::move(v));
   }
   }, matVar);
 
-  // 3) Commit the steady‐state back into your engine and moments
   engine_->setVector(std::move(vecWrap));
   updateMoments(engine_->getVectorVariant());
 }
@@ -348,89 +336,123 @@ void Epoch::computeEigenSteadyState()
 //------------------------------------------------------------------------------
 void Epoch::computePseudoSteadyStateDiscrete(double tol)
 {
+  std::cout << "hi 1\n";
+
   bool converged = false;
 
   auto matVar = engine_->toEigenMatrixVariant();
   MatrixEngine::VectorVariant vecWrap = engine_->getVectorVariant();
 
-  visitSameType(matVar, vecWrap,[&](auto const& A, auto& dstWrap)
+  #ifdef DEBUG
+  auto demangle = [](const std::type_info& ti)
   {
-      using Scalar = typename std::decay_t<decltype(A)>::Scalar;
-      using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+    int status;
+    char* demangled = abi::__cxa_demangle(ti.name(), nullptr, nullptr, &status);
+    std::string result = (status == 0 && demangled) ? demangled : ti.name();
+    free(demangled);
+    return result;
+  };
 
-      size_t pop = ssl_.getPopIndices()[0];
-      double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
-      double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
-      size_t twoN = static_cast<size_t>(1.0 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+  std::visit([&](auto const& x)
+  {
+    std::cout << "matVar holds: " << demangle(typeid(x)) << "\n";
+    std::cout << "matVar type hash: " << typeid(x).hash_code() << "\n";
+    std::cout << "matVar object address: " << static_cast<const void*>(&x) << "\n";
+  }, matVar);
 
-      double hr = twoN * mu;
-      double hl = (std::abs(s) < 1e-14) ? twoN * mu : (2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.0) - mu/s);
+  std::visit([&](auto const& x)
+  {
+    std::cout << "vecWrap holds: " << demangle(typeid(x)) << "\n";
+    std::cout << "vecWrap type hash: " << typeid(x).hash_code() << "\n";
+    std::cout << "vecWrap object address: " << static_cast<const void*>(&x) << "\n";
+  }, vecWrap);
+  #endif
 
-      Vec y(A.cols()); // inits y (Eigen::Vec)
+  visitMatrixAndVector(matVar, vecWrap,[&](auto const& A, auto& dstWrap)
+  {
+    using Scalar = typename std::decay_t<decltype(A)>::Scalar;
+    using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 
-      double f = 1.0; // scaling factor to mimic the factors of 1-2p
+    size_t pop = ssl_.getPopIndices()[0];
+    double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
+    double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
+    size_t twoN = static_cast<size_t>(1.0 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+
+    double hr = twoN * mu;
+    double hl = (std::abs(s) < 1e-14) ? twoN * mu : (2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.0) - mu/s);
+
+    Vec y(A.cols()); // inits y (Eigen::Vec)
+
+    double f = 1.0; // scaling factor to mimic the factors of 1-2p
+    for(Eigen::Index i = 0; i < y.size(); ++i)
+    {
+      const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
+
+      if(prefix == "Hl")
+        y(i) = Scalar(hl * f);
+
+      else if(prefix == "Hr")
+        y(i) = Scalar(hr * f);
+
+      else if(prefix == "pi2")
+        y(i) = Scalar(hr * hl * f);
+
+      else if (prefix == "I")
+        y(i) = Scalar(1.0);
+
+      else
+        y(i) = Scalar(hr * hl * f * 1e-1);
+
+      if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix()) // same kind of moment, applies heuristic decay
+        f *= 0.925;
+
+      else // resets for next moment
+        f = 1.0;
+    }
+
+    // burn‐in
+    size_t burnSteps = twoN / 10;
+    for (size_t b = 0; b < burnSteps; ++b)
+    {
+      Vector<Scalar> yWrap(std::move(y)); // wraps thin Eigen vector
+      Vector<Scalar> result = A * yWrap;
+      y = result.eigen();
+    }
+
+    Vec prev = y;
+
+    size_t maxIter = 20 * twoN;
+    for(size_t iter = 0; iter < maxIter; ++iter)
+    {
+      //y = A * y;
+      Vector<Scalar> yWrap(std::move(y)); // wraps thin Eigen vector
+      Vector<Scalar> result = A * yWrap;
+      y = result.eigen();
+
+      double maxRel = 0.0;
+
       for(Eigen::Index i = 0; i < y.size(); ++i)
       {
-        const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
-
-        if(prefix == "Hl")
-          y(i) = Scalar(hl * f);
-
-        else if(prefix == "Hr")
-          y(i) = Scalar(hr * f);
-
-        else if(prefix == "pi2")
-          y(i) = Scalar(hr * hl * f);
-
-        else if (prefix == "I")
-          y(i) = Scalar(1.0);
-
-        else
-          y(i) = Scalar(hr * hl * f * 1e-1);
-
-        if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix()) // same kind of moment, applies heuristic decay
-          f *= 0.925;
-
-        else // resets for next moment
-          f = 1.0;
+        double pv = static_cast<double>(prev(i));
+        double cv = static_cast<double>(y(i));
+        maxRel = std::max(maxRel, std::abs(cv - pv) / std::max(1.0, std::abs(pv)));
       }
 
-      // burn‐in
-      size_t burnSteps = twoN / 10;
-      for (size_t b = 0; b < burnSteps; ++b)
-        y = A * y;
-
-      // power‐method
-      Vec prev = y;
-
-      size_t maxIter = 20 * twoN;
-      for(size_t iter = 0; iter < maxIter; ++iter)
+      if(maxRel <= tol)
       {
-        y = A * y;
-        double maxRel = 0.0;
-
-        for(Eigen::Index i = 0; i < y.size(); ++i)
-        {
-          double pv = static_cast<double>(prev(i));
-          double cv = static_cast<double>(y(i));
-          maxRel = std::max(maxRel, std::abs(cv - pv) / std::max(1.0, std::abs(pv)));
-        }
-
-        if(maxRel <= tol)
-        {
-          std::cout << "Pseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
-          converged = true;
-          break;
-        }
-
-        prev = y;
+        std::cout << "Pseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
+        converged = true;
+        break;
       }
 
-      // only write back into the wrapper if we converged
-      if(converged)
-        dstWrap = std::decay_t<decltype(dstWrap)>(std::move(y));
+      prev = y;
     }
-  );
+
+    // only write back into the wrapper if we converged
+    if(converged)
+      dstWrap = Vector<Scalar>(std::move(y));
+
+  });
 
   if(!converged)
   {
@@ -455,72 +477,83 @@ bool Epoch::computePseudoSSContinuousTyped(
     double tol,
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& outY) const
 {
-  using Vec   = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+  using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
   using MWrap = Matrix<Scalar>;
   using VWrap = Vector<Scalar>;
 
   const Eigen::Index n = A.cols();
   Vec y(n);
 
-  // 1) Rough initial guess
-  size_t pop   = ssl_.getPopIndices()[0];
-  double mu    = getParameterValue("u_"   + bpp::TextTools::toString(pop));
-  double s     = getParameterValue("s_"   + bpp::TextTools::toString(pop));
-  size_t twoN  = static_cast<size_t>(
-                   1.0 / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+  // rough initial guess
+  size_t pop = ssl_.getPopIndices()[0];
+  double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
+  double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
+  size_t twoN = static_cast<size_t>(1. / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
 
   double hr = twoN * mu;
-  double hl = (std::abs(s) < 1e-14)
-                    ? twoN * mu
-                    : (2.0*twoN*mu*std::exp(2.0*twoN*s)
-                       / (std::exp(2.0*twoN*s) - 1.0)
-                     - mu/s);
+  double hl = (std::abs(s) < 1e-14) ? twoN * mu : (2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.) - mu / s);
 
   double f = 1.0;
-  for (Eigen::Index i = 0; i < n; ++i)
+
+  for(Eigen::Index i = 0; i < n; ++i)
   {
     const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
-    if      (prefix == "Hl")   y(i) = Scalar(hl * f);
-    else if (prefix == "Hr")   y(i) = Scalar(hr * f);
-    else if (prefix == "pi2")  y(i) = Scalar(hr * hl * f);
-    else if (prefix == "I")    y(i) = Scalar(1.0);
-    else                       y(i) = Scalar(hr * hl * f * 1e-1);
 
-    if (i > 0 &&
-        prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix())
-      f *= 0.925;
+    if(prefix == "Hl")
+      y(i) = Scalar(hl * f);
+
+    else if(prefix == "Hr")
+      y(i) = Scalar(hr * f);
+
+    else if(prefix == "pi2")
+      y(i) = Scalar(hr * hl * f);
+
+    else if(prefix == "I")
+      y(i) = Scalar(1.0);
+
     else
-      f = 1.0;
+      y(i) = Scalar(hr * hl * f * 1e-1);
+
+    if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix())
+      f *= 0.925;
+
+    else
+      f = 1.;
   }
 
-  // 2) Burn‐in: repeated single-step CN
   size_t burnSteps = static_cast<size_t>(burnInTime / dt);
+
   MWrap Mwrap(A);
   VWrap Vwrap;
-  for (size_t b = 0; b < burnSteps; ++b)
+
+  for(size_t b = 0; b < burnSteps; ++b)
   {
     Vwrap.eigen() = y;
+
     if constexpr (std::is_same_v<Scalar, double>)
       y = integrateDoubleCN(Mwrap, Vwrap, dt, dt).eigen();
+
     else
-      y = integrateMpfrCN  (Mwrap, Vwrap, dt, dt).eigen();
+      y = integrateMpfrCN(Mwrap, Vwrap, dt, dt).eigen();
   }
 
-  // 3) Fixed‐step power‐iteration CN until convergence
   Vec prev = y;
   size_t maxSteps = static_cast<size_t>(10 * burnInTime / dt);
   bool converged = false;
 
-  for (size_t iter = 0; iter < maxSteps; ++iter)
+  for(size_t iter = 0; iter < maxSteps; ++iter)
   {
     Vwrap.eigen() = y;
+
     if constexpr (std::is_same_v<Scalar, double>)
       y = integrateDoubleCN(Mwrap, Vwrap, dt, dt).eigen();
+
     else
-      y = integrateMpfrCN  (Mwrap, Vwrap, dt, dt).eigen();
+      y = integrateMpfrCN(Mwrap, Vwrap, dt, dt).eigen();
 
     double maxRel = 0.0;
-    for (Eigen::Index i = 0; i < n; ++i)
+
+    for(Eigen::Index i = 0; i < n; ++i)
     {
       double pv = static_cast<double>(prev(i));
       double cv = static_cast<double>(y(i));
@@ -528,70 +561,56 @@ bool Epoch::computePseudoSSContinuousTyped(
       maxRel = std::max(maxRel, rel);
     }
 
-    if (maxRel <= tol)
+    if(maxRel <= tol)
     {
-      std::cout
-        << "Continuous pseudo steady-state converged after "
-        << iter << " steps, " << name_ << "\n";
+      std::cout << "Continuous pseudo steady-state converged after " << iter << " steps, " << name_ << "\n";
       converged = true;
       break;
     }
+
     prev = y;
   }
 
-  if (!converged)
+  if(!converged)
     return false;
 
-  // 4) Commit outY
   outY = std::move(y);
+
   return true;
 }
 
 //------------------------------------------------------------------------------
 // Public dispatcher: unpack the variant and call the typed helper
 //------------------------------------------------------------------------------
-void Epoch::computePseudoSteadyStateContinuous(
-    double burnInTime,
-    double dt,
-    double tol)
+void Epoch::computePseudoSteadyStateContinuous(double burnInTime, double dt, double tol)
 {
-    // 1) Pull the raw‐Eigen matrix but start with a wrapper‐variant vector
-    auto matVar = engine_->toEigenMatrixVariant();
-    bool converged = false;
+  auto matVar = engine_->toEigenMatrixVariant();
+  bool converged = false;
 
-    MatrixEngine::VectorVariant vecWrap;  // will hold the wrapped steady‐state
+  MatrixEngine::VectorVariant vecWrap;  // will hold the wrapped steady‐state
 
-    // 2) Unpack each matrix type, run the typed helper, wrap the result
-    std::visit(overloaded{
-      [&](auto const& A) {
-        using Scalar = typename std::decay_t<decltype(A)>::Scalar;
+  std::visit(overloaded{[&](auto const& A)
+  {
+    using Scalar = typename std::decay_t<decltype(A)>::Scalar;
 
-        // Allocate an Eigen‐vector for the output
-        Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y;
-        converged = computePseudoSSContinuousTyped(
-          A, burnInTime, dt, tol, y
-        );
-        if (converged)
-        {
-          // Wrap the raw Eigen vector into your Vector<Scalar>
-          vecWrap = Vector<Scalar>(std::move(y));
-        }
-      }
-    }, matVar);
+    // Allocate an Eigen‐vector for the output
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y;
+    converged = computePseudoSSContinuousTyped(A, burnInTime, dt, tol, y);
 
-    // 3) If it failed to converge, fall back on the eigen‐solver
-    if (!converged)
-    {
-      std::cerr
-        << "Crank–Nicolson steady-state did not converge. "
-        << "Falling back to eigen-based steady-state.\n";
-      computeEigenSteadyState();
-      return;
-    }
+    if(converged)
+      vecWrap = Vector<Scalar>(std::move(y));
+  }
+  }, matVar);
 
-    // 4) Commit the steady‐state back into the engine and update moments
-    engine_->setVector(std::move(vecWrap));
-    updateMoments(engine_->getVectorVariant());
+  if(!converged)
+  {
+    std::cerr << "Crank–Nicolson steady-state did not converge. Falling back to eigen-based steady-state.\n";
+    computeEigenSteadyState();
+    return;
+  }
+
+  engine_->setVector(std::move(vecWrap));
+  updateMoments(engine_->getVectorVariant());
 }
 
 // test existence of steady-state in models with gene-flow
@@ -617,28 +636,25 @@ void Epoch::testSteadyState()
 MatrixEngine::VectorVariant
 Epoch::integrate(double dt, double totalTime) const
 {
-    if (dt <= 0.0 || totalTime < 0.0)
-        throw bpp::Exception("Epoch::integrate: dt must be >0 and totalTime >=0");
+  if(dt <= 0.0 || totalTime < 0.0)
+    throw bpp::Exception("Epoch::integrate: dt must be >0 and totalTime >=0");
 
-    const auto& matVar = engine_->getMatrixVariant();
-    const auto& vecVar = engine_->getVectorVariant();
-    MatrixEngine::VectorVariant result;
+  const auto& matVar = engine_->getMatrixVariant();
+  const auto& vecVar = engine_->getVectorVariant();
+  MatrixEngine::VectorVariant result;
 
-    visitSameType(matVar, vecVar, [&](auto const& M, auto const& V) {
-        using Scalar = typename std::decay_t<decltype(M)>::Scalar;
+  visitMatrixAndVector(matVar, vecVar, [&](auto const& M, auto const& V)
+  {
+    using Scalar = typename std::decay_t<decltype(M)>::Scalar;
 
-        // Cast time parameters into Scalar if needed
-        Scalar dtS  = static_cast<Scalar>(dt);
-        Scalar Ttot = static_cast<Scalar>(totalTime);
+    if constexpr (std::is_same_v<Scalar, double>)
+      result = integrateDoubleCN(M, V, dt, totalTime);
 
-        if constexpr (std::is_same_v<Scalar, double>) {
-            result = integrateDoubleCN(M, V, dt, totalTime);
-        } else {
-            result = integrateMpfrCN(M, V, dtS, Ttot);
-        }
-    });
+    else
+      result = integrateMpfrCN(M, V, dt, totalTime);
+  });
 
-    return result;
+  return result;
 }
 
 //------------------------------------------------------------------------------
@@ -651,36 +667,29 @@ Epoch::integrateAdaptive(double dt,
                          double dtMin,
                          double dtMax) const
 {
-    if(dtMin <= 0.0 || dtMax <= 0.0 || dtMin > dtMax) // TODO improve condition checking
-      throw bpp::Exception("Epoch::integrateAdaptive: invalid dtMin/dtMax");
+  if(dtMin <= 0.0 || dtMax <= 0.0 || dtMin > dtMax) // TODO improve condition checking
+    throw bpp::Exception("Epoch::integrateAdaptive: invalid dtMin/dtMax");
 
-    if(tol < 0.0)
-      throw bpp::Exception("Epoch::integrateAdaptive: tol must be >=0");
+  if(tol < 0.0)
+    throw bpp::Exception("Epoch::integrateAdaptive: tol must be >=0");
 
-    const auto& matVar = engine_->getMatrixVariant();
-    const auto& vecVar = engine_->getVectorVariant();
-    MatrixEngine::VectorVariant result;
+  const auto& matVar = engine_->getMatrixVariant();
+  const auto& vecVar = engine_->getVectorVariant();
+  MatrixEngine::VectorVariant result;
 
-    visitSameType(matVar, vecVar, [&](auto const& M, auto const& V)
-    {
-      using Scalar = typename std::decay_t<decltype(M)>::Scalar;
+  visitMatrixAndVector(matVar, vecVar, [&](auto const& M, auto const& V)
+  {
+    using Scalar = typename std::decay_t<decltype(M)>::Scalar;
 
-      // Cast time args into Scalar
-      Scalar dtS = static_cast<Scalar>(dt);
-      Scalar Ttot = static_cast<Scalar>(totalTime);
-      Scalar tolS = static_cast<Scalar>(tol);
-      Scalar dtMinS = static_cast<Scalar>(dtMin);
-      Scalar dtMaxS = static_cast<Scalar>(dtMax);
+    if constexpr(std::is_same_v<Scalar, double>)
+      result = integrateAdaptiveDoubleCN(M, V, dt, totalTime, tol, dtMin, dtMax);
 
-      if constexpr(std::is_same_v<Scalar, double>)
-        result = integrateAdaptiveDoubleCN(M, V, dt, totalTime, tol, dtMin, dtMax);
+    else
+      result = integrateAdaptiveMpfrCN(M, V, dt, totalTime, tol, dtMin, dtMax);
 
-      else
-        result = integrateAdaptiveMpfrCN(M, V, dtS, Ttot, tolS, dtMinS, dtMaxS);
+  });
 
-    });
-
-    return result;
+  return result;
 }
 
 //------------------------------------------------------------------------------

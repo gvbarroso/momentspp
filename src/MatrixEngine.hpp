@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 24/09/2025
+ * Last modified: 25/09/2025
  *
  */
 
@@ -243,11 +243,10 @@ public:
   VectorVariant operator*(const VectorVariant &v) const
   {
     VectorVariant out;
-    visitSameType(matWrap_, v,
-                  [&](auto const &M, auto const &vec)
-                  {
-                    out = M * vec;
-                  });
+    visitMatrixAndVector(matWrap_, v, [&](auto const &M, auto const &vec)
+    {
+      out = M * vec;
+    });
     return out;
   }
 

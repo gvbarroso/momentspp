@@ -22,7 +22,7 @@ INSTALL_PREFIX="$HOME/.local"
 
 # Optional flags
 NATIVE_BUILD="ON"
-DEBUG="OFF"
+DEBUG="ON"
 NAKED_D="OFF"
 
 echo "🔧 Build type: $BUILD_TYPE"
@@ -41,7 +41,7 @@ cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
   -DNativeBuild="$NATIVE_BUILD" \
-  -DVERBOSE="$VERBOSE" \
+  -DDEBUG="$DEBUG" \
   -DNAKED_D="$NAKED_D"
 
 #------------------------------------------------------------------------------

@@ -321,4 +321,10 @@ public:
 
 };
 
+template<typename T>
+Vector<T> operator*(const Matrix<T>& mat, const Vector<T>& vec)
+{
+  return Vector<T>(mat.eigen() * vec.eigen());
+}
+
 #endif

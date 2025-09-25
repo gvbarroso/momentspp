@@ -306,9 +306,9 @@ public:
 
   std::vector<size_t> fetchSelectedPopIds(); // for *this epoch
 
-  void computeExpectedSumStatsDiscrete(const MatrixEngine::VectorVariant& y);
+  void computeExpectedSumStatsDiscrete(MatrixEngine::VectorVariant& y);
 
-  void transferStatistics(const MatrixEngine::VectorVariant& y);
+  void transferStatistics(MatrixEngine::VectorVariant& y);
 
   void updateMoments(const MatrixEngine::VectorVariant& y);
 
@@ -338,7 +338,6 @@ public:
   void computeEigenSteadyState();
 
   void testSteadyState();
-
 
   MatrixEngine::VectorVariant integrate(double dt, double totalTime) const;
 
