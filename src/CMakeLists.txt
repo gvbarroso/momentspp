@@ -30,13 +30,31 @@ set(TWOLOCUS_SOURCES
 add_executable(momentspp ${MOMENTS_SOURCES})
 target_compile_features(momentspp PRIVATE cxx_std_23)
 target_include_directories(momentspp PRIVATE ${EXTRA_INCLUDES})
-target_link_libraries(momentspp PRIVATE ${EXTRA_LIBS})
+target_link_libraries(momentspp PRIVATE
+  Boost::iostreams
+  yaml-cpp       # ← compatible with find_package(yaml-cpp REQUIRED)
+  GSL::gsl
+  GSL::gslcblas
+  ${MPFR_LIB}
+  ${GMP_LIB}
+  ${OPENMP_LIBS}
+  ${BPP_CORE3_LIB}
+)
 
 # 3) Build twoLocusSim
 add_executable(twoLocusSim ${TWOLOCUS_SOURCES})
 target_compile_features(twoLocusSim PRIVATE cxx_std_23)
 target_include_directories(twoLocusSim PRIVATE ${EXTRA_INCLUDES})
-target_link_libraries(twoLocusSim PRIVATE ${EXTRA_LIBS})
+target_link_libraries(twoLocusSim PRIVATE
+  Boost::iostreams
+  yaml-cpp       # ← compatible with find_package(yaml-cpp REQUIRED)
+  GSL::gsl
+  GSL::gslcblas
+  ${MPFR_LIB}
+  ${GMP_LIB}
+  ${OPENMP_LIBS}
+  ${BPP_CORE3_LIB}
+)
 
 # 4) Install rules
 install(

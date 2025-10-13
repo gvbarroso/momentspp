@@ -20,6 +20,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <iomanip>
 
 template <typename T>
 class Vector

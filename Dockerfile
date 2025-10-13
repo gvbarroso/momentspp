@@ -1,85 +1,90 @@
+# ───────────────────────────────────────────────────────────────
+# Stage 1: Build momentspp and dependencies
+# ───────────────────────────────────────────────────────────────
 FROM debian:bookworm-slim AS build
 
 ARG NCORES=1
-
-ARG EIGEN_VERSION=3.4
-ARG BPP_CORE_VERSION=9f8d3e2300afb1d4a9e06c0a99ac3c7aeba03581
-ARG BPP_SEQ_VERSION=fe03cf8c41508bf31199e052116e31d2e4beca02
-ARG BPP_PHYL_VERSION=1b16ca9028f7a06fb15fc64ae82d5c57d970be64
+ARG EIGEN_VERSION=3.4.0
 ARG YAML_CPP_VERSION=0.8.0
-ARG BPP_MPP_CMAKE_ARGS="\
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_PREFIX_PATH=/usr/local \
-    -DCMAKE_INSTALL_RPATH=/usr/local \
-    -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE \
-    "
+ARG BPP_CORE_COMMIT=9f8d3e2300afb1d4a9e06c0a99ac3c7aeba03581
 
-RUN \
-    set -ex; \
-    apt-get update; \
-    apt-get install -y build-essential cmake git libboost-iostreams-dev libgsl-dev; \
-    rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CMAKE_ARGS="-DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DCMAKE_PREFIX_PATH=/usr/local \
+                -DCMAKE_INSTALL_RPATH=/usr/local \
+                -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=TRUE"
 
-RUN set -ex; \
-    git clone https://gitlab.com/libeigen/eigen.git; \
-    cd eigen; git checkout "${EIGEN_VERSION}"; \
-    mkdir build; cd build; cmake ..; make -j "${NCORES}"; make install; \
-    cd /; rm -rf eigen
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    ca-certificates \
+    libboost-iostreams-dev \
+    libgsl-dev \
+    libmpfr-dev \
+    libgmp-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN set -ex; \
-    git clone https://github.com/BioPP/bpp-core.git; \
-    cd bpp-core; git checkout "${BPP_CORE_VERSION}"; \
-    mkdir build; cd build; cmake ${BPP_MPP_CMAKE_ARGS} ..; \
-    make -j "${NCORES}"; make install; \
-    cd /; rm -rf bpp-core
+# ───────────────────────────────────────────────────────────────
+# Install Eigen from official release tarball
+RUN curl -fsSL -o /tmp/eigen.tar.gz \
+      https://gitlab.com/libeigen/eigen/-/archive/${EIGEN_VERSION}/eigen-${EIGEN_VERSION}.tar.gz && \
+    mkdir -p /tmp/eigen-src && \
+    tar -xzf /tmp/eigen.tar.gz -C /tmp/eigen-src --strip-components=1 && \
+    cmake -B /tmp/eigen-src/build -S /tmp/eigen-src ${CMAKE_ARGS} && \
+    cmake --build /tmp/eigen-src/build -j${NCORES} && \
+    cmake --install /tmp/eigen-src/build && \
+    rm -rf /tmp/eigen*
 
-# Depends on bpp-core
-RUN set -ex; \
-    git clone https://github.com/BioPP/bpp-seq.git; \
-    cd bpp-seq; git checkout "${BPP_SEQ_VERSION}"; \
-    mkdir build; cd build; cmake ${BPP_MPP_CMAKE_ARGS} ..; \
-    make -j "${NCORES}"; make install; \
-    cd /; rm -rf bpp-seq
+# ───────────────────────────────────────────────────────────────
+# Install Bio++ core3
+RUN git clone https://github.com/BioPP/bpp-core.git /tmp/bpp-core && \
+    cd /tmp/bpp-core && git checkout ${BPP_CORE_COMMIT} && \
+    cmake -B build -S . ${CMAKE_ARGS} && \
+    cmake --build build -j${NCORES} && \
+    cmake --install build && \
+    rm -rf /tmp/bpp-core
 
-# Depends on bpp-core, bpp-seq, and eigen
-RUN set -ex; \
-    git clone https://github.com/BioPP/bpp-phyl.git; \
-    cd bpp-phyl; git checkout "${BPP_PHYL_VERSION}"; \
-    mkdir build; cd build; cmake ${BPP_MPP_CMAKE_ARGS} ..; \
-    make -j "${NCORES}"; make install; \
-    cd /; rm -rf bpp-phyl
+# ───────────────────────────────────────────────────────────────
+# Install yaml-cpp
+RUN git clone https://github.com/jbeder/yaml-cpp.git /tmp/yaml-cpp && \
+    cd /tmp/yaml-cpp && git checkout ${YAML_CPP_VERSION} && \
+    cmake -B build -S . ${CMAKE_ARGS} && \
+    cmake --build build -j${NCORES} && \
+    cmake --install build && \
+    rm -rf /tmp/yaml-cpp
 
-# Depends on bpp-core, bpp-seq, and eigen
-RUN set -ex; \
-    git clone https://github.com/jbeder/yaml-cpp.git; \
-    cd yaml-cpp; git checkout "${YAML_CPP_VERSION}"; \
-    mkdir build; cd build; cmake ..; make -j "${NCORES}"; make install; \
-    cd /; rm -rf yaml-cpp
-
-# Change to the build dir
-WORKDIR /opt/momentspp
-
-# Add the necessary files for building momentspp
-ADD src src
-ADD CMakeLists.txt .
-
+# ───────────────────────────────────────────────────────────────
 # Build momentspp
-RUN set -ex; \
-    mkdir build; cd build; cmake ${BPP_MPP_CMAKE_ARGS} ..; \
-    make -j "${NCORES}"; make install
+WORKDIR /opt/momentspp
+COPY CMakeLists.txt .
+COPY src/ src/
 
-# Remove static libs before creating final build
+RUN cmake -B build -S . ${CMAKE_ARGS} && \
+    cmake --build build -j${NCORES} && \
+    cmake --install build
+
+# Optional: remove static libs to reduce image size
 RUN find /usr/local/lib -type f -name '*.a' -delete
 
-
+# ───────────────────────────────────────────────────────────────
+# Stage 2: Final runtime image
+# ───────────────────────────────────────────────────────────────
 FROM debian:bookworm-slim AS final
+
 COPY --from=build /usr/local/lib /usr/local/lib
 COPY --from=build /usr/local/bin /usr/local/bin
 
-RUN \
-    set -ex; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends libboost-iostreams1.74.0 libgomp1 libgsl27; \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libboost-iostreams1.74.0 \
+    libgomp1 \
+    libgsl27 \
+    libmpfr6 \
+    libgmp10 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["momentspp"]
+
