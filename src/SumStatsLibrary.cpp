@@ -322,7 +322,7 @@ void SumStatsLibrary::initMoments_(bool compress)
 
   cleanBasis_();
   linkPi2HetStats_();
-  basis_ = moments_; // default
+  basis_ = moments_;
 
   if(compress)
   {

@@ -34,10 +34,10 @@
 //------------------------------------------------------------------------------
 void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 {
-  if (!matchParametersValues(params))
+  if(!matchParametersValues(params))
     return;
 
-  for (auto& op : operators_)
+  for(auto& op : operators_)
     op->fireParameterChanged(params);
 
   init_();
@@ -52,7 +52,7 @@ void Epoch::computeExpectedSumStatsDiscrete(MatrixEngine::VectorVariant& y)
 
   visitMatrixAndVector(matVar, y, [&](auto const& A, auto& vecWrap)
   {
-    for (size_t k = 0; k < duration(); ++k)
+    for(size_t k = 0; k < duration(); ++k)
       vecWrap = A * vecWrap;
   });
 
@@ -278,7 +278,7 @@ void Epoch::printTransitionMat(const std::string& fileName) const
 
   // preserve caller’s formatting
   auto oldFlags = out.flags();
-  auto oldPrec  = out.precision();
+  auto oldPrec = out.precision();
 
   out << std::scientific << std::setprecision(16);
 
@@ -329,7 +329,6 @@ void Epoch::computeEigenSteadyState()
   updateMoments(engine_->getVectorVariant());
 }
 
-
 //------------------------------------------------------------------------------
 // Pseudo‐steady state via power‐method for discrete‐time model
 //------------------------------------------------------------------------------
@@ -367,7 +366,7 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
 
   visitMatrixAndVector(matVar, vecWrap,[&](auto const& A, auto& dstWrap)
   {
-    A.print(std::cout);
+    //A.print(std::cout);
     using Scalar = typename std::decay_t<decltype(A)>::Scalar;
 
     size_t pop = ssl_.getPopIndices()[0];
@@ -380,12 +379,16 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
 
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y(A.cols()); // inits y (Eigen::Vec)
 
-    std::cout << "Hr guess = " << hr << "; Hl guess = " << hl << " ;\tsize of y = " << y.size() << "\n";
-
     double f = 1.0; // scaling factor to mimic the factors of 1-2p
     for(Eigen::Index i = 0; i < y.size(); ++i)
     {
       const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
+
+      if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix()) // same kind of moment, applies heuristic decay
+        f *= 0.925;
+
+      else // resets for next moment
+        f = 1.0;
 
       if(prefix == "Hl")
         y(i) = Scalar(hl * f);
@@ -394,27 +397,21 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
         y(i) = Scalar(hr * f);
 
       else if(prefix == "pi2")
-        y(i) = Scalar(hr * hl * f);
+        y(i) = Scalar(hr * hl * f * 1.3);
 
-      else if (prefix == "I")
+      else if(prefix == "I")
         y(i) = Scalar(1.0);
 
-      else
-        y(i) = Scalar(hr * hl * f * 1e-1);
+      else if(prefix == "DD")
+        y(i) = Scalar(hr * hl * f * 5e-1);
 
-      if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix()) // same kind of moment, applies heuristic decay
-        f *= 0.925;
-
-      else // resets for next moment
-        f = 1.0;
+      else // if(prefix == "Dr")
+        y(i) = Scalar(hr * hl * f * 3e-1);
     }
 
-    for(Eigen::Index i = 0; i < y.size(); ++i)
-      std::cout << i << ": " << y(i) << "\n";
-
     // burn‐in
-    size_t burnSteps = twoN / 10;
-    for(size_t b = 0; b < 3; ++b)
+    size_t burnSteps = twoN;
+    for(size_t b = 0; b < burnSteps; ++b)
     {
       Vector<Scalar> yWrap(std::move(y)); // wraps thin Eigen vector
       Vector<Scalar> result = A * yWrap;
@@ -431,20 +428,23 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
       Vector<Scalar> result = A * yWrap;
       y = result.eigen();
 
-      double maxRel = 0.0;
-
-      for(Eigen::Index i = 0; i < y.size(); ++i)
+      if(iter % 10000 == 0)
       {
-        double pv = static_cast<double>(prev(i));
-        double cv = static_cast<double>(y(i));
-        maxRel = std::max(maxRel, std::abs(cv - pv) / std::max(1.0, std::abs(pv)));
-      }
+        double maxRel = 0.0;
 
-      if(maxRel <= tol)
-      {
-        std::cout << "Pseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
-        converged = true;
-        break;
+        for(Eigen::Index i = 0; i < y.size(); ++i)
+        {
+          double pv = static_cast<double>(prev(i));
+          double cv = static_cast<double>(y(i));
+          maxRel = std::max(maxRel, std::abs(cv - pv) / std::max(1.0, std::abs(pv)));
+        }
+
+        if(maxRel <= tol)
+        {
+          std::cout << "\nPseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
+          converged = true;
+          break;
+        }
       }
 
       prev = y;
@@ -458,7 +458,7 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
 
   if(!converged)
   {
-    std::cerr << "Pseudo steady-state did not converge. Falling back to eigen steady-state.\n";
+    std::cerr << "\nPseudo steady-state did not converge. Falling back to eigen steady-state.\n";
     computeEigenSteadyState();
     return;
   }
@@ -491,11 +491,16 @@ bool Epoch::computePseudoSSContinuousTyped(
   double hr = twoN * mu;
   double hl = (std::abs(s) < 1e-14) ? twoN * mu : (2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.) - mu / s);
 
-  double f = 1.0;
-
-  for(Eigen::Index i = 0; i < static_cast<Eigen::Index>(n); ++i)
+  double f = 1.0; // scaling factor to mimic the factors of 1-2p
+  for(Eigen::Index i = 0; i < y.size(); ++i)
   {
     const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
+
+    if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix()) // same kind of moment, applies heuristic decay
+      f *= 0.925;
+
+    else // resets for next moment
+      f = 1.0;
 
     if(prefix == "Hl")
       y(i) = Scalar(hl * f);
@@ -504,19 +509,16 @@ bool Epoch::computePseudoSSContinuousTyped(
       y(i) = Scalar(hr * f);
 
     else if(prefix == "pi2")
-      y(i) = Scalar(hr * hl * f);
+      y(i) = Scalar(hr * hl * f * 1.3);
 
     else if(prefix == "I")
       y(i) = Scalar(1.0);
 
-    else
-      y(i) = Scalar(hr * hl * f * 1e-1);
+    else if(prefix == "DD")
+      y(i) = Scalar(hr * hl * f * 5e-1);
 
-    if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix())
-      f *= 0.925;
-
-    else
-      f = 1.;
+    else // if(prefix == "Dr")
+      y(i) = Scalar(hr * hl * f * 3e-1);
   }
 
   size_t burnSteps = static_cast<size_t>(burnInTime / dt);
@@ -527,7 +529,7 @@ bool Epoch::computePseudoSSContinuousTyped(
   {
     Vwrap.eigen() = y;
 
-    if constexpr (std::is_same_v<Scalar, double>)
+    if constexpr(std::is_same_v<Scalar, double>)
       y = integrateDoubleCN(A, Vwrap, dt, dt).eigen();
 
     else
@@ -542,27 +544,29 @@ bool Epoch::computePseudoSSContinuousTyped(
   {
     Vwrap.eigen() = y;
 
-    if constexpr (std::is_same_v<Scalar, double>)
+    if constexpr(std::is_same_v<Scalar, double>)
       y = integrateDoubleCN(A, Vwrap, dt, dt).eigen();
 
     else
       y = integrateMpfrCN(A, Vwrap, dt, dt).eigen();
 
-    double maxRel = 0.0;
-
-    for(Eigen::Index i = 0; i < static_cast<Eigen::Index>(n); ++i)
+    if(iter % 10000 == 0)
     {
-      double pv = static_cast<double>(prev(i));
-      double cv = static_cast<double>(y(i));
-      double rel = std::abs(cv - pv) / std::max(1.0, std::abs(pv));
-      maxRel = std::max(maxRel, rel);
-    }
+      double maxRel = 0.0;
 
-    if(maxRel <= tol)
-    {
-      std::cout << "Continuous pseudo steady-state converged after " << iter << " steps, " << name_ << "\n";
-      converged = true;
-      break;
+      for(Eigen::Index i = 0; i < y.size(); ++i)
+      {
+        double pv = static_cast<double>(prev(i));
+        double cv = static_cast<double>(y(i));
+        maxRel = std::max(maxRel, std::abs(cv - pv) / std::max(1.0, std::abs(pv)));
+      }
+
+      if(maxRel <= tol)
+      {
+        std::cout << "\nPseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
+        converged = true;
+        break;
+      }
     }
 
     prev = y;

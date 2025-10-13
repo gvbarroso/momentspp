@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 24/09/2025
+ * Last modified: 13/10/2025
  *
  */
 
@@ -40,7 +40,7 @@ void Recombination::setUpMatrices_(const SumStatsLibrary& sslib)
 
         if(prefix == "DD")
         {
-          size_t f = moment->countInstances(id);
+          int f = static_cast<int>(moment->countInstances(id));
           localTriplets.emplace_back(row, row, Scalar(-f));
         }
 

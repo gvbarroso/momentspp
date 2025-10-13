@@ -43,8 +43,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
         if(prefix == "Hl" || prefix == "Hr")
         {
           const size_t col = sslib.findCompressedIndex(sslib.getMoment("I"));
-          Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0)
-                                            : Scalar(popIdCount / 2.0);
+          Scalar factor = (prefix == "Hl") ? Scalar(leftFactor_ * popIdCount / 2.0) : Scalar(popIdCount / 2.0);
           localTriplets.emplace_back(row, col, factor);
         }
 
@@ -52,7 +51,7 @@ void Mutation::setUpMatrices_(const SumStatsLibrary& sslib)
         {
           const auto tmpPi2 = std::dynamic_pointer_cast<Pi2Moment>(moment);
           if(!tmpPi2)
-          continue;
+            continue;
 
           const auto tempLeft = tmpPi2->getLeftHetStat();
           const auto tempRight = tmpPi2->getRightHetStat();

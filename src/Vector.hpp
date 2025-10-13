@@ -136,6 +136,8 @@ public:
 
   void print(std::ostream& out) const
   {
+    out << std::scientific << std::setprecision(16);
+
     for(Eigen::Index i = 0; i < vec_.size(); ++i)
       out << i << ": " << vec_(i) << "\n";
   }

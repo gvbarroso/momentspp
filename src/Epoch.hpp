@@ -323,9 +323,9 @@ public:
 
   void printTransitionMat(const std::string& fileName) const;
 
-  void computePseudoSteadyStateDiscrete(double tol = 1e-6);
+  void computePseudoSteadyStateDiscrete(double tol = 1e-16);
 
-  void computePseudoSteadyStateContinuous(double burnInTime = 0.1, double dt = 1e-3, double tol = 1e-6);
+  void computePseudoSteadyStateContinuous(double burnInTime = 0.1, double dt = 1e-3, double tol = 1e-16);
 
   // typed helper for the continuous pseudo‐steady solver
   template<typename Scalar>
@@ -382,7 +382,7 @@ public:
       return (s.size() > 1) ? static_cast<double>(s(0) / s(s.size() - 1)) : 0.0;
     }
   }, eigenVar);
-}
+  }
 
   inline EigenResult findLeadingEigenpair() const
   {
@@ -391,14 +391,14 @@ public:
     return std::visit(overloaded {[](auto const& M) -> EigenResult
     {
       using DenseD = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
-      using VecD   = Eigen::Matrix<double, Eigen::Dynamic, 1>;
+      using VecD = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 
       // to dense<double>
       DenseD dense = M.template cast<double>();
 
       // solve eigenproblem
       Eigen::EigenSolver<DenseD> es(dense);
-      if (es.info() != Eigen::Success)
+      if(es.info() != Eigen::Success)
         throw bpp::Exception("findLeadingEigenpair(): EigenSolver failed");
 
       // pick largest real eigenvalue
