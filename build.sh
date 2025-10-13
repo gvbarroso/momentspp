@@ -22,7 +22,7 @@ INSTALL_PREFIX="$HOME/.local"
 
 # Optional flags
 NATIVE_BUILD="ON"
-DEBUG="ON"
+DEBUG="OFF" # turning ON/OFF compulation of blocks: ifdef DEBUG
 NAKED_D="OFF"
 
 echo "🔧 Build type: $BUILD_TYPE"

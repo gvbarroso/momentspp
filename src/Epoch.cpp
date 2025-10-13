@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 25/09/2025
+ * Last modified: 13/10/2025
  *
  */
 
@@ -48,7 +48,7 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 //------------------------------------------------------------------------------
 void Epoch::computeExpectedSumStatsDiscrete(MatrixEngine::VectorVariant& y)
 {
-  auto matVar = engine_->toEigenMatrixVariant();
+  auto matVar = engine_->getMatrixVariant();
 
   visitMatrixAndVector(matVar, y, [&](auto const& A, auto& vecWrap)
   {
@@ -285,7 +285,6 @@ void Epoch::printTransitionMat(const std::string& fileName) const
   std::visit(overloaded{[&](auto const& M)
   {
     using MatT   = std::decay_t<decltype(M)>;
-    //using Scalar = typename MatT::Scalar;
 
     out << M.rows() << ' ' << M.cols() << ' ' << M.nonZeros() << '\n';
 
@@ -309,7 +308,7 @@ void Epoch::computeEigenSteadyState()
 {
   EigenResult res = findLeadingEigenpair();
 
-  auto matVar   = engine_->toEigenMatrixVariant();
+  auto matVar = engine_->getMatrixVariant();
   MatrixEngine::VectorVariant vecWrap;
 
   std::visit(overloaded{[&](auto const& M)
@@ -319,7 +318,7 @@ void Epoch::computeEigenSteadyState()
     // allocates an Eigen::Matrix<Scalar,Dynamic,1>
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> v(M.cols());
 
-    for(Eigen::Index i = 0; i < M.cols(); ++i)
+    for(Eigen::Index i = 0; i < static_cast<Eigen::Index>(M.cols()); ++i)
       v(i) = static_cast<Scalar>(res.vector(i));
 
     vecWrap = Vector<Scalar>(std::move(v));
@@ -336,11 +335,9 @@ void Epoch::computeEigenSteadyState()
 //------------------------------------------------------------------------------
 void Epoch::computePseudoSteadyStateDiscrete(double tol)
 {
-  std::cout << "hi 1\n";
-
   bool converged = false;
 
-  auto matVar = engine_->toEigenMatrixVariant();
+  auto matVar = engine_->getMatrixVariant();
   MatrixEngine::VectorVariant vecWrap = engine_->getVectorVariant();
 
   #ifdef DEBUG
@@ -370,8 +367,8 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
 
   visitMatrixAndVector(matVar, vecWrap,[&](auto const& A, auto& dstWrap)
   {
+    A.print(std::cout);
     using Scalar = typename std::decay_t<decltype(A)>::Scalar;
-    using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
 
     size_t pop = ssl_.getPopIndices()[0];
     double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
@@ -381,7 +378,9 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
     double hr = twoN * mu;
     double hl = (std::abs(s) < 1e-14) ? twoN * mu : (2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.0) - mu/s);
 
-    Vec y(A.cols()); // inits y (Eigen::Vec)
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y(A.cols()); // inits y (Eigen::Vec)
+
+    std::cout << "Hr guess = " << hr << "; Hl guess = " << hl << " ;\tsize of y = " << y.size() << "\n";
 
     double f = 1.0; // scaling factor to mimic the factors of 1-2p
     for(Eigen::Index i = 0; i < y.size(); ++i)
@@ -410,16 +409,19 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
         f = 1.0;
     }
 
+    for(Eigen::Index i = 0; i < y.size(); ++i)
+      std::cout << i << ": " << y(i) << "\n";
+
     // burn‐in
     size_t burnSteps = twoN / 10;
-    for (size_t b = 0; b < burnSteps; ++b)
+    for(size_t b = 0; b < 3; ++b)
     {
       Vector<Scalar> yWrap(std::move(y)); // wraps thin Eigen vector
       Vector<Scalar> result = A * yWrap;
       y = result.eigen();
     }
 
-    Vec prev = y;
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> prev = y;
 
     size_t maxIter = 20 * twoN;
     for(size_t iter = 0; iter < maxIter; ++iter)
@@ -471,18 +473,14 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
 //------------------------------------------------------------------------------
 template<typename Scalar>
 bool Epoch::computePseudoSSContinuousTyped(
-    const Eigen::SparseMatrix<Scalar>& A,
+    const Matrix<Scalar>& A,
     double burnInTime,
     double dt,
     double tol,
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& outY) const
 {
-  using Vec = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-  using MWrap = Matrix<Scalar>;
-  using VWrap = Vector<Scalar>;
-
   const Eigen::Index n = A.cols();
-  Vec y(n);
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y(n);
 
   // rough initial guess
   size_t pop = ssl_.getPopIndices()[0];
@@ -495,7 +493,7 @@ bool Epoch::computePseudoSSContinuousTyped(
 
   double f = 1.0;
 
-  for(Eigen::Index i = 0; i < n; ++i)
+  for(Eigen::Index i = 0; i < static_cast<Eigen::Index>(n); ++i)
   {
     const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
 
@@ -523,21 +521,20 @@ bool Epoch::computePseudoSSContinuousTyped(
 
   size_t burnSteps = static_cast<size_t>(burnInTime / dt);
 
-  MWrap Mwrap(A);
-  VWrap Vwrap;
+  Vector<Scalar> Vwrap;
 
   for(size_t b = 0; b < burnSteps; ++b)
   {
     Vwrap.eigen() = y;
 
     if constexpr (std::is_same_v<Scalar, double>)
-      y = integrateDoubleCN(Mwrap, Vwrap, dt, dt).eigen();
+      y = integrateDoubleCN(A, Vwrap, dt, dt).eigen();
 
     else
-      y = integrateMpfrCN(Mwrap, Vwrap, dt, dt).eigen();
+      y = integrateMpfrCN(A, Vwrap, dt, dt).eigen();
   }
 
-  Vec prev = y;
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> prev = y;
   size_t maxSteps = static_cast<size_t>(10 * burnInTime / dt);
   bool converged = false;
 
@@ -546,14 +543,14 @@ bool Epoch::computePseudoSSContinuousTyped(
     Vwrap.eigen() = y;
 
     if constexpr (std::is_same_v<Scalar, double>)
-      y = integrateDoubleCN(Mwrap, Vwrap, dt, dt).eigen();
+      y = integrateDoubleCN(A, Vwrap, dt, dt).eigen();
 
     else
-      y = integrateMpfrCN(Mwrap, Vwrap, dt, dt).eigen();
+      y = integrateMpfrCN(A, Vwrap, dt, dt).eigen();
 
     double maxRel = 0.0;
 
-    for(Eigen::Index i = 0; i < n; ++i)
+    for(Eigen::Index i = 0; i < static_cast<Eigen::Index>(n); ++i)
     {
       double pv = static_cast<double>(prev(i));
       double cv = static_cast<double>(y(i));
@@ -584,7 +581,7 @@ bool Epoch::computePseudoSSContinuousTyped(
 //------------------------------------------------------------------------------
 void Epoch::computePseudoSteadyStateContinuous(double burnInTime, double dt, double tol)
 {
-  auto matVar = engine_->toEigenMatrixVariant();
+  auto matVar = engine_->getMatrixVariant();
   bool converged = false;
 
   MatrixEngine::VectorVariant vecWrap;  // will hold the wrapped steady‐state

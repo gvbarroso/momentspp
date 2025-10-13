@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 23/09/2025
+ * Last modified: 13/10/2025
  *
  */
 
@@ -315,7 +315,8 @@ public:
   void printMoments(std::ostream& stream);
 
   void printMomentsIntermediate(MatrixEngine::VectorVariant& y,
-                                const std::string& modelName, size_t interval,
+                                const std::string& modelName,
+                                size_t interval,
                                 const std::vector<std::string>& momNames);
 
   void printRecursions(std::ostream& stream);
@@ -329,7 +330,7 @@ public:
   // typed helper for the continuous pseudo‐steady solver
   template<typename Scalar>
   bool computePseudoSSContinuousTyped(
-    const Eigen::SparseMatrix<Scalar>& A,
+    const Matrix<Scalar>& A,
     double burnInTime,
     double dt,
     double tol,

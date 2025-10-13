@@ -53,23 +53,23 @@ inline Vector<mpfr::mpreal> integrateMpfrCN(
     double dt,
     double totalTime)
 {
-    int steps = std::max(1, int(std::ceil(totalTime / dt)));
-    auto Ad = A.eigen();
-    int n = Ad.rows();
+  int steps = std::max(1, int(std::ceil(totalTime / dt)));
+  auto Ad = A.eigen();
+  int n = Ad.rows();
 
-    // Build identity in full (dense) form for mpfr
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> Iden = Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>::Identity(n, n);
+  // Build identity in full (dense) form for mpfr
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> Iden = Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>::Identity(n, n);
 
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1 = Iden - (dt * mpfr::mpreal(0.5)) * Ad;
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2 = Iden + (dt * mpfr::mpreal(0.5)) * Ad;
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1 = Iden - (dt * mpfr::mpreal(0.5)) * Ad;
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2 = Iden + (dt * mpfr::mpreal(0.5)) * Ad;
 
-    Eigen::PartialPivLU<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> solver(M1);
+  Eigen::PartialPivLU<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> solver(M1);
 
-    auto y = y0.eigen();
-    for(int k = 0; k < steps; ++k)
-      y = solver.solve(M2 * y);
+  auto y = y0.eigen();
+  for(int k = 0; k < steps; ++k)
+    y = solver.solve(M2 * y);
 
-    return Vector<mpfr::mpreal>(std::move(y));
+  return Vector<mpfr::mpreal>(std::move(y));
 }
 
 
@@ -83,46 +83,50 @@ inline Vector<double> integrateAdaptiveDoubleCN(
     double dtMin,
     double dtMax)
 {
-    Eigen::VectorXd y = y0.eigen();
-    double t = 0.0;
-    double h = dt;
+  Eigen::VectorXd y = y0.eigen();
+  double t = 0.0;
+  double h = dt;
 
-    const auto& As = A.eigen();
-    int n = As.rows();
-    Eigen::SparseMatrix<double> I(n, n);
-    I.setIdentity();
+  const auto& As = A.eigen();
+  int n = As.rows();
+  Eigen::SparseMatrix<double> I(n, n);
+  I.setIdentity();
 
-    while (t < totalTime) {
-        h = std::clamp(h, dtMin, dtMax);
-        if (t + h > totalTime)
-            h = totalTime - t;
-        double h2 = h * 0.5;
+  while(t < totalTime)
+  {
+    h = std::clamp(h, dtMin, dtMax);
+    if(t + h > totalTime)
+      h = totalTime - t;
 
-        // Full‐step
-        Eigen::SparseMatrix<double> M1  = I - (h * 0.5) * As;
-        Eigen::SparseMatrix<double> M2  = I + (h * 0.5) * As;
-        Eigen::SparseLU<Eigen::SparseMatrix<double>> solverFull(M1);
-        Eigen::VectorXd yFull = solverFull.solve(M2 * y);
+    double h2 = h * 0.5;
 
-        // Two half‐steps
-        Eigen::SparseMatrix<double> M1h = I - (h2 * 0.5) * As;
-        Eigen::SparseMatrix<double> M2h = I + (h2 * 0.5) * As;
-        Eigen::SparseLU<Eigen::SparseMatrix<double>> solverHalf(M1h);
-        Eigen::VectorXd yHalf = solverHalf.solve(M2h * y);
-        yHalf = solverHalf.solve(M2h * yHalf);
+    // Full‐step
+    Eigen::SparseMatrix<double> M1  = I - (h * 0.5) * As;
+    Eigen::SparseMatrix<double> M2  = I + (h * 0.5) * As;
+    Eigen::SparseLU<Eigen::SparseMatrix<double>> solverFull(M1);
+    Eigen::VectorXd yFull = solverFull.solve(M2 * y);
 
-        double err = (yFull - yHalf).lpNorm<Eigen::Infinity>();
+    // Two half‐steps
+    Eigen::SparseMatrix<double> M1h = I - (h2 * 0.5) * As;
+    Eigen::SparseMatrix<double> M2h = I + (h2 * 0.5) * As;
+    Eigen::SparseLU<Eigen::SparseMatrix<double>> solverHalf(M1h);
+    Eigen::VectorXd yHalf = solverHalf.solve(M2h * y);
+    yHalf = solverHalf.solve(M2h * yHalf);
 
-        if (err <= tolerance) {
-            y = yHalf;
-            t += h;
-            h = std::clamp(h * std::sqrt(tolerance / (err + 1e-16)), dtMin, dtMax);
-        } else {
-            h = std::max(h * 0.5, dtMin);
-        }
+    double err = (yFull - yHalf).lpNorm<Eigen::Infinity>();
+
+    if(err <= tolerance)
+    {
+      y = yHalf;
+      t += h;
+      h = std::clamp(h * std::sqrt(tolerance / (err + 1e-16)), dtMin, dtMax);
     }
 
-    return Vector<double>(std::move(y));
+    else
+      h = std::max(h * 0.5, dtMin);
+  }
+
+  return Vector<double>(std::move(y));
 }
 
 
@@ -136,64 +140,54 @@ inline Vector<mpfr::mpreal> integrateAdaptiveMpfrCN(
     double dtMin,
     double dtMax)
 {
-    auto y = y0.eigen();          // Eigen::Matrix<mpfr::mpreal, Dynamic, 1>
-    double t = 0.0;
-    double h = dt;
+  auto y = y0.eigen();          // Eigen::Matrix<mpfr::mpreal, Dynamic, 1>
+  double t = 0.0;
+  double h = dt;
 
-    auto Ad = A.eigen();          // Eigen::SparseMatrix<mpfr::mpreal>
-    int n = Ad.rows();
-    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> Iden =
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>::Identity(n, n);
+  auto Ad = A.eigen();          // Eigen::SparseMatrix<mpfr::mpreal>
+  int n = Ad.rows();
+  Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> Iden = Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>::Identity(n, n);
 
-    while (t < totalTime) {
-        h = std::clamp(h, dtMin, dtMax);
-        if (t + h > totalTime)
-            h = totalTime - t;
-        double h2 = h * 0.5;
+  while (t < totalTime)
+  {
+    h = std::clamp(h, dtMin, dtMax);
+    if(t + h > totalTime)
+      h = totalTime - t;
 
-        // Full‐step: force evaluation into a dense matrix before LU
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1 =
-            (Iden - (mpfr::mpreal(h) * mpfr::mpreal(0.5)) * Ad).eval();
+    double h2 = h * 0.5;
 
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2 =
-            (Iden + (mpfr::mpreal(h) * mpfr::mpreal(0.5)) * Ad).eval();
+    // Full‐step: force evaluation into a dense matrix before LU
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1 = (Iden - (mpfr::mpreal(h) * mpfr::mpreal(0.5)) * Ad).eval();
 
-        Eigen::PartialPivLU<
-            Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>
-        > solverFull(M1);
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2 = (Iden + (mpfr::mpreal(h) * mpfr::mpreal(0.5)) * Ad).eval();
 
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> yFull =
-            solverFull.solve((M2 * y).eval());
+    Eigen::PartialPivLU<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> solverFull(M1);
 
-        // Two half‐steps: again force eval before each LU
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1h =
-            (Iden - (mpfr::mpreal(h2) * mpfr::mpreal(0.5)) * Ad).eval();
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> yFull = solverFull.solve((M2 * y).eval());
 
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2h =
-            (Iden + (mpfr::mpreal(h2) * mpfr::mpreal(0.5)) * Ad).eval();
+    // Two half‐steps: again force eval before each LU
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M1h = (Iden - (mpfr::mpreal(h2) * mpfr::mpreal(0.5)) * Ad).eval();
 
-        Eigen::PartialPivLU<
-            Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>
-        > solverHalf(M1h);
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic> M2h = (Iden + (mpfr::mpreal(h2) * mpfr::mpreal(0.5)) * Ad).eval();
 
-        Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> yHalf =
-            solverHalf.solve((M2h * y).eval());
-        yHalf = solverHalf.solve((M2h * yHalf).eval());
+    Eigen::PartialPivLU<Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, Eigen::Dynamic>> solverHalf(M1h);
 
-        mpfr::mpreal err = (yFull - yHalf).lpNorm<Eigen::Infinity>();
+    Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> yHalf = solverHalf.solve((M2h * y).eval());
+    yHalf = solverHalf.solve((M2h * yHalf).eval());
 
-        if (err <= tolerance) {
-            y = yHalf;
-            t += h;
-            double factor = std::pow(
-                static_cast<double>(tolerance / (static_cast<double>(err) + 1e-16)),
-                0.5
-            );
-            h = std::clamp(h * factor, dtMin, dtMax);
-        } else {
-            h = std::max(h * 0.5, dtMin);
-        }
+    mpfr::mpreal err = (yFull - yHalf).lpNorm<Eigen::Infinity>();
+
+    if(err <= tolerance)
+    {
+      y = yHalf;
+      t += h;
+      double factor = std::pow(static_cast<double>(tolerance / (static_cast<double>(err) + 1e-16)), 0.5);
+      h = std::clamp(h * factor, dtMin, dtMax);
     }
 
-    return Vector<mpfr::mpreal>(std::move(y));
+    else
+      h = std::max(h * 0.5, dtMin);
+  }
+
+  return Vector<mpfr::mpreal>(std::move(y));
 }

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 25/09/2025
+ * Last modified: 13/10/2025
  *
  */
 
@@ -41,7 +41,12 @@ public:
     setZero();
   }
 
-  Vector(const Vector& other) : vec_(other.vec_)
+  Vector(const Vector& other):
+  vec_(other.vec_)
+  { }
+
+  Vector(Eigen::Matrix<T, Eigen::Dynamic, 1>&& other):
+  vec_(std::move(other))
   { }
 
   Vector<T>& operator=(Vector<T>&& other) noexcept
@@ -50,16 +55,9 @@ public:
     return *this;
   }
 
-  Vector(const Eigen::Matrix<T, Eigen::Dynamic, 1>& v) : vec_(v)
-  {
-    setZero();
-  }
-
-  Vector(Eigen::Matrix<T, Eigen::Dynamic, 1>&& other):
-  vec_(std::move(other))
-  {
-    setZero();
-  }
+  Vector(const Eigen::Matrix<T, Eigen::Dynamic, 1>& v):
+  vec_(v)
+  { }
 
   Vector<T>& operator=(const Vector<T>& other)
   {
@@ -136,10 +134,10 @@ public:
       vec_ /= norm;
   }
 
-  void print() const
+  void print(std::ostream& out) const
   {
-    for(size_t i = 0; i < vec_.size(); ++i)
-      std::cout << i << ": " << vec_(i) << "\n";
+    for(Eigen::Index i = 0; i < vec_.size(); ++i)
+      out << i << ": " << vec_(i) << "\n";
   }
 
   std::unique_ptr<Vector<T>> clone() const
