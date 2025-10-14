@@ -417,7 +417,14 @@ public:
           idx = i;
       }
 
-      std::cout << std::setprecision(12) << "\nleading eigenval =  " << evals(idx) << "\n";
+      std::cout << std::setprecision(12) << "\nleading eigenval (base Eigen 3.4) =  " << evals(idx) << "\n";
+
+      if(es.eigenvalues().real()(idx) > 1. + 1e-5 || es.eigenvalues().real()(idx) < 1. - 1e-5)
+      {
+        double cond = fetchConditionNumber();
+        std::cout << "\nCondition Number of transition matrix = " << cond << "\n";
+        throw bpp::Exception("Epoch::Bad Leading Eigenvalue! Consider using a smaller order of 1-2p factors.\n");
+      }
 
       VecD vecD = es.eigenvectors().col(idx).real();
       // I moment embodies scaling constant used by Eigen
@@ -517,7 +524,14 @@ public:
 
       double lambda = eigs.eigenvalues()(0).real(); // handles complex return
 
-      std::cout << std::setprecision(12) << "\nleading eigenval =  " << lambda << "\n";
+      std::cout << std::setprecision(12) << "\nleading eigenval (Spectra) =  " << lambda << "\n";
+
+      if(lambda > 1. + 1e-5 || lambda < 1. - 1e-5)
+      {
+        double cond = fetchConditionNumber();
+        std::cout << "\nCondition Number of transition matrix = " << cond << "\n";
+        throw bpp::Exception("Epoch::Bad Leading Eigenvalue! Consider using a smaller order of 1-2p factors.\n");
+      }
 
       // converts to high precision
       Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
