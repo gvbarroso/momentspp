@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 24/09/2025
+ * Last modified: 14/10/2025
  *
  */
 
@@ -26,6 +26,7 @@ private:
   std::string dataFilePath_;      // observed sum stats, for most recent Epoch
   std::string initStatsFilePath_; // e.g. steady-state sum stats for deep-most Epoch
   std::string numericalOptimizer_;
+  std::string steadyState_; // eigen or pseudo, see Epoch class
 
   double toleranceOptim_; // for numerical optimization
 
@@ -55,6 +56,7 @@ public:
   dataFilePath_(bpp::ApplicationTools::getAFilePath("obs_stats_file", options, false, true, "", false, "none", 4)),
   initStatsFilePath_(bpp::ApplicationTools::getAFilePath("init_stats_file", options, false, true, "", false, "none", 4)),
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "NewtonRhapson", "", true, 4)),
+  steadyState_(bpp::ApplicationTools::getStringParameter("steady_state", options, "eigen", "", true, 4)),
   toleranceOptim_(bpp::ApplicationTools::getDoubleParameter("toleranceOptim", options, 1e-6, "", 0, 4)),
   aliasOverEpochs_(bpp::ApplicationTools::getParameter<bool>("alias_epochs_params", options, true, "", true, 4)),
   aliasOverPops_(bpp::ApplicationTools::getParameter<bool>("alias_pops_params", options, true, "", true, 4)),
@@ -102,6 +104,11 @@ public:
   const std::string& getOptimMethod() const
   {
     return numericalOptimizer_;
+  }
+
+  const std::string& getSteadyStateMethod() const
+  {
+    return steadyState_;
   }
 
   double getToleranceOptim() const

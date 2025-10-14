@@ -396,7 +396,7 @@ public:
       // to dense<double>
       DenseD dense = M.template cast<double>();
 
-      // solve eigenproblem
+      // solve eigen problem
       Eigen::EigenSolver<DenseD> es(dense);
       if(es.info() != Eigen::Success)
         throw bpp::Exception("findLeadingEigenpair(): EigenSolver failed");
@@ -428,7 +428,7 @@ public:
       };
     }
   }, eigenVar);
-}
+  }
 
 private:
   void init_();

@@ -5,6 +5,9 @@
  *
  */
 
+#define EIGEN_USE_THREADS
+#define EIGEN_USE_OPENMP
+
 #include <ios>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
@@ -171,7 +174,7 @@ void Epoch::printMomentsIntermediate(MatrixEngine::VectorVariant& yPrev,
   fout << "\n";
 
   auto matVar = engine_->toEigenMatrixVariant();
-  auto vecWrap = MatrixEngine::VectorVariant(engine_->getVectorVariant()); // copy by value not to modify engine_
+  auto vecWrap = MatrixEngine::VectorVariant(engine_->getVectorVariant()); // copies by value not to modify engine_
 
   visitMatrixAndVector(matVar, vecWrap, [&](auto const& M, auto& vWrap)
   {
@@ -409,11 +412,15 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
         y(i) = Scalar(hr * hl * f * 3e-1);
     }
 
+    //for(size_t i = 0; i < y.size(); ++i)
+      //std::cout << std::scientific << std::setprecision(16) << y(i) << "\n";
+
     // burn‐in
     size_t burnSteps = twoN;
     for(size_t b = 0; b < burnSteps; ++b)
     {
       Vector<Scalar> yWrap(std::move(y)); // wraps thin Eigen vector
+      //yWrap.print(std::cout);
       Vector<Scalar> result = A * yWrap;
       y = result.eigen();
     }
@@ -672,7 +679,7 @@ Epoch::integrateAdaptive(double dt,
     throw bpp::Exception("Epoch::integrateAdaptive: invalid dtMin/dtMax");
 
   if(tol < 0.0)
-    throw bpp::Exception("Epoch::integrateAdaptive: tol must be >=0");
+    throw bpp::Exception("Epoch::integrateAdaptive: tol must be >0");
 
   const auto& matVar = engine_->getMatrixVariant();
   const auto& vecVar = engine_->getVectorVariant();

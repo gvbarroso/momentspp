@@ -3,7 +3,7 @@ demes:
   - name: X
     epochs:
       - end_time: 0
-        start_size: 20000
+        start_size: 100000
 metadata:
   - name: mutation
     left_factor: 1
@@ -18,4 +18,4 @@ metadata:
     start_time: .inf
     epochs:
       - end_time: 0
-        rates: [-0.01]
+        rates: [-0.001]

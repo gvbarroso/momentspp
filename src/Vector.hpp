@@ -76,7 +76,7 @@ public:
 
   Vector<T>& operator/=(const T& scalar)
   {
-    if (scalar == T(0))
+    if(scalar == T(0))
       throw bpp::Exception("Division by zero in Vector::operator/=");
 
     vec_ /= scalar;

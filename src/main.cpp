@@ -1,7 +1,7 @@
 /*
  * Author: Gustavo V. Barroso
  * Created: 29/08/2022
- * Last modified: 22/09/2025
+ * Last modified: 14/10/2025
  * Source code for moments++
  *
  */
@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 13/Oct/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 14/Oct/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -84,8 +84,9 @@ int main(int argc, char* argv[])
   std::cout << "\nmoments++ is using " << options.getNumThreads() << " threads.\n";
   std::cout << "numerical precision: " << options.getDigits() << " digits. Scalar type: " << scalar << "\n";
 
-  Eigen::setNbThreads(options.getNumThreads());
   omp_set_num_threads(options.getNumThreads());
+  Eigen::setNbThreads(options.getNumThreads());
+  Eigen::initParallel();
 
   Demes demes(options.getDemesFilePath());
 
@@ -231,11 +232,21 @@ int main(int argc, char* argv[])
   if(options.getInitStatsFilePath() == "none")
   {
     // only need steady state in the deep-most epoch (epoch.front())
-    if(options.continuousTime())
-      epochs.front()->computePseudoSteadyStateContinuous();
+
+    if(options.getSteadyStateMethod() == "eigen")
+      epochs.front()->computeEigenSteadyState();
+
+    else if(options.getSteadyStateMethod() == "pseudo")
+    {
+      if(options.continuousTime())
+        epochs.front()->computePseudoSteadyStateContinuous();
+
+      else
+        epochs.front()->computePseudoSteadyStateDiscrete();
+    }
 
     else
-      epochs.front()->computePseudoSteadyStateDiscrete();
+      throw bpp::Exception("Main::Mis-specified steady-state method (should be 'eigen' or 'pseudo': " + options.getSteadyStateMethod());
   }
 
   else
