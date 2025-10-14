@@ -24,8 +24,7 @@ private:
   std::string name_; // human label, e.g. "Yoruba" or "DGN_Zambia"
   std::string description_;
 
-  // parents in previous epoch; leftParent_ & rightParent_ will be equal unless *this population is
-  // a result of admixture
+  // parents in previous epoch; leftParent_ & rightParent_ will be equal unless *this population is a result of admixture
   std::shared_ptr<Population> leftParent_;
   std::shared_ptr<Population> rightParent_;
 

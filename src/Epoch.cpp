@@ -309,7 +309,7 @@ void Epoch::printTransitionMat(const std::string& fileName) const
 //------------------------------------------------------------------------------
 void Epoch::computeEigenSteadyState()
 {
-  EigenResult res = findLeadingEigenpair();
+  EigenResult res = findLeadingEigenpairSpectra();
 
   auto matVar = engine_->getMatrixVariant();
   MatrixEngine::VectorVariant vecWrap;

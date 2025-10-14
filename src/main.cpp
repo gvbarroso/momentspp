@@ -48,13 +48,17 @@ int main(int argc, char* argv[])
   std::cout << "Compiled at: " << __TIME__ << std::endl << std::endl;
 
   /*
+   * NOTE there are three classes of numerical issues we need to handle:
+   * 1. Multiplying "large" (O(1), Transition Matrix entries) and tiny (O(1e-12) or less, moments expectations) numbers
+   * 2. Truncation of the Selection operator (moment-closure approximation) may lead to entries of TM > 1 --> worse for largest |s|
+   * 3. High order of 1-2p factors combined with low population sizes lead to entries of TM < - 1 --> violation of Kingman's coalescent
+   *
    * TODO homogenous/in-homogenous system (remove I moment?)
+   * https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
+   *
    * TODO add method to scale matrices by 2Nanc
    *
    * 1. Variance in Heterozigosity across left and right loci  (p^2 * q^2)
-   * 2. To compress basis by adding (averaging) rows of uncompressed Matrices, then removing
-   * corresponding row and column:
-   *    https://stackoverflow.com/questions/13290395/how-to-remove-a-certain-row-or-column-while-using-eigen-library-c
    */
 
   if(argc == 1)

@@ -364,12 +364,6 @@ public:
     return Nfocal / Nref;
   }
 
-  // computes and returns relative population size w.r.t "same pop" in previous epoch
-  /*double fetchNu(size_t popId)
-  {
-    return fetchNu(popId, pops_[popId]->getParent()->getSize());
-  }*/
-
   inline double fetchConditionNumber() const
   {
     auto const& eigenVar = engine_->toEigenMatrixVariant();
@@ -512,9 +506,17 @@ public:
       for(Eigen::Index i = 0; i < vecC.size(); ++i)
         vecD(i) = vecC(i).real();
 
+      for(Eigen::Index i = 0; i < vecD.size(); ++i)
+        std::cout << std::scientific << vecD(i) << "\n";
+
       vecD.normalize();
 
+      for(Eigen::Index i = 0; i < vecD.size(); ++i)
+        std::cout << std::scientific << vecD(i) << "\n";
+
       double lambda = eigs.eigenvalues()(0).real(); // handles complex return
+
+      std::cout << std::setprecision(12) << "\neigenval =  " << lambda << "\n";
 
       // converts to high precision
       Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
