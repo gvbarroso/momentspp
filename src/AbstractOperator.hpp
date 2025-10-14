@@ -15,11 +15,11 @@
 
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
 #include <Bpp/Numeric/ParameterList.h>
+#include <omp.h>
 
 #include <vector>
 #include <memory>
 #include <string>
-
 
 class AbstractOperator : public bpp::AbstractParameterAliasable
 {

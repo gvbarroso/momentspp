@@ -15,6 +15,9 @@
 #include <algorithm>
 #include <map>
 
+#define EIGEN_DONT_PARALLELIZE 0
+#define EIGEN_USE_THREADS
+
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Sparse>
 #include <eigen3/Eigen/Dense>
@@ -22,6 +25,7 @@
 #include <eigen3/Eigen/Eigenvalues>
 #include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <eigen3/unsupported/Eigen/MPRealSupport>
+#include <eigen3/unsupported/Eigen/CXX11/ThreadPool>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
@@ -390,7 +394,7 @@ public:
   {
     auto const& eigenVar = engine_->toEigenMatrixVariant();
 
-    return std::visit(overloaded {[](auto const& M) -> EigenResult
+    return std::visit(overloaded {[this](auto const& M) -> EigenResult
     {
       using DenseD = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
       using VecD = Eigen::Matrix<double, Eigen::Dynamic, 1>;
@@ -413,9 +417,11 @@ public:
           idx = i;
       }
 
-      // normalize its eigenvector
+      std::cout << std::setprecision(12) << "\nleading eigenval =  " << evals(idx) << "\n";
+
       VecD vecD = es.eigenvectors().col(idx).real();
-      vecD.normalize();
+      // I moment embodies scaling constant used by Eigen
+      vecD /= vecD(ssl_.findCompressedIndex(ssl_.getMoment("I")));
 
       // convert to high precision
       Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
@@ -506,17 +512,12 @@ public:
       for(Eigen::Index i = 0; i < vecC.size(); ++i)
         vecD(i) = vecC(i).real();
 
-      for(Eigen::Index i = 0; i < vecD.size(); ++i)
-        std::cout << std::scientific << vecD(i) << "\n";
-
-      vecD.normalize();
-
-      for(Eigen::Index i = 0; i < vecD.size(); ++i)
-        std::cout << std::scientific << vecD(i) << "\n";
+      // I moment embodies scaling constant used by Eigen
+      vecD /= vecD(ssl_.findCompressedIndex(ssl_.getMoment("I")));
 
       double lambda = eigs.eigenvalues()(0).real(); // handles complex return
 
-      std::cout << std::setprecision(12) << "\neigenval =  " << lambda << "\n";
+      std::cout << std::setprecision(12) << "\nleading eigenval =  " << lambda << "\n";
 
       // converts to high precision
       Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());

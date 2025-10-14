@@ -2,9 +2,10 @@
 # Authors:
 #   Gustavo V. Barroso
 # Created: 06/09/2022
-# src/CMakeLists.txt
 
+#------------------------------------------------------------------------------
 # 1) Explicit source lists
+#------------------------------------------------------------------------------
 set(MOMENTS_SOURCES
   Log.cpp
   Graph.cpp
@@ -26,38 +27,53 @@ set(TWOLOCUS_SOURCES
   twoLocusSim.cpp
 )
 
+#------------------------------------------------------------------------------
 # 2) Build momentspp
+#------------------------------------------------------------------------------
 add_executable(momentspp ${MOMENTS_SOURCES})
 target_compile_features(momentspp PRIVATE cxx_std_23)
 target_include_directories(momentspp PRIVATE ${EXTRA_INCLUDES})
 target_link_libraries(momentspp PRIVATE
   Boost::iostreams
-  yaml-cpp       # ← compatible with find_package(yaml-cpp REQUIRED)
+  yaml-cpp
   GSL::gsl
   GSL::gslcblas
   ${MPFR_LIB}
   ${GMP_LIB}
-  ${OPENMP_LIBS}
   ${BPP_CORE3_LIB}
 )
 
+# Inject OpenMP flags if available
+if (TARGET momentspp_openmp_flags)
+  target_link_libraries(momentspp PRIVATE momentspp_openmp_flags)
+endif()
+
+#------------------------------------------------------------------------------
 # 3) Build twoLocusSim
+#------------------------------------------------------------------------------
 add_executable(twoLocusSim ${TWOLOCUS_SOURCES})
 target_compile_features(twoLocusSim PRIVATE cxx_std_23)
 target_include_directories(twoLocusSim PRIVATE ${EXTRA_INCLUDES})
 target_link_libraries(twoLocusSim PRIVATE
   Boost::iostreams
-  yaml-cpp       # ← compatible with find_package(yaml-cpp REQUIRED)
+  yaml-cpp
   GSL::gsl
   GSL::gslcblas
   ${MPFR_LIB}
   ${GMP_LIB}
-  ${OPENMP_LIBS}
   ${BPP_CORE3_LIB}
 )
 
+# Inject OpenMP flags if available
+if (TARGET momentspp_openmp_flags)
+  target_link_libraries(twoLocusSim PRIVATE momentspp_openmp_flags)
+endif()
+
+#------------------------------------------------------------------------------
 # 4) Install rules
+#------------------------------------------------------------------------------
 install(
   TARGETS momentspp twoLocusSim
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+

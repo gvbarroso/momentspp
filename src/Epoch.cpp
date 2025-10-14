@@ -287,7 +287,7 @@ void Epoch::printTransitionMat(const std::string& fileName) const
 
   std::visit(overloaded{[&](auto const& M)
   {
-    using MatT   = std::decay_t<decltype(M)>;
+    using MatT = std::decay_t<decltype(M)>;
 
     out << M.rows() << ' ' << M.cols() << ' ' << M.nonZeros() << '\n';
 
@@ -309,7 +309,8 @@ void Epoch::printTransitionMat(const std::string& fileName) const
 //------------------------------------------------------------------------------
 void Epoch::computeEigenSteadyState()
 {
-  EigenResult res = findLeadingEigenpairSpectra();
+  //EigenResult res = findLeadingEigenpairSpectra();
+  EigenResult res = findLeadingEigenpair();
 
   auto matVar = engine_->getMatrixVariant();
   MatrixEngine::VectorVariant vecWrap;

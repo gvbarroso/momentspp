@@ -8,8 +8,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// #include <eigen3/unsupported/Eigen/MPRealSupport> // for arbitrary-precision arithmetic
-
 #include "SumStatsLibrary.hpp"
 #include "Mutation.hpp"
 #include "Recombination.hpp"

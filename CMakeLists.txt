@@ -69,25 +69,68 @@ set(Boost_FIND_CMAKE CONFIG)
 find_package(Boost 1.67 REQUIRED COMPONENTS iostreams)
 
 #------------------------------------------------------------------------------
-# 5) OpenMP (module first, fallback for macOS)
+# 5) OpenMP detection with macOS-specific fallback
 #------------------------------------------------------------------------------
-find_package(OpenMP)
+# Goal: provide OpenMP support on Linux/other platforms via find_package(OpenMP),
+# and on macOS prefer Homebrew libomp. Avoid calling find_package(OpenMP) on macOS
+# so CMake won't list OpenMP as "not found" in its summary.
 
-if (OpenMP_CXX_FOUND)
-  add_compile_options(${OpenMP_CXX_FLAGS})
-  set(OPENMP_LIBS OpenMP::OpenMP_CXX)
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-  find_path(OMP_INCLUDE_DIR omp.h
-    HINTS /opt/homebrew/opt/libomp/include /usr/local/opt/libomp/include
-  )
-  find_library(OMP_LIBRARY NAMES omp libomp
-    HINTS /opt/homebrew/opt/libomp/lib /usr/local/opt/libomp/lib
-  )
-  if (OMP_INCLUDE_DIR AND OMP_LIBRARY)
-    add_compile_options(-Xpreprocessor -fopenmp -I${OMP_INCLUDE_DIR})
-    set(OPENMP_LIBS ${OMP_LIBRARY})
+set(OPENMP_COMPILE_FLAGS "")
+set(OPENMP_LINK_FLAGS "")
+set(OPENMP_LIB_TARGET "")
+
+if (APPLE)
+  # macOS: prefer Homebrew libomp (keg-only)
+  set(HOMEBREW_LIBOMP_PREFIX "/opt/homebrew/opt/libomp")
+  if (EXISTS "${HOMEBREW_LIBOMP_PREFIX}/include/omp.h" AND EXISTS "${HOMEBREW_LIBOMP_PREFIX}/lib/libomp.dylib")
+    message(STATUS "Using Homebrew libomp at ${HOMEBREW_LIBOMP_PREFIX}")
+
+    # Compile flags must be separate list entries
+    set(OPENMP_COMPILE_FLAGS -Xpreprocessor -fopenmp -I${HOMEBREW_LIBOMP_PREFIX}/include)
+    set(OPENMP_LINK_FLAGS -L${HOMEBREW_LIBOMP_PREFIX}/lib)
+    set(OPENMP_LIB "${HOMEBREW_LIBOMP_PREFIX}/lib/libomp.dylib")
+
+    # Create an imported target so other targets can link uniformly
+    if (NOT TARGET OpenMP::HomebrewLibomp)
+      add_library(OpenMP::HomebrewLibomp UNKNOWN IMPORTED)
+      set_target_properties(OpenMP::HomebrewLibomp PROPERTIES
+        IMPORTED_LOCATION "${OPENMP_LIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${HOMEBREW_LIBOMP_PREFIX}/include"
+      )
+    endif()
+    set(OPENMP_LIB_TARGET OpenMP::HomebrewLibomp)
+
+    # Create helper interface that carries flags and link target
+    add_library(momentspp_openmp_flags INTERFACE)
+    target_compile_options(momentspp_openmp_flags INTERFACE ${OPENMP_COMPILE_FLAGS})
+    target_link_options(momentspp_openmp_flags INTERFACE ${OPENMP_LINK_FLAGS})
+    target_link_libraries(momentspp_openmp_flags INTERFACE OpenMP::HomebrewLibomp)
+
+    # Mark a variable so downstream code can detect OpenMP support
+    set(MOMENTSPP_HAS_OPENMP TRUE CACHE INTERNAL "Moments++: OpenMP support available")
   else()
-    message(FATAL_ERROR "OpenMP not found. Install with: brew install libomp")
+    message(STATUS "Homebrew libomp not found at ${HOMEBREW_LIBOMP_PREFIX}; continuing without OpenMP on macOS")
+    set(MOMENTSPP_HAS_OPENMP FALSE CACHE INTERNAL "Moments++: OpenMP support available")
+  endif()
+else()
+  # Non-macOS: use standard find_package(OpenMP QUIET). If found, create helper interface.
+  find_package(OpenMP QUIET)
+  if (OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP found via find_package: ${OpenMP_CXX_FLAGS}")
+    set(OPENMP_COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+    set(OPENMP_LIB_TARGET OpenMP::OpenMP_CXX)
+
+    add_library(momentspp_openmp_flags INTERFACE)
+    # CMake's OpenMP flags are often a single string; ensure they are passed correctly.
+    foreach(_flag IN LISTS OPENMP_COMPILE_FLAGS)
+      target_compile_options(momentspp_openmp_flags INTERFACE ${_flag})
+    endforeach()
+    target_link_libraries(momentspp_openmp_flags INTERFACE OpenMP::OpenMP_CXX)
+
+    set(MOMENTSPP_HAS_OPENMP TRUE CACHE INTERNAL "Moments++: OpenMP support available")
+  else()
+    message(STATUS "OpenMP not found on this platform; continuing without OpenMP")
+    set(MOMENTSPP_HAS_OPENMP FALSE CACHE INTERNAL "Moments++: OpenMP support available")
   endif()
 endif()
 
@@ -129,7 +172,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Spectra)
 
 #------------------------------------------------------------------------------
-# 10) Collect include paths & libraries
+# 10) Collect include paths & libraries (used when creating targets)
 #------------------------------------------------------------------------------
 set(EXTRA_INCLUDES
   ${Boost_INCLUDE_DIRS}
@@ -147,12 +190,11 @@ set(EXTRA_LIBS
   GSL::gslcblas
   ${MPFR_LIB}
   ${GMP_LIB}
-  ${OPENMP_LIBS}
   ${BPP_CORE3_LIB}
 )
 
 #------------------------------------------------------------------------------
-# 11) macOS rpath suppression
+# 11) macOS rpath suppression for relocatable installs (optional)
 #------------------------------------------------------------------------------
 if(APPLE)
   set(CMAKE_INSTALL_RPATH "")
@@ -171,4 +213,12 @@ install(
 )
 
 include(CPack)
+
+#------------------------------------------------------------------------------
+# NOTE: how to consume OpenMP in src/CMakeLists.txt
+#   if (TARGET momentspp_openmp_flags)
+#     target_link_libraries(momentspp PRIVATE momentspp_openmp_flags)
+#   endif()
+#
+# Use the cached variable MOMENTSPP_HAS_OPENMP to check for availability in downstream logic.
 
