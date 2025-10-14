@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 13/10/2025
+ * Last modified: 14/10/2025
  *
  */
 
@@ -22,6 +22,13 @@
 #include <eigen3/Eigen/Eigenvalues>
 #include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <eigen3/unsupported/Eigen/MPRealSupport>
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
+#include <Spectra/SymEigsSolver.h>
+#include <Spectra/GenEigsSolver.h>
+#include <Spectra/MatOp/DenseGenMatProd.h>
+#pragma clang diagnostic pop
 
 #include <Bpp/App/ApplicationTools.h>
 #include <Bpp/Numeric/AbstractParameterAliasable.h>
@@ -384,6 +391,7 @@ public:
   }, eigenVar);
   }
 
+  // finds leading Eigen pair using Eigen 3.4 routines
   inline EigenResult findLeadingEigenpair() const
   {
     auto const& eigenVar = engine_->toEigenMatrixVariant();
@@ -396,7 +404,7 @@ public:
       // to dense<double>
       DenseD dense = M.template cast<double>();
 
-      // solve eigen problem
+      // solve eigenproblem
       Eigen::EigenSolver<DenseD> es(dense);
       if(es.info() != Eigen::Success)
         throw bpp::Exception("findLeadingEigenpair(): EigenSolver failed");
@@ -427,7 +435,101 @@ public:
         vecMP
       };
     }
-  }, eigenVar);
+    }, eigenVar);
+  }
+
+  // finds leading Eigen pair using Spectra as a multi-threaded backend
+  // this improves computationally considerably because we only want the leading eigenpar
+  // (don't need full Eigen3.4 decomposition)
+  inline EigenResult findLeadingEigenpairSpectra() const
+  {
+    auto const& eigenVar = engine_->toEigenMatrixVariant();
+
+    return std::visit(overloaded {[this](auto const& M) -> EigenResult
+    {
+      using DenseD = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
+      using VecD = Eigen::Matrix<double, Eigen::Dynamic, 1>;
+
+      // converts to dense<double>
+      DenseD dense = M.template cast<double>();
+
+      // wraps matrix in Spectra operator
+      Spectra::DenseGenMatProd<double> op(dense);
+
+      // creates solver: compute 1 largest eigenvalue
+      Spectra::GenEigsSolver<Spectra::DenseGenMatProd<double>> eigs(op, 1, std::min<int>(20, dense.cols()));
+
+      size_t pop = ssl_.getPopIndices()[0];
+      double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
+      double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
+      size_t twoN = static_cast<size_t>(1. / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+
+      double hr = twoN * mu;
+      double hl = (std::abs(s) < 1e-14) ? twoN * mu : (2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.0) - mu / s);
+
+      VecD y(dense.cols()); // initial guess
+
+      double f = 1.0; // scaling factor to mimic the factors of 1-2p
+      for(Eigen::Index i = 0; i < y.size(); ++i)
+      {
+        const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
+
+        if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix())
+          f *= 0.925; // same kind of moment, applies heuristic decay
+
+        else
+          f = 1.0; // resets for next moment
+
+        if(prefix == "Hl")
+          y(i) = hl * f;
+
+        else if(prefix == "Hr")
+          y(i) = hr * f;
+
+        else if(prefix == "pi2")
+          y(i) = hr * hl * f * 1.3;
+
+        else if(prefix == "I")
+          y(i) = 1.0;
+
+        else if(prefix == "DD")
+          y(i) = hr * hl * f * 5e-1;
+
+        else // if(prefix == "Dr")
+          y(i) = hr * hl * f * 3e-1;
+      }
+
+      eigs.init(y.data()); // helps convergence
+      int nconv = eigs.compute(); // default = largest magnitude eigenvlaue
+
+      if(nconv < 1 || eigs.info() != Spectra::CompInfo::Successful)
+        throw bpp::Exception("findLeadingEigenpair(): Spectra solver failed");
+
+      // extracts eigenvalue and eigenvector
+      Eigen::Matrix<std::complex<double>, Eigen::Dynamic, 1> vecC = eigs.eigenvectors().col(0);
+      VecD vecD(vecC.size());
+
+      for(Eigen::Index i = 0; i < vecC.size(); ++i)
+        vecD(i) = vecC(i).real();
+
+      vecD.normalize();
+
+      double lambda = eigs.eigenvalues()(0).real(); // handles complex return
+
+      // converts to high precision
+      Eigen::Matrix<mpfr::mpreal, Eigen::Dynamic, 1> vecMP(vecD.size());
+      for(Eigen::Index i = 0; i < vecD.size(); ++i)
+        vecMP(i) = mpfr::mpreal(vecD(i));
+
+      return EigenResult
+      {
+        0, // Spectra returns one eigenpair, index is always 0
+        mpfr::mpreal(lambda),
+        vecMP
+      };
+
+    }
+    }, eigenVar);
   }
 
 private:

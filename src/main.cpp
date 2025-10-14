@@ -229,10 +229,8 @@ int main(int argc, char* argv[])
 
   std::cout << "\nDone with Operators.\nComputing steady state..."; std::cout.flush();
 
-  if(options.getInitStatsFilePath() == "none")
+  if(options.getInitStatsFilePath() == "none") // only need steady state in the deep-most epoch (epoch.front())
   {
-    // only need steady state in the deep-most epoch (epoch.front())
-
     if(options.getSteadyStateMethod() == "eigen")
       epochs.front()->computeEigenSteadyState();
 
@@ -271,9 +269,7 @@ int main(int argc, char* argv[])
 
       std::string fileName = model->getName() + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_expectations.txt";
       std::ofstream fout(fileName);
-
       model->printAliasedMoments(fout);
-
       fout.close();
 
       if(numEpochs > 1 && options.getTimeSteps() > 0)

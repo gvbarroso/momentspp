@@ -1,7 +1,7 @@
-# CMake script for moments++
+# CMake script for Moments++
 # Authors:
 #   Gustavo V. Barroso
-# Created: 28/07/2022
+# Created: 06/09/2022
 
 cmake_minimum_required(VERSION 3.23)
 project(momentspp VERSION 0.0.1 LANGUAGES CXX)
@@ -22,8 +22,8 @@ endif()
 # 2) User options & C++ standard
 #------------------------------------------------------------------------------
 option(NativeBuild "Enable CPU-specific optimization flags" OFF)
-option(DEBUG     "Enable debug mode"                OFF)
-option(NAKED_D     "Enable naked D mode"                OFF)
+option(DEBUG       "Enable debug mode"                      OFF)
+option(NAKED_D     "Enable naked D mode"                    OFF)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -119,7 +119,17 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(mpreal)
 
 #------------------------------------------------------------------------------
-# 9) Collect include paths & libraries
+# 9) Spectra (header-only)
+#------------------------------------------------------------------------------
+FetchContent_Declare(
+  Spectra
+  GIT_REPOSITORY https://github.com/yixuan/spectra.git
+  GIT_TAG        master
+)
+FetchContent_MakeAvailable(Spectra)
+
+#------------------------------------------------------------------------------
+# 10) Collect include paths & libraries
 #------------------------------------------------------------------------------
 set(EXTRA_INCLUDES
   ${Boost_INCLUDE_DIRS}
@@ -127,6 +137,7 @@ set(EXTRA_INCLUDES
   ${YAML_CPP_INCLUDE_DIRS}
   ${GSL_INCLUDE_DIRS}
   ${mpreal_SOURCE_DIR}
+  ${spectra_SOURCE_DIR}/include
 )
 
 set(EXTRA_LIBS
@@ -141,7 +152,15 @@ set(EXTRA_LIBS
 )
 
 #------------------------------------------------------------------------------
-# 10) Build & install src/
+# 11) macOS rpath suppression
+#------------------------------------------------------------------------------
+if(APPLE)
+  set(CMAKE_INSTALL_RPATH "")
+  set(CMAKE_SKIP_RPATH TRUE)
+endif()
+
+#------------------------------------------------------------------------------
+# 12) Build & install src/
 #------------------------------------------------------------------------------
 add_subdirectory(src)
 

@@ -10,9 +10,26 @@ set -e  # Exit on error
 set -u  # Treat unset variables as errors
 
 #------------------------------------------------------------------------------
-# Parse build type from command line
+# Parse arguments
 #------------------------------------------------------------------------------
-BUILD_TYPE="${1:-Debug}"  # Default to Debug if not provided
+BUILD_TYPE="Release"  # Default to Release
+CLEAN_BUILD="OFF"
+
+for arg in "$@"; do
+  case "$arg" in
+    Release|Debug)
+      BUILD_TYPE="$arg"
+      ;;
+    --clean)
+      CLEAN_BUILD="ON"
+      ;;
+    *)
+      echo "❌ Unknown argument: $arg"
+      echo "Usage: ./build.sh [Release|Debug] [--clean]"
+      exit 1
+      ;;
+  esac
+done
 
 #------------------------------------------------------------------------------
 # Configuration
@@ -22,14 +39,20 @@ INSTALL_PREFIX="$HOME/.local"
 
 # Optional flags
 NATIVE_BUILD="ON"
-DEBUG="OFF" # turning ON/OFF compulation of blocks: ifdef DEBUG
+DEBUG="OFF"
 NAKED_D="OFF"
 
 echo "🔧 Build type: $BUILD_TYPE"
+echo "🧹 Clean build: $CLEAN_BUILD"
 
 #------------------------------------------------------------------------------
-# Step 1: Create build directory
+# Step 1: Clean build directory if requested
 #------------------------------------------------------------------------------
+if [[ "$CLEAN_BUILD" == "ON" ]]; then
+  echo "🧼 Removing existing build directory: $BUILD_DIR"
+  rm -rf "$BUILD_DIR"
+fi
+
 echo "📁 Creating build directory: $BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
@@ -59,7 +82,7 @@ cmake --install "$BUILD_DIR"
 
 echo "✅ Build and install complete."
 
-#bash build.sh Release   # optimized build
-#bash build.sh Debug     # debug symbols for Valgrind
-#bash build.sh           # defaults to Debug
-
+#./build.sh                   # default to Release: optimized build
+#./build.sh Debug             # debug symbols for Valgrind
+#./build.sh Release --clean   # clean and rebuild Release
+#./build.sh Debug --clean     # clean and rebuild debug
