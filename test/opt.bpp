@@ -1,8 +1,6 @@
 num_threads = 8
 
-label = $(L)
 demes_file = $(F)
 factor_order = $(O)
 verbose = $(V)
-steady_state = $(SS)
 digits = $(P)

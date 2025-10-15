@@ -129,11 +129,10 @@ do
   for (( o=50; o<=1000; o+=50 )) # orders of 1-2p factors
   do
     # NOTE: we need not pass different model labels here because the matrices
-    # remain constant for SS and P variables
-    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=16 SS="eigen" > log_O_${o}_double_eigen_ss.txt
-    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=32 SS="eigen" > log_O_${o}_mpreal_eigen_ss.txt
-    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=16 SS="power" > log_O_${o}_double_power_ss.txt
-    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=32 SS="power" > log_O_${o}_mpreal_power_ss.txt
+    # remain constant for P variables
+    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=16 > log_O_${o}_double.txt
+    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=32 > log_O_${o}_mpreal.txt
+    # Verbose (V=1) ensures that both eigen and power steady-states are output
   done
 done
 ```
