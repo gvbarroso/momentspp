@@ -1,36 +1,46 @@
-// ==== AbstractOperator.cpp ====
+/*
+ * Authors: Gustavo V. Barroso
+ * Created: 09/08/2022
+ * Last modified: 24/09/2025
+ *
+ */
+
+
 #include "AbstractOperator.hpp"
 
 #include <fstream>
 
 void AbstractOperator::printDeltaLDMat(const std::string& fileName)
 {
-    // 1) Open file
-    std::ofstream matFile(fileName);
-    if (!matFile.is_open())
-        throw bpp::Exception("AbstractOperator::failed to open file: " + fileName);
+  std::ofstream matFile(fileName);
 
-    // 2) Ensure we have a transition matrix
-    if (!transition_)
-        throw bpp::Exception("AbstractOperator::attempted to print un-initialized transition matrix!");
+  if(!matFile.is_open())
+    throw bpp::Exception("AbstractOperator::failed to open file: " + fileName);
 
-    // 3) Extract an Eigen‐variant view of the transition
-    auto eigenVar = transition_->toEigenMatrixVariant();
+  if(!transition_)
+    throw bpp::Exception("AbstractOperator::attempted to print un-initialized transition matrix!");
 
-    // 4) Visit whichever underlying Eigen type it is
-    std::visit(overloaded{
-        [&](const auto& mat) {
-            const int rows = mat.rows();
-            const int cols = mat.cols();
-            for (int i = 0; i < rows; ++i) {
-                for (int j = 0; j < cols; ++j) {
-                    matFile << mat.coeff(i, j);
-                    if (j + 1 < cols) matFile << ",";
-                }
-                matFile << "\n";
-            }
-        }
-    }, eigenVar);
+  auto eigenVar = transition_->toEigenMatrixVariant();
 
-    matFile.close();
+  std::visit(overloaded{[&](const auto& mat)
+  {
+    const int rows = mat.rows();
+    const int cols = mat.cols();
+
+    for(int i = 0; i < rows; ++i)
+    {
+      for(int j = 0; j < cols; ++j)
+      {
+        matFile << mat.coeff(i, j);
+
+        if(j + 1 < cols)
+          matFile << ",";
+      }
+
+      matFile << "\n";
+    }
+  }
+  }, eigenVar);
+
+  matFile.close();
 }

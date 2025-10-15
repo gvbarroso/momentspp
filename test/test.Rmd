@@ -39,7 +39,7 @@ fwrite(params, "params.csv")
 ```
 
 
-```{bash dirs, engine.opts='-i', include=F, eval=T, results=F, warning=F}
+```{bash dirs, engine.opts='-i', include=F, eval=T, results='hide', warning=F}
 
 source ~/.bashrc
 
@@ -50,7 +50,7 @@ for (( i = 1; i <= $n; i++ )); do mkdir model_$i; done
 ```
 
 
-```{r, demes, include=F, eval=T, results=F, message=F, warning=F}
+```{r, demes, include=F, eval=T, results='hide', message=F, warning=F}
 
 params <- fread("params.csv")
 n_models <- nrow(params)
@@ -116,25 +116,36 @@ Log files have further details.
 
 NOTE: ATM the eigenvalue decomposition is done with base Eigen 3.4, not Spectra
 
-```{bash moments++, engine.opts='-i', include=T, eval=T, results=F, warning=F}
+The following code was run as a script from the command line:
 
-source ~/.bashrc
+```{bash moments++, engine.opts='-i', include=T, eval=T, results='hide', warning=F}
 
-n=$(cat params.csv | tail -n +2 | wc -l)
+[[ -f ~/.bashrc ]] && source ~/.bashrc
+set -euo pipefail
 
-for (( m=1; m<=$n; m++)) # models
-do
-  cd model_${m}
-  
-  for (( o=50; o<=1000; o+=50 )) # orders of 1-2p factors
+# Function to run Moments++ for different Orders of (1-2p), in a given model
+run_mpp() {
+  local m="$1"  # captures model index
+  pushd "model_${m}" > /dev/null
+
+  for (( o=50; o<=1000; o+=50 ))
   do
-    # NOTE: we need not pass different model labels here because the matrices
-    # remain constant for P variables
-    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=16 > log_O_${o}_double.txt
-    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=32 > log_O_${o}_mpreal.txt
-    # Verbose (V=1) ensures that both eigen and power steady-states are output
+    # NOTE: we need not pass different model labels here because the matrices remain constant for P variables
+    # (we run single-threaded NT=1 for parallelizing among models 
+    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P=16 NT=1 > "log_O_${o}_double.txt"
+    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P=32 NT=1 > "log_O_${o}_mpreal.txt"
+
+    echo "done for model $m Order $o"
   done
-done
+
+  popd > /dev/null
+}
+
+n=$(tail -n +2 params.csv | wc -l)
+
+for (( i=1; i<=n; i++ )); do run_mpp "$i" & done
+
+wait
 ```
 
 Output matrices:
