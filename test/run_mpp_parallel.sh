@@ -20,7 +20,7 @@ run_job() {
   local p="$3"
   (
     cd "model_${m}"
-    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P="$p" NT=1 > "log_O_${o}_P${p}.txt"
+    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P="$p" NT=1 &> "log_O_${o}_P${p}.txt"
     echo "done: Order $o, model $m, P=$p"
   )
 }
