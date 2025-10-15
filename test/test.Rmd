@@ -116,36 +116,41 @@ Log files have further details.
 
 NOTE: ATM the eigenvalue decomposition is done with base Eigen 3.4, not Spectra
 
-The following code was run as a script from the command line:
+The following code was run from the command line (run_mpp_parallel.sh):
 
 ```{bash moments++, engine.opts='-i', include=T, eval=T, results='hide', warning=F}
 
+#!/usr/bin/env bash
 [[ -f ~/.bashrc ]] && source ~/.bashrc
 set -euo pipefail
 
-# Function to run Moments++ for different Orders of (1-2p), in a given model
-run_mpp() {
-  local m="$1"  # captures model index
-  pushd "model_${m}" > /dev/null
-
-  for (( o=50; o<=1000; o+=50 ))
-  do
-    # NOTE: we need not pass different model labels here because the matrices remain constant for P variables
-    # (we run single-threaded NT=1 for parallelizing among models 
-    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P=16 NT=1 > "log_O_${o}_double.txt"
-    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P=32 NT=1 > "log_O_${o}_mpreal.txt"
-
-    echo "done for model $m Order $o"
+# Generate job list: one line per (order, model, P)
+generate_jobs() {
+  local n=$(tail -n +2 params.csv | wc -l)
+  for (( o=50; o<=1000; o+=50 )); do # parallelize over Order first to optimize time
+    for (( i=1; i<=n; i++ )); do
+      echo "$o $i 16" # double (16-digit) precision
+      echo "$o $i 32" # mpreal (32-digit) precision
+    done
   done
-
-  popd > /dev/null
 }
 
-n=$(tail -n +2 params.csv | wc -l)
+# Worker function: runs a single momentspp job
+run_job() {
+  local o="$1"
+  local m="$2"
+  local p="$3"
+  (
+    cd "model_${m}"
+    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P="$p" NT=1 > "log_O_${o}_P${p}.txt"
+    echo "done: Order $o, model $m, P=$p"
+  )
+}
 
-for (( i=1; i<=n; i++ )); do run_mpp "$i" & done
+export -f run_job
 
-wait
+# Launch jobs with Order-first priority and max 16 parallel jobs
+generate_jobs | sort -k1,1n -k2,2n | xargs -n 3 -P 16 bash -c 'run_job "$@"' _
 ```
 
 Output matrices:
