@@ -23,7 +23,7 @@ void Model::computeExpectedSumStatsDiscrete()
   auto y = epochs_[0]->getSteadyStateVector();
 
   // step through epochs in discrete time
-  for (size_t i = 1; i < epochs_.size(); ++i)
+  for(size_t i = 1; i < epochs_.size(); ++i)
   {
     epochs_[i]->transferStatistics(y);
     epochs_[i]->computeExpectedSumStatsDiscrete(y);

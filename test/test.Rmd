@@ -1,0 +1,155 @@
+---
+title: "Testing Numerical Stability of Moments++"
+author: "Gustavo V. Barroso"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+  toc: true
+number_sections: true
+toc_depth: 1
+---
+  
+```{r setup, include=F, message=F, warning=F}
+
+library(tidyverse)
+library(scales)
+library(data.table)
+library(cowplot)
+
+knitr::opts_knit$set(root.dir="~/Devel/momentspp/test/")
+```
+
+Creating models
+
+```{r, params, include=T, eval=T, results=F, message=F, warning=F}
+
+# equilibrium models
+Ns <- paste(paste(c(2.5e+4, 1e+5)), ";", sep="")
+Ts <- paste(0, ";", sep="")
+
+uL <- 1.25e-8
+uR <- 1.25e-8
+
+r <- 1e-8
+s <- -c(5e-3, 1e-3, 1e-4)
+
+params <- setDT(crossing(Ns, Ts, r, s, uL, uR))
+n_models <- nrow(params)
+fwrite(params, "params.csv")
+```
+
+
+```{bash dirs, engine.opts='-i', include=F, eval=T, results=F, warning=F}
+
+source ~/.bashrc
+
+rm -rf model_*
+
+n=$(cat params.csv | tail -n +2 | wc -l)
+for (( i = 1; i <= $n; i++ )); do mkdir model_$i; done
+```
+
+
+```{r, demes, include=F, eval=T, results=F, message=F, warning=F}
+
+params <- fread("params.csv")
+n_models <- nrow(params)
+
+options(digits=16)
+for(i in 1:n_models) {
+  
+  if(i %% 10000 == 0) {
+    print(Sys.time())
+    cat(paste(i, "\n"))
+  }
+  
+  Ns <- as.numeric(strsplit(params[i,]$Ns, ";")[[1]])
+  Ts <- as.integer(strsplit(params[i,]$Ts, ";")[[1]])
+  u <- as.numeric(params[i,]$uL)
+  r <- as.numeric(params[i,]$r)
+  s <- as.numeric(params[i,]$s)
+  
+  sink(paste("model_", i, "/", "model_", i, ".yaml", sep=""))
+  
+  cat("time_units: generations\n")
+  cat("demes:\n")
+  cat("  - name: X\n")
+  cat("    epochs:\n")
+  for(j in length(Ts):1) {
+    cat("      - end_time: ")
+    cat(format(Ts[j], scientific=F))
+    cat("\n")
+    cat("        start_size: ")
+    cat(format(Ns[j], scientific=F))
+    cat("\n")
+  }
+  cat("metadata:\n")
+  cat("  - name: mutation\n")
+  cat("    left_factor: 1\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(u)
+  cat("]\n")
+  cat("  - name: recombination\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(r)
+  cat("]\n")
+  cat("  - name: selection\n")
+  cat("    start_time: .inf\n")
+  cat("    epochs:\n")
+  cat("      - end_time: 0\n")
+  cat("        rates: [")
+  cat(format(s, scientific=F))
+  cat("]\n")
+  
+  sink()
+}
+```
+
+Testing steady-state stability for eigen/power methods,
+different O(1-2p) and numerical precision (digits -> 16:double, 32:mpreal)
+
+Log files have further details.
+
+NOTE: ATM the eigenvalue decomposition is done with base Eigen 3.4, not Spectra
+
+```{bash moments++, engine.opts='-i', include=T, eval=T, results=F, warning=F}
+
+source ~/.bashrc
+
+n=$(cat params.csv | tail -n +2 | wc -l)
+
+for (( m=1; m<=$n; m++)) # models
+do
+  cd model_${m}
+  
+  for (( o=50; o<=1000; o+=50 )) # orders of 1-2p factors
+  do
+    # NOTE: we need not pass different model labels here because the matrices
+    # remain constant for SS and P variables
+    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=16 SS="eigen" > log_O_${o}_double_eigen_ss.txt
+    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=32 SS="eigen" > log_O_${o}_mpreal_eigen_ss.txt
+    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=16 SS="power" > log_O_${o}_double_power_ss.txt
+    momentspp param=../opt.bpp F=model_${m}.yaml O=${o} V=1 P=32 SS="power" > log_O_${o}_mpreal_power_ss.txt
+  done
+done
+```
+
+Output matrices:
+
+Delta
+-.-.-.-.-.-.--.-.-.-.-.-.-.-.-.-.-.-.-
+model_1_e_0_op_0.csv --> selection
+model_1_e_0_op_1.csv --> recombination
+model_1_e_0_op_2.csv --> mutation
+model_1_e_0_op_3.csv --> drift
+-.-.-.-.-.-.--.-.-.-.-.-.-.-.-.-.-.-.-
+
+Full transition matrix M
+-.-.-.-.-.-.--.-.-.-.-.-.-.-.-.-.-.-.-
+model_1_e_0_O_25_transitions.csv --> M = D + U + R + S
+-.-.-.-.-.-.--.-.-.-.-.-.-.-.-.-.-.-.-
+

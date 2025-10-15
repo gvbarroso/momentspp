@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
   std::cout << "*            Moment by moment                                    *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
-  std::cout << "* Authors: G. V. Barroso                 Last Modif. 14/Oct/2025 *" << std::endl;
+  std::cout << "* Authors: G. V. Barroso                 Last Modif. 15/Oct/2025 *" << std::endl;
   std::cout << "*          A. P. Ragsdale                                        *" << std::endl;
   std::cout << "*                                                                *" << std::endl;
   std::cout << "******************************************************************" << std::endl;
@@ -213,22 +213,25 @@ int main(int argc, char* argv[])
 
       if(options.continuousTime())
       {
-        epochs.back()->computePseudoSteadyStateContinuous();
-        std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
-        epochs.back()->printMoments(pseudo);
-        pseudo.close();
+        epochs.back()->computePowerSteadyStateContinuous();
+        std::ofstream power(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_power_steady-state.txt");
+        epochs.back()->printMoments(power);
+        power.close();
       }
 
       else
       {
-        epochs.back()->computePseudoSteadyStateDiscrete();
-        std::ofstream pseudo(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_pseudo_steady-state.txt");
-        epochs.back()->printMoments(pseudo);
-        pseudo.close();
+        epochs.back()->computePowerSteadyStateDiscrete();
+        std::ofstream power(options.getLabel() + "_" + id + "_O_" + bpp::TextTools::toString(factorOrder[0]) + "_power_steady-state.txt");
+        epochs.back()->printMoments(power);
+        power.close();
       }
     }
   } // ends loop over epochs
 
+  // WARNING: this if clause is for speed in testing TODO remove it
+  if(!options.verbose())
+  {
   std::cout << "\nDone with Operators.\nComputing steady state..."; std::cout.flush();
 
   if(options.getInitStatsFilePath() == "none") // only need steady state in the deep-most epoch (epoch.front())
@@ -236,17 +239,17 @@ int main(int argc, char* argv[])
     if(options.getSteadyStateMethod() == "eigen")
       epochs.front()->computeEigenSteadyState();
 
-    else if(options.getSteadyStateMethod() == "pseudo")
+    else if(options.getSteadyStateMethod() == "power")
     {
       if(options.continuousTime())
-        epochs.front()->computePseudoSteadyStateContinuous();
+        epochs.front()->computePowerSteadyStateContinuous();
 
       else
-        epochs.front()->computePseudoSteadyStateDiscrete();
+        epochs.front()->computePowerSteadyStateDiscrete();
     }
 
     else
-      throw bpp::Exception("Main::Mis-specified steady-state method (should be 'eigen' or 'pseudo': " + options.getSteadyStateMethod());
+      throw bpp::Exception("Main::Mis-specified steady-state method (should be 'eigen' or 'power': " + options.getSteadyStateMethod());
   }
 
   else
@@ -312,6 +315,7 @@ int main(int argc, char* argv[])
 
     return 1;
   }
+  } // NOTE end if clause for speed in testing
 
   momentspp.done();
   return 0;

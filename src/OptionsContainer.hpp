@@ -23,15 +23,15 @@ class OptionsContainer
 private:
   std::string label_;
   std::string demesFilePath_;
-  std::string dataFilePath_;      // observed sum stats, for most recent Epoch
+  std::string dataFilePath_; // observed sum stats, for most recent Epoch
   std::string initStatsFilePath_; // e.g. steady-state sum stats for deep-most Epoch
   std::string numericalOptimizer_;
-  std::string steadyState_; // eigen or pseudo, see Epoch class
+  std::string steadyState_; // eigen or power, see Epoch class
 
   double toleranceOptim_; // for numerical optimization
 
   bool aliasOverEpochs_; // whether to alias parameters (r_*, u_*, s_*) over Epochs, see Model::compressParameters()
-  bool aliasOverPops_;   // whether to alias parameters (r_*, u_*, s_*) over Populations, see Model::compressParameters()
+  bool aliasOverPops_; // whether to alias parameters (r_*, u_*, s_*) over Populations, see Model::compressParameters()
   bool compressMoments_; // see moments_ vs compressedBasis_ inside SumStatsLibrary::initMoments_()
   bool computeCI_;
   bool verbose_;

@@ -334,9 +334,9 @@ void Epoch::computeEigenSteadyState()
 }
 
 //------------------------------------------------------------------------------
-// Pseudo‐steady state via power‐method for discrete‐time model
+// Power steady-state via power‐method for discrete‐time model
 //------------------------------------------------------------------------------
-void Epoch::computePseudoSteadyStateDiscrete(double tol)
+void Epoch::computePowerSteadyStateDiscrete(double tol)
 {
   bool converged = false;
 
@@ -449,7 +449,7 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
 
         if(maxRel <= tol)
         {
-          std::cout << "\nPseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
+          std::cout << "\nPower steady-state converged after " << iter << " iterations, " << name_ << "\n";
           converged = true;
           break;
         }
@@ -461,12 +461,11 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
     // only write back into the wrapper if we converged
     if(converged)
       dstWrap = Vector<Scalar>(std::move(y));
-
   });
 
   if(!converged)
   {
-    std::cerr << "\nPseudo steady-state did not converge. Falling back to eigen steady-state.\n";
+    std::cerr << "\nPower steady-state did not converge. Falling back to eigen steady-state.\n";
     computeEigenSteadyState();
     return;
   }
@@ -480,7 +479,7 @@ void Epoch::computePseudoSteadyStateDiscrete(double tol)
 // Returns true if converged, writes steady‐state vector into outY
 //------------------------------------------------------------------------------
 template<typename Scalar>
-bool Epoch::computePseudoSSContinuousTyped(
+bool Epoch::computePowerSSContinuousTyped(
     const Matrix<Scalar>& A,
     double burnInTime,
     double dt,
@@ -571,7 +570,7 @@ bool Epoch::computePseudoSSContinuousTyped(
 
       if(maxRel <= tol)
       {
-        std::cout << "\nPseudo steady-state converged after " << iter << " iterations, " << name_ << "\n";
+        std::cout << "\nPower steady-state converged after " << iter << " iterations, " << name_ << "\n";
         converged = true;
         break;
       }
@@ -591,7 +590,7 @@ bool Epoch::computePseudoSSContinuousTyped(
 //------------------------------------------------------------------------------
 // Public dispatcher: unpack the variant and call the typed helper
 //------------------------------------------------------------------------------
-void Epoch::computePseudoSteadyStateContinuous(double burnInTime, double dt, double tol)
+void Epoch::computePowerSteadyStateContinuous(double burnInTime, double dt, double tol)
 {
   auto matVar = engine_->getMatrixVariant();
   bool converged = false;
@@ -604,7 +603,7 @@ void Epoch::computePseudoSteadyStateContinuous(double burnInTime, double dt, dou
 
     // Allocate an Eigen‐vector for the output
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y;
-    converged = computePseudoSSContinuousTyped(A, burnInTime, dt, tol, y);
+    converged = computePowerSSContinuousTyped(A, burnInTime, dt, tol, y);
 
     if(converged)
       vecWrap = Vector<Scalar>(std::move(y));

@@ -334,13 +334,13 @@ public:
 
   void printTransitionMat(const std::string& fileName) const;
 
-  void computePseudoSteadyStateDiscrete(double tol = 1e-16);
+  void computePowerSteadyStateDiscrete(double tol = 1e-16);
 
-  void computePseudoSteadyStateContinuous(double burnInTime = 0.1, double dt = 1e-3, double tol = 1e-16);
+  void computePowerSteadyStateContinuous(double burnInTime = 0.1, double dt = 1e-3, double tol = 1e-16);
 
-  // typed helper for the continuous pseudo‐steady solver
+  // typed helper for the continuous power steady-state solver
   template<typename Scalar>
-  bool computePseudoSSContinuousTyped(
+  bool computePowerSSContinuousTyped(
     const Matrix<Scalar>& A,
     double burnInTime,
     double dt,
@@ -358,7 +358,7 @@ public:
   void printConditionNumber()
   {
     double cond = fetchConditionNumber();
-    std::cout << "Condition Number for Transition Matrix, epoch " << name_ << " = " << cond << "\n";
+    std::cout << "\nCondition Number for Transition Matrix, epoch " << name_ << " = " << cond << "\n";
   }
 
   // computes and returns relative population size (use for continuous-time integration)
@@ -399,7 +399,7 @@ public:
       using DenseD = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>;
       using VecD = Eigen::Matrix<double, Eigen::Dynamic, 1>;
 
-      // to dense<double>
+      // converts to dense<double>
       DenseD dense = M.template cast<double>();
 
       // solve eigenproblem
@@ -407,7 +407,7 @@ public:
       if(es.info() != Eigen::Success)
         throw bpp::Exception("findLeadingEigenpair(): EigenSolver failed");
 
-      // pick largest real eigenvalue
+      // picks largest real eigenvalue
       auto evals = es.eigenvalues().real();
       Eigen::Index idx = 0;
 
