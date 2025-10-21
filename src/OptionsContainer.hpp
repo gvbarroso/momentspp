@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 14/10/2025
+ * Last modified: 21/10/2025
  *
  */
 
@@ -30,6 +30,7 @@ private:
 
   double toleranceOptim_; // for numerical optimization
 
+  bool multiplyOperators_; // for Epoch::init_(bool mult), DEFAULT = false means they will be added together dropping terms like r/2N etc
   bool aliasOverEpochs_; // whether to alias parameters (r_*, u_*, s_*) over Epochs, see Model::compressParameters()
   bool aliasOverPops_; // whether to alias parameters (r_*, u_*, s_*) over Populations, see Model::compressParameters()
   bool compressMoments_; // see moments_ vs compressedBasis_ inside SumStatsLibrary::initMoments_()
@@ -58,6 +59,7 @@ public:
   numericalOptimizer_(bpp::ApplicationTools::getStringParameter("optimizer", options, "NewtonRhapson", "", true, 4)),
   steadyState_(bpp::ApplicationTools::getStringParameter("steady_state", options, "eigen", "", true, 4)),
   toleranceOptim_(bpp::ApplicationTools::getDoubleParameter("toleranceOptim", options, 1e-6, "", 0, 4)),
+  multiplyOperators_(bpp::ApplicationTools::getParameter<bool>("multiply_operators", options, false, "", true, 4)),
   aliasOverEpochs_(bpp::ApplicationTools::getParameter<bool>("alias_epochs_params", options, true, "", true, 4)),
   aliasOverPops_(bpp::ApplicationTools::getParameter<bool>("alias_pops_params", options, true, "", true, 4)),
   compressMoments_(bpp::ApplicationTools::getParameter<bool>("compress_moments", options, true, "", true, 4)),
@@ -114,6 +116,11 @@ public:
   double getToleranceOptim() const
   {
     return toleranceOptim_;
+  }
+
+  bool multiplyOperators() const
+  {
+    return multiplyOperators_;
   }
 
   bool aliasEpochsParams() const

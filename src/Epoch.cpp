@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 31/08/2022
- * Last modified: 14/10/2025
+ * Last modified: 21/10/2025
  *
  */
 
@@ -42,8 +42,6 @@ void Epoch::fireParameterChanged(const bpp::ParameterList& params)
 
   for(auto& op : operators_)
     op->fireParameterChanged(params);
-
-  init_();
 }
 
 //------------------------------------------------------------------------------
@@ -428,31 +426,29 @@ void Epoch::computePowerSteadyStateDiscrete(double tol)
 
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> prev = y;
 
-    size_t maxIter = 20 * twoN;
+    size_t maxIter = 40 * twoN;
     for(size_t iter = 0; iter < maxIter; ++iter)
     {
-      //y = A * y;
       Vector<Scalar> yWrap(std::move(y)); // wraps thin Eigen vector
       Vector<Scalar> result = A * yWrap;
       y = result.eigen();
 
-      if(iter % 10000 == 0)
+      double maxRel = 0.0;
+
+      for(Eigen::Index i = 0; i < y.size(); ++i)
       {
-        double maxRel = 0.0;
+        double pv = static_cast<double>(prev(i));
+        double cv = static_cast<double>(y(i));
+        maxRel = std::max(maxRel, std::abs(cv - pv) / std::abs(pv));
+      }
 
-        for(Eigen::Index i = 0; i < y.size(); ++i)
-        {
-          double pv = static_cast<double>(prev(i));
-          double cv = static_cast<double>(y(i));
-          maxRel = std::max(maxRel, std::abs(cv - pv) / std::max(1.0, std::abs(pv)));
-        }
+      //std::cout << std::scientific << maxRel << "\t" << iter << "\n";
 
-        if(maxRel <= tol)
-        {
-          std::cout << "\nPower steady-state converged after " << iter << " iterations, " << name_ << "\n";
-          converged = true;
-          break;
-        }
+      if(maxRel <= tol)
+      {
+        std::cout << "\nPower steady-state converged after " << iter << " iterations, " << name_ << "\n";
+        converged = true;
+        break;
       }
 
       prev = y;
@@ -557,23 +553,20 @@ bool Epoch::computePowerSSContinuousTyped(
     else
       y = integrateMpfrCN(A, Vwrap, dt, dt).eigen();
 
-    if(iter % 10000 == 0)
+    double maxRel = 0.0;
+
+    for(Eigen::Index i = 0; i < y.size(); ++i)
     {
-      double maxRel = 0.0;
+      double pv = static_cast<double>(prev(i));
+      double cv = static_cast<double>(y(i));
+      maxRel = std::max(maxRel, std::abs(cv - pv) / std::abs(pv));
+    }
 
-      for(Eigen::Index i = 0; i < y.size(); ++i)
-      {
-        double pv = static_cast<double>(prev(i));
-        double cv = static_cast<double>(y(i));
-        maxRel = std::max(maxRel, std::abs(cv - pv) / std::max(1.0, std::abs(pv)));
-      }
-
-      if(maxRel <= tol)
-      {
-        std::cout << "\nPower steady-state converged after " << iter << " iterations, " << name_ << "\n";
-        converged = true;
-        break;
-      }
+    if(maxRel <= tol)
+    {
+      std::cout << "\nPower steady-state converged after " << iter << " iterations, " << name_ << "\n";
+      converged = true;
+      break;
     }
 
     prev = y;
@@ -700,16 +693,17 @@ Epoch::integrateAdaptive(double dt,
   return result;
 }
 
+
 //------------------------------------------------------------------------------
 // Build the full transition matrix and steady‐state engine
 //------------------------------------------------------------------------------
-void Epoch::init_()
+void Epoch::init(bool multiplyOperators)
 {
   if(operators_.empty())
-    throw bpp::Exception("Epoch::init_() called with no operators.");
+    throw bpp::Exception("Epoch::init() called with no operators.");
 
   if(!engine_)
-    throw bpp::Exception("Epoch::init_() called with null engine_.");
+    throw bpp::Exception("Epoch::init() called with null engine_.");
 
   #ifdef DEBUG
   auto demangle = [](const std::type_info& ti)
@@ -725,6 +719,16 @@ void Epoch::init_()
   #endif
 
   MatrixEngine::MatrixVariant accWrap = operators_.front()->getTransitionMatrixVariant();
+
+  // if M = S * U * R * D, we add identy to each delta matrix
+  // (prepare to  accumulate with multiplyInPlace())
+  if(multiplyOperators)
+  {
+    std::visit([](auto& matrixWrap)
+    {
+      matrixWrap.addIdentity();
+    }, accWrap);
+  }
 
   for(size_t i = 1; i < operators_.size(); ++i)
   {
@@ -750,10 +754,19 @@ void Epoch::init_()
     }, nextWrap);
     #endif
 
-    visitSameType(accWrap, nextWrap, [&](auto& A, auto const& B)
+    visitSameType(accWrap, nextWrap, [multiplyOperators](auto& A, auto const& B)
     {
-      A += B;  // A and B are the same Matrix<T> type
+      if(multiplyOperators)
+        A.multiplyInPlace(B);
+
+      else
+        A += B;
     });
+
+    /*visitSameType(accWrap, nextWrap, [&](auto& A, auto const& B)
+    {
+      A.multiplyInPlace(B);  // A and B are the same Matrix<T> type
+    });*/
 
     #ifdef DEBUG
     std::visit([&](auto const& x)
@@ -765,8 +778,10 @@ void Epoch::init_()
   }
 
   engine_->setMatrix(std::move(accWrap));
-  engine_->addIdentityInPlace();
+
+  if(!multiplyOperators) // if operator (delta) matrices were added together, converts to transition
+    engine_->addIdentityInPlace();
+
   engine_->pruneInPlace();
   engine_->compressInPlace();
 }
-

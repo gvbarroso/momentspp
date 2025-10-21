@@ -1,5 +1,8 @@
-num_threads = $(NT)
+label = $(L)
+multiply_operators = $(MO)
+num_threads = 1
 demes_file = $(F)
 factor_order = $(O)
 verbose = $(V)
 digits = $(P)
+continuous_time = $(CT)

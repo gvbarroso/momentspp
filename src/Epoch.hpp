@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 30/08/2022
- * Last modified: 14/10/2025
+ * Last modified: 21/10/2025
  *
  */
 
@@ -83,6 +83,7 @@ public:
   { }
 
   Epoch(const std::string& name, const SumStatsLibrary& ssl, size_t start, size_t end,
+        bool multiplyOperators, // whether to obtain transition matrix by multiplying (or summing) operator matrices
         const std::vector<std::shared_ptr<Population>>& pops,
         const std::vector<std::shared_ptr<AbstractOperator>>& ops):
   bpp::AbstractParameterAliasable(""),
@@ -98,7 +99,7 @@ public:
       addParameters_((*it)->getParameters());
 
     bpp::AbstractParameterAliasable::setNamespace(name + ".");
-    init_();
+    init(multiplyOperators);
   }
 
   Epoch(const Epoch& other):
@@ -123,7 +124,7 @@ public:
     }
 
     bpp::AbstractParameterAliasable::setNamespace(name_ + ".");
-    // init_ may be optional if engine_ already cloned appropriately
+    // init may be optional if engine_ already cloned appropriately
   }
 
   Epoch& operator=(const Epoch& other)
@@ -549,9 +550,9 @@ public:
     }, eigenVar);
   }
 
-private:
-  void init_();
+  void init(bool multiplyOperators);
 
+private:
   void updateOperators_(const bpp::ParameterList& params)
   {
     for(auto it = std::begin(operators_); it != std::end(operators_); ++it)

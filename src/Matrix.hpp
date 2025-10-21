@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 08/09/2025
- * Last modified: 25/09/2025
+ * Last modified: 20/10/2025
  *
  */
 
@@ -73,6 +73,12 @@ public:
   Matrix<T>& operator+=(const Matrix<T>& other)
   {
     addInPlace(other);
+    return *this;
+  }
+
+  Matrix<T>& operator*=(const Matrix<T>& other)
+  {
+    multiplyInPlace(other);
     return *this;
   }
 
@@ -220,6 +226,16 @@ public:
     return multiply(*other);
   }
 
+  void multiplyInPlace(const Matrix<T>& other)
+  {
+    if(rows() != other.rows() || cols() != other.cols())
+      throw bpp::Exception("Matrix::dimensions must match for in-place multiplication");
+
+    auto result = mat_ * other.eigen();
+    mat_ = std::move(result);
+    makeCompressed();
+  }
+
   std::unique_ptr<Matrix<T>> add(const Matrix<T>& other) const
   {
     if(rows() != other.rows() || cols() != other.cols())
@@ -310,6 +326,7 @@ public:
   {
     for(size_t i = 0; i < rows(); ++i)
       mat_.coeffRef(i, i) += T(1);
+
     makeCompressed();
   }
 

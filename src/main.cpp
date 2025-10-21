@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
         std::shared_ptr<Mutation> mutOp = std::make_shared<Mutation>(demes.getLeftFactor(), demes.getMus(i), ic, sslib, highPrec);
         std::shared_ptr<Drift> driftOp = std::make_shared<Drift>(drift, ic, sslib, highPrec);
 
-        /*// only *allow* model to include mig params in epochs where the demes model has non-zero
+        /*// only *allows* model to include mig params in epochs where the demes model has non-zero
         mig if((demes.getNumPops(i) > 1) && (!demes.getMig(i).isZero()))
         {
           operators.push_back(std::make_shared<Migration>(demes.getMig(i), ic, sslib, highPrec));
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
         }
 
         // if immediately previous epoch is an Admixture epoch, we correct for the 1-gen by incrementing start
-        if(epochs.size() > 1 && epochs.back()->duration() == 1)
+        if(epochs.size() > 1 && epochs.back()->duration() == 1) // NOTE epochs.back() not initialized yet
           ++start;
       }
 
@@ -198,7 +198,7 @@ int main(int argc, char* argv[])
     }
 
     // time flows from left to right, with epoch[0] (epoch.front()) => most ancient epoch
-    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, demes.getPopsVec()[i], operators));
+    epochs.emplace_back(std::make_shared<Epoch>(id, sslib, start, end, options.multiplyOperators(), demes.getPopsVec()[i], operators));
 
     if(options.verbose()) // logs transition matrices and steady-states for each epoch
     {

@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 09/08/2022
- * Last modified: 24/09/2025
+ * Last modified: 21/10/2025
  *
  */
 
@@ -29,7 +29,7 @@ protected:
   // they are then multiplied by parameters (1/N_i for Drift, m_ij for Migration etc) and finally added into transition_
   // this way the matrices_ need not be rebuilt during optimization when parameters change (see updateMatrices_() inside each derived class)
   std::vector<std::unique_ptr<MatrixEngine>> matrices_; // "delta" matrix(ces)
-  std::unique_ptr<MatrixEngine> transition_; // "transition" matrix in Sparse format (sum of all `matrices_` after scaling by current params_
+  std::unique_ptr<MatrixEngine> transition_; // "delta" matrix in Sparse format (sum of all `matrices_` after scaling by current params_
   bpp::ParameterList prevParams_; // params in immediately previous iteration of optimization (for fast matrix updates)
   std::vector<size_t> popIndices_; // which populations *this operator acts on
 
@@ -183,6 +183,11 @@ public:
     transition_->scaleMatrix(factor);
   }
 
+  void initDeltaMat()
+  {
+    assembleTransitionMatrix_();
+  }
+
 protected:
   // so that setUpMatrices_() knows which Scalar type to use
   void initializeScalarType_(bool highPrecision)
@@ -198,6 +203,7 @@ protected:
 
   virtual void updateMatrices_() = 0;
 
+  // returns delta matrix
   virtual void assembleTransitionMatrix_()
   {
     if(matrices_.empty())

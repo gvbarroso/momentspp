@@ -1,7 +1,7 @@
 /*
  * Authors: Gustavo V. Barroso
  * Created: 29/07/2022
- * Last modified: 24/09/2025
+ * Last modified: 21/10/2025
  *
  */
 
@@ -12,7 +12,9 @@ void Model::fireParameterChanged(const bpp::ParameterList& params)
   assert(data_ != nullptr);
 
   matchParametersValues(params);
-  updateEpochs_(params); // updates transitionMatrix_ within each epoch
+  updateEpochs_(params);
+  // TODO call epochs_[x]->init() to update transitionMatrix_ WARNING
+
   computeExpectedSumStats();
   computeCompositeLogLikelihood_(); // e.g. for each rec. bin
 }
