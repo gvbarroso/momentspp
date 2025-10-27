@@ -16,6 +16,7 @@ knitr::opts_chunk$set(echo=TRUE)
 
 library(data.table)
 library(tidyverse)
+library(dplyr)
 library(cowplot)
 library(scales)
 library(GenomicRanges)
@@ -32,7 +33,7 @@ library(MVN)
 options(rgl.useNULL=TRUE) # "solves" issue with rgl package in MacOS BigSur
 library(heplots)
 library(parallel) # mcapply
-library(pbapply) # with progress bar
+library(pbmcapply)
 
 library(survcomp) # for fisher's C test, combine.test()
 library(piecewiseSEM)
@@ -3653,175 +3654,192 @@ fwrite(maps_1Mb, "real_data_maps/maps_1Mb_models.csv.gz")
 
 ```{r plot-models, eval=F, include=F, message=F, warning=F}
 
-maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz")
+#maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz")
 maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz")
 maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz")
 
-# TODO break lines/points at gaps in the maps
-#maps_1Mb$dat_carlson <- as.integer(!is.na(maps_1Mb$ismc_c))
-#maps_1Mb_f$new <- abs(c(0, maps_1Mb_f$dat[-length(maps_1Mb_f$dat)] - maps_1Mb_f$dat[-1]))
-#maps_1Mb_f$grp <- cumsum(maps_1Mb_f$new)
+min_points_for_line <- 2 # for breaking lines in maps
 
 pb <- txtProgressBar(min=0, max=22, style=3)
 for(c in 1:22) {
+  
   setTxtProgressBar(pb, c)
+
+  dat_100kb <- as.data.table(maps_100kb)[chrom == c & coverage > 0.75]
+  setorder(dat_100kb, chromStart)
+
+  # Compute gap and contiguous runs (rleid on whether gap equals expected_step)
+  dat_100kb <- maps_100kb %>%
+    filter(chrom == c, coverage > 0.75) %>%
+    arrange(chromStart) %>%
+    mutate(gap = chromStart - lag(chromStart, default = chromStart[1]))
   
-  dat_10kb <- filter(maps_10kb, chrom==c, coverage>0.75)
-  p_10kb <- ggplot(data=dat_10kb, 
-                   aes(x=chromStart / 1e+6,
-                       y=exp_pi, 
-                       color=constrained_model)) +
-  facet_grid(demo~mut_map) + theme_bw() +
-  geom_line() + geom_point() + 
-  geom_point(data=dat_10kb, aes(x=chromStart / 1e+6, y=avg_pi, color="black")) + 
-  geom_line(data=dat_10kb, aes(x=chromStart / 1e+6, y=avg_pi, color="black")) +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  scale_color_manual(values=c("black",
-                              "brown1",
-                              "purple3", 
-                              "green4"),
-                     labels=c("obs. pi",
-                              "merged exons",
-                              "split exons",
-                              "phastcons")) +
-  labs(title=NULL, x="Position (Mb)", y=expression(pi)) +
-  theme(strip.text.y=element_text(size=16),       
-        strip.text.x=element_text(size=16),       
-        axis.title.x=element_text(size=16),
-        axis.text.x=element_text(size=12),
-        axis.text.y=element_text(size=12),
-        axis.title.y=element_text(size=14),
-        plot.title=element_text(size=20),
-        legend.position="bottom") 
+  dat_100kb[1, gap := 0]
+
+  # Define contiguous runs: TRUE when the spacing equals expected_step within tolerance
+  dat_100kb[, contiguous := gap == 1e+5 | gap == 0]
+  # rleid over contiguous TRUE/FALSE to get runs of "contiguous" status; keep only contiguous runs
+  dat_100kb[, run_id := rleid(contiguous)]
+  dat_100kb <- dat_100kb[contiguous == TRUE]
+
+  # Now create group keys that combine run + plotting aesthetics to avoid over-splitting
+  # Ensure factors for plotting columns exist
+  dat_100kb[, constrained_model := as.character(constrained_model)]
+  dat_100kb[, demo := as.character(demo)]
+  dat_100kb[, mut_map := as.character(mut_map)]
+
+  dat_100kb$constrained_model <- factor(dat_100kb$constrained_model,
+    levels = c("func_merged_exons", "func_split_exons", "phastcons"))
+
+  # Build a plotting group id: combine run_id with constrained_model (and any other aesthetics)
+  dat_100kb[, plot_group := paste0("r", run_id, "_cm_", constrained_model)]
+
+  p_100kb <- ggplot(dat_100kb, aes(x = chromStart / 1e6)) +
+  facet_grid(demo ~ mut_map) + theme_bw() +
+
+  # Model predictions: draw lines only for non-small groups, always draw points
+  geom_path(data = dat_100kb, aes(y = exp_pi, color = constrained_model, group = plot_group), size = 0.4) +
+  geom_point(data = dat_100kb, aes(y = exp_pi, color = constrained_model, group = plot_group), size = 0.6) +
+
+  # Observed pi: treat as its own color group; create a run-based group for continuity
+  geom_path(data = dat_100kb, aes(y = avg_pi, color = "obs_pi", group = paste0("r", run_id)), size = 0.4) +
+  geom_point(data = dat_100kb, aes(y = avg_pi, color = "obs_pi", group = paste0("r", run_id)), size = 0.6) +
+
+  scale_y_continuous(breaks = pretty_breaks()) +
+  scale_color_manual(
+    values = c("obs_pi" = "black",
+               "func_merged_exons" = "brown1",
+               "func_split_exons" = "purple3",
+               "phastcons" = "green4"),
+    labels = c("obs. pi", "merged exons", "split exons", "phastcons")
+  ) +
+   
+  labs(title = NULL, x = "Position (Mb)", y = expression(pi)) +
+  theme(
+      strip.text.y = element_text(size = 16),
+      strip.text.x = element_text(size = 16),
+      axis.title.x = element_text(size = 16),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12),
+      axis.title.y = element_text(size = 14),
+      plot.title = element_text(size = 20),
+      legend.position = "bottom"
+  )
   
-  b_10kb <- ggplot(data=dat_10kb, 
-                   aes(x=chromStart / 1e+6,
-                       y=B, 
-                       color=constrained_model)) +
-  facet_grid(demo~mut_map) + theme_bw() +
-  geom_line() + geom_point() + 
-  scale_y_continuous(breaks=pretty_breaks()) +
-  scale_color_manual(values=c("brown1",
-                              "purple3", 
-                              "green4"),
-                     labels=c("merged exons",
-                              "split exons",
-                              "phastcons")) +
-  labs(title=NULL, x="Position (Mb)", y="B") +
-  theme(strip.text.y=element_text(size=16),        
-        strip.text.x=element_text(size=16),     
-        axis.title.x=element_text(size=16),
-        axis.text.x=element_text(size=12),
-        axis.text.y=element_text(size=12),
-        axis.title.y=element_text(size=14),
-        plot.title=element_text(size=20),
-        legend.position="bottom") 
+  b_100kb <- ggplot(dat_100kb, aes(x = chromStart / 1e6)) +
+  facet_grid(demo ~ mut_map) + theme_bw() +
+
+  # Model predictions: draw lines only for non-small groups, always draw points
+  geom_path(data = dat_100kb, aes(y = B, color = constrained_model, group = plot_group), size = 0.4) +
+  geom_point(data = dat_100kb, aes(y = B, color = constrained_model, group = plot_group), size = 0.6) +
+
+  scale_y_continuous(breaks = pretty_breaks()) +
+  scale_color_manual(
+    values = c("func_merged_exons" = "brown1",
+               "func_split_exons" = "purple3",
+               "phastcons" = "green4"),
+    labels = c("merged exons", "split exons", "phastcons")
+  ) +
+   
+  labs(title = NULL, x = "Position (Mb)", y = "B") +
+  theme(
+      strip.text.y = element_text(size = 16),
+      strip.text.x = element_text(size = 16),
+      axis.title.x = element_text(size = 16),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12),
+      axis.title.y = element_text(size = 14),
+      plot.title = element_text(size = 20),
+      legend.position = "bottom"
+  )
   
-  dat_100kb <- filter(maps_100kb, chrom==c, coverage>0.75)
-  p_100kb <- ggplot(data=filter(maps_100kb, chrom==c), 
-                   aes(x=chromStart / 1e+6,
-                       y=exp_pi, 
-                       color=constrained_model)) +
-  facet_grid(demo~mut_map) + theme_bw() +
-  geom_line() + geom_point() + 
-  geom_point(data=dat_100kb, aes(x=chromStart / 1e+6, y=avg_pi, color="black")) + 
-  geom_line(data=dat_100kb, aes(x=chromStart / 1e+6, y=avg_pi, color="black")) +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  scale_color_manual(values=c("black",
-                              "brown1",
-                              "purple3", 
-                              "green4"),
-                     labels=c("obs. pi",
-                              "merged exons",
-                              "split exons",
-                              "phastcons")) +
-  labs(title=NULL, x="Position (Mb)", y=expression(pi)) +
-  theme(strip.text.y=element_text(size=16),       
-        strip.text.x=element_text(size=16),        
-        axis.title.x=element_text(size=16),
-        axis.text.x=element_text(size=12),
-        axis.text.y=element_text(size=12),
-        axis.title.y=element_text(size=14),
-        plot.title=element_text(size=20),
-        legend.position="bottom") 
+  dat_1Mb <- as.data.table(maps_1Mb)[chrom == c & coverage > 0.5]
+  setorder(dat_1Mb, chromStart)
+
+  # Compute gap and contiguous runs (rleid on whether gap equals expected_step)
+  dat_1Mb <- maps_1Mb %>%
+    filter(chrom == c, coverage > 0.75) %>%
+    arrange(chromStart) %>%
+    mutate(gap = chromStart - lag(chromStart, default = chromStart[1]))
   
-  b_100kb <- ggplot(data=dat_100kb, 
-                   aes(x=chromStart / 1e+6,
-                       y=B, 
-                       color=constrained_model)) +
-  facet_grid(demo~mut_map) + theme_bw() +
-  geom_line() + geom_point() + 
-  scale_y_continuous(breaks=pretty_breaks()) +
-  scale_color_manual(values=c("brown1",
-                              "purple3", 
-                              "green4"),
-                     labels=c("merged exons",
-                              "split exons",
-                              "phastcons")) +
-  labs(title=NULL, x="Position (Mb)", y="B") +
-  theme(strip.text.y=element_text(size=16),        
-        strip.text.x=element_text(size=16),          
-        axis.title.x=element_text(size=16),
-        axis.text.x=element_text(size=12),
-        axis.text.y=element_text(size=12),
-        axis.title.y=element_text(size=14),
-        plot.title=element_text(size=20),
-        legend.position="bottom") 
+  dat_1Mb[1, gap := 0]
+
+  # Define contiguous runs: TRUE when the spacing equals expected_step within tolerance
+  dat_1Mb[, contiguous := gap == 1e+6 | gap == 0]
+  # rleid over contiguous TRUE/FALSE to get runs of "contiguous" status; keep only contiguous runs
+  dat_1Mb[, run_id := rleid(contiguous)]
+  dat_1Mb <- dat_1Mb[contiguous == TRUE]
+
+  # Now create group keys that combine run + plotting aesthetics to avoid over-splitting
+  # Ensure factors for plotting columns exist
+  dat_1Mb[, constrained_model := as.character(constrained_model)]
+  dat_1Mb[, demo := as.character(demo)]
+  dat_1Mb[, mut_map := as.character(mut_map)]
+
+  dat_1Mb$constrained_model <- factor(dat_1Mb$constrained_model,
+    levels = c("func_merged_exons", "func_split_exons", "phastcons"))
+
+  # Build a plotting group id: combine run_id with constrained_model (and any other aesthetics)
+  dat_1Mb[, plot_group := paste0("r", run_id, "_cm_", constrained_model)]
+
+  p_1Mb <- ggplot(dat_1Mb, aes(x = chromStart / 1e6)) +
+  facet_grid(demo ~ mut_map) + theme_bw() +
+
+  # Model predictions: draw lines only for non-small groups, always draw points
+  geom_path(data = dat_1Mb, aes(y = exp_pi, color = constrained_model, group = plot_group), size = 0.4) +
+  geom_point(data = dat_1Mb, aes(y = exp_pi, color = constrained_model, group = plot_group), size = 0.6) +
+
+  # Observed pi: treat as its own color group; create a run-based group for continuity
+  geom_path(data = dat_1Mb, aes(y = avg_pi, color = "obs_pi", group = paste0("r", run_id)), size = 0.4) +
+  geom_point(data = dat_1Mb, aes(y = avg_pi, color = "obs_pi", group = paste0("r", run_id)), size = 0.6) +
+
+  scale_y_continuous(breaks = pretty_breaks()) +
+  scale_color_manual(
+    values = c("obs_pi" = "black",
+               "func_merged_exons" = "brown1",
+               "func_split_exons" = "purple3",
+               "phastcons" = "green4"),
+    labels = c("obs. pi", "merged exons", "split exons", "phastcons")
+  ) +
+   
+  labs(title = NULL, x = "Position (Mb)", y = expression(pi)) +
+  theme(
+      strip.text.y = element_text(size = 16),
+      strip.text.x = element_text(size = 16),
+      axis.title.x = element_text(size = 16),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12),
+      axis.title.y = element_text(size = 14),
+      plot.title = element_text(size = 20),
+      legend.position = "bottom"
+  )
   
-  dat_1Mb <- filter(maps_1Mb, chrom==c, coverage>0.5)
-  p_1Mb <- ggplot(data=dat_1Mb, 
-                   aes(x=chromStart / 1e+6,
-                       y=exp_pi, 
-                       color=constrained_model)) +
-  facet_grid(demo~mut_map) + theme_bw() +
-  geom_line() + geom_point() + 
-  geom_point(data=dat_1Mb, aes(x=chromStart / 1e+6, y=avg_pi, color="black")) + 
-  geom_line(data=dat_1Mb, aes(x=chromStart / 1e+6, y=avg_pi, color="black")) +
-  scale_y_continuous(breaks=pretty_breaks()) +
-  scale_color_manual(values=c("black",
-                              "brown1",
-                              "purple3", 
-                              "green4"),
-                     labels=c("obs. pi",
-                              "merged exons",
-                              "split exons",
-                              "phastcons")) +
-  labs(title=NULL, x="Position (Mb)", y=expression(pi)) +
-  theme(strip.text.y=element_text(size=16),         
-        strip.text.x=element_text(size=16),         
-        axis.title.x=element_text(size=16),
-        axis.text.x=element_text(size=12),
-        axis.text.y=element_text(size=12),
-        axis.title.y=element_text(size=14),
-        plot.title=element_text(size=20),
-        legend.position="bottom") 
-  
-  b_1Mb <- ggplot(data=dat_1Mb, 
-                   aes(x=chromStart / 1e+6,
-                       y=B, 
-                       color=constrained_model)) +
-  facet_grid(demo~mut_map) + theme_bw() +
-  geom_line() + geom_point() + 
-  scale_y_continuous(breaks=pretty_breaks()) +
-  scale_color_manual(values=c("brown1",
-                              "purple3", 
-                              "green4"),
-                     labels=c("merged exons",
-                              "split exons",
-                              "phastcons")) +
-  labs(title=NULL, x="Position (Mb)", y="B") +
-  theme(strip.text.y=element_text(size=16),          
-        strip.text.x=element_text(size=16),          
-        axis.title.x=element_text(size=16),
-        axis.text.x=element_text(size=12),
-        axis.text.y=element_text(size=12),
-        axis.title.y=element_text(size=14),
-        plot.title=element_text(size=20),
-        legend.position="bottom") 
-  
-  save_plot(paste("real_data_maps/human_diversity_models_10kb_chr",
-                  c, ".pdf", sep=""),
-            p_10kb, base_height=12, base_width=24)
+  b_1Mb <- ggplot(dat_1Mb, aes(x = chromStart / 1e6)) +
+  facet_grid(demo ~ mut_map) + theme_bw() +
+
+  # Model predictions: draw lines only for non-small groups, always draw points
+  geom_path(data = dat_1Mb, aes(y = B, color = constrained_model, group = plot_group), size = 0.4) +
+  geom_point(data = dat_1Mb, aes(y = B, color = constrained_model, group = plot_group), size = 0.6) +
+
+  scale_y_continuous(breaks = pretty_breaks()) +
+  scale_color_manual(
+    values = c("func_merged_exons" = "brown1",
+               "func_split_exons" = "purple3",
+               "phastcons" = "green4"),
+    labels = c("merged exons", "split exons", "phastcons")
+  ) +
+   
+  labs(title = NULL, x = "Position (Mb)", y = "B") +
+  theme(
+      strip.text.y = element_text(size = 16),
+      strip.text.x = element_text(size = 16),
+      axis.title.x = element_text(size = 16),
+      axis.text.x = element_text(size = 12),
+      axis.text.y = element_text(size = 12),
+      axis.title.y = element_text(size = 14),
+      plot.title = element_text(size = 20),
+      legend.position = "bottom"
+  )
   
   save_plot(paste("real_data_maps/human_diversity_models_100kb_chr",
                   c, ".pdf", sep=""),
@@ -3830,10 +3848,6 @@ for(c in 1:22) {
   save_plot(paste("real_data_maps/human_diversity_models_1Mb_chr",
                   c, ".pdf", sep=""),
             p_1Mb, base_height=12, base_width=24)
-  
-  save_plot(paste("real_data_maps/human_B_models_10kb_chr",
-                  c, ".pdf", sep=""),
-            b_10kb, base_height=12, base_width=24)
   
   save_plot(paste("real_data_maps/human_B_models_100kb_chr",
                   c, ".pdf", sep=""),
@@ -5690,6 +5704,8 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
 
 ## SEM
 
+### Helper functions
+
 Estimate per-chromosome distance-decay (exponential) from OLS residuals
 
 Fit OLS per chromosome to get residuals
@@ -5714,13 +5730,14 @@ estimate_decay_per_chrom <- function(dt_chr, min_pairs = 20, start_alpha = 1e-6)
   dmat <- as.matrix(dist(pos))
   # vectorize lower triangle
   dvec <- dmat[lower.tri(dmat)]
-  cov_pairs <- c()
-  # empirical covariance for pair (i,j) is resid[i] * resid[j]
-  for (i in seq_len(length(resid)-1)) {
-    for (j in (i+1):length(resid)) cov_pairs <- c(cov_pairs, resid[i] * resid[j])
-  }
+
+  cov_mat <- outer(resid, resid, "*")
+  cov_pairs <- cov_mat[lower.tri(cov_mat)]
+
   ok <- is.finite(dvec) & is.finite(cov_pairs)
-  if (sum(ok) < min_pairs) return(list(alpha = NA_real_, sigma2 = var(resid, na.rm = TRUE)))
+  if (sum(ok) < min_pairs) 
+    return(list(alpha = NA_real_, sigma2 = var(resid, na.rm = TRUE)))
+  
   dvec_ok <- dvec[ok]
   cov_ok <- cov_pairs[ok]
   # Fit nls: cov = s2 * exp(-alpha * d)
@@ -5732,6 +5749,8 @@ estimate_decay_per_chrom <- function(dt_chr, min_pairs = 20, start_alpha = 1e-6)
   if (inherits(fit, "try-error")) return(list(alpha = NA_real_, sigma2 = start_s2))
   coefs <- coef(fit)
   list(alpha = as.numeric(coefs["alpha"]), sigma2 = as.numeric(coefs["s2"]))
+  
+  return(list(alpha = ..., sigma2 = ...))
 }
 ```
 
@@ -5752,7 +5771,7 @@ make_distance_blocks <- function(dt_chr, max_gap = window_bp * 2, max_block_span
   # if span > max_block_span, split by equal-size windows per block
   if (any(dt_chr$span > max_block_span)) {
     tmp <- dt_chr[, .(n = .N), by = block_id]
-    # fallback: just ensure each block has at most floor(max_block_span/window_bp) windows
+    # fallback: enforce max windows per block if span-based splitting fails
     window_limit <- max(2, floor(max_block_span / window_bp))
     dt_chr[, block_seq := seq_len(.N), by = block_id]
     dt_chr[, block_id2 := block_id + floor((block_seq - 1) / window_limit)]
@@ -5761,6 +5780,8 @@ make_distance_blocks <- function(dt_chr, max_gap = window_bp * 2, max_block_span
     dt_chr[, span := NULL]
   }
   dt_chr
+  
+  return(dt_chr)
 }
 ```
 
@@ -5769,7 +5790,9 @@ For each block:
 Use its chromosome alpha/sigma2 to compute predicted rho(d) = exp(-alpha * d).
 Include pair (i,j) only if |rho(d)| >= rho_threshold and d <= max_pair_distance.
 Store starting covariance = sigma2 * rho(d) for that pair.
-Build wide data row for lavaan (avg_pi_1..k, B_1..k, avg_rec_1..k, avg_mut_1..k) only for blocks with k >= 2 and not too big (recommend k ≤ 12 for model tractability).
+Build wide data row for lavaan (avg_pi_1..k, B_1..k, avg_rec_1..k, avg_mut_1..k)
+only for blocks with k >= 2 and not too big 
+(recommend k ≤ 12 for model tractability).
 
 ```{r SEM-helpers-3, eval=T, include=F, message=F, warning=F}
 
@@ -5817,7 +5840,7 @@ make_block_specs <- function(df_block, decay_dt, max_pair_distance, rho_threshol
 }
 ```
 
-Helpers to build model string with starting values for candidate covariances
+Helpers to build model strings with starting values for candidate covariances
 
 ```{r SEM-helpers-4, eval=T, include=F, message=F, warning=F}
 
@@ -5832,14 +5855,17 @@ build_model0_for_k <- function(k, pairs_list_k_flat) {
                paste0("avg_pi", suf, " ~ b_mut * avg_mut", suf))
   }
   # include candidate covariances with optional start()
-  # collect unique pairs present across blocks to include in model syntax (we allow estimation per group)
-  # For model syntax we only include the adjacency pairs that appear in any block; but we allow them free per group.
+  # collect unique pairs present across blocks to include in model syntax 
+  # (we allow estimation per group)
+  # For model syntax we only include the adjacency pairs that appear in any block; 
+  # but we allow them free per group.
   # build a set of pair names that appear at least once in pairs_list_k_flat
   pair_keys <- unique(do.call(rbind, lapply(pairs_list_k_flat, function(pl) {
     if (length(pl) == 0) return(NULL)
     df <- map_dfr(pl, ~ tibble(i = .x$i, j = .x$j, cov = .x$cov))
     df
   })))
+  
   if (!is.null(pair_keys) && nrow(pair_keys) > 0) {
     for (r in seq_len(nrow(pair_keys))) {
       i <- pair_keys$i[r]; j <- pair_keys$j[r]
@@ -5890,7 +5916,6 @@ build_model1_for_k <- function(k, pairs_list_k_flat) {
     }
   }
   
-  # Derived parameter
   lines <- c(lines, "mu_B_pi := c1 * c5")
   
   paste(lines, collapse = "\n")
@@ -5945,6 +5970,8 @@ build_model2_for_k <- function(k, pairs_list_k_flat) {
 }
 
 ```
+
+### Data Analyses
 
 Path models using latent variable predictions for mut, rec, B
 
