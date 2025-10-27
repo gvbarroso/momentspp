@@ -1250,7 +1250,7 @@ human_summaries <- rbind.data.frame(human_summaries_roulette,
 
 Equilibrium demography, phastcons model of constrained elements 
 
-```{r eq-func-merged, eval=F, include=F, message=F, warning=F}
+```{r eq-phastcons, eval=F, include=F, message=F, warning=F}
 
 human_maps_10kb_uniform <- data.frame()
 human_maps_10kb_roulette <- data.frame()
@@ -3011,7 +3011,7 @@ human_summaries <- rbind.data.frame(human_summaries_roulette,
 
 4-epoch demography, phastcons model of constrained elements 
 
-```{r 4e-func-merged, eval=F, include=F, message=F, warning=F}
+```{r 4e-func-phastcons, eval=F, include=F, message=F, warning=F}
 
 human_maps_10kb_uniform <- data.frame()
 human_maps_10kb_roulette <- data.frame()
