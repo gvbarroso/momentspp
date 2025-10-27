@@ -52,7 +52,7 @@ use_python("/usr/bin/python3")
 
 scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
 
-knitr::opts_knit$set(root.dir="~/Data/")
+knitr::opts_knit$set(root.dir="~/Desktop/causal_inference/")
 #knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/causal_inference")
 
 # custom function to mutate a subset of rows (a few chunks use it)
@@ -6054,13 +6054,13 @@ rec_1Mb <- list(length=22)
 
 for(c in 1:22) {
   
- rec_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+ rec_10kb[[c]] <- fread(paste("real_data_maps/",
                               "rec_latent_chr", c, "_10kb.csv.gz", sep=""))
  
- rec_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+ rec_100kb[[c]] <- fread(paste("real_data_maps/",
                                "rec_latent_chr", c, "_100kb.csv.gz", sep=""))
  
- rec_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+ rec_1Mb[[c]] <- fread(paste("real_data_maps/",
                              "rec_latent_chr", c, "_1Mb.csv.gz", sep=""))
 }  
 
@@ -6075,13 +6075,13 @@ mut_1Mb <- list(length=22)
 
 for(c in 1:22) {
   
- mut_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+ mut_10kb[[c]] <- fread(paste("real_data_maps/",
                               "mut_latent_chr", c, "_10kb.csv.gz", sep=""))
  
- mut_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+ mut_100kb[[c]] <- fread(paste("real_data_maps/",
                                "mut_latent_chr", c, "_100kb.csv.gz", sep=""))
  
- mut_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+ mut_1Mb[[c]] <- fread(paste("real_data_maps/",
                              "mut_latent_chr", c, "_1Mb.csv.gz", sep=""))
 }  
 
@@ -6102,13 +6102,13 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
   
   for(c in 1:22) {
 
-    tmp_10kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+    tmp_10kb[[c]] <- fread(paste("real_data_maps/",
                                  "B_latent_chr", c, "_", m, "_10kb.csv.gz", sep=""))
    
-    tmp_100kb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+    tmp_100kb[[c]] <- fread(paste("real_data_maps/",
                                   "B_latent_chr", c, "_", m, "_100kb.csv.gz", sep=""))
    
-    tmp_1Mb[[c]] <- fread(paste("~/Desktop/causal_inference/real_data_maps/",
+    tmp_1Mb[[c]] <- fread(paste("real_data_maps/",
                                 "B_latent_chr", c, "_", m, "_1Mb.csv.gz", sep=""))
   }
   
