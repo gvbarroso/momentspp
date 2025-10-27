@@ -415,7 +415,7 @@ void Epoch::computePowerSteadyStateDiscrete(double tol)
       //std::cout << std::scientific << std::setprecision(16) << y(i) << "\n";
 
     // burn‐in
-    size_t burnSteps = twoN;
+    size_t burnSteps = 2 * twoN;
     for(size_t b = 0; b < burnSteps; ++b)
     {
       Vector<Scalar> yWrap(std::move(y)); // wraps thin Eigen vector
@@ -580,6 +580,107 @@ bool Epoch::computePowerSSContinuousTyped(
   return true;
 }
 
+template<typename Scalar>
+bool Epoch::computePowerSSAdaptiveTyped(
+    const Matrix<Scalar>& A,
+    double burnInTime,
+    double dt,
+    double tol,
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& outY) const
+{
+  const Eigen::Index n = A.cols();
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y(n);
+
+  // Rough initial guess
+  size_t pop = ssl_.getPopIndices()[0];
+  double mu = getParameterValue("u_" + bpp::TextTools::toString(pop));
+  double s = getParameterValue("s_" + bpp::TextTools::toString(pop));
+  size_t twoN = static_cast<size_t>(1. / getParameterValue("1/2N_" + bpp::TextTools::toString(pop)));
+
+  double hr = twoN * mu;
+  double hl = (std::abs(s) < 1e-14) ? twoN * mu : (2. * twoN * mu * std::exp(2. * twoN * s) / (std::exp(2. * twoN * s) - 1.) - mu / s);
+
+  double f = 1.0;
+  for(Eigen::Index i = 0; i < y.size(); ++i)
+  {
+    const auto& prefix = ssl_.getBasis()[size_t(i)]->getPrefix();
+
+    if(i > 0 && prefix == ssl_.getBasis()[size_t(i - 1)]->getPrefix())
+      f *= 0.925;
+
+    else
+      f = 1.0;
+
+    if(prefix == "Hl")
+      y(i) = Scalar(hl * f);
+
+    else if(prefix == "Hr")
+      y(i) = Scalar(hr * f);
+
+    else if(prefix == "pi2")
+      y(i) = Scalar(hr * hl * f * 1.3);
+
+    else if(prefix == "I")
+      y(i) = Scalar(1.0);
+
+    else if(prefix == "DD")
+      y(i) = Scalar(hr * hl * f * 0.5);
+
+    else
+      y(i) = Scalar(hr * hl * f * 0.3);
+  }
+
+  Vector<Scalar> Vwrap;
+  double dtMin = dt * 0.1;
+  double dtMax = dt * 10.0;
+
+  // Burn-in phase
+  Vwrap.eigen() = y;
+  if constexpr(std::is_same_v<Scalar, double>)
+    y = integrateAdaptiveDoubleCN(A, Vwrap, dt, burnInTime, tol, dtMin, dtMax).eigen();
+
+  else
+    y = integrateAdaptiveMpfrCN(A, Vwrap, dt, burnInTime, tol, dtMin, dtMax).eigen();
+
+  // Power iteration
+  Eigen::Matrix<Scalar, Eigen::Dynamic, 1> prev = y;
+  size_t maxSteps = static_cast<size_t>(10 * burnInTime / dt);
+  bool converged = false;
+
+  for(size_t iter = 0; iter < maxSteps; ++iter)
+  {
+    Vwrap.eigen() = y;
+
+    if constexpr(std::is_same_v<Scalar, double>)
+      y = integrateAdaptiveDoubleCN(A, Vwrap, dt, dt, tol, dtMin, dtMax).eigen();
+    else
+      y = integrateAdaptiveMpfrCN(A, Vwrap, dt, dt, tol, dtMin, dtMax).eigen();
+
+    double maxRel = 0.0;
+    for(Eigen::Index i = 0; i < y.size(); ++i)
+    {
+      double pv = static_cast<double>(prev(i));
+      double cv = static_cast<double>(y(i));
+      maxRel = std::max(maxRel, std::abs(cv - pv) / std::abs(pv));
+    }
+
+    if(maxRel <= tol)
+    {
+      std::cout << "\nPower steady-state converged after " << iter << " iterations, " << name_ << "\n";
+      converged = true;
+      break;
+    }
+
+    prev = y;
+  }
+
+  if(!converged)
+    return false;
+
+  outY = std::move(y);
+  return true;
+}
+
 //------------------------------------------------------------------------------
 // Public dispatcher: unpack the variant and call the typed helper
 //------------------------------------------------------------------------------
@@ -596,7 +697,8 @@ void Epoch::computePowerSteadyStateContinuous(double burnInTime, double dt, doub
 
     // Allocate an Eigen‐vector for the output
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1> y;
-    converged = computePowerSSContinuousTyped(A, burnInTime, dt, tol, y);
+    //converged = computePowerSSContinuousTyped(A, burnInTime, dt, tol, y);
+    converged = computePowerSSAdaptiveTyped(A, burnInTime, dt, tol, y); // NOTE defaults to adaptive integrator
 
     if(converged)
       vecWrap = Vector<Scalar>(std::move(y));

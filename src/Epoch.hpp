@@ -348,6 +348,14 @@ public:
     double tol,
     Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& outY) const;
 
+  template<typename Scalar>
+  bool computePowerSSAdaptiveTyped(
+    const Matrix<Scalar>& A,
+    double burnInTime,
+    double dt,
+    double tol,
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1>& outY) const;
+
   void computeEigenSteadyState();
 
   void testSteadyState();
