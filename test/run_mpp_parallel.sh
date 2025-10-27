@@ -8,7 +8,7 @@ THREADS="${1:-16}"
 # Generate job list: one line per (order, model, P)
 generate_jobs() {
   local n=$(tail -n +2 params.csv | wc -l)
-  for (( o=50; o<=1000; o+=50 )); do
+  for (( o=800; o<=1000; o+=50 )); do
     for (( i=1; i<=n; i++ )); do
       echo "$o $i 16"
       echo "$o $i 32"
@@ -23,7 +23,7 @@ run_job() {
   local p="$3"
   (
     cd "model_${m}"
-    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P="$p" NT=1 > "log_O_${o}_P_${p}.txt"
+    momentspp param=../opt.bpp F="model_${m}.yaml" O="$o" V=1 P="$p" NT=8 &> "log_O_${o}_P_${p}.txt"
     echo "done: Order $o, model $m, P=$p"
   )
 }
