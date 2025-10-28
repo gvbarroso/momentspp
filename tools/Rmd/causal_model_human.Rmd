@@ -6037,123 +6037,269 @@ make_block_specs_robust <- function(dt,
 
 # 4) build_exp_cov: build sparse exp covariance for positions
 build_exp_cov <- function(pos, alpha, sigma2, max_pair_distance = Inf, tol = 1e-12) {
-  # Defensive checks
-  if (!is.numeric(pos) || length(pos) == 0) return(Matrix(0, 0, 0, sparse = TRUE))
+  if (!is.numeric(pos) || length(pos) == 0) return(Matrix::Matrix(0, 0, 0, sparse = TRUE))
   n <- length(pos)
-  if (n == 1) return(Matrix(sigma2, 1, 1, sparse = TRUE))
+  if (n == 1) return(Matrix::Matrix(sigma2, 1, 1, sparse = TRUE))
+
   if (is.na(alpha) || !is.finite(alpha) || alpha <= 0) {
-    return(Diagonal(n = n, x = rep(sigma2, n)))
+    return(Matrix::Diagonal(n = n, x = rep(sigma2, n)))
   }
 
-  # Compute pairwise distances efficiently
-  pos_i <- rep(pos, times = n)
-  pos_j <- rep(pos, each = n)
-  dists <- abs(pos_i - pos_j)
+  # compute pairwise distances in a memory-efficient triangular loop
+  i_list <- integer(0); j_list <- integer(0); x_list <- numeric(0)
+  for (i in seq_len(n - 1L)) {
+    dvec <- abs(pos[(i + 1L):n] - pos[i])
+    keep <- which(dvec <= max_pair_distance)
+    if (length(keep) == 0L) next
+    js <- (i + keep)
+    vals <- sigma2 * exp(-alpha * dvec[keep])
+    keep2 <- which(abs(vals) >= tol)
+    if (length(keep2) == 0L) next
+    js2 <- js[keep2]; vals2 <- vals[keep2]
+    # store both upper and lower entries
+    i_list <- c(i_list, rep(i, length(js2)), js2)
+    j_list <- c(j_list, js2, rep(i, length(js2)))
+    x_list <- c(x_list, vals2, vals2)
+  }
+  # diagonal
+  i_list <- c(i_list, seq_len(n))
+  j_list <- c(j_list, seq_len(n))
+  x_list <- c(x_list, rep(sigma2, n))
 
-  # Filter by max_pair_distance and tolerance
-  keep <- which(dists <= max_pair_distance)
-  i_idx <- ((keep - 1) %% n) + 1
-  j_idx <- ((keep - 1) %/% n) + 1
-  cov_vals <- sigma2 * exp(-alpha * dists[keep])
-  keep_final <- which(abs(cov_vals) >= tol)
-
-  # Construct sparse matrix
-  sparseMatrix(i = i_idx[keep_final],
-               j = j_idx[keep_final],
-               x = cov_vals[keep_final],
-               dims = c(n, n),
-               symmetric = TRUE)
+  # construct sparse matrix without claiming triangular storage; class will be dgCMatrix
+  mat <- Matrix::sparseMatrix(i = i_list, j = j_list, x = x_list, dims = c(n, n), symmetric = FALSE)
+  # ensure explicit symmetry and convert to compressed symmetric class
+  mat_sym <- as(Matrix::forceSymmetric(mat, uplo = "U"), "dsCMatrix")
+  mat_sym
 }
 
+
 # 5) make_sparse_cov_blocks: map decay_dt -> sparse blocks
+# Full refactor of make_sparse_cov_blocks: memory-safe, sparse, and defensive
 make_sparse_cov_blocks <- function(block_map,
                                    decay_dt,
                                    dt,
                                    by_chr = "chrom",
+                                   block_id_col = "block_id",
+                                   orig_row_col = "orig_row",
+                                   midpoint_col = "midpoint",
+                                   variable_col = "variable",
                                    max_pair_distance = 2e5,
+                                   build_exp_cov_fn = build_exp_cov,
+                                   tol_sym = 1e-9,
                                    verbose = FALSE) {
-  # Defensive checks
-  stopifnot("data.table" %in% class(block_map),
-            "data.table" %in% class(decay_dt),
-            "data.table" %in% class(dt))
-  stopifnot(by_chr %in% names(block_map),
-            by_chr %in% names(dt),
-            "variable" %in% names(decay_dt),
-            by_chr %in% names(decay_dt),
-            "midpoint" %in% names(dt),
-            "orig_row" %in% names(block_map))
+  # Requirements
+  if (!requireNamespace("data.table", quietly = TRUE)) stop("data.table required")
+  if (!requireNamespace("Matrix", quietly = TRUE)) stop("Matrix required")
 
-  # Harmonize chromosome column
+  # Defensive input checks
+  stopifnot(inherits(block_map, "data.table"))
+  stopifnot(inherits(decay_dt, "data.table"))
+  stopifnot(inherits(dt, "data.table"))
+  stopifnot(is.character(by_chr) && length(by_chr) == 1)
+  stopifnot(by_chr %in% names(block_map))
+  stopifnot(by_chr %in% names(dt))
+  stopifnot(orig_row_col %in% names(block_map))
+  stopifnot(midpoint_col %in% names(dt))
+  stopifnot(variable_col %in% names(decay_dt))
+  if (!is.function(build_exp_cov_fn)) stop("'build_exp_cov_fn' must be a function")
+
+  # Harmonize types
+  block_map <- copy(block_map)
+  decay_dt <- copy(decay_dt)
+  dt <- copy(dt)
   block_map[[by_chr]] <- as.character(block_map[[by_chr]])
   decay_dt[[by_chr]] <- as.character(decay_dt[[by_chr]])
   dt[[by_chr]] <- as.character(dt[[by_chr]])
+  block_map[[orig_row_col]] <- as.integer(block_map[[orig_row_col]])
+  dt[[midpoint_col]] <- as.numeric(dt[[midpoint_col]])
 
-  # Initialize output
-  full_block_covs <- list()
-  block_diagnostics <- list()
+  # Prepare outputs
+  full_block_covs <- list()        # named list: "<chrom>_<block_id>" -> sparse Matrix
+  diagnostics <- vector("list")    # list of diagnostics per block
+  hiccup_log <- list()             # for problematic blocks
 
-  # Loop over unique blocks
-  unique_blocks <- unique(block_map[, .(block_id, chrom = get(by_chr))])
-  for (i in seq_len(nrow(unique_blocks))) {
-    block_id <- unique_blocks$block_id[i]
-    chr_val <- unique_blocks$chrom[i]
+  # Build list of unique blocks to iterate
+  unique_blocks <- unique(block_map[, .(block_id = get(block_id_col), chrom = get(by_chr))])
 
-    # Subset block rows
-    block_rows <- block_map[block_id == block_id & get(by_chr) == chr_val]
-    if (nrow(block_rows) == 0) next
-
-    # Subset data
-    dt_block <- dt[block_rows$orig_row]
-    if (nrow(dt_block) < 2) next
-
-    # Identify target variable
-    target_var <- intersect(names(dt_block), decay_dt$variable)
-    if (length(target_var) != 1) {
-      if (verbose) message("Skipping block ", block_id, " on chr ", chr_val, ": ambiguous or missing variable")
-      next
-    }
-
-    # Get decay parameters
-    decay_row <- decay_dt[get(by_chr) == chr_val & variable == target_var]
-    if (nrow(decay_row) == 0 || is.na(decay_row$alpha[1]) || is.na(decay_row$sigma2[1])) {
-      if (verbose) message("No valid decay estimate for chr ", chr_val, " block ", block_id)
-      next
-    }
-
-    alpha <- decay_row$alpha[1]
-    sigma2 <- decay_row$sigma2[1]
-    method <- decay_row$method[1]
-    fallback <- decay_row$fallback_reasons[1]
-
-    # Build sparse exponential covariance matrix
-    pos <- dt_block$midpoint
-    cov_mat <- tryCatch(
-      build_exp_cov(pos, alpha = alpha, sigma2 = sigma2, max_pair_distance = max_pair_distance),
-      error = function(e) {
-        if (verbose) message("Failed to build covariance for chr ", chr_val, " block ", block_id, ": ", e$message)
-        NULL
-      }
-    )
-    if (is.null(cov_mat)) next
-
-    # Store
-    key <- paste(chr_val, block_id, sep = "_")
-    full_block_covs[[key]] <- cov_mat
-    block_diagnostics[[key]] <- list(
-      chrom = chr_val,
-      block_id = block_id,
-      n_windows = nrow(dt_block),
-      alpha = alpha,
-      sigma2 = sigma2,
-      method = method,
-      fallback = fallback,
-      sparsity = 1 - (length(cov_mat@x) / (nrow(cov_mat)^2))
-    )
+  # Helper: safe subset of decay_dt for a chromosome and variable
+  get_decay_for <- function(chr_val, varname) {
+    row <- decay_dt[get(by_chr) == chr_val & get(variable_col) == varname]
+    if (nrow(row) == 0L) return(NULL)
+    # take first if multiple (should be unique); coerce numeric safety
+    list(alpha = as.numeric(row$alpha[1]), sigma2 = as.numeric(row$sigma2[1]),
+         method = as.character(row$method[1]), fallback = as.character(row$fallback_reasons[1]))
   }
 
-  # Return
-  diagnostics_dt <- rbindlist(lapply(block_diagnostics, as.data.table), use.names = TRUE, fill = TRUE)
-  list(full_block_covs = full_block_covs, diagnostics = diagnostics_dt)
+  # Main loop: process block-by-block (keeps memory bounded)
+  for (r in seq_len(nrow(unique_blocks))) {
+    block_id <- unique_blocks$block_id[r]
+    chr_val <- unique_blocks$chrom[r]
+    key <- paste0(chr_val, "_", block_id)
+
+    # Defensive: subset rows belonging to this block
+    rows_block <- block_map[get(block_id_col) == block_id & get(by_chr) == chr_val]
+    if (nrow(rows_block) == 0L) {
+      if (verbose) message("Skipping empty block: ", key)
+      next
+    }
+
+    # Subset original data rows (preserve order)
+    orig_rows <- rows_block[[orig_row_col]]
+    orig_rows <- orig_rows[!is.na(orig_rows) & orig_rows > 0]
+    if (length(orig_rows) == 0L) {
+      if (verbose) message("No orig rows for block: ", key); next
+    }
+    dt_block <- dt[orig_rows]
+
+    # Minimal size check
+    n_windows <- nrow(dt_block)
+    if (n_windows < 1L) {
+      if (verbose) message("Too small block: ", key); next
+    }
+
+    # Determine which variable to use for decay lookup:
+    # Prefer variables present in both dt_block and decay_dt; fall back to first decay_dt row for chr
+    candidate_vars <- intersect(unique(decay_dt[[variable_col]]), names(dt_block))
+    if (length(candidate_vars) >= 1L) {
+      varname <- candidate_vars[1]
+    } else {
+      tmp <- decay_dt[get(by_chr) == chr_val]
+      if (nrow(tmp) == 0L) {
+        if (verbose) message("No decay_dt for chr: ", chr_val, " (block ", block_id, ")"); next
+      }
+      varname <- as.character(tmp[[variable_col]][1])
+      if (is.na(varname) || !(varname %in% names(dt_block))) {
+        # nothing sensible to match
+        if (verbose) message("Cannot determine variable for block: ", key); next
+      }
+    }
+
+    # Get decay parameters for chr & variable
+    decay <- get_decay_for(chr_val, varname)
+    if (is.null(decay) || !is.finite(decay$alpha) || !is.finite(decay$sigma2)) {
+      # allow sigma2 zero/NA -> fallback to empirical residual variance if possible
+      if (verbose) message("Missing or invalid decay parameters for ", key, "; attempting to fix")
+      # attempt to compute empirical variance of residuals for this var on this chr
+      if (varname %in% names(dt_block) && n_windows >= 2L) {
+        # fit simple OLS residual variance: var(y - fitted from available predictors in decay_dt if present)
+        # best-effort: if decay_dt contains 'method' with predictor info skip and just use var(varname)
+        emp_var <- var(dt_block[[varname]], na.rm = TRUE)
+        if (!is.finite(emp_var) || emp_var <= 0) {
+          if (verbose) message("Empirical variance invalid for block ", key, "; skipping")
+          next
+        }
+        # fill with minimal alpha and empirical variance
+        decay <- list(alpha = 1e-6, sigma2 = max(emp_var, 1e-12), method = "empirical_fallback", fallback = "decay_missing_empirical_sigma2")
+      } else {
+        if (verbose) message("Cannot recover decay for block ", key); next
+      }
+    }
+
+    alpha <- decay$alpha; sigma2 <- decay$sigma2
+    if (!is.finite(alpha) || alpha <= 0) alpha <- 1e-6
+    if (!is.finite(sigma2) || sigma2 <= 0) sigma2 <- max(1e-12, var(dt_block[[varname]], na.rm = TRUE))
+
+    # Build sparse covariance via provided function; guard with tryCatch
+    cov_sparse <- tryCatch({
+      build_exp_cov_fn(pos = dt_block[[midpoint_col]], alpha = alpha, sigma2 = sigma2, max_pair_distance = max_pair_distance)
+    }, error = function(e) {
+      if (verbose) message("build_exp_cov failed for block ", key, ": ", e$message)
+      NULL
+    })
+
+    if (is.null(cov_sparse)) {
+      hiccup_log[[key]] <- list(reason = "build_failed")
+      next
+    }
+
+    # Ensure result is a Matrix and symmetric
+    if (!inherits(cov_sparse, "Matrix")) {
+      # try to coerce
+      cov_sparse <- tryCatch(Matrix::Matrix(as.matrix(cov_sparse), sparse = TRUE), error = function(e) NULL)
+      if (is.null(cov_sparse)) {
+        hiccup_log[[key]] <- list(reason = "coerce_failed")
+        next
+      }
+    }
+
+    # Force symmetry robustly and convert to dsCMatrix
+    cov_sym <- tryCatch({
+      # forceSymmetric will average mismatched entries and produce a symmetric Matrix class
+      s <- Matrix::forceSymmetric(cov_sparse, uplo = "U")
+      # Convert to compressed symmetric class for efficiency
+      as(s, "dsCMatrix")
+    }, error = function(e) {
+      # last resort: convert to dense numeric symmetrize then back to sparse
+      if (verbose) message("forceSymmetric failed for block ", key, " (attempting dense symmetrize): ", e$message)
+      m_dense <- tryCatch(as.matrix(cov_sparse), error = function(ee) NULL)
+      if (is.null(m_dense)) return(NULL)
+      m_sym <- (m_dense + t(m_dense)) / 2
+      Matrix::as(m_sym, "dsCMatrix")
+    })
+
+    if (is.null(cov_sym)) {
+      hiccup_log[[key]] <- list(reason = "symmetrize_failed")
+      next
+    }
+
+    # Sanity checks: dimensions and symmetry tolerance
+    if (nrow(cov_sym) != n_windows || ncol(cov_sym) != n_windows) {
+      if (verbose) message("Dimension mismatch for block ", key, "; skipping")
+      hiccup_log[[key]] <- list(reason = "dim_mismatch")
+      next
+    }
+    # numeric symmetry check (should be small)
+    max_asym <- max(abs(cov_sym - Matrix::t(cov_sym)))
+    if (!is.finite(max_asym) || max_asym > tol_sym) {
+      if (verbose) message("Large asymmetry (", signif(max_asym,3), ") in block ", key, "; forcing numeric symmetrize")
+      m <- as.matrix(cov_sym)
+      m <- (m + t(m)) / 2
+      cov_sym <- Matrix::as(m, "dsCMatrix")
+    }
+
+    # Store sparse covariance and diagnostics
+    full_block_covs[[key]] <- cov_sym
+    diagnostics[[key]] <- list(
+      chrom = chr_val,
+      block_id = block_id,
+      n_windows = n_windows,
+      variable = varname,
+      alpha = alpha,
+      sigma2 = sigma2,
+      method = decay$method %||% NA_character_,
+      fallback = decay$fallback %||% NA_character_,
+      nnz = length(cov_sym@x),
+      dims = dim(cov_sym),
+      max_asym = max_asym
+    )
+
+    # Optional messaging
+    if (verbose && (r %% 100 == 0 || r == nrow(unique_blocks))) {
+      message("Processed block ", r, " / ", nrow(unique_blocks), " (", key, ")")
+    }
+  } # end blocks loop
+
+  # Assemble diagnostics table
+  diagnostics_dt <- if (length(diagnostics) > 0L) rbindlist(lapply(diagnostics, as.data.table), use.names = TRUE, fill = TRUE) else data.table::data.table()
+
+  # hiccup log table
+  hiccup_dt <- if (length(hiccup_log) > 0L) {
+    keys <- names(hiccup_log)
+    rbindlist(lapply(seq_along(keys), function(i) {
+      data.table::data.table(key = keys[i], reason = hiccup_log[[i]]$reason)
+    }))
+  } else data.table::data.table()
+
+  # Return structured result
+  out <- list(
+    full_block_covs = full_block_covs,
+    diagnostics = diagnostics_dt,
+    hiccups = hiccup_dt,
+    params = list(by_chr = by_chr, block_id_col = block_id_col, orig_row_col = orig_row_col, midpoint_col = midpoint_col, max_pair_distance = max_pair_distance)
+  )
+  class(out) <- c("sparse_cov_blocks", class(out))
+  out
 }
 
 # 6) Prewhiten variables blockwise
@@ -6320,67 +6466,218 @@ plot_decay_diagnostics <- function(binned, alpha = NA_real_, sigma2 = NA_real_, 
 }
 ```
 
-Helpers to build model strings with starting values for candidate covariances
+Automated pipeline
 
 ```{r SEM-helpers-2, eval=F, include=F, message=F, warning=F}
 
-# build pair keys table from pairs_list_k_flat-like structure
-collect_pair_keys <- function(pairs_list_k_flat) {
-  if (length(pairs_list_k_flat) == 0) return(NULL)
-  rows <- map_dfr(pairs_list_k_flat, function(pl) {
-    if (length(pl) == 0) return(NULL)
-    map_dfr(pl, ~ tibble(i = .x$i, j = .x$j, cov = .x$cov))
-  })
-  if (nrow(rows) == 0) return(NULL)
-  unique(rows)
-}
+run_whitening_pipeline <- function(dt,
+                                   vars,
+                                   model_formula = NULL,
+                                   model_resp = NULL,
+                                   model_predictors = NULL,
+                                   by_chr = "chrom",
+                                   window_bp = 1e4,
+                                   max_block_span = 1e6,
+                                   max_pair_distance = 2e5,
+                                   n_bins = 50L,
+                                   trim_prop = 0.02,
+                                   min_pairs = 30L,
+                                   min_sigma2 = 1e-8,
+                                   min_alpha = 1e-10,
+                                   borrow_alpha_from = NULL,
+                                   nls_control = nls.control(warnOnly = TRUE, maxiter = 200),
+                                   parallel = FALSE,
+                                   n_cores = 1L,
+                                   verbose = TRUE) {
+  # Defensive input checks
+  if (!"data.table" %in% class(dt)) dt <- as.data.table(dt)
+  stopifnot(is.list(vars), length(vars) >= 1)
+  stopifnot(by_chr %in% names(dt))
+  if (!is.null(borrow_alpha_from)) borrow_alpha_from <- as.character(borrow_alpha_from)
 
-# generic builder that injects start values for avg_pi covariances
-build_generic_model_for_k <- function(k, pairs_list_k_flat, structural_lines, derived_lines = character(0)) {
-  lines <- character(0)
-  for (i in 1:k) {
-    suf <- paste0("_", i)
-    lines <- c(lines, gsub("<SUF>", suf, structural_lines, fixed = TRUE))
-  }
-  pair_keys <- collect_pair_keys(pairs_list_k_flat)
-  if (!is.null(pair_keys) && nrow(pair_keys) > 0) {
-    for (r in seq_len(nrow(pair_keys))) {
-      i <- pair_keys$i[r]; j <- pair_keys$j[r]; startval <- signif(pair_keys$cov[r], 4)
-      suf1 <- paste0("_", i); suf2 <- paste0("_", j)
-      lines <- c(lines, paste0("avg_pi", suf1, " ~~ start(", startval, ") * avg_pi", suf2))
-    }
+  # Ensure consistent chr type
+  dt[[by_chr]] <- as.character(dt[[by_chr]])
+  dt[, midpoint := as.numeric(midpoint)]
+
+  # 1) Build block_map using make_distance_blocks if available, else simple per-chrom blocks
+  dt[, orig_row := .I]
+  if (exists("make_distance_blocks")) {
+    dts_by_chr <- split(dt, by = by_chr, keep.by = TRUE)
+    blocks_list <- lapply(dts_by_chr, function(dsub) {
+      setDT(dsub)
+      make_distance_blocks(dsub, window_bp = window_bp, max_block_span = max_block_span)
+    })
+    block_map <- rbindlist(blocks_list, use.names = TRUE, fill = TRUE)
   } else {
-    for (i in 1:(k-1)) lines <- c(lines, paste0("avg_pi_", i, " ~~ avg_pi_", i + 1))
+    block_map <- copy(dt)
+    block_map[, block_id := 1L, by = by_chr]
   }
-  if (length(derived_lines) > 0) lines <- c(lines, derived_lines)
-  paste(lines, collapse = "\n")
+  # Ensure orig_row present
+  if (!"orig_row" %in% names(block_map)) stop("block_map must contain orig_row mapping")
+
+  # 2) Estimate decay per chromosome + variable (robust)
+  chr_vals <- unique(block_map[[by_chr]])
+  decay_records <- list()
+
+  # optional parallelization setup
+  if (parallel && n_cores > 1L) {
+    if (!requireNamespace("parallel", quietly = TRUE)) parallel <- FALSE
+  }
+
+  run_single_chr_var <- function(chr_val, varname) {
+    dt_chr_blocks <- block_map[get(by_chr) == chr_val]
+    if (nrow(dt_chr_blocks) == 0) return(NULL)
+    dt_chr_full <- dt[dt_chr_blocks$orig_row]
+    if (nrow(dt_chr_full) < 4) {
+      return(data.table(chr = chr_val, variable = varname, alpha = NA_real_, sigma2 = var(dt_chr_full[[varname]], na.rm = TRUE),
+                        method = "insufficient_windows", n_windows = nrow(dt_chr_full), n_pairs = 0L, fallback_reasons = NA_character_))
+    }
+
+    res <- tryCatch({
+      estimate_decay_per_chr_robust(dt_chr_full,
+                                    formula = model_formula,
+                                    resp = if (is.null(model_formula)) varname else NULL,
+                                    predictors = if (is.null(model_formula)) vars[[varname]] else NULL,
+                                    min_pairs = min_pairs,
+                                    max_pair_distance = max_pair_distance,
+                                    n_bins = n_bins,
+                                    trim_prop = trim_prop,
+                                    start_alpha = 1e-6,
+                                    start_s2 = NULL,
+                                    lower_alpha = 1e-12,
+                                    upper_alpha = 1,
+                                    lower_s2 = 1e-12,
+                                    upper_s2 = Inf,
+                                    nls_control = nls_control,
+                                    min_sigma2 = min_sigma2,
+                                    min_alpha = min_alpha,
+                                    borrow_alpha = NA_real_,
+                                    return_binned = TRUE,
+                                    verbose = FALSE)
+    }, error = function(e) list(alpha = NA_real_, sigma2 = NA_real_, method = "est_error", n_pairs = 0L, n_bins = 0L, binned = NULL, fallback_reasons = NA_character_))
+
+    data.table(chr = chr_val, variable = varname,
+               alpha = res$alpha, sigma2 = res$sigma2,
+               method = res$method, n_windows = nrow(dt_chr_full),
+               n_pairs = res$n_pairs, fallback_reasons = res$fallback_reasons,
+               binned = list(res$binned))
+  }
+
+  # iterate (parallel or serial)
+  tasks <- CJ(chr = chr_vals, var = names(vars), unique = TRUE)
+  if (parallel && n_cores > 1L) {
+    cl <- parallel::makeCluster(n_cores)
+    on.exit(parallel::stopCluster(cl), add = TRUE)
+    parallel::clusterExport(cl, varlist = c("block_map", "dt", "vars", "estimate_decay_per_chr_robust", "model_formula", "model_resp", "model_predictors"), envir = environment())
+    res_list <- parallel::parLapply(cl, seq_len(nrow(tasks)), function(i) {
+      task <- tasks[i]
+      run_single_chr_var(task$chr, task$var)
+    })
+  } else {
+    res_list <- lapply(seq_len(nrow(tasks)), function(i) {
+      task <- tasks[i]
+      run_single_chr_var(task$chr, task$var)
+    })
+  }
+  decay_dt <- rbindlist(Filter(Negate(is.null), res_list), use.names = TRUE, fill = TRUE)
+
+  # 3) Borrow median alpha where needed
+  for (varname in names(vars)) {
+    pool <- decay_dt[variable == varname & is.finite(alpha) & alpha > 0, alpha]
+    median_alpha <- if (length(pool) > 0) median(pool, na.rm = TRUE) else NA_real_
+    if (is.na(median_alpha) && !is.null(borrow_alpha_from)) {
+      pool2 <- decay_dt[variable == varname & chr %in% borrow_alpha_from & is.finite(alpha) & alpha > 0, alpha]
+      median_alpha <- if (length(pool2) > 0) median(pool2, na.rm = TRUE) else NA_real_
+    }
+    if (is.na(median_alpha)) median_alpha <- 1e-6
+    decay_dt[variable == varname & (is.na(alpha) | alpha < min_alpha), `:=`(
+      alpha = median_alpha,
+      method = paste0(method, "+alpha_borrowed"),
+      fallback_reasons = ifelse(is.na(fallback_reasons), "alpha_borrowed", paste(fallback_reasons, "alpha_borrowed", sep = ";"))
+    )]
+  }
+
+  # 4) Fix sigma2 small/NA using empirical residual variance
+  for (i in seq_len(nrow(decay_dt))) {
+    row <- decay_dt[i]
+    if (is.na(row$sigma2) || row$sigma2 < min_sigma2) {
+      chr_val <- row$chr; varname <- row$variable
+      block_rows <- block_map[get(by_chr) == chr_val]
+      dt_chr_full <- dt[block_rows$orig_row]
+      if (nrow(dt_chr_full) >= 2) {
+        ols <- tryCatch(lm(as.formula(sprintf("%s ~ %s", varname, paste(vars[[varname]], collapse = " + "))), data = dt_chr_full), error = function(e) NULL)
+        new_s2 <- if (!is.null(ols)) var(resid(ols), na.rm = TRUE) else var(dt_chr_full[[varname]], na.rm = TRUE)
+      } else new_s2 <- min_sigma2
+      if (!is.finite(new_s2) || new_s2 < min_sigma2) new_s2 <- min_sigma2
+      decay_dt[i, `:=`(sigma2 = new_s2,
+                       method = paste0(method, "+sigma2_fixed"),
+                       fallback_reasons = ifelse(is.na(fallback_reasons), "sigma2_fixed", paste(fallback_reasons, "sigma2_fixed", sep = ";")))]
+    }
+  }
+
+  # Harmonize names expected by make_sparse_cov_blocks
+  decay_dt[, chr := as.character(get(by_chr))]
+  block_map[, orig_row := as.integer(orig_row)]
+
+  # 5) Build sparse covariance blocks (process block-by-block to avoid high memory)
+  full_block_covs <- list()
+  diagnostics <- list()
+  unique_blocks <- unique(block_map[, .(block_id, chr = get(by_chr))])
+
+  for (i in seq_len(nrow(unique_blocks))) {
+    block_id <- unique_blocks$block_id[i]; chr_val <- unique_blocks$chr[i]
+    rows_block <- block_map[block_id == block_id & get(by_chr) == chr_val]
+    if (nrow(rows_block) == 0) next
+    dt_block <- dt[rows_block$orig_row]
+    if (nrow(dt_block) < 1) next
+
+    # Determine variable present for decay lookup
+    present_vars <- intersect(names(vars), names(dt_block))
+    if (length(present_vars) == 0) {
+      # try using first variable in decay_dt for this chr
+      decay_row <- decay_dt[chr == chr_val][1]
+      if (is.na(decay_row$variable)) next
+      varname <- decay_row$variable
+    } else varname <- present_vars[1]
+
+    decay_row <- decay_dt[chr == chr_val & variable == varname][1]
+    if (nrow(decay_row) == 0) next
+
+    alpha <- decay_row$alpha; sigma2 <- decay_row$sigma2
+    # build sparse covariance with user-supplied build_exp_cov (must be memory-efficient)
+    cov_sparse <- tryCatch({
+      build_exp_cov(pos = dt_block$midpoint, alpha = alpha, sigma2 = sigma2, max_pair_distance = max_pair_distance)
+    }, error = function(e) {
+      if (verbose) message("block ", block_id, " chr ", chr_val, " build_exp_cov failed: ", e$message)
+      NULL
+    })
+    if (is.null(cov_sparse)) next
+
+    key <- paste0(chr_val, "_", block_id)
+    full_block_covs[[key]] <- cov_sparse
+    diagnostics[[key]] <- list(
+      chr = chr_val, block_id = block_id, n_windows = nrow(dt_block),
+      alpha = alpha, sigma2 = sigma2, method = decay_row$method,
+      fallback = decay_row$fallback_reasons,
+      nnz = length(cov_sparse@x),
+      dims = dim(cov_sparse)
+    )
+  }
+
+  diagnostics_dt <- rbindlist(lapply(diagnostics, as.data.table), use.names = TRUE, fill = TRUE)
+
+  # 6) Return a structured object
+  out <- list(
+    window_bp = window_bp,
+    by_chr = by_chr,
+    block_map = block_map,
+    decay_dt = decay_dt,
+    full_block_covs = full_block_covs,
+    diagnostics = diagnostics_dt
+  )
+  class(out) <- c("whitening_pipeline_result", class(out))
+  return(out)
 }
-
-```
-
-Helpers to model autocorrelation in all endogenous variables (vary per DAG)
-
-```{r SEM-helpers-3, eval=F, include=F, message=F, warning=F}
-
-# Define vars lists matching each model (variables -> predictor sets)
-vars_model_0 <- list(
-  avg_pi = c("B","avg_mut"),
-  B      = c("avg_mut")         
-)
-vars_model_1 <- list(
-  avg_pi = c("B","avg_mut","prop_del_sites"),
-  B      = c("prop_del_sites","avg_mut")
-)
-vars_model_2 <- list(
-  avg_pi = c("B","avg_mut","prop_del_sites"),
-  B      = c("prop_del_sites","avg_mut","avg_rec"),
-  avg_mut= c("avg_rec")
-)
-vars_model_3 <- list(
-  avg_pi = c("B","avg_mut","prop_del_sites","avg_rec"),
-  B      = c("prop_del_sites","avg_mut","avg_rec"),
-  avg_mut= c("avg_rec")
-)
 ```
 
 ### Data Analyses
