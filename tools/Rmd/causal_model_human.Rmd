@@ -56,7 +56,8 @@ use_python("/usr/bin/python3")
 
 scale.4d <- function(x) sprintf("%.4f", x) # for adjusting precision in plots
 
-knitr::opts_knit$set(root.dir="~/Desktop/causal_inference/")
+knitr::opts_knit$set(root.dir="~/Data/")
+#knitr::opts_knit$set(root.dir="~/Desktop/causal_inference/")
 #knitr::opts_knit$set(root.dir="~/Data/bgs_lmr/causal_inference")
 
 # custom function to mutate a subset of rows (a few chunks use it)
@@ -5720,50 +5721,6 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
 
 ### Helper functions
 
-Usage:
-Define the endogenous variables and their predictor sets according to each DAG:
-For your 4 models, prepare a vars list for each SEM run describing 
-which predictors should be used to compute residual autocorrelation
-for each endogenous variable.
-
-Example for a full model (model_3):
-
-vars <- list(avg_pi = c("B","avg_rec","avg_mut","prop_del_sites"),
-             B = c("prop_del_sites","avg_mut","avg_rec"),
-             avg_mut = c("avg_rec"))
-         
-To get block_map and decay_dt:
-
-make_block_specs(dt, 
-                 vars, 
-                 window_bp = 5000, 
-                 max_block_span = 1e6,
-                 max_pair_distance = 2e5) 
-                 
-Use decay_dt to construct per-variable per-chromosome
-residual covariance matrices (exponential kernel with alpha, sigma2) 
-when fitting the SEM (e.g., GLS, lavaan with user-supplied covariance).
-
-To compare sensitivity, create vars for each SEM (model_0..model_3)
-and regenerate decay_dt accordingly.
-
-Practical notes:
-Fallbacks: If fitting nls fails or insufficient pairs, 
-alpha returns NA and sigma2 uses residual variance. fit_ok flags success.
-
-Blocks vs chromosome: These functions estimate decay per chromosome. 
-If you instead want per-block decay, 
-adapt the by_chr argument to use block_id and run on block subsets.
-
-Reproducibility: Keep vars lists stored with model metadata so decay 
-estimation is traceable to the exact predictor set used.
-
-Integration: When building the SEM residual covariance, ensure covariance 
-between different variables is handled correctly; 
-these functions estimate marginal residual autocorrelation per variable.
-Cross-variable residual covariances should come from your SEM residual
-covariance specification or empirical estimates.
-
 ```{r SEM-helpers-1, eval=F, include=F, message=F, warning=F}
 
 # 1) distance-aware blocks (returns copy)
@@ -5787,82 +5744,322 @@ make_distance_blocks <- function(dt_chr, window_bp, max_block_span = 1e6, gap_fa
   copy(dt_chr)
 }
 
-# 2) estimate_decay_for_variable (per-chromosome)
-estimate_decay_for_variable <- function(dt,
-                                        resp,
-                                        predictors = NULL,
-                                        by_chr = "chr",
-                                        min_pairs = 20,
-                                        max_pair_distance = 2e5,
-                                        start_alpha = 1e-6,
-                                        n_cores = max(1, detectCores() - 1),
-                                        control = nls.control(warnOnly = TRUE, maxiter = 200)) {
-  if (!"data.table" %in% class(dt)) dt <- as.data.table(dt)
-  # build formula
-  if (is.null(predictors)) {
-    formula <- as.formula(sprintf("%s ~ 1", resp))
-  } else if (inherits(predictors, "formula")) {
-    formula <- as.formula(sprintf("%s ~ %s", resp, deparse(predictors[[3]])))
-  } else if (is.character(predictors)) {
-    rhs <- if (length(predictors) == 1) predictors else paste(predictors, collapse = " + ")
-    formula <- as.formula(sprintf("%s ~ %s", resp, rhs))
-  } else stop("predictors must be NULL, character vector/string, or formula RHS.")
-
-  chr_vals <- unique(dt[[by_chr]])
-  worker <- function(chr_val) {
-    dsub <- dt[get(by_chr) == chr_val]
-    n_windows <- nrow(dsub)
-    if (n_windows < 4) {
-      return(list(chr = chr_val, variable = resp, alpha = NA_real_, sigma2 = NA_real_,
-                  n_windows = n_windows, n_pairs = 0L, fit_ok = FALSE))
-    }
-    ols <- try(lm(formula, data = dsub), silent = TRUE)
-    resid_vec <- if (inherits(ols, "try-error")) rep(NA_real_, n_windows) else resid(ols)
-    pos <- dsub$midpoint
-    dmat <- as.matrix(dist(pos))
-    dvec <- dmat[lower.tri(dmat)]
-    cov_mat <- outer(resid_vec, resid_vec, "*")
-    cov_pairs <- cov_mat[lower.tri(cov_mat)]
-    ok <- is.finite(dvec) & is.finite(cov_pairs) & dvec <= max_pair_distance
-    n_pairs <- sum(ok)
-    if (n_pairs < min_pairs) {
-      s2_fallback <- var(resid_vec, na.rm = TRUE)
-      return(list(chr = chr_val, variable = resp, alpha = NA_real_, sigma2 = as.numeric(s2_fallback),
-                  n_windows = n_windows, n_pairs = n_pairs, fit_ok = FALSE))
-    }
-    dvec_ok <- dvec[ok]; cov_ok <- cov_pairs[ok]
-    start_s2 <- var(resid_vec, na.rm = TRUE)
-    fit <- try(nls(cov_ok ~ s2 * exp(-alpha * dvec_ok),
-                   start = list(s2 = as.numeric(start_s2), alpha = as.numeric(start_alpha)),
-                   control = control), silent = TRUE)
-    if (inherits(fit, "try-error")) {
-      return(list(chr = chr_val, variable = resp, alpha = NA_real_, sigma2 = as.numeric(start_s2),
-                  n_windows = n_windows, n_pairs = n_pairs, fit_ok = FALSE))
-    }
-    coefs <- coef(fit)
-    list(chr = chr_val, variable = resp, alpha = as.numeric(coefs["alpha"]),
-         sigma2 = as.numeric(coefs["s2"]), n_windows = n_windows, n_pairs = n_pairs, fit_ok = TRUE)
+# -------------------------------------------------------------------------
+# 2) estimate_decay_per_chr_robust
+#    Robustly estimate an exponential covariance decay (sigma2 * exp(-alpha d))
+#    from residuals of a linear model on a single chromosome (or subset).
+#    Returns a list with alpha, sigma2, method, n_pairs, n_bins, binned (data.table)
+# -------------------------------------------------------------------------
+estimate_decay_per_chr_robust <- function(dt_chr,
+                                          formula = NULL,
+                                          resp = NULL,
+                                          predictors = NULL,
+                                          min_pairs = 30L,
+                                          max_pair_distance = 2e5,
+                                          n_bins = 50L,
+                                          trim_prop = 0.02,
+                                          start_alpha = 1e-6,
+                                          start_s2 = NULL,
+                                          lower_alpha = 1e-12,
+                                          upper_alpha = 1,
+                                          lower_s2 = 1e-12,
+                                          upper_s2 = Inf,
+                                          nls_control = nls.control(warnOnly = TRUE, maxiter = 200),
+                                          min_sigma2 = 1e-8,
+                                          min_alpha = 1e-10,
+                                          borrow_alpha = NA_real_,    # scalar fallback alpha (optional)
+                                          return_binned = TRUE,
+                                          verbose = FALSE) {
+  # Input checks
+  if (!"data.table" %in% class(dt_chr)) dt_chr <- as.data.table(dt_chr)
+  if (!is.null(formula) && (!is.null(resp) || !is.null(predictors))) {
+    stop("Supply either 'formula' OR ('resp' and 'predictors'), not both.")
+  }
+  if (is.null(formula) && (is.null(resp) || is.null(predictors))) {
+    stop("Either 'formula' or both 'resp' and 'predictors' must be supplied.")
+  }
+  if (!is.null(formula)) {
+    ols <- tryCatch(lm(formula, data = dt_chr), error = function(e) e)
+  } else {
+    fml <- as.formula(sprintf("%s ~ %s", resp, paste(predictors, collapse = " + ")))
+    ols <- tryCatch(lm(fml, data = dt_chr), error = function(e) e)
+  }
+  if (inherits(ols, "error")) {
+    return(list(alpha = NA_real_, sigma2 = NA_real_, method = "ols_fail", n_pairs = 0L,
+                n_bins = 0L, binned = NULL))
   }
 
-  if (n_cores > 1) out_list <- mclapply(chr_vals, worker, mc.cores = n_cores) else out_list <- lapply(chr_vals, worker)
-  out_dt <- rbindlist(lapply(out_list, as.data.table))
-  setnames(out_dt, "chr", by_chr)
-  out_dt
+  resid_vec <- resid(ols)
+  pos <- dt_chr$midpoint
+  n_windows <- length(resid_vec)
+  if (n_windows < 4) {
+    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE),
+                method = "insufficient_windows", n_pairs = 0L, n_bins = 0L, binned = NULL))
+  }
+
+  # Pairwise distances and covariances (lower triangular)
+  # Use efficient vectors rather than storing full matrices where possible
+  dmat <- as.matrix(dist(pos))   # acceptable for typical block sizes; if very large, call with smaller blocks
+  cov_mat <- outer(resid_vec, resid_vec, "*")
+  dvec <- dmat[lower.tri(dmat)]
+  cov_pairs <- cov_mat[lower.tri(cov_mat)]
+
+  ok_idx <- which(is.finite(dvec) & is.finite(cov_pairs) & dvec <= max_pair_distance)
+  if (length(ok_idx) < min_pairs) {
+    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE),
+                method = "insufficient_pairs", n_pairs = length(ok_idx), n_bins = 0L, binned = NULL))
+  }
+
+  d_ok <- dvec[ok_idx]; cov_ok <- cov_pairs[ok_idx]
+
+  # Bin distances (equal-width up to max_pair_distance)
+  breaks <- seq(0, max_pair_distance, length.out = as.integer(n_bins) + 1L)
+  bin_idx <- cut(d_ok, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+  bin_dt <- data.table(d = d_ok, cov = cov_ok, bin = bin_idx)
+  binned <- bin_dt[, {
+    if (.N < 3) .(dmed = median(d), cov_trim = NA_real_, n = .N)
+    else {
+      lo <- quantile(cov, probs = trim_prop, na.rm = TRUE)
+      hi <- quantile(cov, probs = 1 - trim_prop, na.rm = TRUE)
+      cov_t <- cov[cov >= lo & cov <= hi]
+      cov_mean <- if (length(cov_t) == 0) NA_real_ else mean(cov_t, na.rm = TRUE)
+      .(dmed = median(d), cov_trim = cov_mean, n = .N)
+    }
+  }, by = bin][!is.na(cov_trim) & n > 0]
+
+  if (nrow(binned) < 4) {
+    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE),
+                method = "insufficient_bins", n_pairs = length(ok_idx), n_bins = nrow(binned),
+                binned = if (return_binned) binned else NULL))
+  }
+
+  # start values
+  s2_start <- if (!is.null(start_s2)) start_s2 else max(min_sigma2, var(resid_vec, na.rm = TRUE))
+  alpha_start <- max(start_alpha, min_alpha)
+
+  # Prepare for NLS: if any cov_trim <= 0, shift for nls
+  cov_b <- binned$cov_trim
+  d_b <- binned$dmed
+  cov_shift <- 0
+  if (any(cov_b <= 0, na.rm = TRUE)) {
+    cov_shift <- abs(min(cov_b, na.rm = TRUE)) + 1e-12
+    cov_b_nls <- cov_b + cov_shift
+  } else cov_b_nls <- cov_b
+
+  # robust constrained NLS attempt
+  nls_fit <- tryCatch({
+    nls(cov_b_nls ~ s2 * exp(-alpha * d_b),
+        start = list(s2 = s2_start + cov_shift, alpha = alpha_start),
+        algorithm = "port",
+        lower = c(s2 = lower_s2, alpha = lower_alpha),
+        upper = c(s2 = upper_s2 + cov_shift, alpha = upper_alpha),
+        control = nls_control)
+  }, error = function(e) e, warning = function(w) w)
+
+  method_used <- NA_character_
+  alpha_hat <- NA_real_; s2_hat <- NA_real_
+
+  if (!inherits(nls_fit, "error") && !inherits(nls_fit, "warning")) {
+    coefs <- coef(nls_fit)
+    s2_hat <- as.numeric(coefs["s2"]) - cov_shift
+    alpha_hat <- as.numeric(coefs["alpha"])
+    method_used <- "nls_binned"
+  } else {
+    # fallback: log-linear regression on strictly positive covariances
+    ok_log_idx <- which(cov_b > 0 & is.finite(cov_b) & is.finite(d_b))
+    if (length(ok_log_idx) >= 3) {
+      lm_fit <- tryCatch(lm(log(cov_b[ok_log_idx]) ~ d_b[ok_log_idx]), error = function(e) e)
+      if (!inherits(lm_fit, "error")) {
+        coef_lm <- coef(lm_fit)
+        log_s2_hat <- as.numeric(coef_lm[1])
+        alpha_hat <- -as.numeric(coef_lm[2])
+        s2_hat <- exp(log_s2_hat)
+        method_used <- "loglinear_binned"
+      }
+    }
+  }
+
+  # Last-resort: fallback to empirical residual variance if no fit
+  if (is.na(s2_hat) || !is.finite(s2_hat)) {
+    s2_hat <- var(resid_vec, na.rm = TRUE)
+    method_used <- if (is.na(method_used)) "fallback_variance" else paste(method_used, "fallback_variance", sep = "+")
+  }
+  if (is.na(alpha_hat) || !is.finite(alpha_hat)) {
+    alpha_hat <- NA_real_
+  }
+
+  # Automatic artifact handling
+  fallback_reasons <- character(0)
+  if (is.na(s2_hat) || s2_hat < min_sigma2) {
+    if (!is.na(borrow_alpha) && is.finite(borrow_alpha)) {
+      s2_hat <- max(min_sigma2, var(resid_vec, na.rm = TRUE))
+    } else {
+      s2_hat <- max(min_sigma2, var(resid_vec, na.rm = TRUE))
+    }
+    fallback_reasons <- c(fallback_reasons, "sigma2_too_small")
+    method_used <- paste0(method_used, "+sigma2_fixed")
+  }
+  if (is.na(alpha_hat) || alpha_hat < min_alpha) {
+    if (!is.na(borrow_alpha) && is.finite(borrow_alpha)) {
+      alpha_hat <- borrow_alpha
+      method_used <- paste0(method_used, "+alpha_borrowed")
+      fallback_reasons <- c(fallback_reasons, "alpha_borrowed")
+    } else {
+      # set minimal positive alpha to avoid exactly zero
+      alpha_hat <- min_alpha
+      method_used <- paste0(method_used, "+alpha_min_forced")
+      fallback_reasons <- c(fallback_reasons, "alpha_forced_min")
+    }
+  }
+
+  if (verbose) {
+    message("estimate_decay_per_chr_robust: method=", method_used, " alpha=", signif(alpha_hat,4),
+            " sigma2=", signif(s2_hat,4), " n_bins=", nrow(binned))
+  }
+
+  out <- list(alpha = alpha_hat,
+              sigma2 = s2_hat,
+              method = method_used,
+              n_pairs = length(ok_idx),
+              n_bins = nrow(binned),
+              binned = if (return_binned) binned else NULL,
+              fallback_reasons = if (length(fallback_reasons)) paste(fallback_reasons, collapse = ";") else NA_character_)
+  out
 }
 
-# 3) make_block_specs: create blocks and estimate decay for each var
-make_block_specs <- function(dt, vars, by_chr = "chr", window_bp = NULL, max_block_span = 1e6, ...) {
+# -------------------------------------------------------------------------
+# 3) make_block_specs_robust
+#    Build distance-aware blocks, estimate decay per chromosome and variable,
+#    automatically apply fallbacks (borrowing alpha, fixing sigma2) and log
+#    diagnostics. Returns list(block_map = data.table, decay_dt = data.table)
+# -------------------------------------------------------------------------
+make_block_specs_robust <- function(dt,
+                                    vars,
+                                    by_chr = "chrom",
+                                    window_bp = NULL,
+                                    max_block_span = 1e6,
+                                    max_pair_distance = 2e5,
+                                    n_bins = 50L,
+                                    trim_prop = 0.02,
+                                    min_pairs = 30L,
+                                    min_sigma2 = 1e-8,
+                                    min_alpha = 1e-10,
+                                    borrow_alpha_from = NULL, # vector of chromosomes to borrow from, or NULL to use median of successful fits
+                                    verbose = FALSE,
+                                    ...) {
   if (!"data.table" %in% class(dt)) dt <- as.data.table(dt)
   stopifnot(by_chr %in% names(dt), "midpoint" %in% names(dt))
+  # preserve original row index for safe mapping later
+  dt[, orig_row__ := .I]
+
+  # Build distance-aware blocks per chromosome by splitting (safe: make_distance_blocks modifies input)
   if (!is.null(window_bp)) {
-    dt_blocks <- dt[, make_distance_blocks(.SD, window_bp = window_bp, max_block_span = max_block_span), by = by_chr]
+    dt_list <- split(dt, by = by_chr, keep.by = TRUE)
+    dt_blocks_list <- lapply(dt_list, function(dsub) {
+      setDT(dsub)
+      make_distance_blocks(dsub, window_bp = window_bp, max_block_span = max_block_span)
+    })
+    dt_blocks <- rbindlist(dt_blocks_list, use.names = TRUE, fill = TRUE)
   } else {
-    dt_blocks <- copy(dt); dt_blocks[, block_id := 1L, by = by_chr]
+    dt_blocks <- copy(dt)
+    dt_blocks[, block_id := 1L, by = by_chr]
   }
-  decay_list <- lapply(names(vars), function(var) estimate_decay_for_variable(dt_blocks, resp = var, predictors = vars[[var]], by_chr = by_chr, ...))
-  decay_dt <- rbindlist(decay_list)
-  setcolorder(decay_dt, c(by_chr, "variable", "alpha", "sigma2", "n_windows", "n_pairs", "fit_ok"))
-  list(block_map = dt_blocks[, .(row_id = .I, chr, midpoint, block_id)], decay_dt = decay_dt)
+  # Ensure mapping to original rows
+  if (!"orig_row__" %in% names(dt_blocks)) stop("orig_row__ missing from block map; ensure dt had orig_row__ before splitting.")
+  block_map <- dt_blocks[, .(orig_row = orig_row__, chrom = get(by_chr), midpoint, block_id)]
+
+  # For each chromosome and variable, run robust estimator and collect binned objects
+  decay_records <- list()
+  fits_by_var_chr <- list()  # temporary storage for alpha extraction
+  for (varname in names(vars)) {
+    preds <- vars[[varname]]
+    dts_by_chr <- split(dt_blocks, by = by_chr, keep.by = TRUE)
+    for (chr_val in names(dts_by_chr)) {
+      dt_chr <- dts_by_chr[[chr_val]]
+      # call estimator with conservative defaults
+      res <- tryCatch(
+        estimate_decay_per_chr_robust(dt_chr,
+                                      resp = varname,
+                                      predictors = preds,
+                                      min_pairs = min_pairs,
+                                      max_pair_distance = max_pair_distance,
+                                      n_bins = n_bins,
+                                      trim_prop = trim_prop,
+                                      min_sigma2 = min_sigma2,
+                                      min_alpha = min_alpha,
+                                      return_binned = TRUE,
+                                      verbose = FALSE,
+                                      ...),
+        error = function(e) {
+          list(alpha = NA_real_, sigma2 = NA_real_, method = "est_error", n_pairs = 0L, n_bins = 0L, binned = NULL, fallback_reasons = NA_character_)
+        })
+      fits_by_var_chr[[paste(varname, chr_val, sep = "___")]] <- list(chr = chr_val, var = varname, res = res)
+      # populate record now but may adjust later if borrowing alpha applied
+      decay_records[[length(decay_records) + 1]] <- data.table(
+        chrom = as.character(chr_val),
+        variable = varname,
+        alpha = res$alpha,
+        sigma2 = res$sigma2,
+        n_windows = nrow(dt_chr),
+        n_pairs = res$n_pairs %||% NA_integer_,
+        method = res$method %||% NA_character_,
+        fallback_reasons = res$fallback_reasons %||% NA_character_,
+        binned = list(res$binned)
+      )
+    }
+  }
+
+  decay_dt <- rbindlist(decay_records, use.names = TRUE, fill = TRUE)
+
+  # Determine alpha borrowing source if any alphas are missing or too small
+  # Compute median alpha across successful fits (optionally restricted to borrow_alpha_from)
+  success_alphas <- decay_dt[is.finite(alpha) & !is.na(alpha) & alpha > 0, .(alpha, chrom, variable)]
+  alpha_pool <- success_alphas$alpha
+  if (!is.null(borrow_alpha_from)) {
+    # restrict alpha_pool to requested chromosomes if present
+    alpha_pool <- success_alphas[chrom %in% as.character(borrow_alpha_from), alpha]
+  }
+  median_alpha_pool <- if (length(alpha_pool) > 0) median(alpha_pool, na.rm = TRUE) else NA_real_
+  if (is.na(median_alpha_pool)) {
+    # fallback guess if no pool available
+    median_alpha_pool <- 1e-6
+    if (verbose) message("No valid alpha pool found; using default median_alpha_pool = ", median_alpha_pool)
+  }
+
+  # Apply automatic fixes: where sigma2 is NA or < min_sigma2 --> replace with empirical residual variance
+  # where alpha is NA or < min_alpha --> borrow median_alpha_pool
+  decay_dt[, `:=`(
+    sigma2_orig = sigma2,
+    alpha_orig = alpha
+  )]
+  for (i in seq_len(nrow(decay_dt))) {
+    row <- decay_dt[i]
+    chr_val <- row$chr; varname <- row$variable
+    if (is.na(row$sigma2) || row$sigma2 < min_sigma2) {
+      # compute empirical residual variance on that chr/var to be stable
+      dt_chr_full <- dt_blocks[get(by_chr) == chr_val]
+      if (nrow(dt_chr_full) >= 2 && var(dt_chr_full[[varname]], na.rm = TRUE) > 0) {
+        new_sigma2 <- var(resid(lm(as.formula(sprintf("%s ~ %s", varname, paste(vars[[varname]], collapse = " + "))), data = dt_chr_full)), na.rm = TRUE)
+        if (!is.finite(new_sigma2) || new_sigma2 < min_sigma2) new_sigma2 <- max(min_sigma2, var(dt_chr_full[[varname]], na.rm = TRUE))
+      } else {
+        new_sigma2 <- max(min_sigma2, ifelse(is.finite(row$sigma2), row$sigma2 %||% min_sigma2, min_sigma2))
+      }
+      decay_dt[i, `:=`(sigma2 = new_sigma2,
+                       method = paste0(method %||% "unknown", "+sigma2_fixed"),
+                       fallback_reasons = ifelse(is.na(fallback_reasons), "sigma2_fixed", paste(fallback_reasons, "sigma2_fixed", sep = ";")))]
+      if (verbose) message("Fixed sigma2 for ", varname, " chrom ", chr_val, " -> ", signif(new_sigma2,4))
+    }
+    if (is.na(row$alpha) || row$alpha < min_alpha) {
+      decay_dt[i, `:=`(alpha = median_alpha_pool,
+                       method = paste0(method %||% "unknown", "+alpha_borrowed"),
+                       fallback_reasons = ifelse(is.na(fallback_reasons), "alpha_borrowed", paste(fallback_reasons, "alpha_borrowed", sep = ";")))]
+      if (verbose) message("Borrowed alpha for ", varname, " chrom ", chr_val, " -> ", signif(median_alpha_pool,4))
+    }
+  }
+
+  # Return block_map and decay_dt (binned retained as list column)
+  setcolorder(decay_dt, c("chrom", "variable", "alpha", "sigma2", "n_windows", "n_pairs", "method", "fallback_reasons", "binned", "alpha_orig", "sigma2_orig"))
+  list(block_map = block_map, decay_dt = decay_dt[])
 }
 
 # 4) build_exp_cov: build sparse exp covariance for positions
@@ -5880,23 +6077,70 @@ build_exp_cov <- function(pos, alpha, sigma2, max_pair_distance = Inf, tol = 1e-
 }
 
 # 5) make_sparse_cov_blocks: map decay_dt -> sparse blocks
-make_sparse_cov_blocks <- function(block_map, decay_dt, dt, by_chr = "chr", max_pair_distance = Inf) {
-  setDT(block_map); setDT(decay_dt); setDT(dt)
-  out_list <- list(); index_map <- list()
-  for (i in seq_len(nrow(decay_dt))) {
-    row <- decay_dt[i]
-    chr_val <- row[[by_chr]]
-    varname <- row$variable
-    alpha <- row$alpha; sigma2 <- row$sigma2
-    rows_chr <- block_map[chr == chr_val]
-    if (nrow(rows_chr) == 0) next
-    pos <- rows_chr$midpoint; row_ids <- rows_chr$row_id
-    cov_sparse <- build_exp_cov(pos = pos, alpha = alpha, sigma2 = sigma2, max_pair_distance = max_pair_distance)
-    key <- paste(chr_val, varname, sep = ":::")
-    out_list[[key]] <- cov_sparse
-    index_map[[key]] <- data.table(row_id = row_ids, chr = chr_val, variable = varname, idx = seq_len(length(row_ids)))
+make_sparse_cov_blocks <- function(block_map,
+                                   decay_dt,
+                                   dt,
+                                   by_chr = "chrom",
+                                   max_pair_distance = 2e5,
+                                   verbose = FALSE) {
+  # Defensive checks
+  stopifnot("data.table" %in% class(block_map), "data.table" %in% class(decay_dt), "data.table" %in% class(dt))
+  stopifnot(by_chr %in% names(block_map), by_chr %in% names(dt), "variable" %in% names(decay_dt), by_chr %in% names(decay_dt))
+  block_map[[by_chr]] <- as.character(block_map[[by_chr]])
+  decay_dt[[by_chr]] <- as.character(decay_dt[[by_chr]])
+  dt[[by_chr]] <- as.character(dt[[by_chr]])
+
+  # Initialize output
+  full_block_covs <- list()
+  block_diagnostics <- list()
+
+  # Loop over unique blocks
+  unique_blocks <- unique(block_map[, .(block_id, chrom = get(by_chr))])
+  for (i in seq_len(nrow(unique_blocks))) {
+    block_id <- unique_blocks$block_id[i]
+    chr_val <- unique_blocks$chrom[i]
+
+    # Subset block rows
+    block_rows <- block_map[block_id == block_id & get(by_chr) == chr_val]
+    if (nrow(block_rows) == 0) next
+
+    # Subset data
+    dt_block <- dt[block_rows$orig_row]
+    if (nrow(dt_block) < 2) next
+
+    # Get decay parameters
+    decay_row <- decay_dt[get(by_chr) == chr_val & variable %in% names(dt_block)]
+    if (nrow(decay_row) == 0) {
+      if (verbose) message("No decay estimate for chr ", chr_val, " block ", block_id)
+      next
+    }
+
+    alpha <- decay_row$alpha[1]
+    sigma2 <- decay_row$sigma2[1]
+    method <- decay_row$method[1]
+    fallback <- decay_row$fallback_reasons[1]
+
+    # Build exponential covariance matrix
+    pos <- dt_block$midpoint
+    dmat <- as.matrix(dist(pos))
+    cov_mat <- sigma2 * exp(-alpha * dmat)
+
+    # Store
+    full_block_covs[[paste(chr_val, block_id, sep = "_")]] <- cov_mat
+    block_diagnostics[[paste(chr_val, block_id, sep = "_")]] <- list(
+      chr = chr_val,
+      block_id = block_id,
+      n_windows = nrow(dt_block),
+      alpha = alpha,
+      sigma2 = sigma2,
+      method = method,
+      fallback = fallback
+    )
   }
-  list(full_block_covs = out_list, index_map = rbindlist(index_map))
+
+  # Return
+  diagnostics_dt <- rbindlist(lapply(block_diagnostics, as.data.table), use.names = TRUE, fill = TRUE)
+  list(full_block_covs = full_block_covs, diagnostics = diagnostics_dt)
 }
 
 # 6) Prewhiten variables blockwise
@@ -5906,7 +6150,7 @@ prewhiten_variable_blockwise <- function(varname, dt_sub, sparse_obj) {
   whitened <- rep(NA_real_, nrow(dt_sub))
   for (key in keys) {
     cov_mat <- sparse_obj$full_block_covs[[key]]
-    idx_dt <- sparse_obj$index_map[variable == varname & paste(chr, variable, sep = ":::") == key]
+    idx_dt <- sparse_obj$index_map[variable == varname & paste(chrom, variable, sep = ":::") == key]
     if (nrow(idx_dt) == 0) next
     idx_order <- idx_dt[order(idx), row_id]
     y_block <- dt_sub[idx_order, get(varname)]
@@ -5928,6 +6172,101 @@ prewhiten_variable_blockwise <- function(varname, dt_sub, sparse_obj) {
     }
   }
   whitened
+}
+
+# 7) wrapper that applies blockwise whitening to a set of variables
+prewhiten_all_variables <- function(dt_sub,
+                                    vars,
+                                    sparse_obj,
+                                    whiten_suffix = "_wh",
+                                    assemble_cov = FALSE,
+                                    cov_assembler = assemble_cov_for_variable,
+                                    parallel = FALSE,
+                                    BPPARAM = BiocParallel::SerialParam(),
+                                    verbose = TRUE) {
+  # dt_sub        : data.table with the original windows (must match index_map row_id)
+  # vars          : character vector of variable names to whiten
+  # sparse_obj    : output of make_sparse_cov_blocks() with $full_block_covs and $index_map
+  # whiten_suffix : suffix appended to var name for whitened column (default "_wh")
+  # assemble_cov  : if TRUE, also build block-diagonal covariance (via cov_assembler) for each var
+  # cov_assembler : function(full_block_covs, decay_dt, varname) -> blockDiag matrix or NULL
+  # parallel      : if TRUE uses BiocParallel to whiten variables in parallel
+  # BPPARAM       : BiocParallel parameter object (ignored unless parallel = TRUE)
+  # verbose       : print progress messages
+
+  stopifnot("data.table" %in% class(dt_sub))
+  stopifnot(is.list(sparse_obj) && all(c("full_block_covs", "index_map") %in% names(sparse_obj)))
+  if (!all(vars %in% names(dt_sub))) stop("Some vars not present in dt_sub")
+
+  # Prepare result containers
+  dt_out <- copy(dt_sub)
+  diagnostics <- data.table(variable = vars,
+                            n_obs = NA_integer_,
+                            n_whitened = NA_integer_,
+                            prop_na = NA_real_,
+                            cov_built = FALSE,
+                            stringsAsFactors = FALSE)
+  cov_list <- list()
+  names(cov_list) <- vars
+
+  # Worker function for single variable
+  whiten_one <- function(varname) {
+    if (verbose) message("Whitening variable: ", varname)
+    # run blockwise prewhitening (uses sparse_obj)
+    whitened_vec <- try(prewhiten_variable_blockwise(varname = varname,
+                                                     dt_sub = dt_sub,
+                                                     sparse_obj = sparse_obj), silent = TRUE)
+    if (inherits(whitened_vec, "try-error")) {
+      warning("Whitening failed for variable ", varname, ": ", conditionMessage(attr(whitened_vec, "condition")))
+      whitened_vec <- rep(NA_real_, nrow(dt_sub))
+      cov_built <- FALSE
+      cov_mat <- NULL
+    } else {
+      # assemble covariance optionally
+      if (assemble_cov) {
+        cov_mat <- try(cov_assembler(sparse_obj$full_block_covs, NULL, varname), silent = TRUE)
+        if (inherits(cov_mat, "try-error")) {
+          warning("Covariance assembly failed for variable ", varname)
+          cov_mat <- NULL
+          cov_built <- FALSE
+        } else cov_built <- !is.null(cov_mat)
+      } else {
+        cov_mat <- NULL
+        cov_built <- FALSE
+      }
+    }
+    list(var = varname, whitened = whitened_vec, cov = cov_mat, cov_built = cov_built)
+  }
+
+  # Run for all variables (serial or parallel)
+  if (parallel) {
+    if (!requireNamespace("BiocParallel", quietly = TRUE)) {
+      stop("BiocParallel required for parallel = TRUE. Install it or set parallel = FALSE.")
+    }
+    res_list <- BiocParallel::bplapply(vars, FUN = whiten_one, BPPARAM = BPPARAM)
+  } else {
+    res_list <- lapply(vars, whiten_one)
+  }
+
+  # Attach whitened columns and collect diagnostics
+  for (res in res_list) {
+    var <- res$var
+    wcol <- paste0(var, whiten_suffix)
+    dt_out[, (wcol) := res$whitened]
+    n_obs <- sum(!is.na(dt_sub[[var]]))
+    n_whitened <- sum(!is.na(res$whitened))
+    prop_na <- mean(is.na(res$whitened))
+    diagnostics[variable == var, `:=`(n_obs = n_obs, n_whitened = n_whitened, prop_na = prop_na, cov_built = res$cov_built)]
+    if (!is.null(res$cov)) cov_list[[var]] <- res$cov
+  }
+
+  # Return structured result
+  ret <- list(dt_whitened = dt_out,
+              diagnostics = diagnostics,
+              cov_list = cov_list,
+              sparse_obj = sparse_obj)
+  class(ret) <- c("prewhiten_all_result", class(ret))
+  ret
 }
 
 # For variable 'v', assemble block-diagonal covariance across all chromosomes in decay_dt
@@ -5952,6 +6291,19 @@ build_full_sample_cov_for_lavaan <- function(dt, vars_order, full_block_covs, in
   window_mat <- as.matrix(dt[, ..vars_order])
   sample_cov_vars <- cov(window_mat, use = "pairwise.complete.obs")
   list(sample_cov_vars = sample_cov_vars, n_obs = nrow(window_mat))
+}
+
+# Helper wrapper for plotting diagnostics (optional)
+plot_decay_diagnostics <- function(binned, alpha = NA_real_, sigma2 = NA_real_, chr_label = NULL) {
+  if (is.null(binned) || nrow(binned) == 0) stop("No binned data to plot")
+  ggplot(binned, aes(x = dmed, y = cov_trim)) +
+    geom_point() +
+    geom_line() +
+    labs(x = "Distance (bp)", y = "Binned covariance (trimmed mean)", title = paste0("Empirical binned covariance", if (!is.null(chr_label)) paste0(" - chrom ", chr_label) else "")) +
+    theme_minimal() +
+    {if (!is.na(alpha) && !is.na(sigma2)) {
+      stat_function(fun = function(x) sigma2 * exp(-alpha * x), color = "steelblue", size = 1)
+    } else NULL}
 }
 ```
 
@@ -6134,80 +6486,21 @@ Check whitening approach to remove autocorrelation
 
 ```{r, evaluate-whitening, eval=T}
 
-# Estimate exponential decay per chromosome from residuals of formula
-estimate_decay_per_chr <- function(dt_chr, formula, min_pairs = 20, max_pair_distance = 2e5, start_alpha = 1e-6, nls_control = nls.control(warnOnly = TRUE, maxiter = 200)) {
-  # dt_chr: data.table for one chr with a numeric midpoint column
-  if (nrow(dt_chr) < 4) return(list(alpha = NA_real_, sigma2 = NA_real_, n_pairs = 0L))
-  ols <- try(lm(formula, data = dt_chr), silent = TRUE)
-  if (inherits(ols, "try-error")) return(list(alpha = NA_real_, sigma2 = NA_real_, n_pairs = 0L))
-  resid_vec <- resid(ols)
-  pos <- dt_chr$midpoint
-  dmat <- as.matrix(dist(pos))
-  dvec <- dmat[lower.tri(dmat)]
-  cov_mat <- outer(resid_vec, resid_vec, "*")
-  cov_pairs <- cov_mat[lower.tri(cov_mat)]
-  ok <- is.finite(dvec) & is.finite(cov_pairs) & (dvec <= max_pair_distance)
-  n_pairs <- sum(ok)
-  if (n_pairs < min_pairs) return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), n_pairs = n_pairs))
-  d_ok <- dvec[ok]; cov_ok <- cov_pairs[ok]
-  start_s2 <- var(resid_vec, na.rm = TRUE)
-  fit <- try(nls(cov_ok ~ s2 * exp(-alpha * d_ok), start = list(s2 = start_s2, alpha = start_alpha), control = nls_control), silent = TRUE)
-  if (inherits(fit, "try-error")) return(list(alpha = NA_real_, sigma2 = as.numeric(start_s2), n_pairs = n_pairs))
-  coefs <- coef(fit)
-  list(alpha = as.numeric(coefs["alpha"]), sigma2 = as.numeric(coefs["s2"]), n_pairs = n_pairs)
-}
+# ---------------------------------------------------------------------------
+# 0. Configuration
+# ---------------------------------------------------------------------------
+sel_chrs <- c(2L, 8L, 22L)
+window_bp <- 1e4
+max_block_span <- 1e6
+vars_list <- list(
+  avg_pi = c("B", "avg_mut", "avg_rec")
+)
+target_var <- "avg_pi"
 
-# Build exponential covariance (dense) for positions with optional sparsity cutoff
-build_exp_cov_dense <- function(pos, alpha, sigma2, max_pair_distance = Inf, tol = 0) {
-  n <- length(pos)
-  if (n == 0) return(matrix(0, 0, 0))
-  dmat <- as.matrix(dist(pos))
-  if (is.na(alpha) || !is.finite(alpha)) {
-    return(diag(rep(sigma2, n)))
-  }
-  cov_mat <- sigma2 * exp(-alpha * dmat)
-  if (is.finite(max_pair_distance)) cov_mat[dmat > max_pair_distance] <- 0
-  if (tol > 0) cov_mat[abs(cov_mat) < tol] <- 0
-  cov_mat
-}
-
-# Whiten a single vector y given covariance matrix Cov_y
-# Returns whitened vector z where Cov(z) ~ I (or precision-transformed vector)
-whiten_with_cov <- function(y, cov_y, jitter = 1e-8) {
-  if (length(y) == 0) return(numeric(0))
-  cov_dense <- as.matrix(cov_y)
-  # add small jitter to diagonal for numerical stability
-  diag(cov_dense) <- diag(cov_dense) + jitter * max(1, mean(diag(cov_dense)))
-  # try Cholesky
-  L <- NULL
-  try(L <- chol(cov_dense), silent = TRUE)
-  if (!is.null(L)) {
-    # L is upper triangular; to whiten: solve L %*% t(L) %*% x = y => z = t(L)^{-1} L^{-1} y
-    # Efficient: first solve v = forwardsolve(t(L), y); then z = backsolve(L, v)
-    v <- forwardsolve(t(L), y)
-    z <- backsolve(L, v)
-    return(as.numeric(z))
-  }
-  # fallback to eigen-based precision sqrt: P^{1/2} = V diag(1/sqrt(vals)) V'
-  eig <- eigen(cov_dense, symmetric = TRUE)
-  vals <- eig$values
-  vecs <- eig$vectors
-  vals_adj <- pmax(vals, 1e-12)
-  P_sqrt <- vecs %*% diag(1 / sqrt(vals_adj)) %*% t(vecs)
-  as.numeric(P_sqrt %*% y)
-}
-
-# Compute lag-based ACF for unevenly spaced positions by grouping into lags of distance
-# But here we will compute standard ACF on ordered residuals because whitening is applied per-order
-compute_acf_vals <- function(vec, max_lag = 50, na_rm = TRUE) {
-  if (na_rm) vec <- na.omit(vec)
-  if (length(vec) < 3) return(data.table(lag = integer(0), acf = numeric(0)))
-  acf_obj <- acf(vec, plot = FALSE, lag.max = max_lag, na.action = na.pass)
-  data.table(lag = acf_obj$lag[,1,1], acf = acf_obj$acf[,1,1])
-}
-
-# 1) Load table_10kb into dt (must be a data.table)
-tbl_10kb <- filter(human_maps_10kb, constrained_model=="phastCons")  
+# ---------------------------------------------------------------------------
+# 1. Subset data
+# ---------------------------------------------------------------------------
+tbl_10kb <- filter(human_maps_10kb, constrained_model=="phastcons")  
 tbl_10kb$avg_pi <- log(tbl_10kb$avg_pi)
 
 # because of 0's
@@ -6217,7 +6510,7 @@ if(any(tbl_10kb$prop_del_sites==0)) {
   tbl_10kb$prop_del_sites <- log(tbl_10kb$prop_del_sites) 
 }
 
-tmp_B <- filter(B_10kb, constrained_model=="phastCons") %>%
+tmp_B <- filter(B_10kb, constrained_model=="phastcons") %>%
          dplyr::select(., -constrained_model)
 
 tbl_10kb <- left_join(tbl_10kb, tmp_B, by=c("chrom", 
@@ -6242,75 +6535,136 @@ dt <- copy(tbl_10kb) %>%
        as.data.table()
 setDT(dt)
 
-# Basic checks
-required_cols <- c("chr", "midpoint", "avg_pi", "B", "avg_mut", "avg_rec", "prop_del_sites")
-stopifnot(all(required_cols %in% names(dt)))
+stopifnot(all(c("chrom", "midpoint", target_var, vars_list[[target_var]]) %in% names(dt)))
+dt_sub <- dt[chrom %in% sel_chrs]
+setorderv(dt_sub, c("chrom", "midpoint"))
+message("Windows after subset: ", nrow(dt_sub), " (chrom: ", paste(unique(dt_sub$chrom), collapse = ", "), ")")
 
-# 2) pick three chromosomes with most windows
-chr_counts <- dt[, .N, by = chr][order(-N)]
-sel_chrs <- chr_counts[1:min(3, .N), chr]
-message("Selected chromosomes: ", paste(sel_chrs, collapse = ", "))
+# Run block specs
+specs <- make_block_specs_robust(dt_sub, 
+                                 vars = vars_list, 
+                                 by_chr = "chrom", 
+                                 window_bp = window_bp, 
+                                 max_block_span = max_block_span)
+block_map <- specs$block_map
+decay_dt <- specs$decay_dt
+message("Decay estimates produced for ", nrow(decay_dt), " chr-variable combos.")
 
-# 3) For each selected chr: fit OLS, compute residuals, estimate decay, whiten, compute ACF
-results_list <- list()
+# Print decay summary for target variable
+print(decay_dt[variable == target_var])
 
-for (chr_val in sel_chrs) {
-  dt_chr <- dt[chr == chr_val]
-  # Order by midpoint
-  setorderv(dt_chr, "midpoint")
-  # Fit OLS for avg_pi using predictors that reflect your residual model
-  formula_pi <- as.formula("avg_pi ~ B + avg_mut + avg_rec")
-  ols_fit <- try(lm(formula_pi, data = dt_chr), silent = TRUE)
-  if (inherits(ols_fit, "try-error")) {
-    warning("OLS failed for chr ", chr_val)
-    next
+# ---------------------------------------------------------------------------
+# 2. Build sparse covariance blocks
+# ---------------------------------------------------------------------------
+sparse_obj <- make_sparse_cov_blocks(
+  block_map = block_map,
+  decay_dt = decay_dt,
+  dt = dt_sub,
+  by_chr = "chrom",
+  max_pair_distance = 2e5,
+  verbose = TRUE
+)
+message("Built sparse block covariance objects: ", length(sparse_obj$full_block_covs), " blocks.")
+
+# ---------------------------------------------------------------------------
+# 3. Prewhiten target variable (avg_pi) using prewhiten_all_variables wrapper
+# ---------------------------------------------------------------------------
+# ensure prewhiten_all_variables is available (the wrapper you provided)
+res_pw <- prewhiten_all_variables(dt_sub = dt_sub,
+                                  vars = c(target_var),
+                                  sparse_obj = sparse_obj,
+                                  whiten_suffix = "_wh",
+                                  assemble_cov = FALSE,
+                                  parallel = FALSE,
+                                  verbose = TRUE)
+dt_whitened <- res_pw$dt_whitened
+print(res_pw$diagnostics)
+
+# ---------------------------------------------------------------------------
+# 4. For each chromosome: fit OLS, compute residuals raw and whitened, compute ACFs
+# ---------------------------------------------------------------------------
+compute_resid_and_acf <- function(dt_chr, response, predictors, whitened_col = NULL, max_lag = 50) {
+  fml <- as.formula(paste(response, "~", paste(predictors, collapse = " + ")))
+  ols <- try(lm(fml, data = dt_chr), silent = TRUE)
+  if (inherits(ols, "try-error")) return(NULL)
+  resid_raw <- resid(ols)
+  acf_raw <- if (length(resid_raw) >= 3) {
+    acf_obj <- acf(resid_raw, plot = FALSE, lag.max = max_lag, na.action = na.pass)
+    data.table(lag = as.integer(acf_obj$lag[,1,1]), acf = as.numeric(acf_obj$acf[,1,1]))
+  } else data.table(lag = integer(0), acf = numeric(0))
+  if (!is.null(whitened_col) && whitened_col %in% names(dt_chr)) {
+    dt_chr2 <- copy(dt_chr); dt_chr2[, response := dt_chr2[[whitened_col]]]
+    fml_w <- as.formula(paste("response ~", paste(predictors, collapse = " + ")))
+    ols_w <- try(lm(fml_w, data = dt_chr2), silent = TRUE)
+    if (inherits(ols_w, "try-error")) {
+      resid_white <- rep(NA_real_, nrow(dt_chr2))
+      acf_white <- data.table(lag = integer(0), acf = numeric(0))
+    } else {
+      resid_white <- resid(ols_w)
+      acf_obj_w <- acf(resid_white, plot = FALSE, lag.max = max_lag, na.action = na.pass)
+      acf_white <- data.table(lag = as.integer(acf_obj_w$lag[,1,1]), acf = as.numeric(acf_obj_w$acf[,1,1]))
+    }
+  } else {
+    acf_white <- data.table(lag = integer(0), acf = numeric(0))
   }
-  resid_raw <- resid(ols_fit)
-  # Estimate decay from residuals
-  decay <- estimate_decay_per_chr(dt_chr, formula = formula_pi, min_pairs = 20, max_pair_distance = 2e5)
-  alpha <- decay$alpha; sigma2 <- decay$sigma2
-  message(sprintf("chr %s: alpha = %s, sigma2 = %s, pairs = %d", chr_val, signif(alpha,4), signif(sigma2,4), decay$n_pairs))
-  # Build covariance for these positions
-  pos <- dt_chr$midpoint
-  cov_mat <- build_exp_cov_dense(pos = pos, alpha = alpha, sigma2 = sigma2, max_pair_distance = 2e5)
-  # Whiten residuals (z = P^{1/2} y where P = Cov^{-1}; here using precision sqrt via eigen/Cholesky)
-  z_whiten <- whiten_with_cov(resid_raw, cov_mat)
-  # For diagnostics compute ACF of raw and whitened residuals
-  max_lag <- 50
-  acf_raw <- compute_acf_vals(resid_raw, max_lag = max_lag)
-  acf_raw[, chr := chr_val]; acf_raw[, type := "raw"]
-  acf_white <- compute_acf_vals(z_whiten, max_lag = max_lag)
-  acf_white[, chr := chr_val]; acf_white[, type := "whitened"]
-  # Save
-  results_list[[as.character(chr_val)]] <- list(dt_chr = dt_chr,
-                                                ols_fit = ols_fit,
-                                                resid_raw = resid_raw,
-                                                z_whiten = z_whiten,
-                                                decay = decay,
-                                                acf_raw = acf_raw,
-                                                acf_white = acf_white)
+  list(acf_raw = acf_raw, acf_white = acf_white, resid_raw = resid_raw)
 }
 
-# 4) Combine ACF tables for plotting
-acf_dt <- rbindlist(lapply(results_list, function(x) rbind(x$acf_raw, x$acf_white)), use.names = TRUE, fill = TRUE)
-# Convert lag to integer (acf returns 0..max_lag)
+# collect ACFs
+acf_results <- list()
+for (chr_val in sel_chrs) {
+  dt_chr_raw <- dt_sub[chr == chr_val]
+  dt_chr_wh <- dt_whitened[chrom == chr_val]
+  # use whitened column name
+  whitened_col <- paste0(target_var, "_wh")
+  res_chr <- compute_resid_and_acf(dt_chr_raw, response = target_var, predictors = vars_list[[target_var]], whitened_col = whitened_col, max_lag = 50)
+  if (is.null(res_chr)) next
+  acf_raw <- res_chr$acf_raw; acf_raw[, `:=`(chrom = chr_val, type = "raw")]
+  acf_white <- res_chr$acf_white; acf_white[, `:=`(chrom = chr_val, type = "whitened")]
+  acf_results[[as.character(chr_val)]] <- rbind(acf_raw, acf_white)
+  message("chrom ", chr_val, ": raw acf rows = ", nrow(acf_raw), " ; whitened acf rows = ", nrow(acf_white))
+}
+
+acf_dt <- rbindlist(acf_results, use.names = TRUE, fill = TRUE)
 acf_dt[, lag := as.integer(lag)]
 
-# 5) Plot ACFs side-by-side: one facet per chromosome, raw vs whitened colored
+# ---------------------------------------------------------------------------
+# 5. Plot ACFs side-by-side
+# ---------------------------------------------------------------------------
 p <- ggplot(acf_dt, aes(x = lag, y = acf, color = type)) +
   geom_line() +
   geom_point(size = 1) +
-  facet_wrap(~ chr, scales = "free_y") +
+  facet_wrap(~ chrom, scales = "free_y") +
   scale_color_manual(values = c(raw = "firebrick", whitened = "steelblue")) +
-  labs(x = "Lag (index)", y = "ACF", color = "", title = "Residual ACF before and after whitening by chromosome") +
+  labs(x = "Lag (index)", y = "ACF", color = "", title = paste0("Residual ACF for ", target_var, " before and after whitening")) +
   theme_minimal(base_size = 13) +
   theme(legend.position = "top")
-
 print(p)
 
-# 6) Optional: quick numeric checks for remaining autocorrelation (e.g., mean absolute ACF at lags 1:5)
-summary_dt <- acf_dt[lag >= 1 & lag <= 5, .(mean_abs_acf = mean(abs(acf), na.rm = TRUE)), by = .(chr, type)]
+# ---------------------------------------------------------------------------
+# 6. Numeric diagnostics: mean absolute ACF at lags 1:5 by chrom and type
+# ---------------------------------------------------------------------------
+summary_dt <- acf_dt[lag >= 1 & lag <= 5, .(mean_abs_acf = mean(abs(acf), na.rm = TRUE)), by = .(chrom, type)]
 print(summary_dt)
+
+# ---------------------------------------------------------------------------
+# 7. Per-block and per-chromosome diagnostic plots for decay (optional)
+#    Print examples for any chromosome where a fit was returned
+# ---------------------------------------------------------------------------
+for (chr_val in sel_chrs) {
+  drow <- decay_dt[chrom == as.character(chr_val) & variable == target_var]
+  if (nrow(drow) == 0) next
+  method <- drow$method[1]
+  alpha <- drow$alpha[1]; sigma2 <- drow$sigma2[1]
+  message("Decay chrom ", chr_val, ": method=", method, " alpha=", signif(alpha,4), " sigma2=", signif(sigma2,4))
+  # if binned object exists in estimate result, plot (the robust estimator returns 'binned' inside the list when run earlier,
+  # but in this wrapper we lost that object. If you want plots, run estimate_decay_per_chr_robust() per chromosome manually and use plot_decay_diagnostics()).
+}
+
+# ---------------------------------------------------------------------------
+# 8. Print prewhiten diagnostics
+# ---------------------------------------------------------------------------
+print(res_pw$diagnostics)
 ```
 
 Fit SEM
