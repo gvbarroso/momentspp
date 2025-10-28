@@ -17,11 +17,14 @@ knitr::opts_chunk$set(echo=TRUE)
 library(data.table)
 library(tidyverse)
 library(dplyr)
+library(purrr)
+library(tibble)
 library(cowplot)
 library(scales)
 library(GenomicRanges)
 library(R.utils)
 
+library(stats)
 library(MASS)
 library(lmtest)
 library(nlme)
@@ -30,6 +33,7 @@ library(interactions)
 library(ppcor)
 library(Hmisc)
 library(MVN)
+library(Matrix)
 options(rgl.useNULL=TRUE) # "solves" issue with rgl package in MacOS BigSur
 library(heplots)
 library(parallel) # mcapply
@@ -5716,324 +5720,311 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
 
 ### Helper functions
 
-Estimate per-chromosome distance-decay (exponential) from OLS residuals
+Usage:
+Define the endogenous variables and their predictor sets according to each DAG:
+For your 4 models, prepare a vars list for each SEM run describing 
+which predictors should be used to compute residual autocorrelation
+for each endogenous variable.
 
-Fit OLS per chromosome to get residuals
-Compute all pairwise distances and residual covariances inside chr
-Fit exponential decay: cov(d) ≈ s2 * exp(-alpha * d). 
-We return alpha and sigma2
+Example for a full model (model_3):
 
-```{r SEM-helpers-1, eval=T, include=F, message=F, warning=F}
+vars <- list(avg_pi = c("B","avg_rec","avg_mut","prop_del_sites"),
+             B = c("prop_del_sites","avg_mut","avg_rec"),
+             avg_mut = c("avg_rec"))
+         
+To get block_map and decay_dt:
 
-window_bp <- 10000            # 10 kb windows
-min_block_bp <- 50000         # minimum span of block in bp to keep (optional)
-max_pair_distance <- 200000   # max distance (bp) to consider residual covariance candidates
-rho_threshold <- 0.05         # include pair if predicted |rho| >= rho_threshold
-n_cores <- 2 # max(1, detectCores() - 1)
+make_block_specs(dt, 
+                 vars, 
+                 window_bp = 5000, 
+                 max_block_span = 1e6,
+                 max_pair_distance = 2e5) 
+                 
+Use decay_dt to construct per-variable per-chromosome
+residual covariance matrices (exponential kernel with alpha, sigma2) 
+when fitting the SEM (e.g., GLS, lavaan with user-supplied covariance).
 
-estimate_decay_per_chrom <- function(dt_chr, min_pairs = 20, start_alpha = 1e-6) {
-  if (nrow(dt_chr) < 4) return(list(alpha = NA_real_, sigma2 = NA_real_))
-  ols <- try(lm(avg_pi ~ B + avg_rec + avg_mut, data = dt_chr), silent = TRUE)
-  if (inherits(ols, "try-error")) return(list(alpha = NA_real_, sigma2 = NA_real_))
-  resid <- resid(ols)
-  pos <- dt_chr$midpoint
-  dmat <- as.matrix(dist(pos))
-  # vectorize lower triangle
-  dvec <- dmat[lower.tri(dmat)]
+To compare sensitivity, create vars for each SEM (model_0..model_3)
+and regenerate decay_dt accordingly.
 
-  cov_mat <- outer(resid, resid, "*")
-  cov_pairs <- cov_mat[lower.tri(cov_mat)]
+Practical notes:
+Fallbacks: If fitting nls fails or insufficient pairs, 
+alpha returns NA and sigma2 uses residual variance. fit_ok flags success.
 
-  ok <- is.finite(dvec) & is.finite(cov_pairs)
-  if (sum(ok) < min_pairs) 
-    return(list(alpha = NA_real_, sigma2 = var(resid, na.rm = TRUE)))
-  
-  dvec_ok <- dvec[ok]
-  cov_ok <- cov_pairs[ok]
-  # Fit nls: cov = s2 * exp(-alpha * d)
-  start_s2 <- var(resid, na.rm = TRUE)
-  fit <- try(nls(cov_ok ~ s2 * exp(-alpha * dvec_ok),
-                 start = list(s2 = start_s2, alpha = start_alpha),
-                 control = nls.control(warnOnly = TRUE, maxiter = 200)),
-             silent = TRUE)
-  if (inherits(fit, "try-error")) return(list(alpha = NA_real_, sigma2 = start_s2))
-  coefs <- coef(fit)
-  list(alpha = as.numeric(coefs["alpha"]), sigma2 = as.numeric(coefs["s2"]))
-  
-  return(list(alpha = ..., sigma2 = ...))
-}
-```
+Blocks vs chromosome: These functions estimate decay per chromosome. 
+If you instead want per-block decay, 
+adapt the by_chr argument to use block_id and run on block subsets.
 
-Define blocks by genomic distance (distance-aware blocking)
-We will build blocks where consecutive windows are close (gap tolerance). 
-This prevents grouping far-spaced windows due to coverage filtering.
+Reproducibility: Keep vars lists stored with model metadata so decay 
+estimation is traceable to the exact predictor set used.
 
-```{r SEM-helpers-2, eval=T, include=F, message=F, warning=F}
+Integration: When building the SEM residual covariance, ensure covariance 
+between different variables is handled correctly; 
+these functions estimate marginal residual autocorrelation per variable.
+Cross-variable residual covariances should come from your SEM residual
+covariance specification or empirical estimates.
 
-make_distance_blocks <- function(dt_chr, max_gap = window_bp * 2, max_block_span = 1e6) {
-  # max_gap: if gap between consecutive midpoints > max_gap, start a new block
+```{r SEM-helpers-1, eval=F, include=F, message=F, warning=F}
+
+# 1) distance-aware blocks (returns copy)
+make_distance_blocks <- function(dt_chr, window_bp, max_block_span = 1e6, gap_factor = 2L) {
+  if (!"data.table" %in% class(dt_chr)) dt_chr <- as.data.table(dt_chr)
+  max_gap <- as.numeric(window_bp) * as.numeric(gap_factor)
   pos <- dt_chr$midpoint
   gaps <- c(0, diff(pos))
-  block_id <- cumsum(gaps > max_gap) + 1
+  block_id <- cumsum(gaps > max_gap) + 1L
   dt_chr[, block_id := block_id]
-  # optionally split very long blocks into subblocks by span
   dt_chr[, span := max(midpoint) - min(midpoint), by = block_id]
-  # if span > max_block_span, split by equal-size windows per block
   if (any(dt_chr$span > max_block_span)) {
-    tmp <- dt_chr[, .(n = .N), by = block_id]
-    # fallback: enforce max windows per block if span-based splitting fails
-    window_limit <- max(2, floor(max_block_span / window_bp))
+    window_limit <- max(2L, floor(max_block_span / window_bp))
     dt_chr[, block_seq := seq_len(.N), by = block_id]
-    dt_chr[, block_id2 := block_id + floor((block_seq - 1) / window_limit)]
-    dt_chr[, `:=`(block_id = block_id2)][, c("block_seq", "block_id2", "span") := NULL]
+    dt_chr[, block_id2 := block_id + floor((block_seq - 1L) / window_limit)]
+    dt_chr[, `:=`(block_id = block_id2)]
+    dt_chr[, c("block_seq", "block_id2", "span") := NULL]
   } else {
     dt_chr[, span := NULL]
   }
-  dt_chr
-  
-  return(dt_chr)
+  copy(dt_chr)
 }
-```
 
-For each block produce wide-row, compute candidate residual covariances using decay
-For each block:
-Use its chromosome alpha/sigma2 to compute predicted rho(d) = exp(-alpha * d).
-Include pair (i,j) only if |rho(d)| >= rho_threshold and d <= max_pair_distance.
-Store starting covariance = sigma2 * rho(d) for that pair.
-Build wide data row for lavaan (avg_pi_1..k, B_1..k, avg_rec_1..k, avg_mut_1..k)
-only for blocks with k >= 2 and not too big 
-(recommend k ≤ 12 for model tractability).
+# 2) estimate_decay_for_variable (per-chromosome)
+estimate_decay_for_variable <- function(dt,
+                                        resp,
+                                        predictors = NULL,
+                                        by_chr = "chr",
+                                        min_pairs = 20,
+                                        max_pair_distance = 2e5,
+                                        start_alpha = 1e-6,
+                                        n_cores = max(1, detectCores() - 1),
+                                        control = nls.control(warnOnly = TRUE, maxiter = 200)) {
+  if (!"data.table" %in% class(dt)) dt <- as.data.table(dt)
+  # build formula
+  if (is.null(predictors)) {
+    formula <- as.formula(sprintf("%s ~ 1", resp))
+  } else if (inherits(predictors, "formula")) {
+    formula <- as.formula(sprintf("%s ~ %s", resp, deparse(predictors[[3]])))
+  } else if (is.character(predictors)) {
+    rhs <- if (length(predictors) == 1) predictors else paste(predictors, collapse = " + ")
+    formula <- as.formula(sprintf("%s ~ %s", resp, rhs))
+  } else stop("predictors must be NULL, character vector/string, or formula RHS.")
 
-```{r SEM-helpers-3, eval=T, include=F, message=F, warning=F}
-
-# helper: compute candidate cov list and wide row
-make_block_specs <- function(df_block, decay_dt, max_pair_distance, rho_threshold, max_k = 12) {
-  df_block <- df_block[order(midpoint)]
-  k <- nrow(df_block)
-  if (k < 2) return(NULL)
-  if (k > max_k) return(NULL)  # skip too-large blocks or split earlier
-  chrom <- df_block$chrom[1]
-  alpha <- decay_dt$alpha[decay_dt$chrom == as.character(chrom)]
-  sigma2 <- decay_dt$sigma2[decay_dt$chrom == as.character(chrom)]
-  # fallback if alpha NA
-  if (is.na(alpha) || !is.finite(alpha)) alpha <- NA_real_
-  if (is.na(sigma2) || !is.finite(sigma2)) sigma2 <- var(resid(lm(avg_pi ~ B + avg_rec + avg_mut, data = df_block)), 
-                                                         na.rm = TRUE)
-  # build wide row
-  out <- list(chrom = chrom, block_id = df_block$block_id[1], n_in_block = k)
-  for (i in seq_len(k)) {
-    suf <- paste0("_", i)
-    out[[paste0("avg_pi", suf)]]   <- df_block$avg_pi[i]
-    out[[paste0("B", suf)]]        <- df_block$B[i]
-    out[[paste0("avg_rec", suf)]]  <- df_block$avg_rec[i]
-    out[[paste0("avg_mut", suf)]]  <- df_block$avg_mut[i]
-    out[[paste0("midpoint", suf)]] <- df_block$midpoint[i]
+  chr_vals <- unique(dt[[by_chr]])
+  worker <- function(chr_val) {
+    dsub <- dt[get(by_chr) == chr_val]
+    n_windows <- nrow(dsub)
+    if (n_windows < 4) {
+      return(list(chr = chr_val, variable = resp, alpha = NA_real_, sigma2 = NA_real_,
+                  n_windows = n_windows, n_pairs = 0L, fit_ok = FALSE))
+    }
+    ols <- try(lm(formula, data = dsub), silent = TRUE)
+    resid_vec <- if (inherits(ols, "try-error")) rep(NA_real_, n_windows) else resid(ols)
+    pos <- dsub$midpoint
+    dmat <- as.matrix(dist(pos))
+    dvec <- dmat[lower.tri(dmat)]
+    cov_mat <- outer(resid_vec, resid_vec, "*")
+    cov_pairs <- cov_mat[lower.tri(cov_mat)]
+    ok <- is.finite(dvec) & is.finite(cov_pairs) & dvec <= max_pair_distance
+    n_pairs <- sum(ok)
+    if (n_pairs < min_pairs) {
+      s2_fallback <- var(resid_vec, na.rm = TRUE)
+      return(list(chr = chr_val, variable = resp, alpha = NA_real_, sigma2 = as.numeric(s2_fallback),
+                  n_windows = n_windows, n_pairs = n_pairs, fit_ok = FALSE))
+    }
+    dvec_ok <- dvec[ok]; cov_ok <- cov_pairs[ok]
+    start_s2 <- var(resid_vec, na.rm = TRUE)
+    fit <- try(nls(cov_ok ~ s2 * exp(-alpha * dvec_ok),
+                   start = list(s2 = as.numeric(start_s2), alpha = as.numeric(start_alpha)),
+                   control = control), silent = TRUE)
+    if (inherits(fit, "try-error")) {
+      return(list(chr = chr_val, variable = resp, alpha = NA_real_, sigma2 = as.numeric(start_s2),
+                  n_windows = n_windows, n_pairs = n_pairs, fit_ok = FALSE))
+    }
+    coefs <- coef(fit)
+    list(chr = chr_val, variable = resp, alpha = as.numeric(coefs["alpha"]),
+         sigma2 = as.numeric(coefs["s2"]), n_windows = n_windows, n_pairs = n_pairs, fit_ok = TRUE)
   }
-  # candidate residual covariances
-  pairs <- list()
-  if (!is.na(alpha)) {
-    for (i in 1:(k-1)) {
-      for (j in (i+1):k) {
-        d <- abs(df_block$midpoint[i] - df_block$midpoint[j])
-        if (d <= max_pair_distance) {
-          rho <- exp(-alpha * d)
-          if (abs(rho) >= rho_threshold) {
-            cov_start <- sigma2 * rho
-            pairs[[length(pairs) + 1]] <- list(i = i, j = j, d = d, rho = rho, cov = cov_start)
-          }
-        }
-      }
+
+  if (n_cores > 1) out_list <- mclapply(chr_vals, worker, mc.cores = n_cores) else out_list <- lapply(chr_vals, worker)
+  out_dt <- rbindlist(lapply(out_list, as.data.table))
+  setnames(out_dt, "chr", by_chr)
+  out_dt
+}
+
+# 3) make_block_specs: create blocks and estimate decay for each var
+make_block_specs <- function(dt, vars, by_chr = "chr", window_bp = NULL, max_block_span = 1e6, ...) {
+  if (!"data.table" %in% class(dt)) dt <- as.data.table(dt)
+  stopifnot(by_chr %in% names(dt), "midpoint" %in% names(dt))
+  if (!is.null(window_bp)) {
+    dt_blocks <- dt[, make_distance_blocks(.SD, window_bp = window_bp, max_block_span = max_block_span), by = by_chr]
+  } else {
+    dt_blocks <- copy(dt); dt_blocks[, block_id := 1L, by = by_chr]
+  }
+  decay_list <- lapply(names(vars), function(var) estimate_decay_for_variable(dt_blocks, resp = var, predictors = vars[[var]], by_chr = by_chr, ...))
+  decay_dt <- rbindlist(decay_list)
+  setcolorder(decay_dt, c(by_chr, "variable", "alpha", "sigma2", "n_windows", "n_pairs", "fit_ok"))
+  list(block_map = dt_blocks[, .(row_id = .I, chr, midpoint, block_id)], decay_dt = decay_dt)
+}
+
+# 4) build_exp_cov: build sparse exp covariance for positions
+build_exp_cov <- function(pos, alpha, sigma2, max_pair_distance = Inf, tol = 1e-12) {
+  n <- length(pos)
+  if (n == 0) return(Matrix(0, 0, 0, sparse = TRUE))
+  dmat <- as.matrix(dist(pos))
+  if (is.na(alpha) || !is.finite(alpha)) {
+    return(Diagonal(n = n, x = rep(sigma2, n)))
+  }
+  cov_mat <- sigma2 * exp(-alpha * dmat)
+  cov_mat[dmat > max_pair_distance] <- 0
+  cov_mat[abs(cov_mat) < tol] <- 0
+  as(Matrix(cov_mat, sparse = TRUE), "dsCMatrix")
+}
+
+# 5) make_sparse_cov_blocks: map decay_dt -> sparse blocks
+make_sparse_cov_blocks <- function(block_map, decay_dt, dt, by_chr = "chr", max_pair_distance = Inf) {
+  setDT(block_map); setDT(decay_dt); setDT(dt)
+  out_list <- list(); index_map <- list()
+  for (i in seq_len(nrow(decay_dt))) {
+    row <- decay_dt[i]
+    chr_val <- row[[by_chr]]
+    varname <- row$variable
+    alpha <- row$alpha; sigma2 <- row$sigma2
+    rows_chr <- block_map[chr == chr_val]
+    if (nrow(rows_chr) == 0) next
+    pos <- rows_chr$midpoint; row_ids <- rows_chr$row_id
+    cov_sparse <- build_exp_cov(pos = pos, alpha = alpha, sigma2 = sigma2, max_pair_distance = max_pair_distance)
+    key <- paste(chr_val, varname, sep = ":::")
+    out_list[[key]] <- cov_sparse
+    index_map[[key]] <- data.table(row_id = row_ids, chr = chr_val, variable = varname, idx = seq_len(length(row_ids)))
+  }
+  list(full_block_covs = out_list, index_map = rbindlist(index_map))
+}
+
+# 6) Prewhiten variables blockwise
+prewhiten_variable_blockwise <- function(varname, dt_sub, sparse_obj) {
+  pattern <- paste0(":::", varname, "$")
+  keys <- names(sparse_obj$full_block_covs)[grepl(pattern, names(sparse_obj$full_block_covs))]
+  whitened <- rep(NA_real_, nrow(dt_sub))
+  for (key in keys) {
+    cov_mat <- sparse_obj$full_block_covs[[key]]
+    idx_dt <- sparse_obj$index_map[variable == varname & paste(chr, variable, sep = ":::") == key]
+    if (nrow(idx_dt) == 0) next
+    idx_order <- idx_dt[order(idx), row_id]
+    y_block <- dt_sub[idx_order, get(varname)]
+    if (length(y_block) == 0) next
+    cov_dense <- as.matrix(cov_mat)
+    jitter_eps <- 1e-8 * max(1, mean(diag(cov_dense)))
+    diag(cov_dense) <- diag(cov_dense) + jitter_eps
+    L <- NULL
+    try({ L <- chol(cov_dense) }, silent = TRUE)
+    if (!is.null(L)) {
+      whiten_block <- backsolve(L, forwardsolve(t(L), y_block))
+      whitened[idx_order] <- whiten_block
+    } else {
+      eig <- eigen(cov_dense, symmetric = TRUE)
+      vals_adj <- pmax(eig$values, 1e-12)
+      P_sqrt <- eig$vectors %*% diag(1 / sqrt(vals_adj)) %*% t(eig$vectors)
+      whiten_block <- as.numeric(P_sqrt %*% y_block)
+      whitened[idx_order] <- whiten_block
     }
   }
-  out$pairs <- pairs
-  out
+  whitened
+}
+
+# For variable 'v', assemble block-diagonal covariance across all chromosomes in decay_dt
+assemble_cov_for_variable <- function(full_block_covs, decay_dt, varname) {
+  keys <- names(full_block_covs)[grepl(paste0(":::", varname, "$"), names(full_block_covs))]
+  mats <- lapply(keys, function(k) full_block_covs[[k]])
+  if (length(mats) == 0) return(NULL)
+  # blockDiag from Matrix
+  do.call(bdiag, mats)
+}
+
+# Suppose windows are ordered and same row_id order for all variables.
+# vars_order is c("avg_pi","B","avg_mut")
+# index_map ties row positions to original rows.
+build_full_sample_cov_for_lavaan <- function(dt, vars_order, full_block_covs, index_map) {
+  # number of windows
+  n_windows <- nrow(dt)
+  p <- length(vars_order)
+  # Full covariance is (p * n) x (p * n) if you stack variables per window; usually too big.
+  # Instead compute covariance across variables (p x p) using aggregated summaries:
+  # Option A: compute covariance of window-wise averages (collapsed to sample of windows).
+  window_mat <- as.matrix(dt[, ..vars_order])
+  sample_cov_vars <- cov(window_mat, use = "pairwise.complete.obs")
+  list(sample_cov_vars = sample_cov_vars, n_obs = nrow(window_mat))
 }
 ```
 
 Helpers to build model strings with starting values for candidate covariances
 
-```{r SEM-helpers-4, eval=T, include=F, message=F, warning=F}
+```{r SEM-helpers-2, eval=F, include=F, message=F, warning=F}
 
-build_model0_for_k <- function(k, pairs_list_k_flat) {
+# build pair keys table from pairs_list_k_flat-like structure
+collect_pair_keys <- function(pairs_list_k_flat) {
+  if (length(pairs_list_k_flat) == 0) return(NULL)
+  rows <- map_dfr(pairs_list_k_flat, function(pl) {
+    if (length(pl) == 0) return(NULL)
+    map_dfr(pl, ~ tibble(i = .x$i, j = .x$j, cov = .x$cov))
+  })
+  if (nrow(rows) == 0) return(NULL)
+  unique(rows)
+}
+
+# generic builder that injects start values for avg_pi covariances
+build_generic_model_for_k <- function(k, pairs_list_k_flat, structural_lines, derived_lines = character(0)) {
   lines <- character(0)
-  # regression labels shared across positions so group.equal = "regressions" will lock them
   for (i in 1:k) {
     suf <- paste0("_", i)
-    lines <- c(lines,
-               paste0("avg_pi", suf, " ~ b_B * B", suf),
-               paste0("avg_pi", suf, " ~ b_rec * avg_rec", suf),
-               paste0("avg_pi", suf, " ~ b_mut * avg_mut", suf))
+    lines <- c(lines, gsub("<SUF>", suf, structural_lines, fixed = TRUE))
   }
-  # include candidate covariances with optional start()
-  # collect unique pairs present across blocks to include in model syntax 
-  # (we allow estimation per group)
-  # For model syntax we only include the adjacency pairs that appear in any block; 
-  # but we allow them free per group.
-  # build a set of pair names that appear at least once in pairs_list_k_flat
-  pair_keys <- unique(do.call(rbind, lapply(pairs_list_k_flat, function(pl) {
-    if (length(pl) == 0) return(NULL)
-    df <- map_dfr(pl, ~ tibble(i = .x$i, j = .x$j, cov = .x$cov))
-    df
-  })))
-  
+  pair_keys <- collect_pair_keys(pairs_list_k_flat)
   if (!is.null(pair_keys) && nrow(pair_keys) > 0) {
     for (r in seq_len(nrow(pair_keys))) {
-      i <- pair_keys$i[r]; j <- pair_keys$j[r]
+      i <- pair_keys$i[r]; j <- pair_keys$j[r]; startval <- signif(pair_keys$cov[r], 4)
       suf1 <- paste0("_", i); suf2 <- paste0("_", j)
-      # We do not set a fixed start value here because lavaan supports start() only on parameters; but we can set it.
-      # Use start(value) to guide optimization but leave parameter free.
-      startval <- signif(pair_keys$cov[r], 4)
       lines <- c(lines, paste0("avg_pi", suf1, " ~~ start(", startval, ") * avg_pi", suf2))
     }
   } else {
-    # fallback: include adjacent i~~i+1 with no start if no pairs detected
     for (i in 1:(k-1)) lines <- c(lines, paste0("avg_pi_", i, " ~~ avg_pi_", i + 1))
   }
+  if (length(derived_lines) > 0) lines <- c(lines, derived_lines)
   paste(lines, collapse = "\n")
 }
 
-build_model1_for_k <- function(k, pairs_list_k_flat) {
-  lines <- character(0)
-  
-  # Structural regressions with shared labels
-  for (i in 1:k) {
-    suf <- paste0("_", i)
-    lines <- c(lines,
-      paste0("avg_pi", suf, " ~ start(0.25)*c1*avg_mut", suf),
-      paste0("avg_pi", suf, " ~ start(0.5)*c2*B", suf),
-      paste0("avg_pi", suf, " ~ start(-0.25)*c3*prop_del_sites", suf),
-      paste0("B", suf, " ~ start(-0.25)*c4*prop_del_sites", suf),
-      paste0("B", suf, " ~ start(-0.25)*c5*avg_mut", suf)
-    )
-  }
-  
-  # Residual covariances from GLS-informed pairs
-  pair_keys <- unique(do.call(rbind, lapply(pairs_list_k_flat, function(pl) {
-    if (length(pl) == 0) return(NULL)
-    map_dfr(pl, ~ tibble(i = .x$i, j = .x$j, cov = .x$cov))
-  })))
-  
-  if (!is.null(pair_keys) && nrow(pair_keys) > 0) {
-    for (r in seq_len(nrow(pair_keys))) {
-      i <- pair_keys$i[r]; j <- pair_keys$j[r]
-      suf1 <- paste0("_", i); suf2 <- paste0("_", j)
-      startval <- signif(pair_keys$cov[r], 4)
-      lines <- c(lines, paste0("avg_pi", suf1, " ~~ start(", startval, ") * avg_pi", suf2))
-    }
-  } else {
-    for (i in 1:(k - 1)) {
-      lines <- c(lines, paste0("avg_pi_", i, " ~~ avg_pi_", i + 1))
-    }
-  }
-  
-  lines <- c(lines, "mu_B_pi := c1 * c5")
-  
-  paste(lines, collapse = "\n")
-}
+```
 
-build_model2_for_k <- function(k, pairs_list_k_flat) {
-  lines <- character(0)
-  
-  # Structural regressions and covariances
-  for (i in 1:k) {
-    suf <- paste0("_", i)
-    lines <- c(lines,
-      paste0("avg_pi", suf, " ~ start(0.25)*c1*avg_mut", suf),
-      paste0("avg_pi", suf, " ~ start(0.5)*c2*B", suf),
-      paste0("avg_pi", suf, " ~ start(-0.25)*c3*prop_del_sites", suf),
-      paste0("B", suf, " ~ start(-0.25)*c4*prop_del_sites", suf),
-      paste0("B", suf, " ~ start(-0.25)*c5*avg_mut", suf),
-      paste0("B", suf, " ~ start(0.25)*c6*avg_rec", suf),
-      paste0("avg_mut", suf, " ~ start(0.25)*c7*avg_rec", suf),
-      paste0("avg_mut", suf, " ~~ 0*prop_del_sites", suf)
-    )
-  }
-  
-  # Residual covariances from GLS-informed pairs
-  pair_keys <- unique(do.call(rbind, lapply(pairs_list_k_flat, function(pl) {
-    if (length(pl) == 0) return(NULL)
-    map_dfr(pl, ~ tibble(i = .x$i, j = .x$j, cov = .x$cov))
-  })))
-  
-  if (!is.null(pair_keys) && nrow(pair_keys) > 0) {
-    for (r in seq_len(nrow(pair_keys))) {
-      i <- pair_keys$i[r]; j <- pair_keys$j[r]
-      suf1 <- paste0("_", i); suf2 <- paste0("_", j)
-      startval <- signif(pair_keys$cov[r], 4)
-      lines <- c(lines, paste0("avg_pi", suf1, " ~~ start(", startval, ") * avg_pi", suf2))
-    }
-  } else {
-    for (i in 1:(k - 1)) {
-      lines <- c(lines, paste0("avg_pi_", i, " ~~ avg_pi_", i + 1))
-    }
-  }
-  
-  # Derived parameters (shared across windows)
-  lines <- c(lines,
-    "mu_B_pi := c1 * c5",
-    "rec_B_pi := c2 * c6",
-    "rec_mu_pi := c1 * c7",
-    "rec_mu_B_pi := c2 * c5 * c7"
-  )
-  
-  paste(lines, collapse = "\n")
-}
+Helpers to model autocorrelation in all endogenous variables (vary per DAG)
 
-build_model3_for_k <- function(k, pairs_list_k_flat) {
-  lines <- character(0)
-  
-  # Structural regressions and covariances
-  for (i in 1:k) {
-    suf <- paste0("_", i)
-    lines <- c(lines,
-      paste0("avg_pi", suf, " ~ start(0.25)*c1*avg_mut", suf),
-      paste0("avg_pi", suf, " ~ start(0.5)*c2*B", suf),
-      paste0("avg_pi", suf, " ~ start(-0.25)*c3*prop_del_sites", suf),
-      paste0("B", suf, " ~ start(-0.25)*c4*prop_del_sites", suf),
-      paste0("B", suf, " ~ start(-0.25)*c5*avg_mut", suf),
-      paste0("B", suf, " ~ start(0.25)*c6*avg_rec", suf),
-      paste0("avg_mut", suf, " ~ start(0.25)*c7*avg_rec", suf),
-      paste0("avg_mut", suf, " ~~ prop_del_sites", suf)
-    )
-  }
-  
-  # Residual covariances from GLS-informed pairs
-  pair_keys <- unique(do.call(rbind, lapply(pairs_list_k_flat, function(pl) {
-    if (length(pl) == 0) return(NULL)
-    map_dfr(pl, ~ tibble(i = .x$i, j = .x$j, cov = .x$cov))
-  })))
-  
-  if (!is.null(pair_keys) && nrow(pair_keys) > 0) {
-    for (r in seq_len(nrow(pair_keys))) {
-      i <- pair_keys$i[r]; j <- pair_keys$j[r]
-      suf1 <- paste0("_", i); suf2 <- paste0("_", j)
-      startval <- signif(pair_keys$cov[r], 4)
-      lines <- c(lines, paste0("avg_pi", suf1, " ~~ start(", startval, ") * avg_pi", suf2))
-    }
-  } else {
-    for (i in 1:(k - 1)) {
-      lines <- c(lines, paste0("avg_pi_", i, " ~~ avg_pi_", i + 1))
-    }
-  }
-  
-  # Derived parameters (shared across windows)
-  lines <- c(lines,
-    "mu_B_pi := c1 * c5",
-    "rec_B_pi := c2 * c6",
-    "rec_mu_pi := c1 * c7",
-    "rec_mu_B_pi := c2 * c5 * c7"
-  )
-  
-  paste(lines, collapse = "\n")
-}
+```{r SEM-helpers-3, eval=F, include=F, message=F, warning=F}
 
+# Define vars lists matching each model (variables -> predictor sets)
+vars_model_0 <- list(
+  avg_pi = c("B","avg_mut"),
+  B      = c("avg_mut")         
+)
+vars_model_1 <- list(
+  avg_pi = c("B","avg_mut","prop_del_sites"),
+  B      = c("prop_del_sites","avg_mut")
+)
+vars_model_2 <- list(
+  avg_pi = c("B","avg_mut","prop_del_sites"),
+  B      = c("prop_del_sites","avg_mut","avg_rec"),
+  avg_mut= c("avg_rec")
+)
+vars_model_3 <- list(
+  avg_pi = c("B","avg_mut","prop_del_sites","avg_rec"),
+  B      = c("prop_del_sites","avg_mut","avg_rec"),
+  avg_mut= c("avg_rec")
+)
 ```
 
 ### Data Analyses
 
 Path models using latent variable predictions for mut, rec, B
 
-```{r real-data, eval=T, include=F, message=F, warning=F}
+Loading data
+
+```{r load-real-data, eval=T, include=F, message=F, warning=F}
 
 human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
                    filter(., mut_map!="uniform") %>%
@@ -6135,6 +6126,274 @@ human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
                   dplyr::select(., c(chrom, chromStart, chromEnd, 
                                      coverage, prop_del_sites, avg_pi,
                                      constrained_model))
+```
+
+#### Example
+
+Check whitening approach to remove autocorrelation
+
+```{r, evaluate-whitening, eval=T}
+
+# Estimate exponential decay per chromosome from residuals of formula
+estimate_decay_per_chr <- function(dt_chr, formula, min_pairs = 20, max_pair_distance = 2e5, start_alpha = 1e-6, nls_control = nls.control(warnOnly = TRUE, maxiter = 200)) {
+  # dt_chr: data.table for one chr with a numeric midpoint column
+  if (nrow(dt_chr) < 4) return(list(alpha = NA_real_, sigma2 = NA_real_, n_pairs = 0L))
+  ols <- try(lm(formula, data = dt_chr), silent = TRUE)
+  if (inherits(ols, "try-error")) return(list(alpha = NA_real_, sigma2 = NA_real_, n_pairs = 0L))
+  resid_vec <- resid(ols)
+  pos <- dt_chr$midpoint
+  dmat <- as.matrix(dist(pos))
+  dvec <- dmat[lower.tri(dmat)]
+  cov_mat <- outer(resid_vec, resid_vec, "*")
+  cov_pairs <- cov_mat[lower.tri(cov_mat)]
+  ok <- is.finite(dvec) & is.finite(cov_pairs) & (dvec <= max_pair_distance)
+  n_pairs <- sum(ok)
+  if (n_pairs < min_pairs) return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), n_pairs = n_pairs))
+  d_ok <- dvec[ok]; cov_ok <- cov_pairs[ok]
+  start_s2 <- var(resid_vec, na.rm = TRUE)
+  fit <- try(nls(cov_ok ~ s2 * exp(-alpha * d_ok), start = list(s2 = start_s2, alpha = start_alpha), control = nls_control), silent = TRUE)
+  if (inherits(fit, "try-error")) return(list(alpha = NA_real_, sigma2 = as.numeric(start_s2), n_pairs = n_pairs))
+  coefs <- coef(fit)
+  list(alpha = as.numeric(coefs["alpha"]), sigma2 = as.numeric(coefs["s2"]), n_pairs = n_pairs)
+}
+
+# Build exponential covariance (dense) for positions with optional sparsity cutoff
+build_exp_cov_dense <- function(pos, alpha, sigma2, max_pair_distance = Inf, tol = 0) {
+  n <- length(pos)
+  if (n == 0) return(matrix(0, 0, 0))
+  dmat <- as.matrix(dist(pos))
+  if (is.na(alpha) || !is.finite(alpha)) {
+    return(diag(rep(sigma2, n)))
+  }
+  cov_mat <- sigma2 * exp(-alpha * dmat)
+  if (is.finite(max_pair_distance)) cov_mat[dmat > max_pair_distance] <- 0
+  if (tol > 0) cov_mat[abs(cov_mat) < tol] <- 0
+  cov_mat
+}
+
+# Whiten a single vector y given covariance matrix Cov_y
+# Returns whitened vector z where Cov(z) ~ I (or precision-transformed vector)
+whiten_with_cov <- function(y, cov_y, jitter = 1e-8) {
+  if (length(y) == 0) return(numeric(0))
+  cov_dense <- as.matrix(cov_y)
+  # add small jitter to diagonal for numerical stability
+  diag(cov_dense) <- diag(cov_dense) + jitter * max(1, mean(diag(cov_dense)))
+  # try Cholesky
+  L <- NULL
+  try(L <- chol(cov_dense), silent = TRUE)
+  if (!is.null(L)) {
+    # L is upper triangular; to whiten: solve L %*% t(L) %*% x = y => z = t(L)^{-1} L^{-1} y
+    # Efficient: first solve v = forwardsolve(t(L), y); then z = backsolve(L, v)
+    v <- forwardsolve(t(L), y)
+    z <- backsolve(L, v)
+    return(as.numeric(z))
+  }
+  # fallback to eigen-based precision sqrt: P^{1/2} = V diag(1/sqrt(vals)) V'
+  eig <- eigen(cov_dense, symmetric = TRUE)
+  vals <- eig$values
+  vecs <- eig$vectors
+  vals_adj <- pmax(vals, 1e-12)
+  P_sqrt <- vecs %*% diag(1 / sqrt(vals_adj)) %*% t(vecs)
+  as.numeric(P_sqrt %*% y)
+}
+
+# Compute lag-based ACF for unevenly spaced positions by grouping into lags of distance
+# But here we will compute standard ACF on ordered residuals because whitening is applied per-order
+compute_acf_vals <- function(vec, max_lag = 50, na_rm = TRUE) {
+  if (na_rm) vec <- na.omit(vec)
+  if (length(vec) < 3) return(data.table(lag = integer(0), acf = numeric(0)))
+  acf_obj <- acf(vec, plot = FALSE, lag.max = max_lag, na.action = na.pass)
+  data.table(lag = acf_obj$lag[,1,1], acf = acf_obj$acf[,1,1])
+}
+
+# 1) Load table_10kb into dt (must be a data.table)
+tbl_10kb <- filter(human_maps_10kb, constrained_model=="phastCons")  
+tbl_10kb$avg_pi <- log(tbl_10kb$avg_pi)
+
+# because of 0's
+if(any(tbl_10kb$prop_del_sites==0)) {
+  tbl_10kb$prop_del_sites <- log1p(tbl_10kb$prop_del_sites) 
+} else {
+  tbl_10kb$prop_del_sites <- log(tbl_10kb$prop_del_sites) 
+}
+
+tmp_B <- filter(B_10kb, constrained_model=="phastCons") %>%
+         dplyr::select(., -constrained_model)
+
+tbl_10kb <- left_join(tbl_10kb, tmp_B, by=c("chrom", 
+                                            "chromStart", 
+                                            "chromEnd"))
+
+tbl_10kb <- left_join(tbl_10kb, rec_latent_10kb, by=c("chrom", 
+                                                      "chromStart", 
+                                                      "chromEnd"))
+
+tbl_10kb <- left_join(tbl_10kb, mut_latent_10kb, by=c("chrom", 
+                                                      "chromStart", 
+                                                      "chromEnd"))
+
+tbl_10kb <- filter(tbl_10kb, coverage >= 0.75)
+names(tbl_10kb)[8:10] <- c("B", "avg_rec", "avg_mut")
+
+# modeling autocorrelation
+dt <- copy(tbl_10kb) %>%
+       mutate(midpoint=(chromStart + chromEnd) / 2) %>%
+       arrange(chrom, midpoint) %>%
+       as.data.table()
+setDT(dt)
+
+# Basic checks
+required_cols <- c("chr", "midpoint", "avg_pi", "B", "avg_mut", "avg_rec", "prop_del_sites")
+stopifnot(all(required_cols %in% names(dt)))
+
+# 2) pick three chromosomes with most windows
+chr_counts <- dt[, .N, by = chr][order(-N)]
+sel_chrs <- chr_counts[1:min(3, .N), chr]
+message("Selected chromosomes: ", paste(sel_chrs, collapse = ", "))
+
+# 3) For each selected chr: fit OLS, compute residuals, estimate decay, whiten, compute ACF
+results_list <- list()
+
+for (chr_val in sel_chrs) {
+  dt_chr <- dt[chr == chr_val]
+  # Order by midpoint
+  setorderv(dt_chr, "midpoint")
+  # Fit OLS for avg_pi using predictors that reflect your residual model
+  formula_pi <- as.formula("avg_pi ~ B + avg_mut + avg_rec")
+  ols_fit <- try(lm(formula_pi, data = dt_chr), silent = TRUE)
+  if (inherits(ols_fit, "try-error")) {
+    warning("OLS failed for chr ", chr_val)
+    next
+  }
+  resid_raw <- resid(ols_fit)
+  # Estimate decay from residuals
+  decay <- estimate_decay_per_chr(dt_chr, formula = formula_pi, min_pairs = 20, max_pair_distance = 2e5)
+  alpha <- decay$alpha; sigma2 <- decay$sigma2
+  message(sprintf("chr %s: alpha = %s, sigma2 = %s, pairs = %d", chr_val, signif(alpha,4), signif(sigma2,4), decay$n_pairs))
+  # Build covariance for these positions
+  pos <- dt_chr$midpoint
+  cov_mat <- build_exp_cov_dense(pos = pos, alpha = alpha, sigma2 = sigma2, max_pair_distance = 2e5)
+  # Whiten residuals (z = P^{1/2} y where P = Cov^{-1}; here using precision sqrt via eigen/Cholesky)
+  z_whiten <- whiten_with_cov(resid_raw, cov_mat)
+  # For diagnostics compute ACF of raw and whitened residuals
+  max_lag <- 50
+  acf_raw <- compute_acf_vals(resid_raw, max_lag = max_lag)
+  acf_raw[, chr := chr_val]; acf_raw[, type := "raw"]
+  acf_white <- compute_acf_vals(z_whiten, max_lag = max_lag)
+  acf_white[, chr := chr_val]; acf_white[, type := "whitened"]
+  # Save
+  results_list[[as.character(chr_val)]] <- list(dt_chr = dt_chr,
+                                                ols_fit = ols_fit,
+                                                resid_raw = resid_raw,
+                                                z_whiten = z_whiten,
+                                                decay = decay,
+                                                acf_raw = acf_raw,
+                                                acf_white = acf_white)
+}
+
+# 4) Combine ACF tables for plotting
+acf_dt <- rbindlist(lapply(results_list, function(x) rbind(x$acf_raw, x$acf_white)), use.names = TRUE, fill = TRUE)
+# Convert lag to integer (acf returns 0..max_lag)
+acf_dt[, lag := as.integer(lag)]
+
+# 5) Plot ACFs side-by-side: one facet per chromosome, raw vs whitened colored
+p <- ggplot(acf_dt, aes(x = lag, y = acf, color = type)) +
+  geom_line() +
+  geom_point(size = 1) +
+  facet_wrap(~ chr, scales = "free_y") +
+  scale_color_manual(values = c(raw = "firebrick", whitened = "steelblue")) +
+  labs(x = "Lag (index)", y = "ACF", color = "", title = "Residual ACF before and after whitening by chromosome") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+
+print(p)
+
+# 6) Optional: quick numeric checks for remaining autocorrelation (e.g., mean absolute ACF at lags 1:5)
+summary_dt <- acf_dt[lag >= 1 & lag <= 5, .(mean_abs_acf = mean(abs(acf), na.rm = TRUE)), by = .(chr, type)]
+print(summary_dt)
+```
+
+Fit SEM
+
+```{r, example-run, eval=F, include=F, message=F, warning=F}
+
+# inputs
+window_bp <- 1e4
+dt <- copy(table_10kb)
+setDT(dt)
+stopifnot(all(c("chr","midpoint") %in% names(dt)))
+
+# Define predictor sets per variable for model_2
+vars_model_2 <- list(
+  avg_pi = c("B", "avg_mut", "prop_del_sites"),
+  B = c("prop_del_sites", "avg_mut", "avg_rec"),
+  avg_mut= c("avg_rec")
+)
+
+# Build block specs and estimate decay per variable per chromosome
+spec2 <- make_block_specs(dt = dt, vars = vars_model_2, by_chr = "chr", window_bp = window_bp,
+                          max_block_span = 1e6, max_pair_distance = 2e5, min_pairs = 20)
+
+# spec2$block_map ; spec2$decay_dt
+print(head(spec2$decay_dt))
+
+# For a full run you may proceed chromosome-wise. For demonstration we'll create a manageable subset:
+# take up to N_per_chr windows per chromosome to make subsequent linear algebra feasible
+N_per_chr <- 300
+dt_sub <- dt[, .SD[seq_len(min(.N, N_per_chr))], by = chr]
+# remap block_map to dt_sub row indices by matching chr & midpoint
+bm <- merge(spec2$block_map, dt_sub[, .(chr, midpoint, sub_row = .I)], by = c("chr", "midpoint"))
+block_map_sub <- bm[, .(row_id = sub_row, chr, midpoint, block_id)]
+
+# Build sparse covariance blocks using decay estimates (for dt_sub)
+decay_dt2 <- spec2$decay_dt
+sparse_obj <- make_sparse_cov_blocks(block_map = block_map_sub, decay_dt = decay_dt2, dt = dt_sub,
+                                     by_chr = "chr", max_pair_distance = 2e5)
+
+vars_to_whiten <- c("avg_pi", "B", "avg_mut", "avg_rec", "prop_del_sites", "pi_sim_tot")
+# Only whiten variables present in dt_sub
+vars_to_whiten <- intersect(vars_to_whiten, names(dt_sub))
+whitened_list <- lapply(vars_to_whiten, function(v) prewhiten_variable_blockwise(v, dt_sub, sparse_obj))
+names(whitened_list) <- vars_to_whiten
+
+dt_whiten <- copy(dt_sub)
+for (v in names(whitened_list)) { dt_whiten[, (v) := whitened_list[[v]]] }
+
+# Keep complete cases for the variables used in the SEM
+model_vars <- c("pi_sim_tot", "avg_mut", "B", "prop_del_sites", "avg_rec")
+model_vars <- intersect(model_vars, names(dt_whiten))
+dt_whiten_complete <- dt_whiten[complete.cases(dt_whiten[, ..model_vars])]
+
+# Compute whitened sample covariance and sample size
+window_mat <- as.matrix(dt_whiten_complete[, ..model_vars])
+sample_cov_whiten <- cov(window_mat, use = "pairwise.complete.obs")
+n_obs_whiten <- nrow(window_mat)
+
+# Fit model_2 in lavaan using whitened sample covariance
+model_2_lavaan <- '
+  pi_sim_tot ~ start(0.25)*c1*avg_mut
+  pi_sim_tot ~ start(0.5)*c2*B
+  pi_sim_tot ~ start(-0.25)*c3*prop_del_sites
+  B ~ start(-0.25)*c4*prop_del_sites
+  B ~ start(-0.25)*c5*avg_mut
+  B ~ start(0.25)*c6*avg_rec
+  avg_mut ~ start(0.25)*c7*avg_rec
+  avg_mut ~~ 0*prop_del_sites
+  mu_B_pi := c1*c5
+  rec_B_pi := c2*c6
+  rec_mu_pi := c1*c7
+  rec_mu_B_pi := c2*c5*c7
+'
+fit <- sem(model_2_lavaan, sample.cov = sample_cov_whiten, sample.nobs = n_obs_whiten,
+           sample.mean = colMeans(dt_whiten_complete[, ..model_vars], na.rm = TRUE))
+summary(fit, standardized = TRUE, fit.measures = TRUE)
+
+```
+
+Back to analyses (exit example)
+Fitting models
+
+```{r, fitting-SEM-DAGs, eval=F, include=F, message=F, warning=F}
 
 # 10 kb
 for(m in unique(human_maps_10kb$constrained_model)) { 
@@ -6188,7 +6447,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
   
   tbl_blocks <- tbl[, .SD, by=chrom] %>%
   group_by(chrom) %>%
-  group_map(~ make_distance_blocks(as.data.table(.x))) %>%
+  group_map(~ make_distance_blocks(as.data.table(.x), 1e+4)) %>%
   bind_rows() %>%
   as.data.table()
   
@@ -7787,7 +8046,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
 
 Fit measures & model selection
 
-```{r SEM-human-fitmeasures,  include=F, message=F, warning=F}
+```{r SEM-human-fitmeasures, eval=F, include=F, message=F, warning=F}
 
 # genome-wide
 ## 10 kb
@@ -8799,7 +9058,7 @@ save_plot("real_data_maps/chr_LRT_latent.pdf", p,
 
 Variance explained
 
-```{r SEM-human-r2,  include=F, message=F, warning=F}
+```{r SEM-human-r2, eval=F, include=F, message=F, warning=F}
 
 # genome-wide models, DAGs 0-1 
 ## 10 kb
@@ -9411,7 +9670,7 @@ save_plot("real_data_maps/chr_r2_pi_latents.pdf", r,
 
 Parameter estimates
 
-```{r SEM-human-params,  include=F, message=F, warning=F}
+```{r SEM-human-params, eval=F, include=F, message=F, warning=F}
 
 # genome-wide, DAGs 0-1
 ## 10 kb
@@ -10257,7 +10516,7 @@ Here we use simulated pi (mutational variance)
 
 10 kb
 
-```{r SEM-human-maps-10kb, include=F, message=F, warning=F}
+```{r SEM-human-maps-10kb, eval=F, include=F, message=F, warning=F}
 
 human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
                    filter(., mut_map!="uniform") %>%
@@ -10574,7 +10833,7 @@ for(u in unique(human_maps_10kb$mut_map)) {
 
 100 kb
 
-```{r SEM-human-maps-100kb, include=F, message=F, warning=F}
+```{r SEM-human-maps-100kb, eval=F, include=F, message=F, warning=F}
 
 human_maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz") %>%
                     filter(., mut_map!="uniform") %>%
@@ -10891,7 +11150,7 @@ for(u in unique(human_maps_100kb$mut_map)) {
 
 1 Mb
 
-```{r SEM-human-maps-1Mb, include=F, message=F, warning=F}
+```{r SEM-human-maps-1Mb, eval=F, include=F, message=F, warning=F}
 
 human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz")  %>%
                   filter(., mut_map!="uniform") %>%
@@ -11208,7 +11467,7 @@ for(u in unique(human_maps_1Mb$mut_map)) {
 
 Fit measures & model selection
 
-```{r SEM-human-fitmeasures,  include=F, message=F, warning=F}
+```{r SEM-human-fitmeasures, eval=F, include=F, message=F, warning=F}
 
 # genome-wide
 ## 10 kb
@@ -11759,7 +12018,7 @@ save_plot("real_data_maps/chr_LRT_simpi.pdf", p,
 
 Variance explained
 
-```{r SEM-human-r2,  include=F, message=F, warning=F}
+```{r SEM-human-r2, eval=F, include=F, message=F, warning=F}
 
 # genome-wide models, DAGs 0-1 
 ## 10 kb
@@ -12381,7 +12640,7 @@ save_plot("real_data_maps/chr_r2_mut_DAGs2-3_simpi.pdf", r,
 
 Parameter estimates
 
-```{r SEM-human-params,  include=F, message=F, warning=F}
+```{r SEM-human-params, eval=F, include=F, message=F, warning=F}
 
 # genome-wide, DAGs 0-1
 ## 10 kb
