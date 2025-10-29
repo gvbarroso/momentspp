@@ -6887,6 +6887,106 @@ add_genome_offsets_and_midpoint <- function(table_10kb,
   out <- dt_temp[, ..out_cols]
   return(out[])
 }
+
+whitened_diagnostics <- function(target_var,
+                                 sel_chrs = sort(unique(dt_sub$chrom)),
+                                 predictors,
+                                 dt_raw = dt_sub,
+                                 dt_wh = dt_whitened,
+                                 max_lag = 50) {
+
+  whitened_col <- paste0(target_var, "_wh")
+  out <- vector("list", length(sel_chrs))
+  names(out) <- as.character(sel_chrs)
+
+  for (i in seq_along(sel_chrs)) {
+    chr_val <- sel_chrs[i]
+    dr <- dt_raw[chrom == chr_val]
+    dw <- dt_wh[chrom == chr_val]
+
+    # raw OLS
+    res_raw <- tryCatch({
+      fml_r <- as.formula(paste(target_var, "~", paste(predictors, collapse = " + ")))
+      fit_r <- lm(fml_r, data = dr)
+      resid_r <- resid(fit_r)
+      list(n_raw = nrow(dr),
+           n_non_na_raw = sum(!is.na(dr[[target_var]])),
+           resid_sd_raw = if (length(resid_r) > 0) sd(resid_r, na.rm = TRUE) else NA_real_,
+           acf_ok_raw = length(na.omit(resid_r)) >= 3)
+    }, error = function(e) {
+      list(n_raw = nrow(dr),
+           n_non_na_raw = sum(!is.na(dr[[target_var]])),
+           resid_sd_raw = NA_real_,
+           acf_ok_raw = FALSE,
+           raw_error = conditionMessage(e))
+    })
+
+    # whitened OLS (if possible)
+    if (!is.null(dw) && whitened_col %in% names(dw) && nrow(dw) > 0) {
+      res_wh <- tryCatch({
+        # create a temporary merged table if predictors missing in dw
+        if (!all(predictors %in% names(dw))) {
+          if ("midpoint" %in% names(dr) && "midpoint" %in% names(dw)) {
+            merged <- merge(dr[, .(chrom, midpoint, .SD), .SDcols = predictors],
+                            dw[, .(chrom, midpoint, whitened = get(whitened_col))],
+                            by = c("chrom", "midpoint"), all = FALSE)
+            fml_w <- as.formula(paste("whitened ~", paste(predictors, collapse = " + ")))
+            fit_w <- lm(fml_w, data = merged)
+            resid_w <- resid(fit_w)
+            list(n_wh = nrow(dw),
+                 n_non_na_wh = sum(!is.na(dw[[whitened_col]])),
+                 resid_sd_wh = if (length(resid_w) > 0) sd(resid_w, na.rm = TRUE) else NA_real_,
+                 acf_ok_wh = length(na.omit(resid_w)) >= 3,
+                 merged_rows = nrow(merged))
+          } else {
+            list(n_wh = nrow(dw),
+                 n_non_na_wh = sum(!is.na(dw[[whitened_col]])),
+                 resid_sd_wh = NA_real_,
+                 acf_ok_wh = FALSE,
+                 merged_rows = 0,
+                 wh_error = "predictors missing in dt_whitened and cannot merge")
+          }
+        } else {
+          dw2 <- copy(dw)
+          dw2[, whitened := dw2[[whitened_col]]]
+          fml_w <- as.formula(paste("whitened ~", paste(predictors, collapse = " + ")))
+          fit_w <- lm(fml_w, data = dw2)
+          resid_w <- resid(fit_w)
+          list(n_wh = nrow(dw),
+               n_non_na_wh = sum(!is.na(dw[[whitened_col]])),
+               resid_sd_wh = if (length(resid_w) > 0) sd(resid_w, na.rm = TRUE) else NA_real_,
+               acf_ok_wh = length(na.omit(resid_w)) >= 3,
+               merged_rows = NA_integer_)
+        }
+      }, error = function(e) {
+        list(n_wh = nrow(dw),
+             n_non_na_wh = sum(!is.na(dw[[whitened_col]])),
+             resid_sd_wh = NA_real_,
+             acf_ok_wh = FALSE,
+             wh_error = conditionMessage(e))
+      })
+    } else {
+      res_wh <- list(n_wh = if (!is.null(dw)) nrow(dw) else 0,
+                     n_non_na_wh = if (!is.null(dw) && whitened_col %in% names(dw)) sum(!is.na(dw[[whitened_col]])) else 0,
+                     resid_sd_wh = NA_real_,
+                     acf_ok_wh = FALSE,
+                     merged_rows = 0,
+                     wh_error = "whitened column missing or no whitened rows")
+    }
+
+    out[[i]] <- c(chr = chr_val, res_raw, res_wh)
+    message("chr ", chr_val, " | raw rows=", res_raw$n_raw, " raw non-NA=", res_raw$n_non_na_raw,
+            " | wh rows=", res_wh$n_wh, " wh non-NA=", res_wh$n_non_na_wh)
+  }
+
+  dt_out <- rbindlist(lapply(out, as.data.table), fill = TRUE)
+  numcols <- setdiff(names(dt_out), "chr")
+  for (nc in numcols) dt_out[[nc]] <- as.numeric(dt_out[[nc]])
+  setnames(dt_out, "chr", "chrom")
+  dt_out[]
+}
+# --- end function ---
+
 ```
 
 Automated pipeline
@@ -7456,19 +7556,30 @@ print(res_pw$diagnostics)
 # ---------------------------------------------------------------------------
 # 4. For each chromosome: fit OLS, compute residuals raw and whitened, compute ACFs
 # ---------------------------------------------------------------------------
-compute_resid_and_acf <- function(dt_chr, response, predictors, whitened_col = NULL, max_lag = 50) {
-  fml <- as.formula(paste(response, "~", paste(predictors, collapse = " + ")))
-  ols <- try(lm(fml, data = dt_chr), silent = TRUE)
-  if (inherits(ols, "try-error")) return(NULL)
-  resid_raw <- resid(ols)
+compute_resid_and_acf <- function(dt_chr,
+                                 response,
+                                 predictors,
+                                 whitened_col = NULL,
+                                 max_lag = 50) {
+  # build formula for raw data
+  fml_raw <- as.formula(paste(response, "~", paste(predictors, collapse = " + ")))
+  ols_raw <- try(lm(fml_raw, data = dt_chr), silent = TRUE)
+  if (inherits(ols_raw, "try-error")) return(NULL)
+
+  resid_raw <- resid(ols_raw)
   acf_raw <- if (length(resid_raw) >= 3) {
     acf_obj <- acf(resid_raw, plot = FALSE, lag.max = max_lag, na.action = na.pass)
     data.table(lag = as.integer(acf_obj$lag[,1,1]), acf = as.numeric(acf_obj$acf[,1,1]))
   } else data.table(lag = integer(0), acf = numeric(0))
+
+  # whitened branch: only run if whitened_col provided and present
   if (!is.null(whitened_col) && whitened_col %in% names(dt_chr)) {
-    dt_chr2 <- copy(dt_chr); dt_chr2[, response := dt_chr2[[whitened_col]]]
-    fml_w <- as.formula(paste("response ~", paste(predictors, collapse = " + ")))
+    dt_chr2 <- copy(dt_chr)
+    # place whitened response into a column named "response_wh"
+    dt_chr2[, response_wh := dt_chr2[[whitened_col]]]
+    fml_w <- as.formula(paste("response_wh ~", paste(predictors, collapse = " + ")))
     ols_w <- try(lm(fml_w, data = dt_chr2), silent = TRUE)
+
     if (inherits(ols_w, "try-error")) {
       resid_white <- rep(NA_real_, nrow(dt_chr2))
       acf_white <- data.table(lag = integer(0), acf = numeric(0))
@@ -7478,28 +7589,109 @@ compute_resid_and_acf <- function(dt_chr, response, predictors, whitened_col = N
       acf_white <- data.table(lag = as.integer(acf_obj_w$lag[,1,1]), acf = as.numeric(acf_obj_w$acf[,1,1]))
     }
   } else {
+    # whitened_col not provided or not present
+    resid_white <- NULL
     acf_white <- data.table(lag = integer(0), acf = numeric(0))
   }
-  list(acf_raw = acf_raw, acf_white = acf_white, resid_raw = resid_raw)
+
+  list(acf_raw = acf_raw, acf_white = acf_white, resid_raw = resid_raw, resid_white = resid_white)
 }
 
-# collect ACFs
+# Collection loop (robust to missing whitened rows)
 acf_results <- list()
 for (chr_val in sel_chrs) {
-  dt_chr_raw <- dt_sub[chr == chr_val]
-  dt_chr_wh <- dt_whitened[chrom == chr_val]
-  # use whitened column name
-  whitened_col <- paste0(target_var, "_wh")
-  res_chr <- compute_resid_and_acf(dt_chr_raw, response = target_var, predictors = vars_list[[target_var]], whitened_col = whitened_col, max_lag = 50)
-  if (is.null(res_chr)) next
-  acf_raw <- res_chr$acf_raw; acf_raw[, `:=`(chrom = chr_val, type = "raw")]
-  acf_white <- res_chr$acf_white; acf_white[, `:=`(chrom = chr_val, type = "whitened")]
-  acf_results[[as.character(chr_val)]] <- rbind(acf_raw, acf_white)
+  dt_chr_raw <- dt_sub[chrom == chr_val]            # make sure column name is 'chrom'
+  dt_chr_wh  <- dt_whitened[chrom == chr_val]       # same 'chrom' key expected
+  whitened_col <- paste0(target_var, "_wh")         # e.g., "avg_pi_wh"
+  res_chr <- compute_resid_and_acf(dt_chr_raw,
+                                  response = target_var,
+                                  predictors = vars_list[[target_var]],
+                                  whitened_col = whitened_col,
+                                  max_lag = 50)
+  if (is.null(res_chr)) {
+    message("chr ", chr_val, ": OLS failed; skipping")
+    next
+  }
+
+  acf_raw <- res_chr$acf_raw
+  if (nrow(acf_raw) > 0) acf_raw[, `:=`(chrom = chr_val, type = "raw")]
+
+  acf_white <- res_chr$acf_white
+  if (nrow(acf_white) > 0) acf_white[, `:=`(chrom = chr_val, type = "whitened")]
+
+  acf_results[[as.character(chr_val)]] <- rbind(acf_raw, acf_white, fill = TRUE)
   message("chrom ", chr_val, ": raw acf rows = ", nrow(acf_raw), " ; whitened acf rows = ", nrow(acf_white))
 }
 
+# final combined table (may be empty for whitened rows)
 acf_dt <- rbindlist(acf_results, use.names = TRUE, fill = TRUE)
-acf_dt[, lag := as.integer(lag)]
+
+# ---------------------------------------------------------------------------
+# 4.5. Diagnostics
+# ---------------------------------------------------------------------------
+
+# Is the whitened column present?
+whitened_col <- paste0(target_var, "_wh")
+whitened_col %in% names(dt_whitened)
+
+# For a specific chromosome:
+chr_val <- 22
+wh_present <- whitened_col %in% names(dt_whitened)
+n_wh_rows <- nrow(dt_whitened[chrom == chr_val])
+n_sub_rows <- nrow(dt_sub[chrom == chr_val])
+message("chr ", chr_val, ": whitened rows = ", n_wh_rows, "; sub rows = ", n_sub_rows)
+
+# Are the whitened values NA or constant (both make acf invalid)?
+summary(dt_whitened[chrom == chr_val, ..whitened_col])
+table(is.na(dt_whitened[chrom == chr_val, ..whitened_col][[1]]))
+sd(dt_whitened[chrom == chr_val, ..whitened_col][[1]], na.rm = TRUE)
+
+# Single-chromosome diagnostics
+target_var <- "avg_pi"   # set your response variable (no "_wh")
+whitened_col <- paste0(target_var, "_wh")
+
+# existence and row counts
+cat("whitened column present:", whitened_col %in% names(dt_whitened), "\n")
+cat("rows in dt_sub for chr", chr_val, ":", nrow(dt_sub[chrom == chr_val]), "\n")
+cat("rows in dt_whitened for chr", chr_val, ":", nrow(dt_whitened[chrom == chr_val]), "\n")
+
+# show first 10 values and NA summary for whitened col (if present)
+if (whitened_col %in% names(dt_whitened)) {
+  vals <- dt_whitened[chrom == chr_val, get(whitened_col)]
+  print(head(vals, 10))
+  print(summary(vals))
+  cat("NA count:", sum(is.na(vals)), "non-NA count:", sum(!is.na(vals)), "\n")
+  cat("sd (non-NA):", sd(vals, na.rm = TRUE), "\n")
+} else {
+  cat("Whitened column not found in dt_whitened\n")
+}
+
+# quick check: are whitened rows matched to dt_sub by midpoint/chrom (if you expect same rows)
+if ("midpoint" %in% names(dt_sub) && "midpoint" %in% names(dt_whitened)) {
+  common <- merge(
+    dt_sub[chrom == chr_val, .(chrom, midpoint, idx_sub = .I)],
+    dt_whitened[chrom == chr_val, .(chrom, midpoint, idx_wh = .I)],
+    by = c("chrom", "midpoint")
+  )
+  cat("matched rows by midpoint:", nrow(common), "\n")
+  if (nrow(common) < nrow(dt_sub[chrom == chr_val])) {
+    cat("Warning: some dt_sub rows not matched to dt_whitened for this chromosome\n")
+  }
+}
+
+# set these to match your objects
+target_var <- "avg_pi"
+predictors <- c("B", "avg_mut", "prop_del_sites")
+sel_chrs <- sort(unique(dt_sub$chrom))
+
+diag_dt <- whitened_diagnostics(target_var = target_var,
+                                sel_chrs = sel_chrs,
+                                predictors = predictors,
+                                dt_raw = dt_sub,
+                                dt_wh  = dt_whitened)
+# write a CSV for inspection
+fwrite(diag_dt, file = file.path(out_dir, "whitened_diagnostics_by_chr.csv"))
+print(diag_dt)
 
 # ---------------------------------------------------------------------------
 # 5. Plot ACFs side-by-side
