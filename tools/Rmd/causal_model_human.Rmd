@@ -7693,6 +7693,33 @@ diag_dt <- whitened_diagnostics(target_var = target_var,
 fwrite(diag_dt, file = file.path(path.expand("~/Desktop"), "whitened_diagnostics_by_chr.csv"))
 print(diag_dt)
 
+chr_val <- 22
+tv <- "avg_pi"
+wc <- paste0(tv, "_wh")
+dt_r <- dt_sub[chrom == chr_val, .(chrom, midpoint, raw = get(tv))]
+dt_w <- dt_whitened[chrom == chr_val, .(chrom, midpoint, wh = get(wc))]
+merged <- merge(dt_r, dt_w, by = c("chrom","midpoint"))
+print(head(merged, 12))
+summary(merged$raw)
+summary(merged$wh)
+
+# top 10 largest absolute whitened values and their rows
+ord <- order(abs(merged$wh), decreasing = TRUE)
+merged[ord[1:10], .(midpoint, raw, wh, which_max = which.max(abs(merged$wh)[ord[1:10]])), ]
+# also count how many exceed a threshold
+sum(abs(merged$wh) > 1e4)   # tune threshold to your context
+
+preds <- c("B","avg_mut","prop_del_sites")
+fml_w <- as.formula(paste("wh ~", paste(preds, collapse = " + ")))
+fit_w <- lm(fml_w, data = merged)
+summary(fit_w)
+sd(resid(fit_w), na.rm = TRUE)
+plot(fit_w$fitted.values, merged$wh, main = "whitened fitted vs observed")
+
+cor_cols <- merged[, .(raw, wh, B, avg_mut, prop_del_sites)]
+cor(cor_cols, use = "pairwise.complete.obs")
+
+
 # ---------------------------------------------------------------------------
 # 5. Plot ACFs side-by-side
 # ---------------------------------------------------------------------------
@@ -7733,10 +7760,8 @@ print(res_pw$diagnostics)
 ```
 
 TODO: work here
-```{r, eval=F}
-# Required libraries
-library(data.table)
-library(lavaan)
+```{r, eval=F, include=F}
+
 library(BiocParallel)
 
 # Helpers --------------------------------------------------------------------
@@ -7922,7 +7947,7 @@ res_dt
 
 Fit SEM
 
-```{r, example-run, eval=T, include=F, message=F, warning=F}
+```{r, example-run, eval=T, include=T, message=F, warning=F}
 
 # inputs
 window_bp <- 1e4
@@ -8056,7 +8081,6 @@ fit <- sem(model_2_lavaan,
            group.equal="none",
            estimator="ML")
 summary(fit, fit.measures = TRUE)
-
 ```
 
 Back to analyses (exit example)
