@@ -7099,6 +7099,142 @@ make_sparse_cov_blocks <- function(block_map,
 }
 ```
 
+Helper function to construct lavaan model strings
+
+```{r make-lavaan-models, eval=T, include=T}
+
+make_lavaan_model <- function(edges,
+                              covs = NULL,
+                              defined = NULL,
+                              groups = NULL,
+                              free_by = c("shared", "groups", "named"),
+                              per_group_map = NULL,
+                              label_prefix = "p",
+                              sep = "  ") {
+  free_by <- match.arg(free_by)
+  stopifnot(is.list(edges) && length(edges) > 0)
+
+  # helper to normalize an RHS spec into a list(predictor, label, start)
+  normalize_rhs <- function(r) {
+    if (is.character(r) && length(r) == 1) return(list(p = r, label = NULL, start = NULL))
+    if (is.list(r) && !is.null(r$p)) {
+      return(list(p = as.character(r$p),
+                  label = if (!is.null(r$label)) as.character(r$label) else NULL,
+                  start = if (!is.null(r$start)) as.numeric(r$start) else NULL))
+    }
+    stop("RHS must be a string or list with element 'p'")
+  }
+
+  # build lines
+  lines <- character(0)
+  for (lhs in names(edges)) {
+    rhss <- edges[[lhs]]
+    for (r in rhss) {
+      nr <- normalize_rhs(r)
+      p <- nr$p; lab <- nr$label; st <- nr$start
+
+      if (free_by == "shared") {
+        # use provided label if present, otherwise leave unlabeled (group-free)
+        if (!is.null(lab)) {
+          lab_part <- paste0(lab, "*")
+        } else {
+          lab_part <- ""
+        }
+        start_part <- if (!is.null(st)) paste0("start(", st, ")*") else ""
+        line <- paste0(lhs, " ~ ", start_part, lab_part, p)
+        lines <- c(lines, line)
+      } else if (free_by == "groups") {
+        if (is.null(groups) || groups < 1) stop("groups must be provided for free_by='groups'")
+        # generate a vector label with length == groups, e.g., c(x1,x2,...)
+        lab_names <- paste0(label_prefix, seq_len(groups))
+        lab_vec <- paste0("c(", paste(lab_names, collapse = ", "), ")*")
+        start_part <- if (!is.null(st)) paste0("start(", st, ")*") else ""
+        line <- paste0(lhs, " ~ ", start_part, lab_vec, p)
+        lines <- c(lines, line)
+      } else { # free_by == "named"
+        # per_group_map is a named character vector e.g., c("avg_pi~avg_mut" = "groups")
+        key <- paste0(lhs, "~", p)
+        if (!is.null(per_group_map) && !is.na(per_group_map[key]) && per_group_map[key] == "groups") {
+          if (is.null(groups)) stop("groups must be provided for per-group labels")
+          lab_names <- paste0(label_prefix, seq_len(groups))
+          lab_vec <- paste0("c(", paste(lab_names, collapse = ", "), ")*")
+          start_part <- if (!is.null(st)) paste0("start(", st, ")*") else ""
+          line <- paste0(lhs, " ~ ", start_part, lab_vec, p)
+        } else {
+          # shared or unlabeled
+          if (!is.null(lab)) lab_part <- paste0(lab, "*") else lab_part <- ""
+          start_part <- if (!is.null(st)) paste0("start(", st, ")*") else ""
+          line <- paste0(lhs, " ~ ", start_part, lab_part, p)
+        }
+        lines <- c(lines, line)
+      }
+    }
+  }
+
+  # covariances
+  if (!is.null(covs) && length(covs) > 0) {
+    for (cv in covs) {
+      # cv may be c("a","b") or list(c("a","b"))
+      if (is.character(cv) && length(cv) == 2) {
+        lines <- c(lines, paste0(cv[1], " ~~ ", cv[2]))
+      } else if (is.list(cv) && length(cv) == 2) {
+        lines <- c(lines, paste0(cv[[1]], " ~~ ", cv[[2]]))
+      } else {
+        stop("covs must be pairs of variable names")
+      }
+    }
+  }
+
+  # defined parameters
+  if (!is.null(defined) && length(defined) > 0) {
+    for (nm in names(defined)) {
+      lines <- c(lines, paste0(nm, " := ", defined[[nm]]))
+    }
+  }
+
+  paste(lines, collapse = paste0("\n", sep))
+}
+
+# example usage
+edges <- list(
+  avg_pi = list(list(p="avg_mut", label="c1", start=0.25),
+                list(p="B", label="c2", start=0.5),
+                list(p="prop_del_sites", label="c3", start=-0.25)),
+  B = list(list(p="prop_del_sites", label="c4", start=-0.25),
+           list(p="avg_mut", label="c5", start=-0.25),
+           list(p="avg_rec", label="c6", start=0.25)),
+  avg_mut = list(list(p="avg_rec", label="c7", start=0.25))
+)
+covs <- list(c("avg_mut","prop_del_sites"))
+
+defined <- c(mu_B_pi="c1*c5",
+             rec_B_pi="c2*c6", 
+             rec_mu_pi="c1*c7", 
+             rec_mu_B_pi="c2*c5*c7")
+
+model_shared <- make_lavaan_model(edges, 
+                                  covs=covs, 
+                                  defined=defined, 
+                                  free_by="shared")
+cat(model_shared)
+
+model_groups <- make_lavaan_model(edges, 
+                                  covs=covs, defined=defined,
+                                  groups=22, 
+                                  free_by="groups",
+                                  label_prefix="x")
+cat(model_groups)
+
+per_group_map <- c("avg_pi~avg_mut"="groups", "avg_pi~B"="groups")
+model_hybrid <- make_lavaan_model(edges, 
+                                  covs=covs,
+                                  defined=defined,
+                                  groups=22, free_by="named",
+                                  per_group_map=per_group_map,
+                                  label_prefix="g")
+cat(model_hybrid)
+```
+
 ### Data Analyses
 
 Path models using latent variable predictions for mut, rec, B
@@ -11560,7 +11696,7 @@ save_plot(paste("real_data_maps/sem_pcratios_pi_lantents.pdf", sep=""),
 
 Why do some chr fit better than others?
 
-```{r SEM-chr-features, evaluate=F, include=F, message=F, warning=F}
+```{r SEM-chr-features, evale=F, include=F, message=F, warning=F}
 
 summary(chr_fitmeasures_latent)
 #summars <- fread("~/Data/bgs_lmr/human_data/data/h38.genome")
