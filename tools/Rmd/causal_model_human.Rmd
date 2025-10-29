@@ -5724,24 +5724,40 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
 ```{r SEM-helpers-1, eval=T, include=F, message=F, warning=F}
 
 # 1) distance-aware blocks (returns copy)
-make_distance_blocks <- function(dt_chr, window_bp, max_block_span = 1e6, gap_factor = 2L) {
-  if (!"data.table" %in% class(dt_chr)) dt_chr <- as.data.table(dt_chr)
+make_distance_blocks <- function(dt_chr, window_bp, max_block_span = 1e6, gap_factor = 4L) {
+  # Defensive checks
+  if (!inherits(dt_chr, "data.table")) dt_chr <- as.data.table(dt_chr)
+  stopifnot("midpoint" %in% names(dt_chr))
+  dt_chr <- copy(dt_chr)
+  dt_chr <- dt_chr[order(midpoint)]
+
+  # Parameters
   max_gap <- as.numeric(window_bp) * as.numeric(gap_factor)
   pos <- dt_chr$midpoint
+  if (length(pos) < 2) {
+    dt_chr[, block_id := 1L]
+    return(dt_chr)
+  }
+
+  # Assign initial block IDs based on gaps
   gaps <- c(0, diff(pos))
   block_id <- cumsum(gaps > max_gap) + 1L
   dt_chr[, block_id := block_id]
+
+  # Compute span per block
   dt_chr[, span := max(midpoint) - min(midpoint), by = block_id]
+
+  # Split oversized blocks
   if (any(dt_chr$span > max_block_span)) {
     window_limit <- max(2L, floor(max_block_span / window_bp))
     dt_chr[, block_seq := seq_len(.N), by = block_id]
-    dt_chr[, block_id2 := block_id + floor((block_seq - 1L) / window_limit)]
-    dt_chr[, `:=`(block_id = block_id2)]
-    dt_chr[, c("block_seq", "block_id2", "span") := NULL]
+    dt_chr[, block_id := block_id + floor((block_seq - 1L) / window_limit)]
+    dt_chr[, c("block_seq", "span") := NULL]
   } else {
     dt_chr[, span := NULL]
   }
-  copy(dt_chr)
+
+  return(dt_chr)
 }
 
 # -------------------------------------------------------------------------
@@ -5770,7 +5786,7 @@ estimate_decay_per_chr_robust <- function(dt_chr,
                                           borrow_alpha = NA_real_,
                                           return_binned = TRUE,
                                           verbose = FALSE) {
-  # Validate inputs
+  # Defensive input handling
   if (!inherits(dt_chr, "data.table")) dt_chr <- as.data.table(dt_chr)
   if (!is.null(formula) && (!is.null(resp) || !is.null(predictors))) {
     stop("Provide either 'formula' or both 'resp' and 'predictors', not both.")
@@ -5778,83 +5794,130 @@ estimate_decay_per_chr_robust <- function(dt_chr,
   if (is.null(formula) && (is.null(resp) || is.null(predictors))) {
     stop("Must provide either 'formula' or both 'resp' and 'predictors'.")
   }
+  if (!"midpoint" %in% names(dt_chr)) {
+    return(list(alpha = NA_real_, sigma2 = NA_real_, method = "missing_midpoint", n_pairs = 0L, n_bins = 0L, binned = NULL, fallback_reasons = NA_character_))
+  }
 
-  # Fit OLS model
+  # Fit OLS (try-catch)
   ols <- tryCatch({
     if (!is.null(formula)) lm(formula, data = dt_chr)
     else lm(as.formula(sprintf("%s ~ %s", resp, paste(predictors, collapse = " + "))), data = dt_chr)
-  }, error = function(e) NULL)
+  }, error = function(e) {
+    if (verbose) message("OLS fit failed: ", conditionMessage(e))
+    NULL
+  })
 
   if (is.null(ols)) {
-    return(list(alpha = NA_real_, sigma2 = NA_real_, method = "ols_fail", n_pairs = 0L, n_bins = 0L, binned = NULL))
+    return(list(alpha = NA_real_, sigma2 = NA_real_, method = "ols_fail", n_pairs = 0L, n_bins = 0L, binned = NULL, fallback_reasons = "ols_fail"))
   }
 
   resid_vec <- resid(ols)
   pos <- dt_chr$midpoint
-  n <- length(resid_vec)
-  if (n < 4) {
-    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), method = "insufficient_windows", n_pairs = 0L, n_bins = 0L, binned = NULL))
+  # keep only finite pairs for pos and residuals
+  ok_idx <- which(is.finite(pos) & is.finite(resid_vec))
+  if (length(ok_idx) < 4L) {
+    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), method = "insufficient_windows", n_pairs = 0L, n_bins = 0L, binned = NULL, fallback_reasons = "insufficient_windows"))
+  }
+  pos <- as.numeric(pos[ok_idx])
+  resid_vec <- as.numeric(resid_vec[ok_idx])
+  n <- length(pos)
+
+  # build pair indices (i < j) memory-efficiently
+  # If n is small, build full matrix of indices; if n large, build by chunks
+  make_pair_index <- function(n, chunk_limit = 2000L) {
+    if (n <= chunk_limit) {
+      # all pairs
+      ij <- utils::combn(n, 2)
+      return(t(ij))
+    }
+    # chunked approach: create pairs by iterating i and creating j ranges
+    rows <- vector("list", n - 1L)
+    for (i in seq_len(n - 1L)) {
+      js <- (i + 1L):n
+      rows[[i]] <- cbind(i = rep(i, length(js)), j = js)
+    }
+    do.call(rbind, rows)
   }
 
-  # Efficient pairwise distances and covariances
-  idx <- which(row(pos) < col(pos), arr.ind = TRUE)
-  dvec <- abs(pos[idx[,1]] - pos[idx[,2]])
-  covvec <- resid_vec[idx[,1]] * resid_vec[idx[,2]]
-  ok <- which(is.finite(dvec) & is.finite(covvec) & dvec <= max_pair_distance)
-
-  if (length(ok) < min_pairs) {
-    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), method = "insufficient_pairs", n_pairs = length(ok), n_bins = 0L, binned = NULL))
+  idx <- tryCatch(make_pair_index(n), error = function(e) NULL)
+  if (is.null(idx) || nrow(idx) == 0L) {
+    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), method = "no_pairs", n_pairs = 0L, n_bins = 0L, binned = NULL, fallback_reasons = "no_pairs"))
   }
 
-  # Bin distances
-  d_ok <- dvec[ok]
-  cov_ok <- covvec[ok]
-  bin_idx <- cut(d_ok, breaks = seq(0, max_pair_distance, length.out = n_bins + 1), include.lowest = TRUE, labels = FALSE)
+  # distances and covariance products; filter by max_pair_distance
+  dvec <- abs(pos[idx[, 1L]] - pos[idx[, 2L]])
+  covvec <- resid_vec[idx[, 1L]] * resid_vec[idx[, 2L]]
+  valid_pairs <- which(is.finite(dvec) & is.finite(covvec) & dvec <= max_pair_distance)
+  n_pairs_found <- length(valid_pairs)
+  if (n_pairs_found < min_pairs) {
+    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), method = "insufficient_pairs", n_pairs = n_pairs_found, n_bins = 0L, binned = NULL, fallback_reasons = "insufficient_pairs"))
+  }
+
+  d_ok <- dvec[valid_pairs]
+  cov_ok <- covvec[valid_pairs]
+
+  # bin distances into n_bins equal-width bins up to max_pair_distance
+  breaks <- seq(0, max_pair_distance, length.out = n_bins + 1L)
+  bin_idx <- cut(d_ok, breaks = breaks, include.lowest = TRUE, labels = FALSE)
   bin_dt <- data.table(d = d_ok, cov = cov_ok, bin = bin_idx)
 
+  # compute trimmed mean per bin with minimum observations
   binned <- bin_dt[, {
-    if (.N < 3) .(dmed = median(d), cov_trim = NA_real_, n = .N)
+    if (.N < 3L) .(dmed = median(d), cov_trim = NA_real_, n = .N)
     else {
       lo <- quantile(cov, trim_prop, na.rm = TRUE)
       hi <- quantile(cov, 1 - trim_prop, na.rm = TRUE)
       cov_t <- cov[cov >= lo & cov <= hi]
       .(dmed = median(d), cov_trim = mean(cov_t, na.rm = TRUE), n = .N)
     }
-  }, by = bin][!is.na(cov_trim) & n > 0]
+  }, by = bin][!is.na(cov_trim) & n > 0L]
 
-  if (nrow(binned) < 4) {
-    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), method = "insufficient_bins", n_pairs = length(ok), n_bins = nrow(binned), binned = if (return_binned) binned else NULL))
+  n_bins_used <- nrow(binned)
+  if (n_bins_used < 4L) {
+    return(list(alpha = NA_real_, sigma2 = var(resid_vec, na.rm = TRUE), method = "insufficient_bins", n_pairs = n_pairs_found, n_bins = n_bins_used, binned = if (return_binned) binned else NULL, fallback_reasons = "insufficient_bins"))
   }
 
-  # Fit exponential decay
+  # prepare for fitting: ensure cov_trim is non-negative by shifting if needed
   cov_b <- binned$cov_trim
   d_b <- binned$dmed
   cov_shift <- if (any(cov_b <= 0, na.rm = TRUE)) abs(min(cov_b, na.rm = TRUE)) + 1e-12 else 0
   cov_b_nls <- cov_b + cov_shift
-  s2_start <- start_s2 %||% max(min_sigma2, var(resid_vec, na.rm = TRUE))
+
+  # starting values
+  s2_start <- start_s2 %||% max(min_sigma2, var(resid_vec, na.rm = TRUE), na.rm = TRUE)
   alpha_start <- max(start_alpha, min_alpha)
 
+  # attempt NLS (port algorithm) with bounded parameters
   nls_fit <- tryCatch({
     nls(cov_b_nls ~ s2 * exp(-alpha * d_b),
         start = list(s2 = s2_start + cov_shift, alpha = alpha_start),
         algorithm = "port",
-        lower = c(s2 = lower_s2, alpha = lower_alpha),
+        lower = c(s2 = lower_s2 + cov_shift, alpha = lower_alpha),
         upper = c(s2 = upper_s2 + cov_shift, alpha = upper_alpha),
         control = nls_control)
-  }, error = function(e) NULL)
+  }, error = function(e) {
+    if (verbose) message("NLS failed: ", conditionMessage(e))
+    NULL
+  })
 
   method <- "nls_binned"
   alpha_hat <- NA_real_
   sigma2_hat <- NA_real_
 
   if (!is.null(nls_fit)) {
-    coefs <- coef(nls_fit)
-    sigma2_hat <- coefs["s2"] - cov_shift
-    alpha_hat <- coefs["alpha"]
-  } else {
-    # Fallback: log-linear regression
+    coefs <- tryCatch(coef(nls_fit), error = function(e) NULL)
+    if (!is.null(coefs) && all(c("s2", "alpha") %in% names(coefs))) {
+      sigma2_hat <- as.numeric(coefs["s2"]) - cov_shift
+      alpha_hat <- as.numeric(coefs["alpha"])
+    } else {
+      nls_fit <- NULL
+    }
+  }
+
+  # fallback: log-linear regression on positive covariances
+  if (is.null(nls_fit)) {
     ok_log <- which(cov_b > 0 & is.finite(cov_b) & is.finite(d_b))
-    if (length(ok_log) >= 3) {
+    if (length(ok_log) >= 3L) {
       lm_fit <- tryCatch(lm(log(cov_b[ok_log]) ~ d_b[ok_log]), error = function(e) NULL)
       if (!is.null(lm_fit)) {
         coef_lm <- coef(lm_fit)
@@ -5865,38 +5928,31 @@ estimate_decay_per_chr_robust <- function(dt_chr,
     }
   }
 
-  # Final fallback
-  if (!is.finite(sigma2_hat)) {
-    sigma2_hat <- var(resid_vec, na.rm = TRUE)
-    method <- paste(method, "fallback_variance", sep = "+")
-  }
-  if (!is.finite(alpha_hat)) alpha_hat <- NA_real_
-
-  # Artifact handling
-  fallback <- character(0)
-  if (is.na(sigma2_hat) || sigma2_hat < min_sigma2) {
+  # final fallbacks for sigma2 and alpha
+  fallback_reasons <- character(0)
+  if (!is.finite(sigma2_hat) || sigma2_hat < min_sigma2) {
     sigma2_hat <- max(min_sigma2, var(resid_vec, na.rm = TRUE))
-    method <- paste(method, "sigma2_fixed", sep = "+")
-    fallback <- c(fallback, "sigma2_too_small")
+    fallback_reasons <- c(fallback_reasons, "sigma2_fixed")
+    method <- paste0(method, "+sigma2_fixed")
   }
-  if (is.na(alpha_hat) || alpha_hat < min_alpha) {
+  if (!is.finite(alpha_hat) || alpha_hat < min_alpha) {
     alpha_hat <- if (is.finite(borrow_alpha)) borrow_alpha else min_alpha
-    method <- paste(method, "alpha_fixed", sep = "+")
-    fallback <- c(fallback, if (is.finite(borrow_alpha)) "alpha_borrowed" else "alpha_forced_min")
+    fallback_reasons <- c(fallback_reasons, if (is.finite(borrow_alpha)) "alpha_borrowed" else "alpha_forced_min")
+    method <- paste0(method, "+alpha_fixed")
   }
 
   if (verbose) {
-    message(sprintf("Decay fit: method=%s alpha=%.4g sigma2=%.4g bins=%d", method, alpha_hat, sigma2_hat, nrow(binned)))
+    message(sprintf("Decay fit finished: method=%s alpha=%.4g sigma2=%.4g pairs=%d bins=%d", method, alpha_hat, sigma2_hat, n_pairs_found, n_bins_used))
   }
 
   list(
-    alpha = alpha_hat,
-    sigma2 = sigma2_hat,
+    alpha = as.numeric(alpha_hat),
+    sigma2 = as.numeric(sigma2_hat),
     method = method,
-    n_pairs = length(ok),
-    n_bins = nrow(binned),
+    n_pairs = n_pairs_found,
+    n_bins = n_bins_used,
     binned = if (return_binned) binned else NULL,
-    fallback_reasons = if (length(fallback)) paste(fallback, collapse = ";") else NA_character_
+    fallback_reasons = if (length(fallback_reasons)) paste(fallback_reasons, collapse = ";") else NA_character_
   )
 }
 
@@ -6073,9 +6129,7 @@ build_exp_cov <- function(pos, alpha, sigma2, max_pair_distance = Inf, tol = 1e-
   mat_sym
 }
 
-
 # 5) make_sparse_cov_blocks: map decay_dt -> sparse blocks
-# Full refactor of make_sparse_cov_blocks: memory-safe, sparse, and defensive
 make_sparse_cov_blocks <- function(block_map,
                                    decay_dt,
                                    dt,
@@ -6085,252 +6139,385 @@ make_sparse_cov_blocks <- function(block_map,
                                    midpoint_col = "midpoint",
                                    variable_col = "variable",
                                    max_pair_distance = 2e5,
-                                   build_exp_cov_fn = build_exp_cov,
+                                   key_fun = NULL,
+                                   chunk_threshold = 3000L,
+                                   sample_pair_cap = 1e6L,
                                    tol_sym = 1e-9,
                                    verbose = FALSE) {
-  # Requirements
+  # Purpose:
+  # - Build per-block sparse covariance matrices using an exponential decay model
+  # - Return canonical index_map matching each cov matrix ordering
+  # - Avoid dense n^2 allocations by enumerating only pairs within max_pair_distance
+  # - Attach attr(cov_mat, "positions") = midpoints used to build that block
+  #
+  # Requirements: data.table, Matrix
   if (!requireNamespace("data.table", quietly = TRUE)) stop("data.table required")
   if (!requireNamespace("Matrix", quietly = TRUE)) stop("Matrix required")
+  data.table <- data.table::as.data.table
 
-  # Defensive input checks
-  stopifnot(inherits(block_map, "data.table"))
-  stopifnot(inherits(decay_dt, "data.table"))
-  stopifnot(inherits(dt, "data.table"))
-  stopifnot(is.character(by_chr) && length(by_chr) == 1)
+  # Input validation / canonicalization
+  stopifnot(is.data.frame(block_map) || data.table::is.data.table(block_map))
+  stopifnot(is.data.frame(decay_dt) || data.table::is.data.table(decay_dt))
+  stopifnot(is.data.frame(dt) || data.table::is.data.table(dt))
+  block_map <- data.table::as.data.table(block_map)
+  decay_dt  <- data.table::as.data.table(decay_dt)
+  dt        <- data.table::as.data.table(dt)
+
   stopifnot(by_chr %in% names(block_map))
-  stopifnot(by_chr %in% names(dt))
   stopifnot(orig_row_col %in% names(block_map))
   stopifnot(midpoint_col %in% names(dt))
-  stopifnot(variable_col %in% names(decay_dt))
-  if (!is.function(build_exp_cov_fn)) stop("'build_exp_cov_fn' must be a function")
 
-  # Harmonize types
-  block_map <- copy(block_map)
-  decay_dt <- copy(decay_dt)
-  dt <- copy(dt)
   block_map[[by_chr]] <- as.character(block_map[[by_chr]])
-  decay_dt[[by_chr]] <- as.character(decay_dt[[by_chr]])
   dt[[by_chr]] <- as.character(dt[[by_chr]])
   block_map[[orig_row_col]] <- as.integer(block_map[[orig_row_col]])
-  dt[[midpoint_col]] <- as.numeric(dt[[midpoint_col]])
 
-  # Prepare outputs
-  full_block_covs <- list()        # named list: "<chrom>_<block_id>" -> sparse Matrix
-  diagnostics <- vector("list")    # list of diagnostics per block
-  hiccup_log <- list()             # for problematic blocks
+  if (is.null(key_fun)) key_fun <- function(chr, bid, var = NULL) paste0(chr, "_", bid)
 
-  # Build list of unique blocks to iterate
-  unique_blocks <- unique(block_map[, .(block_id = get(block_id_col), chrom = get(by_chr))])
+  full_block_covs <- list()
+  diagnostics <- list()
+  hiccups <- list()
+  index_map_rows <- vector("list", 0L)
+  imr_i <- 0L
 
-  # Helper: safe subset of decay_dt for a chromosome and variable
-  get_decay_for <- function(chr_val, varname) {
-    row <- decay_dt[get(by_chr) == chr_val & get(variable_col) == varname]
-    if (nrow(row) == 0L) return(NULL)
-    # take first if multiple (should be unique); coerce numeric safety
-    list(alpha = as.numeric(row$alpha[1]), sigma2 = as.numeric(row$sigma2[1]),
-         method = as.character(row$method[1]), fallback = as.character(row$fallback_reasons[1]))
-  }
+  # unique block table (stable ordering)
+  uniq_blocks <- unique(block_map[, .(block_id = get(block_id_col), chr = get(by_chr))])
+  data.table::setorder(uniq_blocks, chr, block_id)
 
-  # Main loop: process block-by-block (keeps memory bounded)
-  for (r in seq_len(nrow(unique_blocks))) {
-    block_id <- unique_blocks$block_id[r]
-    chr_val <- unique_blocks$chrom[r]
-    key <- paste0(chr_val, "_", block_id)
+  # iterate blocks
+  for (bi in seq_len(nrow(uniq_blocks))) {
+    chr_val <- uniq_blocks$chr[bi]
+    bid <- uniq_blocks$block_id[bi]
 
-    # Defensive: subset rows belonging to this block
-    rows_block <- block_map[get(block_id_col) == block_id & get(by_chr) == chr_val]
-    if (nrow(rows_block) == 0L) {
-      if (verbose) message("Skipping empty block: ", key)
+    # select and sanitize block_map rows
+    bm <- block_map[get(block_id_col) == bid & get(by_chr) == chr_val, .(orig_row = get(orig_row_col))]
+    if (nrow(bm) == 0L) next
+    bm[, orig_row := as.integer(orig_row)]
+    bm <- bm[!is.na(orig_row) & orig_row >= 1 & orig_row <= nrow(dt)]
+    if (nrow(bm) == 0L) next
+
+    # dedupe orig_rows and order by midpoint (canonical order)
+    bm <- unique(bm, by = "orig_row")
+    bm[, midpoint := dt[orig_row, get(midpoint_col)]]
+    data.table::setorder(bm, midpoint)
+    orig_rows_ord <- bm$orig_row
+    n_windows <- length(orig_rows_ord)
+    if (n_windows < 1L) next
+
+    # canonical block data and positions
+    dt_block <- dt[orig_rows_ord]
+    pos <- as.numeric(dt_block[[midpoint_col]])
+
+    # determine variable + decay params for this chr
+    decay_chr <- decay_dt[get(by_chr) == chr_val]
+    if (nrow(decay_chr) == 0L) {
+      hiccups[[length(hiccups) + 1L]] <- list(key = paste0(chr_val, "_", bid), reason = "no_decay_info")
       next
     }
+    vars_candidates <- unique(as.character(decay_chr[[variable_col]]))
+    varname <- NULL
+    for (v in vars_candidates) if (!is.null(v) && v %in% names(dt_block)) { varname <- v; break }
+    if (is.null(varname)) varname <- as.character(decay_chr[[variable_col]][1])
 
-    # Subset original data rows (preserve order)
-    orig_rows <- rows_block[[orig_row_col]]
-    orig_rows <- orig_rows[!is.na(orig_rows) & orig_rows > 0]
-    if (length(orig_rows) == 0L) {
-      if (verbose) message("No orig rows for block: ", key); next
+    decay_row <- decay_dt[get(by_chr) == chr_val & get(variable_col) == varname]
+    if (nrow(decay_row) == 0L) decay_row <- decay_dt[get(by_chr) == chr_val][1]
+    if (nrow(decay_row) == 0L) {
+      hiccups[[length(hiccups) + 1L]] <- list(key = paste0(chr_val, "_", bid), reason = "decay_missing")
+      next
     }
-    dt_block <- dt[orig_rows]
-
-    # Minimal size check
-    n_windows <- nrow(dt_block)
-    if (n_windows < 1L) {
-      if (verbose) message("Too small block: ", key); next
-    }
-
-    # Determine which variable to use for decay lookup:
-    # Prefer variables present in both dt_block and decay_dt; fall back to first decay_dt row for chr
-    candidate_vars <- intersect(unique(decay_dt[[variable_col]]), names(dt_block))
-    if (length(candidate_vars) >= 1L) {
-      varname <- candidate_vars[1]
-    } else {
-      tmp <- decay_dt[get(by_chr) == chr_val]
-      if (nrow(tmp) == 0L) {
-        if (verbose) message("No decay_dt for chr: ", chr_val, " (block ", block_id, ")"); next
-      }
-      varname <- as.character(tmp[[variable_col]][1])
-      if (is.na(varname) || !(varname %in% names(dt_block))) {
-        # nothing sensible to match
-        if (verbose) message("Cannot determine variable for block: ", key); next
-      }
-    }
-
-    # Get decay parameters for chr & variable
-    decay <- get_decay_for(chr_val, varname)
-    if (is.null(decay) || !is.finite(decay$alpha) || !is.finite(decay$sigma2)) {
-      # allow sigma2 zero/NA -> fallback to empirical residual variance if possible
-      if (verbose) message("Missing or invalid decay parameters for ", key, "; attempting to fix")
-      # attempt to compute empirical variance of residuals for this var on this chr
-      if (varname %in% names(dt_block) && n_windows >= 2L) {
-        # fit simple OLS residual variance: var(y - fitted from available predictors in decay_dt if present)
-        # best-effort: if decay_dt contains 'method' with predictor info skip and just use var(varname)
-        emp_var <- var(dt_block[[varname]], na.rm = TRUE)
-        if (!is.finite(emp_var) || emp_var <= 0) {
-          if (verbose) message("Empirical variance invalid for block ", key, "; skipping")
-          next
-        }
-        # fill with minimal alpha and empirical variance
-        decay <- list(alpha = 1e-6, sigma2 = max(emp_var, 1e-12), method = "empirical_fallback", fallback = "decay_missing_empirical_sigma2")
-      } else {
-        if (verbose) message("Cannot recover decay for block ", key); next
-      }
-    }
-
-    alpha <- decay$alpha; sigma2 <- decay$sigma2
+    alpha <- as.numeric(decay_row$alpha[1]); sigma2 <- as.numeric(decay_row$sigma2[1])
     if (!is.finite(alpha) || alpha <= 0) alpha <- 1e-6
-    if (!is.finite(sigma2) || sigma2 <= 0) sigma2 <- max(1e-12, var(dt_block[[varname]], na.rm = TRUE))
+    if (!is.finite(sigma2) || sigma2 <= 0) sigma2 <- max(1e-12, var(dt_block[[varname]], na.rm = TRUE), na.rm = TRUE)
 
-    # Build sparse covariance via provided function; guard with tryCatch
-    cov_sparse <- tryCatch({
-      build_exp_cov_fn(pos = dt_block[[midpoint_col]], alpha = alpha, sigma2 = sigma2, max_pair_distance = max_pair_distance)
-    }, error = function(e) {
-      if (verbose) message("build_exp_cov failed for block ", key, ": ", e$message)
-      NULL
-    })
-
-    if (is.null(cov_sparse)) {
-      hiccup_log[[key]] <- list(reason = "build_failed")
-      next
-    }
-
-    # Ensure result is a Matrix and symmetric
-    if (!inherits(cov_sparse, "Matrix")) {
-      # try to coerce
-      cov_sparse <- tryCatch(Matrix::Matrix(as.matrix(cov_sparse), sparse = TRUE), error = function(e) NULL)
-      if (is.null(cov_sparse)) {
-        hiccup_log[[key]] <- list(reason = "coerce_failed")
-        next
+    # build pair lists limited by max_pair_distance (chunked when needed)
+    i_list <- integer(0); j_list <- integer(0); v_list <- numeric(0)
+    if (n_windows <= chunk_threshold) {
+      for (i in seq_len(n_windows - 1L)) {
+        jmax <- findInterval(pos[i] + max_pair_distance, pos)
+        if (jmax > i) {
+          js <- (i + 1L):jmax
+          i_list <- c(i_list, rep(i, length(js)))
+          j_list <- c(j_list, js)
+          v_list <- c(v_list, sigma2 * exp(-alpha * (pos[js] - pos[i])))
+        }
+      }
+    } else {
+      chunk_size <- chunk_threshold
+      for (start in seq(1L, n_windows - 1L, by = chunk_size)) {
+        end <- min(n_windows - 1L, start + chunk_size - 1L)
+        for (i in start:end) {
+          jmax <- findInterval(pos[i] + max_pair_distance, pos)
+          if (jmax > i) {
+            js <- (i + 1L):jmax
+            i_list <- c(i_list, rep(i, length(js)))
+            j_list <- c(j_list, js)
+            v_list <- c(v_list, sigma2 * exp(-alpha * (pos[js] - pos[i])))
+          }
+        }
+        if (length(i_list) > sample_pair_cap) {
+          samp <- sample(seq_along(i_list), size = sample_pair_cap)
+          i_list <- i_list[samp]; j_list <- j_list[samp]; v_list <- v_list[samp]
+          if (verbose) message("Large block sampled pair set for ", chr_val, "_", bid)
+          break
+        }
       }
     }
 
-    # Force symmetry robustly and convert to dsCMatrix
-    cov_sym <- tryCatch({
-      # forceSymmetric will average mismatched entries and produce a symmetric Matrix class
-      s <- Matrix::forceSymmetric(cov_sparse, uplo = "U")
-      # Convert to compressed symmetric class for efficiency
-      as(s, "dsCMatrix")
-    }, error = function(e) {
-      # last resort: convert to dense numeric symmetrize then back to sparse
-      if (verbose) message("forceSymmetric failed for block ", key, " (attempting dense symmetrize): ", e$message)
-      m_dense <- tryCatch(as.matrix(cov_sparse), error = function(ee) NULL)
-      if (is.null(m_dense)) return(NULL)
-      m_sym <- (m_dense + t(m_dense)) / 2
-      Matrix::as(m_sym, "dsCMatrix")
-    })
-
-    if (is.null(cov_sym)) {
-      hiccup_log[[key]] <- list(reason = "symmetrize_failed")
-      next
+    # assemble sparse symmetric covariance robustly
+    cov_mat <- NULL
+    if (length(i_list) == 0L) {
+      cov_mat <- Matrix::Diagonal(n = n_windows, x = rep(sigma2, n_windows))
+      # convert diag to sparse symmetric dsCMatrix
+      cov_mat <- Matrix::sparseMatrix(i = seq_len(n_windows), j = seq_len(n_windows), x = diag(cov_mat), dims = c(n_windows, n_windows), symmetric = TRUE)
+      cov_mat <- methods::as(cov_mat, "dsCMatrix")
+    } else {
+      ii <- i_list; jj <- j_list; vv <- v_list
+      ii2 <- c(ii, jj, seq_len(n_windows))
+      jj2 <- c(jj, ii, seq_len(n_windows))
+      vv2 <- c(vv, vv, rep(sigma2, n_windows))
+      sp <- Matrix::sparseMatrix(i = ii2, j = jj2, x = vv2, dims = c(n_windows, n_windows), symmetric = FALSE)
+      sp <- (sp + Matrix::t(sp)) / 2
+      # ensure numeric stability
+      cov_mat <- as(sp, "dgCMatrix")
+      # try to coerce to dsCMatrix; handle cases like ddiMatrix specially
+      cov_mat <- tryCatch({
+        # forceSymmetric handles many cases; but if cov_mat is diagonal or ddiMatrix, handle separately
+        sm <- Matrix::forceSymmetric(cov_mat, uplo = "U")
+        methods::as(sm, "dsCMatrix")
+      }, error = function(e) {
+        # fallback: dense symmetrize then sparse
+        m_dense <- as.matrix(sp)
+        m_sym <- (m_dense + t(m_dense)) / 2
+        Matrix::as(m_sym, "dsCMatrix")
+      })
     }
 
-    # Sanity checks: dimensions and symmetry tolerance
-    if (nrow(cov_sym) != n_windows || ncol(cov_sym) != n_windows) {
-      if (verbose) message("Dimension mismatch for block ", key, "; skipping")
-      hiccup_log[[key]] <- list(reason = "dim_mismatch")
-      next
-    }
-    # numeric symmetry check (should be small)
-    max_asym <- max(abs(cov_sym - Matrix::t(cov_sym)))
+    # final sanity on diag and symmetry
+    diag_vals <- diag(cov_mat)
+    diag_vals[!is.finite(diag_vals) | diag_vals <= 0] <- pmax(1e-12, sigma2)
+    diag(cov_mat) <- diag_vals
+    max_asym <- max(abs(cov_mat - Matrix::t(cov_mat)))
     if (!is.finite(max_asym) || max_asym > tol_sym) {
-      if (verbose) message("Large asymmetry (", signif(max_asym,3), ") in block ", key, "; forcing numeric symmetrize")
-      m <- as.matrix(cov_sym)
-      m <- (m + t(m)) / 2
-      cov_sym <- Matrix::as(m, "dsCMatrix")
+      m_dense <- as.matrix(cov_mat)
+      m_dense <- (m_dense + t(m_dense)) / 2
+      cov_mat <- Matrix::as(m_dense, "dsCMatrix")
     }
 
-    # Store sparse covariance and diagnostics
-    full_block_covs[[key]] <- cov_sym
+    # verify dimensions
+    if (nrow(cov_mat) != n_windows || ncol(cov_mat) != n_windows) {
+      hiccups[[length(hiccups) + 1L]] <- list(key = paste0(chr_val, "_", bid),
+                                              reason = "dim_mismatch",
+                                              cov_dim = dim(cov_mat),
+                                              n_windows = n_windows)
+      next
+    }
+
+    # attach canonical positions attribute
+    attr(cov_mat, "positions") <- pos
+
+    # store cov and build index_map rows in identical canonical order
+    key <- key_fun(chr_val, bid, varname)
+    full_block_covs[[key]] <- cov_mat
+
+    for (k in seq_along(orig_rows_ord)) {
+      imr_i <- imr_i + 1L
+      index_map_rows[[imr_i]] <- list(
+        key = key,
+        chrom = chr_val,
+        block_id = bid,
+        variable = varname,
+        row_id = as.integer(orig_rows_ord[k]),
+        idx = as.integer(k)
+      )
+    }
+
+    # diagnostics
     diagnostics[[key]] <- list(
-      chrom = chr_val,
-      block_id = block_id,
+      chr = chr_val,
+      block_id = bid,
       n_windows = n_windows,
-      variable = varname,
       alpha = alpha,
       sigma2 = sigma2,
-      method = decay$method %||% NA_character_,
-      fallback = decay$fallback %||% NA_character_,
-      nnz = length(cov_sym@x),
-      dims = dim(cov_sym),
-      max_asym = max_asym
+      method = as.character(decay_row$method[1] %||% NA_character_),
+      fallback = as.character(decay_row$fallback_reasons[1] %||% NA_character_),
+      nnz = length(cov_mat@x),
+      dims = dim(cov_mat)
     )
 
-    # Optional messaging
-    if (verbose && (r %% 100 == 0 || r == nrow(unique_blocks))) {
-      message("Processed block ", r, " / ", nrow(unique_blocks), " (", key, ")")
+    if (verbose && (bi %% 100 == 0 || bi == nrow(uniq_blocks))) {
+      message("Processed block ", bi, "/", nrow(uniq_blocks), " key=", key)
     }
-  } # end blocks loop
+  } # end block loop
 
-  # Assemble diagnostics table
-  diagnostics_dt <- if (length(diagnostics) > 0L) rbindlist(lapply(diagnostics, as.data.table), use.names = TRUE, fill = TRUE) else data.table::data.table()
+  # assemble index_map and diagnostics tables
+  if (length(index_map_rows) > 0L) {
+    index_map <- data.table::rbindlist(index_map_rows, use.names = TRUE, fill = TRUE)
+  } else {
+    index_map <- data.table::data.table(key = character(0), chrom = character(0), block_id = integer(0), variable = character(0), row_id = integer(0), idx = integer(0))
+  }
 
-  # hiccup log table
-  hiccup_dt <- if (length(hiccup_log) > 0L) {
-    keys <- names(hiccup_log)
-    rbindlist(lapply(seq_along(keys), function(i) {
-      data.table::data.table(key = keys[i], reason = hiccup_log[[i]]$reason)
-    }))
-  } else data.table::data.table()
+  diagnostics_dt <- if (length(diagnostics) > 0L) data.table::rbindlist(lapply(diagnostics, as.data.table), use.names = TRUE, fill = TRUE) else data.table::data.table()
+  hiccup_dt <- if (length(hiccups) > 0L) data.table::rbindlist(lapply(hiccups, as.data.table), use.names = TRUE, fill = TRUE) else data.table::data.table()
 
-  # Return structured result
+  # final consistency check (warn only)
+  bad_keys <- character(0)
+  for (k in names(full_block_covs)) {
+    n_cov <- nrow(full_block_covs[[k]])
+    n_map <- sum(index_map$key == k)
+    if (n_cov != n_map) bad_keys <- c(bad_keys, k)
+  }
+  if (length(bad_keys) > 0L) {
+    warning("Inconsistent keys after assembly; problematic keys (first 10): ", paste(head(bad_keys, 10), collapse = ", "))
+  }
+
   out <- list(
     full_block_covs = full_block_covs,
+    index_map = index_map,
     diagnostics = diagnostics_dt,
     hiccups = hiccup_dt,
-    params = list(by_chr = by_chr, block_id_col = block_id_col, orig_row_col = orig_row_col, midpoint_col = midpoint_col, max_pair_distance = max_pair_distance)
+    params = list(by_chr = by_chr, block_id_col = block_id_col, orig_row_col = orig_row_col, midpoint_col = midpoint_col, max_pair_distance = max_pair_distance, chunk_threshold = chunk_threshold)
   )
   class(out) <- c("sparse_cov_blocks", class(out))
   out
 }
 
 # 6) Prewhiten variables blockwise
-prewhiten_variable_blockwise <- function(varname, dt_sub, sparse_obj) {
-  pattern <- paste0(":::", varname, "$")
-  keys <- names(sparse_obj$full_block_covs)[grepl(pattern, names(sparse_obj$full_block_covs))]
-  whitened <- rep(NA_real_, nrow(dt_sub))
-  for (key in keys) {
-    cov_mat <- sparse_obj$full_block_covs[[key]]
-    idx_dt <- sparse_obj$index_map[variable == varname & paste(chrom, variable, sep = ":::") == key]
-    if (nrow(idx_dt) == 0) next
-    idx_order <- idx_dt[order(idx), row_id]
-    y_block <- dt_sub[idx_order, get(varname)]
-    if (length(y_block) == 0) next
-    cov_dense <- as.matrix(cov_mat)
-    jitter_eps <- 1e-8 * max(1, mean(diag(cov_dense)))
-    diag(cov_dense) <- diag(cov_dense) + jitter_eps
-    L <- NULL
-    try({ L <- chol(cov_dense) }, silent = TRUE)
-    if (!is.null(L)) {
-      whiten_block <- backsolve(L, forwardsolve(t(L), y_block))
-      whitened[idx_order] <- whiten_block
-    } else {
-      eig <- eigen(cov_dense, symmetric = TRUE)
-      vals_adj <- pmax(eig$values, 1e-12)
-      P_sqrt <- eig$vectors %*% diag(1 / sqrt(vals_adj)) %*% t(eig$vectors)
-      whiten_block <- as.numeric(P_sqrt %*% y_block)
-      whitened[idx_order] <- whiten_block
-    }
+prewhiten_variable_blockwise <- function(varname, dt_sub, sparse_obj,
+                                         index_map = NULL,
+                                         by_chr = "chrom",
+                                         midpoint_col = "midpoint",
+                                         verbose = FALSE) {
+  if (!requireNamespace("data.table", quietly = TRUE)) stop("data.table required")
+  if (!requireNamespace("Matrix", quietly = TRUE)) stop("Matrix required")
+  data.table <- data.table::as.data.table
+
+  if (!is.list(sparse_obj) || !"full_block_covs" %in% names(sparse_obj))
+    stop("sparse_obj must be a list containing full_block_covs")
+  if (!inherits(dt_sub, "data.table")) dt_sub <- data.table::as.data.table(dt_sub)
+  if (!by_chr %in% names(dt_sub)) stop("dt_sub must contain column: ", by_chr)
+  if (!(varname %in% names(dt_sub))) stop("varname not found in dt_sub")
+  dt_sub[[by_chr]] <- as.character(dt_sub[[by_chr]])
+  n_rows <- nrow(dt_sub)
+
+  # resolve index_map
+  if (!is.null(index_map)) {
+    imap <- data.table::as.data.table(index_map)
+  } else if (!is.null(sparse_obj$index_map)) {
+    imap <- data.table::as.data.table(sparse_obj$index_map)
+  } else stop("No index_map found in sparse_obj and none supplied")
+
+  req <- c("key", "chrom", "block_id", "row_id", "idx")
+  if (!all(req %in% names(imap))) stop("index_map must contain columns: ", paste(req, collapse = ", "))
+
+  imap[, row_id := as.integer(row_id)]
+  if (any(is.na(imap$row_id) | imap$row_id < 1 | imap$row_id > n_rows)) {
+    stop("index_map$row_id must be integer row indices into dt_sub (1..nrow(dt_sub))")
   }
-  whitened
+
+  fb_keys <- intersect(names(sparse_obj$full_block_covs), unique(imap$key))
+  if (length(fb_keys) == 0) stop("No matching keys between full_block_covs and index_map")
+
+  whitened <- rep(NA_real_, n_rows)
+  diag_rows <- vector("list", length(fb_keys))
+  li <- 0L
+
+  for (K in sort(fb_keys)) {
+    li <- li + 1L
+    cov_mat <- sparse_obj$full_block_covs[[K]]
+    if (is.null(cov_mat)) {
+      diag_rows[[li]] <- list(key = K, n_cov = NA_integer_, n_map = 0L, used = FALSE, reason = "no_cov")
+      next
+    }
+
+    cov_dim <- tryCatch({ d <- dim(cov_mat); if (is.null(d)) stop("no dim"); d }, error = function(e) c(NA_integer_, NA_integer_))
+    n_cov <- as.integer(cov_dim[1])
+
+    # CORRECT selection: use the scalar key K (not the whole column)
+    idx_dt <- imap[key == K]
+    if (nrow(idx_dt) == 0L) {
+      diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = 0L, used = FALSE, reason = "no_index_map")
+      next
+    }
+    idx_dt <- idx_dt[order(idx)]
+    n_map <- nrow(idx_dt)
+    row_positions <- as.integer(idx_dt$row_id)
+
+    if (is.na(n_cov) || n_cov <= 0) {
+      diag_rows[[li]] <- list(key = K, n_cov = NA_integer_, n_map = n_map, used = FALSE, reason = "invalid_cov_dim")
+      next
+    }
+
+    if (n_cov != n_map) {
+      pos_attr <- attr(cov_mat, "positions", exact = TRUE)
+      if (!is.null(pos_attr) && midpoint_col %in% names(dt_sub)) {
+        mp_idx <- dt_sub[row_positions, get(midpoint_col)]
+        mm <- match(mp_idx, pos_attr, nomatch = 0L)
+        if (length(mm) == n_map && all(mm > 0)) {
+          ord_cov <- order(mm)
+          row_positions <- row_positions[ord_cov]
+          idx_dt <- idx_dt[ord_cov]
+          n_map <- length(row_positions)
+          if (n_cov != n_map) {
+            diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "dim_mismatch_after_reorder")
+            next
+          }
+        } else {
+          diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "dim_mismatch_unresolvable")
+          next
+        }
+      } else {
+        diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "dim_mismatch_no_positions")
+        next
+      }
+    }
+
+    y_block <- dt_sub[row_positions, get(varname)]
+    if (length(y_block) != n_cov) {
+      diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "y_length_mismatch")
+      next
+    }
+    if (all(is.na(y_block))) {
+      diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "y_all_na")
+      next
+    }
+
+    cov_dense <- tryCatch(as.matrix(cov_mat), error = function(e) NULL)
+    if (is.null(cov_dense) || nrow(cov_dense) != n_cov) {
+      diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "cov_coerce_fail_or_dim")
+      next
+    }
+
+    jitter_eps <- 1e-8 * max(1, mean(diag(cov_dense), na.rm = TRUE))
+    diag(cov_dense) <- diag(cov_dense) + jitter_eps
+
+    chol_ok <- FALSE; L <- NULL
+    try_chol <- try({ L <- chol(cov_dense); chol_ok <- TRUE }, silent = TRUE)
+
+    if (isTRUE(chol_ok) && is.matrix(L)) {
+      whiten_block <- backsolve(L, forwardsolve(t(L), y_block))
+      used_method <- "chol"
+    } else {
+      eig <- tryCatch(eigen(cov_dense, symmetric = TRUE), error = function(e) NULL)
+      if (is.null(eig)) {
+        diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "eigen_fail")
+        next
+      }
+      vals_adj <- pmax(eig$values, 1e-12)
+      P_sqrt <- eig$vectors %*% diag(1 / sqrt(vals_adj), nrow = length(vals_adj)) %*% t(eig$vectors)
+      if (ncol(P_sqrt) != length(y_block)) {
+        diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = FALSE, reason = "P_sqrt_dim_mismatch")
+        next
+      }
+      whiten_block <- as.numeric(P_sqrt %*% y_block)
+      used_method <- "eigen"
+    }
+
+    whitened[row_positions] <- whiten_block
+    diag_rows[[li]] <- list(key = K, n_cov = n_cov, n_map = n_map, used = TRUE, reason = used_method)
+    if (verbose) message("Whitened key=", K, " method=", used_method, " n=", n_cov)
+  }
+
+  diag_dt <- data.table::rbindlist(lapply(diag_rows, function(x) as.data.table(x)), use.names = TRUE, fill = TRUE)
+  list(whitened = whitened, diagnostics = diag_dt)
 }
 
 # 7) wrapper that applies blockwise whitening to a set of variables
@@ -6339,93 +6526,159 @@ prewhiten_all_variables <- function(dt_sub,
                                     sparse_obj,
                                     whiten_suffix = "_wh",
                                     assemble_cov = FALSE,
-                                    cov_assembler = assemble_cov_for_variable,
+                                    cov_assembler = NULL,
                                     parallel = FALSE,
                                     BPPARAM = BiocParallel::SerialParam(),
                                     verbose = TRUE) {
-  # dt_sub        : data.table with the original windows (must match index_map row_id)
-  # vars          : character vector of variable names to whiten
-  # sparse_obj    : output of make_sparse_cov_blocks() with $full_block_covs and $index_map
-  # whiten_suffix : suffix appended to var name for whitened column (default "_wh")
-  # assemble_cov  : if TRUE, also build block-diagonal covariance (via cov_assembler) for each var
-  # cov_assembler : function(full_block_covs, decay_dt, varname) -> blockDiag matrix or NULL
-  # parallel      : if TRUE uses BiocParallel to whiten variables in parallel
-  # BPPARAM       : BiocParallel parameter object (ignored unless parallel = TRUE)
-  # verbose       : print progress messages
+  # Purpose:
+  # - Prewhiten a set of observed variables blockwise using sparse_obj produced by
+  #   make_sparse_cov_blocks().  Returns dt with whitened columns, per-variable diagnostics,
+  #   optional assembled block-diagonal covariance matrices, and the original sparse_obj.
+  #
+  # Arguments:
+  # - dt_sub: data.table of windows (must match indices referenced by sparse_obj$index_map$row_id)
+  # - vars: character vector of variable names to whiten (must be columns in dt_sub)
+  # - sparse_obj: output from make_sparse_cov_blocks() with fields $full_block_covs and $index_map
+  # - whiten_suffix: suffix appended to variable names for whitened columns
+  # - assemble_cov: logical; if TRUE, attempt cov_assembler(full_block_covs, varname) to build full block-diagonal cov
+  # - cov_assembler: function(full_block_covs, varname) -> blockDiag matrix (or NULL). Only used when assemble_cov = TRUE.
+  # - parallel: logical; if TRUE uses BiocParallel::bplapply with provided BPPARAM
+  # - BPPARAM: BiocParallel parameter object
+  # - verbose: logical; print progress messages
+  #
+  # Returns a list (class prewhiten_all_result):
+  # - dt_whitened: data.table with whitened columns appended
+  # - diagnostics: data.table with per-variable summary and aggregated block diagnostics in list-column
+  # - cov_list: named list of assembled covariances (when requested; NULL entries possible)
+  # - sparse_obj: the supplied sparse_obj (unchanged)
+  #
+  # Requirements: data.table, Matrix, BiocParallel (only if parallel = TRUE)
 
-  stopifnot("data.table" %in% class(dt_sub))
-  stopifnot(is.list(sparse_obj) && all(c("full_block_covs", "index_map") %in% names(sparse_obj)))
-  if (!all(vars %in% names(dt_sub))) stop("Some vars not present in dt_sub")
+  if (!requireNamespace("data.table", quietly = TRUE)) stop("data.table required")
+  if (!is.list(sparse_obj) || !"full_block_covs" %in% names(sparse_obj) || !"index_map" %in% names(sparse_obj)) {
+    stop("sparse_obj must be a list with elements 'full_block_covs' and 'index_map'")
+  }
+  if (!inherits(dt_sub, "data.table")) dt_sub <- data.table::as.data.table(dt_sub)
+  stopifnot(is.character(vars))
+  if (!all(vars %in% names(dt_sub))) stop("Some vars are not columns of dt_sub")
 
-  # Prepare result containers
-  dt_out <- copy(dt_sub)
-  diagnostics <- data.table(variable = vars,
-                            n_obs = NA_integer_,
-                            n_whitened = NA_integer_,
-                            prop_na = NA_real_,
-                            cov_built = FALSE,
-                            stringsAsFactors = FALSE)
-  cov_list <- list()
-  names(cov_list) <- vars
+  # prepare outputs
+  dt_out <- data.table::copy(dt_sub)
+  cov_list <- vector("list", length(vars)); names(cov_list) <- vars
 
-  # Worker function for single variable
+  diagnostics_rows <- vector("list", length(vars))  # will hold per-variable summary rows
+  block_diag_list <- vector("list", length(vars))   # will hold per-variable block diagnostics (list-column)
+
+  # wrapper to whiten a single variable; returns list(var, whitened, diag_dt, cov_built, cov)
   whiten_one <- function(varname) {
-    if (verbose) message("Whitening variable: ", varname)
-    # run blockwise prewhitening (uses sparse_obj)
-    whitened_vec <- try(prewhiten_variable_blockwise(varname = varname,
-                                                     dt_sub = dt_sub,
-                                                     sparse_obj = sparse_obj), silent = TRUE)
-    if (inherits(whitened_vec, "try-error")) {
-      warning("Whitening failed for variable ", varname, ": ", conditionMessage(attr(whitened_vec, "condition")))
-      whitened_vec <- rep(NA_real_, nrow(dt_sub))
-      cov_built <- FALSE
-      cov_mat <- NULL
-    } else {
-      # assemble covariance optionally
-      if (assemble_cov) {
-        cov_mat <- try(cov_assembler(sparse_obj$full_block_covs, NULL, varname), silent = TRUE)
-        if (inherits(cov_mat, "try-error")) {
-          warning("Covariance assembly failed for variable ", varname)
-          cov_mat <- NULL
-          cov_built <- FALSE
-        } else cov_built <- !is.null(cov_mat)
-      } else {
-        cov_mat <- NULL
-        cov_built <- FALSE
-      }
+    if (verbose) message("prewhiten_all_variables: processing ", varname)
+    res <- list(var = varname, whitened = rep(NA_real_, nrow(dt_sub)), diag = NULL, cov_built = FALSE, cov = NULL)
+
+    # call prewhiten_variable_blockwise (expected to return list(whitened, diagnostics))
+    pw <- tryCatch({
+      prewhiten_variable_blockwise(varname = varname, dt_sub = dt_sub, sparse_obj = sparse_obj, verbose = verbose)
+    }, error = function(e) {
+      warning("prewhiten_variable_blockwise failed for ", varname, ": ", conditionMessage(e))
+      NULL
+    })
+
+    if (is.null(pw)) {
+      # preserve NA vector and a one-row diagnostic indicating failure
+      res$diag <- data.table::data.table(key = NA_character_, n_cov = NA_integer_, n_map = 0L, used = FALSE, reason = "prewhiten_failed")
+      return(res)
     }
-    list(var = varname, whitened = whitened_vec, cov = cov_mat, cov_built = cov_built)
+
+    # pw should be list(whitened = numeric vector, diagnostics = data.table)
+    if (!is.null(pw$whitened) && length(pw$whitened) == nrow(dt_sub)) {
+      res$whitened <- pw$whitened
+    } else {
+      warning("prewhiten_variable_blockwise returned unexpected whitened length for ", varname)
+      # keep NA vector
+    }
+
+    # diagnostics: ensure data.table
+    if (!is.null(pw$diagnostics)) {
+      res$diag <- data.table::as.data.table(pw$diagnostics)
+    } else {
+      res$diag <- data.table::data.table(key = NA_character_, n_cov = NA_integer_, n_map = 0L, used = FALSE, reason = "no_diag")
+    }
+
+    # assemble global block-diagonal covariance if requested
+    if (isTRUE(assemble_cov)) {
+      if (!is.function(cov_assembler)) {
+        warning("assemble_cov = TRUE but cov_assembler is not a function; skipping covariance assembly for ", varname)
+        res$cov_built <- FALSE
+        res$cov <- NULL
+      } else {
+        cov_mat <- tryCatch({
+          cov_assembler(sparse_obj$full_block_covs, varname)
+        }, error = function(e) {
+          warning("cov_assembler failed for ", varname, ": ", conditionMessage(e)); NULL
+        })
+        res$cov <- cov_mat
+        res$cov_built <- !is.null(cov_mat)
+      }
+    } else {
+      res$cov_built <- FALSE
+      res$cov <- NULL
+    }
+
+    res
   }
 
-  # Run for all variables (serial or parallel)
-  if (parallel) {
-    if (!requireNamespace("BiocParallel", quietly = TRUE)) {
-      stop("BiocParallel required for parallel = TRUE. Install it or set parallel = FALSE.")
-    }
-    res_list <- BiocParallel::bplapply(vars, FUN = whiten_one, BPPARAM = BPPARAM)
+  # run either serially or in parallel
+  if (isTRUE(parallel)) {
+    if (!requireNamespace("BiocParallel", quietly = TRUE)) stop("BiocParallel required for parallel = TRUE")
+    res_list <- BiocParallel::bplapply(vars, whiten_one, BPPARAM = BPPARAM)
   } else {
     res_list <- lapply(vars, whiten_one)
   }
 
-  # Attach whitened columns and collect diagnostics
-  for (res in res_list) {
-    var <- res$var
+  # attach whitened columns and collect diagnostics
+  for (i in seq_along(res_list)) {
+    r <- res_list[[i]]
+    var <- r$var
     wcol <- paste0(var, whiten_suffix)
-    dt_out[, (wcol) := res$whitened]
+
+    # whitened may be nested list (compatibility); extract vector
+    wvec <- r$whitened
+    if (is.list(wvec) && "whitened" %in% names(wvec)) wvec <- wvec$whitened
+    if (!is.numeric(wvec) || length(wvec) != nrow(dt_sub)) {
+      # ensure correct length with NAs to avoid recycling mistakes
+      warning("Whitened vector for ", var, " has wrong length; filling with NA")
+      wvec <- rep(NA_real_, nrow(dt_sub))
+    }
+
+    dt_out[, (wcol) := wvec]
+
+    # per-variable summary
     n_obs <- sum(!is.na(dt_sub[[var]]))
-    n_whitened <- sum(!is.na(res$whitened))
-    prop_na <- mean(is.na(res$whitened))
-    diagnostics[variable == var, `:=`(n_obs = n_obs, n_whitened = n_whitened, prop_na = prop_na, cov_built = res$cov_built)]
-    if (!is.null(res$cov)) cov_list[[var]] <- res$cov
+    n_whitened <- sum(!is.na(wvec))
+    prop_na <- mean(is.na(wvec))
+    cov_built <- isTRUE(r$cov_built)
+    diagnostics_rows[[i]] <- data.table::data.table(variable = var, n_obs = n_obs, n_whitened = n_whitened, prop_na = prop_na, cov_built = cov_built)
+
+    # block diagnostics list-column (store raw table or NULL)
+    block_diag_list[[i]] <- if (!is.null(r$diag)) r$diag else data.table::data.table()
+
+    # store assembled covariance if present
+    cov_list[[var]] <- r$cov
   }
 
-  # Return structured result
-  ret <- list(dt_whitened = dt_out,
-              diagnostics = diagnostics,
-              cov_list = cov_list,
-              sparse_obj = sparse_obj)
-  class(ret) <- c("prewhiten_all_result", class(ret))
-  ret
+  diagnostics_dt <- data.table::rbindlist(diagnostics_rows, use.names = TRUE, fill = TRUE)
+  diagnostics_dt[, timestamp := Sys.time()]
+
+  # attach block-level diagnostics as a list-column (parallel index order corresponds to vars)
+  diagnostics_dt[, block_diag := block_diag_list]
+
+  out <- list(
+    dt_whitened = dt_out,
+    diagnostics = diagnostics_dt,
+    cov_list = cov_list,
+    sparse_obj = sparse_obj
+  )
+  class(out) <- c("prewhiten_all_result", class(out))
+  out
 }
 
 # For variable 'v', assemble block-diagonal covariance across all chromosomes in decay_dt
@@ -6464,219 +6717,385 @@ plot_decay_diagnostics <- function(binned, alpha = NA_real_, sigma2 = NA_real_, 
       stat_function(fun = function(x) sigma2 * exp(-alpha * x), color = "steelblue", size = 1)
     } else NULL}
 }
+
+rebuild_index_map_from_block_map <- function(sparse_obj,
+                                             block_map_sub,
+                                             dt_sub,
+                                             by_chr = "chrom",
+                                             block_id_col = "block_id",
+                                             orig_row_col = "row_id",
+                                             midpoint_col = "midpoint",
+                                             key_fun = function(chr, bid, var = NULL) paste0(chr, "_", bid),
+                                             verbose = TRUE) {
+  if (!requireNamespace("data.table", quietly = TRUE)) stop("data.table required")
+  block_map_sub <- data.table::as.data.table(block_map_sub)
+  dt_sub <- data.table::as.data.table(dt_sub)
+
+  stopifnot(all(c(by_chr, block_id_col, orig_row_col) %in% names(block_map_sub)))
+  stopifnot(midpoint_col %in% names(dt_sub))
+
+  # Ensure integer orig rows
+  block_map_sub[[orig_row_col]] <- as.integer(block_map_sub[[orig_row_col]])
+  block_map_sub[[by_chr]] <- as.character(block_map_sub[[by_chr]])
+
+  # Keep only valid orig_row indices
+  block_map_sub <- block_map_sub[!is.na(get(orig_row_col)) & get(orig_row_col) >= 1 & get(orig_row_col) <= nrow(dt_sub)]
+  if (nrow(block_map_sub) == 0L) stop("block_map_sub contains no valid orig_row indices")
+
+  # Produce per-block canonical ordered lists
+  # Ensure dt_sub has midpoint and is numeric
+  dt_sub[[midpoint_col]] <- as.numeric(dt_sub[[midpoint_col]])
+
+  # We'll create a table of unique block rows, then attach midpoints and order
+  bm <- unique(block_map_sub[, .(chrom = get(by_chr), block_id = get(block_id_col), orig_row = get(orig_row_col))])
+
+  # attach midpoint for ordering
+  bm[, midpoint := dt_sub[orig_row, get(midpoint_col)]]
+  data.table::setorder(bm, chrom, block_id, midpoint)
+
+  # build index_map rows
+  index_map_rows <- bm[, .(key = key_fun(chrom, block_id, NA), chrom = chrom, block_id = block_id, row_id = as.integer(orig_row)), by = .I]
+  # compute idx within each key (block)
+  index_map_rows[, idx := seq_len(.N), by = .(key)]
+  index_map <- index_map_rows[, .(key, chrom, block_id, row_id, idx)]
+
+  # attach optional variable column if sparse_obj$diagnostics provides it
+  if (!is.null(sparse_obj$diagnostics) && "variable" %in% names(sparse_obj$diagnostics)) {
+    # try to infer variable per key from diagnostics (best-effort)
+    var_dt <- unique(sparse_obj$diagnostics[, c("chr","variable"), drop = FALSE])
+    # if diagnostics don't match, fill with NA
+    index_map[, variable := NA_character_]
+  } else {
+    index_map[, variable := NA_character_]
+  }
+
+  # attach to sparse_obj (copy not to modify original unexpectedly)
+  sparse_obj$index_map <- index_map
+
+  # basic sanity print
+  if (verbose) {
+    message("Rebuilt index_map with ", nrow(index_map), " rows across ", length(unique(index_map$key)), " keys")
+    example_keys <- head(unique(index_map$key), 6)
+    message("Example keys: ", paste(example_keys, collapse = ", "))
+  }
+
+  sparse_obj
+}
+
+# so that midpoints are unique
+add_genome_offsets_and_midpoint <- function(table_10kb,
+                                            chrom_lengths = NULL,
+                                            chrom_col = "chrom",
+                                            start_col = "chromStart",
+                                            end_col = "chromEnd",
+                                            out_midpoint_name = "midpoint",
+                                            order_chrom_by = c("natural", "provided", "lexicographic"),
+                                            keep_integer_midpoint = FALSE) {
+  # Purpose
+  # - Compute per-chromosome cumulative offsets and genome-wide coordinates (gstart/gend)
+  # - Compute genome-wide midpoint (numeric or integer)
+  # - Ensure chromosome "first" (by chosen ordering) receives offset 0 (no added offset)
+  #
+  # Expectations
+  # - table_10kb contains columns named chrom_col, start_col, end_col (defaults: chrom, chromStart, chromEnd)
+  # - Returns a copy of table_10kb with added columns:
+  #     chrom_offset (numeric), gstart (numeric), gend (numeric), <out_midpoint_name> (numeric or integer)
+  #
+  # Notes
+  # - Uses numeric coordinates to avoid 32-bit integer overflow for large genomes
+  # - If keep_integer_midpoint = TRUE midpoint is rounded to integer via floor()
+  #
+  if (!requireNamespace("data.table", quietly = TRUE)) stop("data.table required")
+  order_chrom_by <- match.arg(order_chrom_by)
+
+  dt <- data.table::as.data.table(table_10kb)
+
+  # validate input columns
+  if (!all(c(chrom_col, start_col, end_col) %in% names(dt))) {
+    stop("table_10kb must contain columns: ", paste(c(chrom_col, start_col, end_col), collapse = ", "))
+  }
+
+  # normalize types
+  dt[[chrom_col]] <- as.character(dt[[chrom_col]])
+  dt[[start_col]] <- as.numeric(dt[[start_col]])
+  dt[[end_col]] <- as.numeric(dt[[end_col]])
+
+  # build chrom_lengths if not supplied
+  if (is.null(chrom_lengths)) {
+    chrom_lengths <- dt[, .(length = max(get(end_col), na.rm = TRUE)), by = chrom_col]
+    data.table::setnames(chrom_lengths, old = chrom_col, new = "chrom", skip_absent = TRUE)
+  } else {
+    chrom_lengths <- data.table::as.data.table(chrom_lengths)
+    # normalize expected column names
+    if (!("chrom" %in% names(chrom_lengths))) {
+      if (chrom_col %in% names(chrom_lengths)) data.table::setnames(chrom_lengths, chrom_col, "chrom")
+    }
+    if (!("length" %in% names(chrom_lengths))) {
+      if ("chromEnd" %in% names(chrom_lengths)) data.table::setnames(chrom_lengths, "chromEnd", "length")
+      else if ("end" %in% names(chrom_lengths)) data.table::setnames(chrom_lengths, "end", "length")
+      else stop("chrom_lengths must provide columns: chrom and length (or chromEnd/end)")
+    }
+    chrom_lengths[, chrom := as.character(chrom)]
+    chrom_lengths[, length := as.numeric(length)]
+  }
+
+  # determine chromosome order
+  chroms <- unique(chrom_lengths$chrom)
+  if (order_chrom_by == "provided") {
+    chrom_lengths <- chrom_lengths[match(chroms, chrom_lengths$chrom)]
+  } else if (order_chrom_by == "natural") {
+    extract_num <- function(x) {
+      x2 <- sub("^chr", "", x, ignore.case = TRUE)
+      suppressWarnings(as.integer(sub("^.*?_?([0-9]+)$", "\\1", x2)))
+    }
+    nums <- extract_num(chroms)
+    has_num <- !is.na(nums)
+    # numeric chromosomes first sorted, then the remainder lexicographically
+    ord <- c(order(nums[has_num], na.last = NA), order(chroms[!has_num]))
+    chrom_ordered <- chroms[ord]
+    chrom_lengths <- chrom_lengths[match(chrom_ordered, chrom_lengths$chrom)]
+  } else {
+    chrom_lengths <- chrom_lengths[order(chrom)]
+  }
+
+  # compute cumulative offsets such that the first chromosome has offset 0
+  chrom_lengths[, chrom_offset := as.numeric(data.table::shift(cumsum(length), fill = 0))]
+
+  # join offsets into dt
+  setkeyv(chrom_lengths, "chrom")
+  dt_temp <- copy(dt)
+  data.table::setnames(dt_temp, old = chrom_col, new = "chrom", skip_absent = TRUE)
+  dt_temp <- chrom_lengths[dt_temp, on = .(chrom)]
+
+  # compute genome-wide coordinates; first chromosome receives offset 0 by design
+  dt_temp[, gstart := chrom_offset + get(start_col)]
+  dt_temp[, gend   := chrom_offset + get(end_col)]
+  dt_temp[, (out_midpoint_name) := (gstart + gend) / 2]
+
+  if (isTRUE(keep_integer_midpoint)) {
+    dt_temp[, (out_midpoint_name) := floor(get(out_midpoint_name))]
+  }
+
+  # restore original chrom column name if different
+  if (chrom_col != "chrom") data.table::setnames(dt_temp, "chrom", chrom_col)
+
+  # assemble output columns (preserve original columns order then append new columns)
+  new_cols <- c("chrom_offset", "gstart", "gend", out_midpoint_name)
+  # avoid duplicating columns if input already had same names
+  new_cols <- new_cols[!new_cols %in% names(table_10kb)]
+  out_cols <- c(names(table_10kb), new_cols)
+  out <- dt_temp[, ..out_cols]
+  return(out[])
+}
 ```
 
 Automated pipeline
 
 ```{r SEM-helpers-2, eval=F, include=F, message=F, warning=F}
 
-run_whitening_pipeline <- function(dt,
-                                   vars,
-                                   model_formula = NULL,
-                                   model_resp = NULL,
-                                   model_predictors = NULL,
+make_sparse_cov_blocks <- function(block_map,
+                                   decay_dt,
+                                   dt,
                                    by_chr = "chrom",
-                                   window_bp = 1e4,
-                                   max_block_span = 1e6,
+                                   block_id_col = "block_id",
+                                   orig_row_col = "orig_row",
+                                   midpoint_col = "midpoint",
+                                   variable_col = "variable",
                                    max_pair_distance = 2e5,
-                                   n_bins = 50L,
-                                   trim_prop = 0.02,
-                                   min_pairs = 30L,
-                                   min_sigma2 = 1e-8,
-                                   min_alpha = 1e-10,
-                                   borrow_alpha_from = NULL,
-                                   nls_control = nls.control(warnOnly = TRUE, maxiter = 200),
-                                   parallel = FALSE,
-                                   n_cores = 1L,
-                                   verbose = TRUE) {
-  # Defensive input checks
-  if (!"data.table" %in% class(dt)) dt <- as.data.table(dt)
-  stopifnot(is.list(vars), length(vars) >= 1)
-  stopifnot(by_chr %in% names(dt))
-  if (!is.null(borrow_alpha_from)) borrow_alpha_from <- as.character(borrow_alpha_from)
+                                   tol_sym = 1e-9,
+                                   key_fun = NULL,
+                                   chunk_threshold = 3000L,
+                                   verbose = FALSE) {
+  # dependencies
+  if (!requireNamespace("data.table", quietly = TRUE)) stop("data.table required")
+  if (!requireNamespace("Matrix", quietly = TRUE)) stop("Matrix required")
+  data.table <- data.table::as.data.table
 
-  # Ensure consistent chr type
+  # input validation & copies
+  stopifnot(is.data.frame(block_map) || data.table::is.data.table(block_map))
+  stopifnot(is.data.frame(decay_dt) || data.table::is.data.table(decay_dt))
+  stopifnot(is.data.frame(dt) || data.table::is.data.table(dt))
+  block_map <- data.table::as.data.table(block_map)
+  decay_dt  <- data.table::as.data.table(decay_dt)
+  dt        <- data.table::as.data.table(dt)
+
+  stopifnot(by_chr %in% names(block_map))
+  stopifnot(orig_row_col %in% names(block_map))
+  stopifnot(midpoint_col %in% names(dt))
+  block_map[[by_chr]] <- as.character(block_map[[by_chr]])
   dt[[by_chr]] <- as.character(dt[[by_chr]])
-  dt[, midpoint := as.numeric(midpoint)]
+  block_map[[orig_row_col]] <- as.integer(block_map[[orig_row_col]])
 
-  # 1) Build block_map using make_distance_blocks if available, else simple per-chrom blocks
-  dt[, orig_row := .I]
-  if (exists("make_distance_blocks")) {
-    dts_by_chr <- split(dt, by = by_chr, keep.by = TRUE)
-    blocks_list <- lapply(dts_by_chr, function(dsub) {
-      setDT(dsub)
-      make_distance_blocks(dsub, window_bp = window_bp, max_block_span = max_block_span)
-    })
-    block_map <- rbindlist(blocks_list, use.names = TRUE, fill = TRUE)
-  } else {
-    block_map <- copy(dt)
-    block_map[, block_id := 1L, by = by_chr]
-  }
-  # Ensure orig_row present
-  if (!"orig_row" %in% names(block_map)) stop("block_map must contain orig_row mapping")
+  # default key builder
+  if (is.null(key_fun)) key_fun <- function(chr, bid, var = NULL) paste0(chr, "_", bid)
 
-  # 2) Estimate decay per chromosome + variable (robust)
-  chr_vals <- unique(block_map[[by_chr]])
-  decay_records <- list()
-
-  # optional parallelization setup
-  if (parallel && n_cores > 1L) {
-    if (!requireNamespace("parallel", quietly = TRUE)) parallel <- FALSE
-  }
-
-  run_single_chr_var <- function(chr_val, varname) {
-    dt_chr_blocks <- block_map[get(by_chr) == chr_val]
-    if (nrow(dt_chr_blocks) == 0) return(NULL)
-    dt_chr_full <- dt[dt_chr_blocks$orig_row]
-    if (nrow(dt_chr_full) < 4) {
-      return(data.table(chr = chr_val, variable = varname, alpha = NA_real_, sigma2 = var(dt_chr_full[[varname]], na.rm = TRUE),
-                        method = "insufficient_windows", n_windows = nrow(dt_chr_full), n_pairs = 0L, fallback_reasons = NA_character_))
-    }
-
-    res <- tryCatch({
-      estimate_decay_per_chr_robust(dt_chr_full,
-                                    formula = model_formula,
-                                    resp = if (is.null(model_formula)) varname else NULL,
-                                    predictors = if (is.null(model_formula)) vars[[varname]] else NULL,
-                                    min_pairs = min_pairs,
-                                    max_pair_distance = max_pair_distance,
-                                    n_bins = n_bins,
-                                    trim_prop = trim_prop,
-                                    start_alpha = 1e-6,
-                                    start_s2 = NULL,
-                                    lower_alpha = 1e-12,
-                                    upper_alpha = 1,
-                                    lower_s2 = 1e-12,
-                                    upper_s2 = Inf,
-                                    nls_control = nls_control,
-                                    min_sigma2 = min_sigma2,
-                                    min_alpha = min_alpha,
-                                    borrow_alpha = NA_real_,
-                                    return_binned = TRUE,
-                                    verbose = FALSE)
-    }, error = function(e) list(alpha = NA_real_, sigma2 = NA_real_, method = "est_error", n_pairs = 0L, n_bins = 0L, binned = NULL, fallback_reasons = NA_character_))
-
-    data.table(chr = chr_val, variable = varname,
-               alpha = res$alpha, sigma2 = res$sigma2,
-               method = res$method, n_windows = nrow(dt_chr_full),
-               n_pairs = res$n_pairs, fallback_reasons = res$fallback_reasons,
-               binned = list(res$binned))
-  }
-
-  # iterate (parallel or serial)
-  tasks <- CJ(chr = chr_vals, var = names(vars), unique = TRUE)
-  if (parallel && n_cores > 1L) {
-    cl <- parallel::makeCluster(n_cores)
-    on.exit(parallel::stopCluster(cl), add = TRUE)
-    parallel::clusterExport(cl, varlist = c("block_map", "dt", "vars", "estimate_decay_per_chr_robust", "model_formula", "model_resp", "model_predictors"), envir = environment())
-    res_list <- parallel::parLapply(cl, seq_len(nrow(tasks)), function(i) {
-      task <- tasks[i]
-      run_single_chr_var(task$chr, task$var)
-    })
-  } else {
-    res_list <- lapply(seq_len(nrow(tasks)), function(i) {
-      task <- tasks[i]
-      run_single_chr_var(task$chr, task$var)
-    })
-  }
-  decay_dt <- rbindlist(Filter(Negate(is.null), res_list), use.names = TRUE, fill = TRUE)
-
-  # 3) Borrow median alpha where needed
-  for (varname in names(vars)) {
-    pool <- decay_dt[variable == varname & is.finite(alpha) & alpha > 0, alpha]
-    median_alpha <- if (length(pool) > 0) median(pool, na.rm = TRUE) else NA_real_
-    if (is.na(median_alpha) && !is.null(borrow_alpha_from)) {
-      pool2 <- decay_dt[variable == varname & chr %in% borrow_alpha_from & is.finite(alpha) & alpha > 0, alpha]
-      median_alpha <- if (length(pool2) > 0) median(pool2, na.rm = TRUE) else NA_real_
-    }
-    if (is.na(median_alpha)) median_alpha <- 1e-6
-    decay_dt[variable == varname & (is.na(alpha) | alpha < min_alpha), `:=`(
-      alpha = median_alpha,
-      method = paste0(method, "+alpha_borrowed"),
-      fallback_reasons = ifelse(is.na(fallback_reasons), "alpha_borrowed", paste(fallback_reasons, "alpha_borrowed", sep = ";"))
-    )]
-  }
-
-  # 4) Fix sigma2 small/NA using empirical residual variance
-  for (i in seq_len(nrow(decay_dt))) {
-    row <- decay_dt[i]
-    if (is.na(row$sigma2) || row$sigma2 < min_sigma2) {
-      chr_val <- row$chr; varname <- row$variable
-      block_rows <- block_map[get(by_chr) == chr_val]
-      dt_chr_full <- dt[block_rows$orig_row]
-      if (nrow(dt_chr_full) >= 2) {
-        ols <- tryCatch(lm(as.formula(sprintf("%s ~ %s", varname, paste(vars[[varname]], collapse = " + "))), data = dt_chr_full), error = function(e) NULL)
-        new_s2 <- if (!is.null(ols)) var(resid(ols), na.rm = TRUE) else var(dt_chr_full[[varname]], na.rm = TRUE)
-      } else new_s2 <- min_sigma2
-      if (!is.finite(new_s2) || new_s2 < min_sigma2) new_s2 <- min_sigma2
-      decay_dt[i, `:=`(sigma2 = new_s2,
-                       method = paste0(method, "+sigma2_fixed"),
-                       fallback_reasons = ifelse(is.na(fallback_reasons), "sigma2_fixed", paste(fallback_reasons, "sigma2_fixed", sep = ";")))]
-    }
-  }
-
-  # Harmonize names expected by make_sparse_cov_blocks
-  decay_dt[, chr := as.character(get(by_chr))]
-  block_map[, orig_row := as.integer(orig_row)]
-
-  # 5) Build sparse covariance blocks (process block-by-block to avoid high memory)
   full_block_covs <- list()
   diagnostics <- list()
-  unique_blocks <- unique(block_map[, .(block_id, chr = get(by_chr))])
+  hiccups <- list()
+  index_map_rows <- list()
+  imr_i <- 0L
 
-  for (i in seq_len(nrow(unique_blocks))) {
-    block_id <- unique_blocks$block_id[i]; chr_val <- unique_blocks$chr[i]
-    rows_block <- block_map[block_id == block_id & get(by_chr) == chr_val]
-    if (nrow(rows_block) == 0) next
-    dt_block <- dt[rows_block$orig_row]
-    if (nrow(dt_block) < 1) next
+  # iterate unique (chr, block_id)
+  uniq_blocks <- unique(block_map[, .(block_id = get(block_id_col), chr = get(by_chr))])
+  setorder(uniq_blocks, chr, block_id)
 
-    # Determine variable present for decay lookup
-    present_vars <- intersect(names(vars), names(dt_block))
-    if (length(present_vars) == 0) {
-      # try using first variable in decay_dt for this chr
-      decay_row <- decay_dt[chr == chr_val][1]
-      if (is.na(decay_row$variable)) next
-      varname <- decay_row$variable
-    } else varname <- present_vars[1]
+  for (r in seq_len(nrow(uniq_blocks))) {
+    chr_val <- uniq_blocks$chr[r]
+    bid <- uniq_blocks$block_id[r]
 
-    decay_row <- decay_dt[chr == chr_val & variable == varname][1]
-    if (nrow(decay_row) == 0) next
+    rows_block <- block_map[get(block_id_col) == bid & get(by_chr) == chr_val]
+    if (nrow(rows_block) == 0L) next
 
-    alpha <- decay_row$alpha; sigma2 <- decay_row$sigma2
-    # build sparse covariance with user-supplied build_exp_cov (must be memory-efficient)
-    cov_sparse <- tryCatch({
-      build_exp_cov(pos = dt_block$midpoint, alpha = alpha, sigma2 = sigma2, max_pair_distance = max_pair_distance)
-    }, error = function(e) {
-      if (verbose) message("block ", block_id, " chr ", chr_val, " build_exp_cov failed: ", e$message)
-      NULL
-    })
-    if (is.null(cov_sparse)) next
+    # orig_row indices into dt
+    orig_rows <- unique(na.omit(as.integer(rows_block[[orig_row_col]])))
+    # keep only valid row indices
+    orig_rows <- orig_rows[orig_rows >= 1 & orig_rows <= nrow(dt)]
+    if (length(orig_rows) < 1L) next
 
-    key <- paste0(chr_val, "_", block_id)
-    full_block_covs[[key]] <- cov_sparse
-    diagnostics[[key]] <- list(
-      chr = chr_val, block_id = block_id, n_windows = nrow(dt_block),
-      alpha = alpha, sigma2 = sigma2, method = decay_row$method,
-      fallback = decay_row$fallback_reasons,
-      nnz = length(cov_sparse@x),
-      dims = dim(cov_sparse)
-    )
+    dt_block <- dt[orig_rows]
+    n_windows <- nrow(dt_block)
+    if (n_windows < 1L) next
+
+    # choose variable to look up decay: prefer variable_col in decay_dt for this chr
+    decay_row <- decay_dt[get(by_chr) == chr_val]
+    if (nrow(decay_row) == 0L) {
+      hiccups[[length(hiccups)+1L]] <- list(key = paste0(chr_val, "_", bid), reason = "no_decay_info")
+      next
+    }
+    # pick first matching variable that exists in dt_block, or the first row's variable
+    vars_candidates <- unique(as.character(decay_row[[variable_col]]))
+    varname <- NULL
+    for (v in vars_candidates) if (!is.null(v) && v %in% names(dt_block)) { varname <- v; break }
+    if (is.null(varname)) varname <- as.character(decay_row[[variable_col]][1])
+
+    # get decay params
+    decay_params <- decay_dt[get(by_chr) == chr_val & get(variable_col) == varname]
+    if (nrow(decay_params) == 0L) {
+      # fallback: try same chr any variable
+      decay_params <- decay_dt[get(by_chr) == chr_val][1]
+    }
+    if (nrow(decay_params) == 0L) { hiccups[[length(hiccups)+1L]] <- list(key = paste0(chr_val, "_", bid), reason = "decay_missing"); next }
+    alpha <- as.numeric(decay_params$alpha[1]); sigma2 <- as.numeric(decay_params$sigma2[1])
+    if (!is.finite(alpha) || alpha <= 0) alpha <- 1e-6
+    if (!is.finite(sigma2) || sigma2 <= 0) sigma2 <- max(1e-12, var(dt_block[[varname]], na.rm = TRUE), na.rm = TRUE)
+
+    # positions and quick filter for within-distance pairs
+    pos <- as.numeric(dt_block[[midpoint_col]])
+    ord <- order(pos)
+    pos <- pos[ord]
+    orig_rows_ord <- orig_rows[ord]
+
+    # Efficient pair generation limited by max_pair_distance:
+    # For each i, find j indices with pos[j] - pos[i] <= max_pair_distance
+    i_list <- integer(0); j_list <- integer(0); vals <- numeric(0)
+    # Chunk approach for large blocks to avoid huge temporary storage
+    if (n_windows <= chunk_threshold) {
+      for (i in seq_len(n_windows - 1L)) {
+        # find max j where distance <= threshold
+        jmax <- findInterval(pos[i] + max_pair_distance, pos)
+        if (jmax > i) {
+          js <- (i + 1L):jmax
+          i_list <- c(i_list, rep(i, length(js)))
+          j_list <- c(j_list, js)
+          # compute cov values on the fly
+          vals <- c(vals, sigma2 * exp(-alpha * (pos[js] - pos[i])))
+        }
+      }
+    } else {
+      # chunk i ranges to limit memory
+      chunk_size <- chunk_threshold
+      for (start in seq(1L, n_windows - 1L, by = chunk_size)) {
+        end <- min(n_windows - 1L, start + chunk_size - 1L)
+        for (i in start:end) {
+          jmax <- findInterval(pos[i] + max_pair_distance, pos)
+          if (jmax > i) {
+            js <- (i + 1L):jmax
+            i_list <- c(i_list, rep(i, length(js)))
+            j_list <- c(j_list, js)
+            vals <- c(vals, sigma2 * exp(-alpha * (pos[js] - pos[i])))
+          }
+        }
+        # keep vectors from growing too large in memory by periodically converting to sparse matrix partials
+        if (length(i_list) > 1e6) break
+      }
+      # if we broke early because of memory, fall back to a sampled approach
+      if (length(i_list) > 1e6) {
+        # uniform sample of pairs to represent block (memory-bound fallback)
+        sample_idx <- sample(seq_along(i_list), size = min(1e6, length(i_list)))
+        i_list <- i_list[sample_idx]; j_list <- j_list[sample_idx]; vals <- vals[sample_idx]
+        if (verbose) message("Block large; used sampled pair set for block ", chr_val, "_", bid)
+      }
+    }
+
+    if (length(i_list) == 0L) {
+      # no within-distance pairs: produce diagonal-only covariance
+      cov_mat <- Matrix::Diagonal(n = n_windows, x = rep(sigma2, n_windows))
+      cov_mat <- as(cov_mat, "dsCMatrix")
+    } else {
+      # assemble sparse symmetric covariance matrix from triplet list
+      # create i,j in 1..n_windows
+      ii <- i_list; jj <- j_list; vv <- vals
+      # include symmetric entries
+      ii2 <- c(ii, jj, seq_len(n_windows))
+      jj2 <- c(jj, ii, seq_len(n_windows))
+      vv2 <- c(vv, vv, rep(sigma2, n_windows))
+      sp <- Matrix::sparseMatrix(i = ii2, j = jj2, x = vv2, dims = c(n_windows, n_windows), symmetric = FALSE)
+      # symmetrize robustly and convert to dsCMatrix
+      sp <- (sp + Matrix::t(sp)) / 2
+      cov_mat <- as(sp, "dsCMatrix")
+    }
+
+    # final sanity (jitter diag if needed)
+    diag_vals <- diag(cov_mat)
+    diag_vals[diag_vals <= 0 | !is.finite(diag_vals)] <- max(1e-12, sigma2)
+    diag(cov_mat) <- diag_vals
+
+    # store using canonical key
+    key <- key_fun(chr_val, bid, varname)
+    full_block_covs[[key]] <- cov_mat
+
+    # append index_map rows (preserve ordering used above: orig_rows_ord)
+    for (k in seq_along(orig_rows_ord)) {
+      imr_i <- imr_i + 1L
+      index_map_rows[[imr_i]] <- list(key = key,
+                                      chrom = chr_val,
+                                      block_id = bid,
+                                      variable = varname,
+                                      row_id = as.integer(orig_rows_ord[k]),
+                                      idx = as.integer(k))
+    }
+
+    # diagnostics
+    diagnostics[[key]] <- list(chr = chr_val,
+                               block_id = bid,
+                               n_windows = n_windows,
+                               alpha = alpha,
+                               sigma2 = sigma2,
+                               method = as.character(decay_params$method[1] %||% NA_character_),
+                               fallback = as.character(decay_params$fallback_reasons[1] %||% NA_character_),
+                               nnz = length(cov_mat@x),
+                               dims = dim(cov_mat))
+    if (verbose && (r %% 100 == 0 || r == nrow(uniq_blocks))) message("Processed block ", r, "/", nrow(uniq_blocks), " key=", key)
+  } # end blocks loop
+
+  # assemble index_map and diagnostics tables
+  if (length(index_map_rows) > 0L) {
+    index_map <- data.table::rbindlist(index_map_rows, use.names = TRUE, fill = TRUE)
+  } else {
+    index_map <- data.table::data.table(key = character(0), chrom = character(0), block_id = integer(0), variable = character(0), row_id = integer(0), idx = integer(0))
   }
+  diagnostics_dt <- if (length(diagnostics) > 0L) data.table::rbindlist(lapply(diagnostics, as.data.table), use.names = TRUE, fill = TRUE) else data.table::data.table()
+  hiccup_dt <- if (length(hiccups) > 0L) data.table::rbindlist(lapply(hiccups, as.data.table), use.names = TRUE, fill = TRUE) else data.table::data.table()
 
-  diagnostics_dt <- rbindlist(lapply(diagnostics, as.data.table), use.names = TRUE, fill = TRUE)
-
-  # 6) Return a structured object
   out <- list(
-    window_bp = window_bp,
-    by_chr = by_chr,
-    block_map = block_map,
-    decay_dt = decay_dt,
     full_block_covs = full_block_covs,
-    diagnostics = diagnostics_dt
+    index_map = index_map,
+    diagnostics = diagnostics_dt,
+    hiccups = hiccup_dt,
+    params = list(by_chr = by_chr, block_id_col = block_id_col, orig_row_col = orig_row_col, midpoint_col = midpoint_col, max_pair_distance = max_pair_distance)
   )
-  class(out) <- c("whitening_pipeline_result", class(out))
-  return(out)
+  class(out) <- c("sparse_cov_blocks", class(out))
+  out
 }
 ```
 
@@ -6838,7 +7257,6 @@ tbl_10kb <- left_join(tbl_10kb, mut_latent_10kb, by=c("chrom",
 tbl_10kb <- filter(tbl_10kb, coverage >= 0.75)
 names(tbl_10kb)[8:10] <- c("B", "avg_rec", "avg_mut")
 
-# modeling autocorrelation
 dt <- copy(tbl_10kb) %>%
        mutate(midpoint=(chromStart + chromEnd) / 2) %>%
        arrange(chrom, midpoint) %>%
@@ -6862,6 +7280,15 @@ message("Decay estimates produced for ", nrow(decay_dt), " chr-variable combos."
 
 # Print decay summary for target variable
 print(decay_dt[variable == target_var])
+
+for(chr in c("2","8","22")) {
+  row <- decay_dt[chrom == chr & variable == target_var]
+  b <- row$binned[[1]]
+  if (!is.null(b) && nrow(b) > 0) {
+    plot(b$dmed, b$cov_trim, pch = 20, xlab = "distance", ylab = "binned cov", main = paste("chr", chr))
+    curve(row$sigma2 * exp(-row$alpha * x), add = TRUE, col = "steelblue", lwd = 2)
+  }
+}
 
 # ---------------------------------------------------------------------------
 # 2. Build sparse covariance blocks
@@ -6977,67 +7404,312 @@ for (chr_val in sel_chrs) {
 print(res_pw$diagnostics)
 ```
 
+TODO: work here
+```{r, eval=F}
+# Required libraries
+library(data.table)
+library(lavaan)
+library(BiocParallel)
+
+# Helpers --------------------------------------------------------------------
+
+# null-coalesce
+`%||%` <- function(x, y) if (!is.null(x)) x else y
+
+# Safe fwrite wrapper
+safe_fwrite <- function(x, file, ...) {
+  tryCatch({
+    data.table::fwrite(x, file, ...)
+  }, error = function(e) {
+    warning("fwrite failed for ", file, ": ", conditionMessage(e))
+  })
+}
+
+# Extract variable-like tokens from lavaan model text
+extract_model_vars <- function(model_txt) {
+  # matches variable names like my_var, my.var, myVar123, but excludes lavaan keywords
+  toks <- unique(regmatches(model_txt, gregexpr("[A-Za-z_][A-Za-z0-9_\\.]*", model_txt))[[1]])
+  # drop common lavaan keywords and operators
+  drop <- c("~~", "~", "==", "~1", "NA", "ifelse")
+  toks <- toks[!toks %in% drop]
+  toks
+}
+
+# Validate that dt_whitened exists and is a data.table
+validate_dt_whitened <- function(dt_whitened) {
+  if (is.null(dt_whitened)) stop("dt_whitened not found. Run whitening pipeline before SEM runs.")
+  if (!inherits(dt_whitened, "data.table")) dt_whitened <- as.data.table(dt_whitened)
+  dt_whitened
+}
+
+# Build task list ------------------------------------------------------------
+
+# Expect these objects to be defined in the calling environment:
+# - scales: character/numeric vector of scales (bp)
+# - model_texts: named list of lavaan model strings, names are model ids used in filenames
+# - out_dir: directory to write outputs
+# - dt_whitened: data.table with whitened columns named <var>_wh and a column "chrom"
+# - BPPARAM: BiocParallel parameter object (e.g., MulticoreParam or SnowParam)
+
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+group_equal_values <- c(regressions = "regressions", none = "none")
+
+tasks <- list()
+for (scale_bp in scales) {
+  for (m in names(model_texts)) {
+    for (ge in group_equal_values) {
+      tasks[[length(tasks) + 1L]] <- list(scale = scale_bp, model = m, group.equal = ge)
+    }
+  }
+}
+
+# Worker ---------------------------------------------------------------------
+
+run_task <- function(task) {
+  scale_bp <- task$scale
+  m <- task$model
+  ge <- task$group.equal
+  msg_tag <- paste0("scale=", scale_bp, " model=", m, " group.equal=", ge)
+
+  tryCatch({
+    message("[", Sys.getpid(), "] Starting ", msg_tag)
+
+    # Validate and copy dt_whitened for worker-local use
+    dt_scale <- validate_dt_whitened(dt_whitened)
+
+    # Get model text and variables; build expected whitened column names
+    model_txt <- model_texts[[m]]
+    if (is.null(model_txt)) {
+      warning(msg_tag, " - model text not found for model id: ", m)
+      return(list(success = FALSE, reason = "model_missing", task = task))
+    }
+    model_vars <- extract_model_vars(model_txt)
+    if (length(model_vars) == 0L) {
+      warning(msg_tag, " - no variables extracted from model text")
+      return(list(success = FALSE, reason = "no_model_vars", task = task))
+    }
+
+    whitened_vars <- paste0(model_vars, "_wh")
+    missing_wcols <- setdiff(whitened_vars, names(dt_scale))
+    if (length(missing_wcols) > 0) {
+      warning(msg_tag, " - missing whitened cols: ", paste(missing_wcols, collapse = ", "))
+      return(list(success = FALSE, reason = "missing_whitened_cols", missing = missing_wcols, task = task))
+    }
+
+    # Subset to necessary columns and complete cases
+    lavaan_dt <- dt_scale[, c("chrom", whitened_vars), with = FALSE]
+    lavaan_dt <- lavaan_dt[complete.cases(lavaan_dt[, ..whitened_vars])]
+    n_rows <- nrow(lavaan_dt)
+    if (n_rows < 20) {
+      warning(msg_tag, " - too few complete rows: ", n_rows)
+      return(list(success = FALSE, reason = "too_few_rows", nrows = n_rows, task = task))
+    }
+
+    # Fit model (capture lavaan errors/warnings)
+    fit_obj <- tryCatch({
+      sem(model_txt,
+          data = lavaan_dt,
+          group = "chrom",
+          group.equal = ge,
+          meanstructure = TRUE,
+          std.ov = TRUE,
+          estimator = "ML")
+    }, error = function(e) {
+      warning(msg_tag, " - lavaan sem() error: ", conditionMessage(e))
+      NULL
+    })
+
+    # Prepare output filenames (unique per task)
+    suffix_ge <- ifelse(ge == "regressions", "constrained", "free")
+    base_prefix <- file.path(out_dir, paste0("YRI_", m, "_", scale_bp, "bp_", suffix_ge))
+
+    if (is.null(fit_obj)) {
+      message("[", Sys.getpid(), "] Fit NULL for ", msg_tag)
+      return(list(success = FALSE, reason = "fit_failed", task = task))
+    }
+
+    # 1) R2 values
+    r2_vals <- tryCatch({
+      r2_list <- inspect(fit_obj, "r2")
+      data.frame(name = names(unlist(r2_list)), value = as.numeric(unlist(r2_list)), stringsAsFactors = FALSE)
+    }, error = function(e) {
+      warning(msg_tag, " - inspect(...,'r2') failed: ", conditionMessage(e)); NULL
+    })
+    if (!is.null(r2_vals)) safe_fwrite(r2_vals, paste0(base_prefix, "_r2.csv"), col.names = TRUE)
+
+    # 2) Parameter estimates with CI
+    pe <- tryCatch(parameterEstimates(fit_obj, ci = TRUE), error = function(e) {
+      warning(msg_tag, " - parameterEstimates failed: ", conditionMessage(e)); NULL
+    })
+    if (!is.null(pe)) safe_fwrite(as.data.table(pe), paste0(base_prefix, "_params.csv"))
+
+    # 3) Fit measures
+    fm <- tryCatch({
+      fms <- fitMeasures(fit_obj)
+      data.frame(name = names(fms), value = as.numeric(fms), stringsAsFactors = FALSE)
+    }, error = function(e) {
+      warning(msg_tag, " - fitMeasures failed: ", conditionMessage(e)); NULL
+    })
+    if (!is.null(fm)) safe_fwrite(fm, paste0(base_prefix, "_fitmeasures.csv"), col.names = TRUE)
+
+    # 4) Save lavaan object for later inspection
+    tryCatch(saveRDS(fit_obj, file = paste0(base_prefix, "_lavaan.rds")), error = function(e) {
+      warning(msg_tag, " - saveRDS failed: ", conditionMessage(e))
+    })
+
+    message("[", Sys.getpid(), "] Finished ", msg_tag, " (rows=", n_rows, ")")
+    list(success = TRUE, task = task, nrows = n_rows)
+  }, error = function(e) {
+    warning("Task error (", paste(unlist(task), collapse = " | "), "): ", conditionMessage(e))
+    list(success = FALSE, reason = "error", message = conditionMessage(e), task = task)
+  })
+}
+
+# Run tasks in parallel ------------------------------------------------------
+
+# Validate BPPARAM existence
+if (!exists("BPPARAM")) {
+  stop("BPPARAM must be defined (e.g., MulticoreParam(workers = 4) or SnowParam()).")
+}
+
+res_list <- bplapply(tasks, run_task, BPPARAM = BPPARAM)
+
+# Summarize and write summary ------------------------------------------------
+
+res_dt <- rbindlist(lapply(res_list, function(x) {
+  data.table(
+    success = isTRUE(x$success),
+    reason  = x$reason %||% NA_character_,
+    scale   = x$task$scale %||% NA_character_,
+    model   = x$task$model %||% NA_character_,
+    group.equal = x$task$group.equal %||% NA_character_,
+    nrows   = as.integer(x$nrows %||% NA_integer_)
+  )
+}), fill = TRUE)
+
+safe_fwrite(res_dt, file = file.path(out_dir, "parallel_fit_summary.csv"))
+res_dt
+```
+
 Fit SEM
 
-```{r, example-run, eval=F, include=F, message=F, warning=F}
+```{r, example-run, eval=T, include=F, message=F, warning=F}
 
 # inputs
 window_bp <- 1e4
-dt <- copy(table_10kb)
+tbl_10kb <- filter(human_maps_10kb, constrained_model=="phastcons")  
+tbl_10kb$avg_pi <- log(tbl_10kb$avg_pi)
+
+# because of 0's
+if(any(tbl_10kb$prop_del_sites==0)) {
+  tbl_10kb$prop_del_sites <- log1p(tbl_10kb$prop_del_sites) 
+} else {
+  tbl_10kb$prop_del_sites <- log(tbl_10kb$prop_del_sites) 
+}
+
+tmp_B <- filter(B_10kb, constrained_model=="phastcons") %>%
+         dplyr::select(., -constrained_model)
+
+tbl_10kb <- left_join(tbl_10kb, tmp_B, by=c("chrom", 
+                                            "chromStart", 
+                                            "chromEnd"))
+
+tbl_10kb <- left_join(tbl_10kb, rec_latent_10kb, by=c("chrom", 
+                                                      "chromStart", 
+                                                      "chromEnd"))
+
+tbl_10kb <- left_join(tbl_10kb, mut_latent_10kb, by=c("chrom", 
+                                                      "chromStart", 
+                                                      "chromEnd"))
+
+tbl_10kb <- filter(tbl_10kb, coverage >= 0.75)
+names(tbl_10kb)[8:10] <- c("B", "avg_rec", "avg_mut")
+
+table_10kb_g <- add_genome_offsets_and_midpoint(tbl_10kb, chrom_lengths = NULL)
+
+dt <- copy(table_10kb_g) %>%
+       arrange(chrom, midpoint) %>%
+       as.data.table()
 setDT(dt)
-stopifnot(all(c("chr","midpoint") %in% names(dt)))
 
 # Define predictor sets per variable for model_2
 vars_model_2 <- list(
   avg_pi = c("B", "avg_mut", "prop_del_sites"),
   B = c("prop_del_sites", "avg_mut", "avg_rec"),
   avg_mut= c("avg_rec")
+  #avg_rec = character(0),
+  #prop_del_sites = character(0)
 )
 
-# Build block specs and estimate decay per variable per chromosome
-spec2 <- make_block_specs(dt = dt, vars = vars_model_2, by_chr = "chr", window_bp = window_bp,
-                          max_block_span = 1e6, max_pair_distance = 2e5, min_pairs = 20)
+# auto-expand to include all variables appearing anywhere
+all_targets   <- names(vars_model_2)
+all_predictors <- unique(unlist(vars_model_2, use.names = FALSE))
+all_vars <- sort(unique(c(all_targets, all_predictors)))
 
-# spec2$block_map ; spec2$decay_dt
-print(head(spec2$decay_dt))
+vars_all <- lapply(all_vars, function(v) {
+  if (v %in% names(vars_model_2)) return(vars_model_2[[v]])
+  # make explicit intercept-only so downstream code can build a valid formula
+  # option: return character(0) and let make_block_specs_robust handle it
+  character(0)
+})
+names(vars_all) <- all_vars
+vars_all2 <- lapply(vars_all, function(x) if (length(x) == 0L) "1" else x)
+# Note: using "1" as predictor makes formula "<var> ~ 1" (intercept-only). Use this only if builder accepts "1" as predictor token.
+spec2 <- make_block_specs_robust(dt = dt, vars = vars_all2, by_chr = "chrom", window_bp = window_bp)
 
 # For a full run you may proceed chromosome-wise. For demonstration we'll create a manageable subset:
 # take up to N_per_chr windows per chromosome to make subsequent linear algebra feasible
 N_per_chr <- 300
-dt_sub <- dt[, .SD[seq_len(min(.N, N_per_chr))], by = chr]
+dt_sub <- dt[, .SD[seq_len(min(.N, N_per_chr))], by = chrom]
 # remap block_map to dt_sub row indices by matching chr & midpoint
-bm <- merge(spec2$block_map, dt_sub[, .(chr, midpoint, sub_row = .I)], by = c("chr", "midpoint"))
-block_map_sub <- bm[, .(row_id = sub_row, chr, midpoint, block_id)]
+bm <- merge(spec2$block_map, dt_sub[, .(chrom, midpoint, sub_row = .I)], by = c("chrom", "midpoint"))
+block_map_sub <- bm[, .(row_id = sub_row, chrom, midpoint, block_id)]
 
 # Build sparse covariance blocks using decay estimates (for dt_sub)
 decay_dt2 <- spec2$decay_dt
-sparse_obj <- make_sparse_cov_blocks(block_map = block_map_sub, decay_dt = decay_dt2, dt = dt_sub,
-                                     by_chr = "chr", max_pair_distance = 2e5)
 
-vars_to_whiten <- c("avg_pi", "B", "avg_mut", "avg_rec", "prop_del_sites", "pi_sim_tot")
+sparse_obj <- make_sparse_cov_blocks(
+  block_map = block_map_sub,
+  decay_dt = decay_dt2,
+  dt = dt_sub,
+  by_chr = "chrom",
+  orig_row_col = "row_id",
+  max_pair_distance = 2e5
+)
+
+vars_to_whiten <- c("avg_pi", "B", "avg_mut", "avg_rec", "prop_del_sites")
 # Only whiten variables present in dt_sub
 vars_to_whiten <- intersect(vars_to_whiten, names(dt_sub))
 whitened_list <- lapply(vars_to_whiten, function(v) prewhiten_variable_blockwise(v, dt_sub, sparse_obj))
 names(whitened_list) <- vars_to_whiten
 
 dt_whiten <- copy(dt_sub)
-for (v in names(whitened_list)) { dt_whiten[, (v) := whitened_list[[v]]] }
+# dt_whiten already a data.table and whitened_list is a named list
+n <- nrow(dt_whiten)
+for (nm in names(whitened_list)) {
+  vec <- whitened_list[[nm]]
+  if (!is.atomic(vec)) {
+    warning("Skipping ", nm, ": not an atomic vector")
+    next
+  }
+  if (length(vec) != n) {
+    warning("Skipping ", nm, ": length ", length(vec), " != nrow(dt_whiten) (", n, ")")
+    next
+  }
+  data.table::set(dt_whiten, j = nm, value = vec)
+}
 
 # Keep complete cases for the variables used in the SEM
-model_vars <- c("pi_sim_tot", "avg_mut", "B", "prop_del_sites", "avg_rec")
+model_vars <- c("avg_mut", "B", "prop_del_sites", "avg_rec")
 model_vars <- intersect(model_vars, names(dt_whiten))
 dt_whiten_complete <- dt_whiten[complete.cases(dt_whiten[, ..model_vars])]
 
-# Compute whitened sample covariance and sample size
-window_mat <- as.matrix(dt_whiten_complete[, ..model_vars])
-sample_cov_whiten <- cov(window_mat, use = "pairwise.complete.obs")
-n_obs_whiten <- nrow(window_mat)
-
 # Fit model_2 in lavaan using whitened sample covariance
 model_2_lavaan <- '
-  pi_sim_tot ~ start(0.25)*c1*avg_mut
-  pi_sim_tot ~ start(0.5)*c2*B
-  pi_sim_tot ~ start(-0.25)*c3*prop_del_sites
+  avg_pi ~ start(0.25)*c1*avg_mut
+  avg_pi ~ start(0.5)*c2*B
+  avg_pi ~ start(-0.25)*c3*prop_del_sites
   B ~ start(-0.25)*c4*prop_del_sites
   B ~ start(-0.25)*c5*avg_mut
   B ~ start(0.25)*c6*avg_rec
@@ -7048,9 +7720,14 @@ model_2_lavaan <- '
   rec_mu_pi := c1*c7
   rec_mu_B_pi := c2*c5*c7
 '
-fit <- sem(model_2_lavaan, sample.cov = sample_cov_whiten, sample.nobs = n_obs_whiten,
-           sample.mean = colMeans(dt_whiten_complete[, ..model_vars], na.rm = TRUE))
-summary(fit, standardized = TRUE, fit.measures = TRUE)
+
+fit <- sem(model_2_lavaan,
+           data = dt_whiten_complete,
+           std.ov = TRUE, 
+           group="chrom",
+           group.equal="none",
+           estimator="ML")
+summary(fit, fit.measures = TRUE)
 
 ```
 
