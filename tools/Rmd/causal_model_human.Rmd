@@ -7690,7 +7690,7 @@ diag_dt <- whitened_diagnostics(target_var = target_var,
                                 dt_raw = dt_sub,
                                 dt_wh  = dt_whitened)
 # write a CSV for inspection
-fwrite(diag_dt, file = file.path(out_dir, "whitened_diagnostics_by_chr.csv"))
+fwrite(diag_dt, file = file.path(path.expand("~/Desktop"), "whitened_diagnostics_by_chr.csv"))
 print(diag_dt)
 
 # ---------------------------------------------------------------------------
