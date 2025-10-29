@@ -7493,8 +7493,9 @@ tbl_10kb <- left_join(tbl_10kb, mut_latent_10kb, by=c("chrom",
 tbl_10kb <- filter(tbl_10kb, coverage >= 0.75)
 names(tbl_10kb)[8:10] <- c("B", "avg_rec", "avg_mut")
 
-dt <- copy(tbl_10kb) %>%
-       mutate(midpoint=(chromStart + chromEnd) / 2) %>%
+table_10kb_g <- add_genome_offsets_and_midpoint(tbl_10kb, chrom_lengths = NULL)
+
+dt <- copy(table_10kb_g) %>%
        arrange(chrom, midpoint) %>%
        as.data.table()
 setDT(dt)
