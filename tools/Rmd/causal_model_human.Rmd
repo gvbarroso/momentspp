@@ -9313,7 +9313,7 @@ save_plot("real_data_maps/gw_gfi_latent.pdf", r,
 # free chromosome params
 gw_fitmeasures_10kb_samechrom <- data.frame()
 gw_fitmeasures_10kb_freechrom <- data.frame()
-for(dag in 2:3) {
+for(dag in 2:4) {
   for(m in unique(human_maps_10kb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
                        dag, "_fitmeasures_10kb_genomewide", 
@@ -9323,8 +9323,8 @@ for(dag in 2:3) {
     tmp$constrained_model <- m
     tmp$method <- "freechrom"
     
-    # TODO fix bug with number of columns
-    tmp <- dplyr::select(tmp, names(tmp)[names(tmp) %in% names(gw_fitmeasures_10kb_freechrom)])
+    tmp <- dplyr::select(tmp, c(pvalue, cfi, gfi, rmsea, method,
+                                  DAG, constrained_model))
     gw_fitmeasures_10kb_freechrom <- rbind.data.frame(gw_fitmeasures_10kb_freechrom, tmp)
     
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
@@ -9335,6 +9335,8 @@ for(dag in 2:3) {
     tmp$constrained_model <- m
     tmp$method <- "samechrom"
     
+    tmp <- dplyr::select(tmp, c(pvalue, cfi, gfi, rmsea, method,
+                                  DAG, constrained_model))
     gw_fitmeasures_10kb_samechrom <- rbind.data.frame(gw_fitmeasures_10kb_samechrom, tmp)
   }
 }
@@ -9344,7 +9346,7 @@ gw_fitmeasures_10kb_freechrom$scale <- 1e+4
 ## 100 kb
 gw_fitmeasures_100kb_samechrom <- data.frame()
 gw_fitmeasures_100kb_freechrom <- data.frame()
-for(dag in 2:3) {
+for(dag in 2:4) {
   for(m in unique(human_maps_100kb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
                        dag, "_fitmeasures_100kb_genomewide", 
@@ -9354,7 +9356,8 @@ for(dag in 2:3) {
     tmp$constrained_model <- m
     tmp$method <- "freechrom"
     
-    tmp <- dplyr::select(tmp, names(tmp)[names(tmp) %in% names(gw_fitmeasures_100kb_freechrom)])
+    tmp <- dplyr::select(tmp, c(pvalue, cfi, gfi, rmsea, method,
+                                  DAG, constrained_model))
     gw_fitmeasures_100kb_freechrom <- rbind.data.frame(gw_fitmeasures_100kb_freechrom, tmp)
     
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
@@ -9365,6 +9368,8 @@ for(dag in 2:3) {
     tmp$constrained_model <- m
     tmp$method <- "samechrom"
     
+    tmp <- dplyr::select(tmp, c(pvalue, cfi, gfi, rmsea, method,
+                                  DAG, constrained_model))
     gw_fitmeasures_100kb_samechrom <- rbind.data.frame(gw_fitmeasures_100kb_samechrom, tmp)
   }
 }
@@ -9374,7 +9379,7 @@ gw_fitmeasures_100kb_freechrom$scale <- 1e+5
 ## 1 Mb
 gw_fitmeasures_1Mb_samechrom <- data.frame()
 gw_fitmeasures_1Mb_freechrom <- data.frame()
-for(dag in 2:3) {
+for(dag in 2:4) {
   for(m in unique(human_maps_1Mb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
                        dag, "_fitmeasures_1Mb_genomewide", 
@@ -9384,7 +9389,8 @@ for(dag in 2:3) {
     tmp$constrained_model <- m
     tmp$method <- "freechrom"
     
-    tmp <- dplyr::select(tmp, names(tmp)[names(tmp) %in% names(gw_fitmeasures_1Mb_freechrom)])
+    tmp <- dplyr::select(tmp, c(pvalue, cfi, gfi, rmsea, method,
+                                  DAG, constrained_model))
     gw_fitmeasures_1Mb_freechrom <- rbind.data.frame(gw_fitmeasures_1Mb_freechrom, tmp)
     
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG",
@@ -9395,6 +9401,8 @@ for(dag in 2:3) {
     tmp$constrained_model <- m
     tmp$method <- "samechrom"
     
+    tmp <- dplyr::select(tmp, c(pvalue, cfi, gfi, rmsea, method,
+                                  DAG, constrained_model))
     gw_fitmeasures_1Mb_samechrom <- rbind.data.frame(gw_fitmeasures_1Mb_samechrom, tmp)
   }
 }
@@ -9577,11 +9585,12 @@ chr_fitmeasures_latent <- rbind.data.frame(chr_fit_10kb,
                                         chr_fit_100kb,
                                         chr_fit_1Mb) 
 
+bonferroni <- nrow(chr_fitmeasures_latent) / length(unique(chr_fitmeasures_latent$scale))
 p <- ggplot(data=chr_fitmeasures_latent, 
              aes(x=chrom, 
                  y=-log10(pvalue), 
                  color=as.factor(DAG))) +
-      geom_point(size=2) + geom_hline(yintercept=-log10(0.05),
+      geom_point(size=2) + geom_hline(yintercept=-log10(0.05/bonferroni),
                                       linetype="dashed",
                                       color="red") +
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
@@ -9727,7 +9736,7 @@ p <- ggplot(data=gw_LRT,
                                                    linetype="dashed", 
                                                    color="red") +
       scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
-      scale_shape_manual(values=c(0, 1), name="DAG") +
+      scale_shape_manual(values=c(0, 1, 2, 3), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Const. Model") +
       labs(title="LRT test of nested free-chrom vs genome-wide models",
@@ -9817,29 +9826,33 @@ chr_LRT_latent <- rbind.data.frame(chr_LRT_10kb,
                                 chr_LRT_1Mb)
 names(chr_LRT_latent)[1] <- "pvalue"
 
-p <- ggplot(data=chr_LRT_latent, 
-             aes(x=chrom, 
-                 y=-log10(pvalue))) +
-      geom_point(size=2, shape=1) +
-      geom_hline(yintercept=-log10(0.05), linetype="dashed", color="black") +
-      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
-      scale_y_continuous(breaks=pretty_breaks()) +
-      scale_x_continuous(breaks=1:22) +
-      #scale_color_manual(values=c("purple3", "seagreen4")) +
-      labs(title="LRT test of nested DAGs 3 & 4 (models fit per chromosome, latent variables)",
-           x="Chromosome", y="-log10(p-value)") +
-      theme(strip.text.y=element_text(size=16),      
-            strip.text.x=element_text(size=16),   
-            axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-            legend.position="bottom")
-save_plot("real_data_maps/chr_LRT_latent.svg", p, 
-          base_height=10, base_width=20)
-save_plot("real_data_maps/chr_LRT_latent.pdf", p, 
-          base_height=10, base_width=20)
+bonferroni <- nrow(chr_LRT_latent) / length(unique(chr_LRT_latent$scale))
+for(scal in unique(chr_LRT_latent$scale)) {
+  p <- ggplot(data=filter(chr_LRT_latent, scale==scal), 
+               aes(x=chrom, 
+                   y=-log10(pvalue))) +
+        geom_point(size=2, shape=1) +
+        geom_hline(yintercept=-log10(0.05/bonferroni), linetype="dashed", color="red") +
+        facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+        scale_y_continuous(breaks=pretty_breaks()) +
+        scale_x_continuous(breaks=1:22) +
+        #scale_color_manual(values=c("purple3", "seagreen4")) +
+        labs(title="LRT test of nested DAGs 3 & 4 (models fit per chromosome, latent variables)",
+             x="Chromosome", y="-log10(p-value)") +
+        theme(strip.text.y=element_text(size=16),      
+              strip.text.x=element_text(size=16),   
+              axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_text(size=12),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="bottom")
+        
+  save_plot(paste("real_data_maps/chr_LRT_latent", scal, ".svg", sep=""), p, 
+            base_height=10, base_width=20)
+  save_plot(paste("real_data_maps/chr_LRT_latent", scal, ".pdf", sep=""), p, 
+            base_height=10, base_width=20)
+}
 ```
 
 Variance explained
