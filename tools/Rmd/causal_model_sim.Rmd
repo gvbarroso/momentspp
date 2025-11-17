@@ -73,7 +73,7 @@ We write a table with parameters shaping genomic landscapes
 Later, we will assume a single DFE for all elements.
 Thus |s| can be seen as "constant" (see DAGs below).
 
-```{r, build-chr-models, eval=F, include=F, message=F, warning=F}
+```{r, build-chr-models, eval=F, include=T, message=F, warning=F}
 
 # Gamma dist params
 shapes_rate_u <- c(5, 10, 30, 100)
@@ -132,7 +132,7 @@ mkdir SEM
 
 We use the models to assemble the genomic maps
 
-```{r, build-chr-maps, eval=F, include=F, message=F, warning=F}
+```{r, build-chr-maps, eval=F, include=T, message=F, warning=F}
 
 for(m in 1:num_models) {
   print(paste(m, Sys.Date(), Sys.time()), sep="\t")
@@ -522,7 +522,7 @@ interference.
 
 Specifying causal models
 
-```{r dags-viz, eval=F, include=F, message=F, warning=F}
+```{r dags-viz, eval=F, include=T, message=F, warning=F}
 
 # Barroso & Dutheil 2023
 DAG0 <- dagify(
@@ -543,9 +543,11 @@ DD0p <- DAG0 %>%
   geom_dag_text(parse=TRUE, 
                 label = c("D", "r", expression(pi),
                           "S", expression(tau), expression(mu)))
+
+DD0p
   
 save_plot("DAGs/DAG_0.svg", DD0p)
-save_plot("DAGs/DAG_0.png", DD0p)
+save_plot("DAGs/DAG_0.pdf", DD0p)
 
 DAG1 <- dagify(
   pi ~ D,
@@ -567,8 +569,10 @@ DD1p <- DAG1 %>%
   geom_dag_text(parse=TRUE, 
                 label = c("B", "D", "S", expression(pi), "r", expression(mu)))
   
+DD1p
+
 save_plot("DAGs/DAG_1.svg", DD1p)
-save_plot("DAGs/DAG_1.png", DD1p)
+save_plot("DAGs/DAG_1.pdf", DD1p)
 
 DAG2 <- dagify(
   pi_neu ~ B,
@@ -861,7 +865,9 @@ for(m in 1:num_models) {
       scale_y_continuous(breaks=pretty_breaks(), 
                          labels=scientific) +
       labs(title=NULL, x=NULL, y="B") +
-      theme(strip.text.y=element_text(size=16),             strip.text.x=element_text(size=16),             axis.title.x=element_text(size=16),
+      theme(strip.text.y=element_text(size=16),             
+            strip.text.x=element_text(size=16),             
+            axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
             axis.text.y=element_text(size=16),
             plot.title=element_text(size=20),
@@ -933,7 +939,9 @@ for(m in 1:num_models) {
       scale_y_continuous(breaks=pretty_breaks(),
                          labels=scientific) +
       labs(title=NULL, x=NULL, y=NULL) +
-      theme(strip.text.y=element_text(size=16),             strip.text.x=element_text(size=16),             axis.title.x=element_text(size=16),
+      theme(strip.text.y=element_text(size=16),             
+            strip.text.x=element_text(size=16),            
+            axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
             axis.text.y=element_blank(),
             plot.title=element_text(size=20),
@@ -1005,7 +1013,9 @@ for(m in 1:num_models) {
       scale_y_continuous(breaks=pretty_breaks(),
                          labels=scientific) +
       labs(title=NULL, x=NULL, y=NULL) +
-      theme(strip.text.y=element_text(size=16),             strip.text.x=element_text(size=16),             axis.title.x=element_text(size=16),
+      theme(strip.text.y=element_text(size=16),             
+            strip.text.x=element_text(size=16),             
+            axis.title.x=element_text(size=16),
             axis.text.x=element_blank(),
             axis.text.y=element_blank(),
             plot.title=element_text(size=20),
@@ -1065,6 +1075,7 @@ exonic sites in the DAG, because they are more flexible w.r.t to assumptions
 Here we are using predictions from the final iteration of B-values.
 
 DAG 1: non-mutagenic recombination, pi neutral
+
 ```{r d-sep-DAG1, eval=F, include=F, message=F, warning=F}
 
 # neutral pi, non-mutagenic rec
@@ -1219,6 +1230,7 @@ fwrite(pval_dsep, "pval_dsep1.csv")
 ```
 
 DAG 2: mutagenic recombination, pi neutral
+
 ```{r d-sep-DAG2, eval=F, include=F, message=F, warning=F}
 
 # neutral pi, mutagenic rec
@@ -1368,6 +1380,7 @@ fwrite(pval_dsep, "pval_dsep2.csv")
 ```
 
 DAG 3: non-mutagenic recombination, simulated pi (mutational variance)
+
 ```{r d-sep-DAG3, eval=F, include=F, message=F, warning=F}
 
 # sim_pi == total pi (neul + del), non-mutagenic rec
@@ -1517,6 +1530,7 @@ fwrite(pval_dsep, "pval_dsep3.csv")
 ```
 
 DAG 4: mutagenic recombination, simulated pi (mutational variance)
+
 ```{r d-sep-DAG4, eval=F, include=F, message=F, warning=F}
 
 # sim_pi == total pi (neul + del), mutagenic rec
@@ -4121,13 +4135,8 @@ pi_neu_sim ~ start(0.5)*c1*B
 pi_neu_sim ~ start(0.5)*c2*avg_mut
 B ~ start(-0.25)*c3*avg_mut
 B ~ start(-0.5)*c6*del_sites
-B ~ start(0.2)*c4*avg_rec
+B ~ start(0.25)*c4*avg_rec
 avg_mut ~~ 0*avg_rec
-# fixing exogenous residual variances since we standardize variables?
-avg_mut ~~ 1*avg_mut
-avg_rec ~~ 1*avg_rec
-del_sites ~~ 1*del_sites
-# st
 # defining indirect and total effects
 rec_B_pi:=c1*c4
 mu_B_pi:=c1*c3
