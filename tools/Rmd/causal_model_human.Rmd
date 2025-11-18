@@ -23,6 +23,7 @@ library(cowplot)
 library(scales)
 library(GenomicRanges)
 library(R.utils)
+library(RColorBrewer)
 
 library(stats)
 library(MASS)
@@ -3601,6 +3602,105 @@ human_summaries <- rbind.data.frame(human_summaries_roulette,
                                       mut_map))
 ```
 
+Scaled del. sites
+For each class of deleterious sites, this scales the prop_del_sites in a window
+by the average s of that DFE.
+
+```{r scaled-del-sites, eval=F, include=F}
+
+# phastcons
+scaled_phast_delsites <- list(length=22)
+for(c in 1:22) {
+  fname <- paste("phastcons_del_sites_chr", c, ".csv.gz", sep="")
+  scaled_phast_delsites[[c]] <- fread(paste("real_data_maps/scaled_del_sites_tables/phastcons/", fname, sep=""))
+}
+
+scaled_phast_delsites <- do.call(rbind.data.frame, scaled_phast_delsites)
+
+phast_bins <- scaled_phast_delsites %>%
+  mutate(
+    win10kb  = (chromStart %/% 10000) * 10000,
+    win100kb = (chromStart %/% 100000) * 100000,
+    win1Mb   = (chromStart %/% 1000000) * 1000000
+  )
+
+phastcons_scaled_delsites_10kb <- phast_bins %>%
+  group_by(chrom, win10kb) %>%
+  summarise(
+    chromStart = min(chromStart),
+    chromEnd   = max(chromEnd),
+    scaled_del_sites        = mean(scaled_del_sites),
+    scaled_del_sites_masked = mean(scaled_del_sites_masked),
+    .groups = "drop"
+  )
+
+phastcons_scaled_delsites_100kb <- phast_bins %>%
+  group_by(chrom, win100kb) %>%
+  summarise(
+    chromStart = min(chromStart),
+    chromEnd   = max(chromEnd),
+    scaled_del_sites        = mean(scaled_del_sites),
+    scaled_del_sites_masked = mean(scaled_del_sites_masked),
+    .groups = "drop"
+  )
+
+phastcons_scaled_delsites_1Mb <- phast_bins %>%
+  group_by(chrom, win1Mb) %>%
+  summarise(
+    chromStart = min(chromStart),
+    chromEnd   = max(chromEnd),
+    scaled_del_sites        = mean(scaled_del_sites),
+    scaled_del_sites_masked = mean(scaled_del_sites_masked),
+    .groups = "drop"
+  )
+
+# func. split exons
+scaled_func_delsites <- list(length=22)
+for(c in 1:22) {
+  fname <- paste("functional_lof_deciles_del_sites_chr", c, ".csv.gz", sep="")
+  scaled_func_delsites[[c]] <- fread(paste("real_data_maps/scaled_del_sites_tables/functional_lof_deciles/", fname, sep=""))
+}
+
+scaled_func_delsites <- do.call(rbind.data.frame, scaled_func_delsites)
+
+func_bins <- scaled_func_delsites %>%
+  mutate(
+    win10kb  = (chromStart %/% 10000) * 10000,
+    win100kb = (chromStart %/% 100000) * 100000,
+    win1Mb   = (chromStart %/% 1000000) * 1000000
+  )
+
+func_split_scaled_delsites_10kb <- func_bins %>%
+  group_by(chrom, win10kb) %>%
+  summarise(
+    chromStart = min(chromStart),
+    chromEnd   = max(chromEnd),
+    scaled_del_sites        = mean(scaled_del_sites),
+    scaled_del_sites_masked = mean(scaled_del_sites_masked),
+    .groups = "drop"
+  )
+
+func_split_scaled_delsites_100kb <- func_bins %>%
+  group_by(chrom, win100kb) %>%
+  summarise(
+    chromStart = min(chromStart),
+    chromEnd   = max(chromEnd),
+    scaled_del_sites        = mean(scaled_del_sites),
+    scaled_del_sites_masked = mean(scaled_del_sites_masked),
+    .groups = "drop"
+  )
+
+func_split_scaled_delsites_1Mb <- func_bins %>%
+  group_by(chrom, win1Mb) %>%
+  summarise(
+    chromStart = min(chromStart),
+    chromEnd   = max(chromEnd),
+    scaled_del_sites        = mean(scaled_del_sites),
+    scaled_del_sites_masked = mean(scaled_del_sites_masked),
+    .groups = "drop"
+  )
+```
+
 Combining tables
 
 ```{r comb_tbls, eval=F, include=F, message=F, warning=F}
@@ -6818,7 +6918,8 @@ for(m in unique(human_maps_10kb$constrained_model)) {
   }
   combined_mat <- setDT(as.data.frame(combined_mat))
   rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
-  fwrite(combined_mat, "real_data_maps/pearson_gw_10kb.csv", row.names=T, quote=F)
+  fwrite(combined_mat, paste("real_data_maps/pearson_gw_10kb", m, ".csv", sep=""),
+         row.names=T, quote=F)
   
   dt <- copy(table_10kb_g) %>%
         arrange(chrom, midpoint) %>%
@@ -7524,7 +7625,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
     }
     combined_mat <- setDT(as.data.frame(combined_mat))
     rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
-    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_10kb.csv", sep=""),
+    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_", m, "_10kb.csv", sep=""),
            row.names=T, quote=F)
   
     model_1 <- "
@@ -8361,7 +8462,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
     
     combined_mat <- setDT(as.data.frame(combined_mat))
     rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
-    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_100kb.csv", sep=""),
+    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_", m, "_100kb.csv", sep=""),
            row.names=T, quote=F)
     
     model_1 <- "
@@ -9198,7 +9299,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
     
     combined_mat <- setDT(as.data.frame(combined_mat))
     rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
-    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_1Mb.csv", sep=""),
+    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_", m, "_1Mb.csv", sep=""),
            row.names=T, quote=F)
     
     model_1 <- "
@@ -9433,6 +9534,247 @@ theme(
 )
 
 save_plot("real_data_maps/boot_r2_chr22.pdf", b)
+```
+
+Simple correlations
+
+```{r, simple-pearson, eval=T, include=F, message=F, warning=F}
+
+# 10kb
+pearson_10kb_models <- list(length=2)
+const_models <- c("phastcons", "func_split_exons")
+for(i in 1:length(const_models)) {
+  
+  m <- const_models[i]
+  pearson_10kb <- list(length=22)
+  
+  for(c in 1:22) {
+    
+    tmp <- fread(paste("real_data_maps/pearson_chr", c, "_", m, "_10kb.csv", sep=""))
+    
+    # variable names (excluding the row label column)
+    var_names <- setdiff(names(tmp), "V1")
+    
+    # Long form with row/col indices
+    long <- tmp %>%
+      pivot_longer(
+        cols = -V1,
+        names_to = "variable2",
+        values_to = "value"
+      ) %>%
+      dplyr::rename(variable1 = V1) %>%
+      filter(variable1 != variable2) %>%
+      mutate(
+        i = match(variable1, var_names),  # row index
+        j = match(variable2, var_names),  # column index
+        pair_key = paste(pmin(variable1, variable2), pmax(variable1, variable2), sep = "|")
+      )
+    
+    # Lower triangle: correlations (i > j)
+    corr_long <- long %>%
+      filter(i > j, !is.na(value)) %>%
+      transmute(
+        pair_key,
+        var1 = pmin(variable1, variable2),
+        var2 = pmax(variable1, variable2),
+        correlation = as.numeric(value)
+      )
+    
+    # Upper triangle: p-values (i < j)
+    pval_long <- long %>%
+      filter(i < j, !is.na(value)) %>%
+      transmute(
+        pair_key,
+        pvalue = as.numeric(value)
+      )
+    
+    # Join correlations and p-values on the unordered pair key
+    flat_matrix <- corr_long %>%
+      left_join(pval_long, by = "pair_key") %>%
+      arrange(., var1, var2)
+        
+    flat_matrix$chrom <- c
+    pearson_10kb[[c]] <- flat_matrix
+  }
+  
+  pearson_10kb <- do.call(rbind.data.frame, pearson_10kb)
+  pearson_10kb$constrained_model <- m
+  
+  pearson_10kb_models[[i]] <- pearson_10kb
+}
+
+pearson_10kb_models <- do.call(rbind.data.frame, pearson_10kb_models)
+pearson_10kb_models$scale <- 1e+4
+
+# 100kb
+pearson_100kb_models <- list(length=2)
+const_models <- c("phastcons", "func_split_exons")
+for(i in 1:length(const_models)) {
+  
+  m <- const_models[i]
+  pearson_100kb <- list(length=22)
+  
+  for(c in 1:22) {
+    
+    tmp <- fread(paste("real_data_maps/pearson_chr", c, "_", m, "_100kb.csv", sep=""))
+    
+    # variable names (excluding the row label column)
+    var_names <- setdiff(names(tmp), "V1")
+    
+    # Long form with row/col indices
+    long <- tmp %>%
+      pivot_longer(
+        cols = -V1,
+        names_to = "variable2",
+        values_to = "value"
+      ) %>%
+      dplyr::rename(variable1 = V1) %>%
+      filter(variable1 != variable2) %>%
+      mutate(
+        i = match(variable1, var_names),  # row index
+        j = match(variable2, var_names),  # column index
+        pair_key = paste(pmin(variable1, variable2), pmax(variable1, variable2), sep = "|")
+      )
+    
+    # Lower triangle: correlations (i > j)
+    corr_long <- long %>%
+      filter(i > j, !is.na(value)) %>%
+      transmute(
+        pair_key,
+        var1 = pmin(variable1, variable2),
+        var2 = pmax(variable1, variable2),
+        correlation = as.numeric(value)
+      )
+    
+    # Upper triangle: p-values (i < j)
+    pval_long <- long %>%
+      filter(i < j, !is.na(value)) %>%
+      transmute(
+        pair_key,
+        pvalue = as.numeric(value)
+      )
+    
+    # Join correlations and p-values on the unordered pair key
+    flat_matrix <- corr_long %>%
+      left_join(pval_long, by = "pair_key") %>%
+      arrange(., var1, var2)
+        
+    flat_matrix$chrom <- c
+    pearson_100kb[[c]] <- flat_matrix
+  }
+  
+  pearson_100kb <- do.call(rbind.data.frame, pearson_100kb)
+  pearson_100kb$constrained_model <- m
+  
+  pearson_100kb_models[[i]] <- pearson_100kb
+}
+
+pearson_100kb_models <- do.call(rbind.data.frame, pearson_100kb_models)
+pearson_100kb_models$scale <- 1e+5
+
+# 1Mb
+pearson_1Mb_models <- list(length=2)
+const_models <- c("phastcons", "func_split_exons")
+for(i in 1:length(const_models)) {
+  
+  m <- const_models[i]
+  pearson_1Mb <- list(length=22)
+  
+  for(c in 1:22) {
+    
+    tmp <- fread(paste("real_data_maps/pearson_chr", c, "_", m, "_1Mb.csv", sep=""))
+    
+    # variable names (excluding the row label column)
+    var_names <- setdiff(names(tmp), "V1")
+    
+    # Long form with row/col indices
+    long <- tmp %>%
+      pivot_longer(
+        cols = -V1,
+        names_to = "variable2",
+        values_to = "value"
+      ) %>%
+      dplyr::rename(variable1 = V1) %>%
+      filter(variable1 != variable2) %>%
+      mutate(
+        i = match(variable1, var_names),  # row index
+        j = match(variable2, var_names),  # column index
+        pair_key = paste(pmin(variable1, variable2), pmax(variable1, variable2), sep = "|")
+      )
+    
+    # Lower triangle: correlations (i > j)
+    corr_long <- long %>%
+      filter(i > j, !is.na(value)) %>%
+      transmute(
+        pair_key,
+        var1 = pmin(variable1, variable2),
+        var2 = pmax(variable1, variable2),
+        correlation = as.numeric(value)
+      )
+    
+    # Upper triangle: p-values (i < j)
+    pval_long <- long %>%
+      filter(i < j, !is.na(value)) %>%
+      transmute(
+        pair_key,
+        pvalue = as.numeric(value)
+      )
+    
+    # Join correlations and p-values on the unordered pair key
+    flat_matrix <- corr_long %>%
+      left_join(pval_long, by = "pair_key") %>%
+      arrange(., var1, var2)
+        
+    flat_matrix$chrom <- c
+    pearson_1Mb[[c]] <- flat_matrix
+  }
+  
+  pearson_1Mb <- do.call(rbind.data.frame, pearson_1Mb)
+  pearson_1Mb$constrained_model <- m
+  
+  pearson_1Mb_models[[i]] <- pearson_1Mb
+}
+
+pearson_1Mb_models <- do.call(rbind.data.frame, pearson_1Mb_models)
+pearson_1Mb_models$scale <- 1e+6
+
+pearson_cors <- rbind.data.frame(pearson_10kb_models,
+                                 pearson_100kb_models,
+                                 pearson_1Mb_models)
+
+for(var in unique(c(pearson_cors$var1, pearson_cors$var2))) {
+  
+  tbl <- pearson_cors %>% filter(., var1 == var | var2 == var) %>%
+    mutate(
+      v1 = var1, v2 = var2,                  
+      var1 = if_else(v2 == var, v2, v1),            
+      var2 = if_else(v2 == var, v1, v2)             
+    ) %>% dplyr::select(-v1, -v2)
+  
+  
+  p <- ggplot(data=filter(tbl, pvalue < 0.05 / 22),
+               aes(x=chrom, 
+                   y=correlation, 
+                   color=var2)) +
+        geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
+        facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+        scale_y_continuous(breaks=pretty_breaks()) +
+        scale_x_continuous(breaks=1:22) + 
+        scale_color_manual(values = brewer.pal(4, "Set2"), name=var) +
+        labs(title=NULL, x="Chromosome", y="Pearson cor.") +
+        theme(strip.text.y=element_text(size=16),     
+              strip.text.x=element_text(size=16),    
+              axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_text(size=12),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="bottom")
+  save_plot(paste("real_data_maps/pearson_", var, ".svg", sep=""), p, 
+            base_height=10, base_width=20)
+  save_plot(paste("real_data_maps/pearson_", var, ".pdf", sep=""), p, 
+            base_height=10, base_width=20)
+}
 ```
 
 Fit measures & model selection
