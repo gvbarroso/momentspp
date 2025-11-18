@@ -7342,7 +7342,9 @@ for(m in unique(human_maps_10kb$constrained_model)) {
   )
   
   # Covariances
-  covs <- list()
+  covs <- list(
+    c("avg_mut", "prop_del_sites")
+  )
   
   # Defined combinations (named character vector)
   defined <- c(
@@ -7489,7 +7491,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
          paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_10kb_genomewide_", 
                "latents_", m, "_freechrom.csv", sep=""),
          col.names=F)
-  
+
   # one model per chrom
   for(c in 1:22) {
     
@@ -7537,7 +7539,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -7566,7 +7568,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -7601,7 +7603,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -7642,7 +7644,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -8061,7 +8063,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                                           label_prefix = "x")
   
   model3_constrained <- paste0(model3_constrained, "\n", "avg_mut ~~ 0*prop_del_sites")
-  
+
   m3_gw <- sem(model3_constrained,
                  data       = dt,         
                  estimator  = "MLR",              
@@ -8105,7 +8107,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
   )
 
   model_free_with_group_defs <- paste0(model_free_with_group_defs, "\n", "avg_mut ~~ 0*prop_del_sites")
-  
+
   m3_chr <- sem(model_free_with_group_defs,
                  data       = dt,         
                  estimator  = "MLR",              
@@ -8195,7 +8197,9 @@ for(m in unique(human_maps_100kb$constrained_model)) {
   )
   
   # Covariances
-  covs <- list()
+  covs <- list(
+    c("avg_mut", "prop_del_sites")
+  )
   
   # Defined combinations (named character vector)
   defined <- c(
@@ -8322,7 +8326,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
          paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_100kb_genomewide_", 
                "latents_", m, "_freechrom.csv", sep=""),
          col.names=F)
-  
+
   # one model per chrom
   for(c in 1:22) {
   
@@ -8354,10 +8358,12 @@ for(m in unique(human_maps_100kb$constrained_model)) {
         # Diagonal remains NA
       }
     }
+    
     combined_mat <- setDT(as.data.frame(combined_mat))
     rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
     fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_100kb.csv", sep=""),
            row.names=T, quote=F)
+    
     model_1 <- "
     avg_pi ~ start(0.25)*c1*avg_mut
     avg_pi ~ start(0.5)*c2*B
@@ -8370,7 +8376,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -8399,7 +8405,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -8434,7 +8440,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -8475,7 +8481,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -8535,7 +8541,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
   
   tbl_1Mb <- filter(tbl_1Mb, coverage >= 0.25)
   names(tbl_1Mb)[8:10] <- c("B", "avg_rec", "avg_mut")
-
+  
   table_1Mb_g <- add_genome_offsets_and_midpoint(tbl_1Mb, chrom_lengths=NULL)
   
   data <- dplyr::select(table_1Mb_g, avg_pi, prop_del_sites, B, avg_rec, avg_mut)
@@ -8894,7 +8900,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                                           label_prefix = "x")
   
   model3_constrained <- paste0(model3_constrained, "\n", "avg_mut ~~ 0*prop_del_sites")
-  
+
   m3_gw <- sem(model3_constrained,
                  data       = dt,         
                  estimator  = "MLR",              
@@ -8938,7 +8944,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
   )
 
   model_free_with_group_defs <- paste0(model_free_with_group_defs, "\n", "avg_mut ~~ 0*prop_del_sites")
-  
+
   m3_chr <- sem(model_free_with_group_defs,
                  data       = dt,         
                  estimator  = "MLR",              
@@ -9028,7 +9034,9 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
   )
   
   # Covariances
-  covs <- list()
+  covs <- list(
+    c("avg_mut", "prop_del_sites")
+  )
   
   # Defined combinations (named character vector)
   defined <- c(
@@ -9158,7 +9166,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
   
   # one model per chrom
   for(c in 1:22) {
-    
+  
     data <- filter(table_1Mb_g, chrom==c) %>%
       dplyr::select(., avg_pi, prop_del_sites, B, avg_rec, avg_mut)
     n <- ncol(data)
@@ -9187,11 +9195,12 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
         # Diagonal remains NA
       }
     }
+    
     combined_mat <- setDT(as.data.frame(combined_mat))
     rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
     fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_1Mb.csv", sep=""),
            row.names=T, quote=F)
-  
+    
     model_1 <- "
     avg_pi ~ start(0.25)*c1*avg_mut
     avg_pi ~ start(0.5)*c2*B
@@ -9204,7 +9213,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -9233,7 +9242,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -9268,7 +9277,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -9309,7 +9318,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                missing    = "fiml",             
                meanstructure = TRUE,            
                std.ov     = TRUE,     
-               fixed.x    = FALSE,
+               fixed.x    = TRUE,
                optim.method = "nlminb",    
                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
     
@@ -9333,96 +9342,97 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
            paste("real_data_maps/lavaan_out/LRT_DAG3_DAG4_1Mb_chr",
                  c, "_latents_", m, ".csv", sep=""))
   }
-  
-  # bootstrapping chr 22 to test if the high R^2 is due to sampling low drift-variance windows
-  nboot <- 1e3
-  c22 <- filter(dt, chrom==c)
-  c22_r2_m1 <- numeric(length=nboot)
-  c22_r2_m2 <- numeric(length=nboot)
-  c22_r2_m3 <- numeric(length=nboot)
-  c22_r2_m4 <- numeric(length=nboot)
-  
-  for(b in 1:1000) {
-    
-    cat(paste("boot", b, "\n"))
-    
-    c22_boot <- c22 %>% dplyr::slice_sample(prop=1, replace=TRUE)
-    
-    m1_fit <- sem(model_1,
-               data=c22_boot,
-               estimator  = "MLR",              
-               missing    = "fiml",             
-               meanstructure = TRUE,            
-               std.ov     = TRUE,     
-               fixed.x    = FALSE,
-               optim.method = "nlminb",    
-               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
-    
-    c22_r2_m1[b] <- inspect(m1_fit, "r2")[1]
-    
-    m2_fit <- sem(model_2,
-               data=c22_boot,
-               estimator  = "MLR",              
-               missing    = "fiml",             
-               meanstructure = TRUE,            
-               std.ov     = TRUE,     
-               fixed.x    = FALSE,
-               optim.method = "nlminb",    
-               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
-    
-    c22_r2_m2[b] <- inspect(m2_fit, "r2")[1]
-    
-    m3_fit <- sem(model_3,
-               data=c22_boot,
-               estimator  = "MLR",              
-               missing    = "fiml",             
-               meanstructure = TRUE,            
-               std.ov     = TRUE,     
-               fixed.x    = FALSE,
-               optim.method = "nlminb",    
-               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
-    
-    c22_r2_m3[b] <- inspect(m3_fit, "r2")[1]
-
-    m4_fit <- sem(model_4,
-               data=c22_boot,
-               estimator  = "MLR",              
-               missing    = "fiml",             
-               meanstructure = TRUE,            
-               std.ov     = TRUE,     
-               fixed.x    = FALSE,
-               optim.method = "nlminb",    
-               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
-    
-    c22_r2_m4[b] <- inspect(m4_fit, "r2")[1]
-  }
-  
-  c22_boot_r2 <- cbind.data.frame(c22_r2_m1, c22_r2_m2, c22_r2_m3, c22_r2_m4)
-  names(c22_boot_r2) <- paste("model", 1:4, sep="_")
-  c22_boot_r2$boot <- 1:nrow(c22_boot_r2)
-  c22_boot_r2_m <- pivot_longer(c22_boot_r2, cols=starts_with("model"), names_to="model", values_to="r-sqrd")
-  
-  b <- ggplot(c22_boot_r2_m, aes(x = model, y = `r-sqrd`)) +
-  geom_boxplot(fill = "skyblue", alpha = 0.6) +
-  labs(
-    x = "Model",
-    y = "Bootstrapped R²",
-    title = "Bootstrapped distributions of R² (chr 22) by model"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    strip.text = element_text(face = "bold"),
-    strip.text.y=element_text(size=16),      
-            strip.text.x=element_text(size=16),        
-            axis.title=element_text(size=16), 
-            axis.text=element_text(size=12), 
-            axis.text.x=element_text(size=12),
-            legend.text=element_text(size=16),
-            legend.title=element_text(size=16),
-  )
-  
-  save_plot("real_data_maps/boot_r2_chr22.pdf", b)
 }
+
+# bootstrapping chr 22 to test if the high R^2 is due to sampling low drift-variance windows
+nboot <- 1e3
+c22 <- filter(dt, chrom==c)
+c22_r2_m1 <- numeric(length=nboot)
+c22_r2_m2 <- numeric(length=nboot)
+c22_r2_m3 <- numeric(length=nboot)
+c22_r2_m4 <- numeric(length=nboot)
+
+for(b in 1:1000) {
+  
+  cat(paste("boot", b, "\n"))
+  
+  c22_boot <- c22 %>% dplyr::slice_sample(prop=1, replace=TRUE)
+  
+  m1_fit <- sem(model_1,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = TRUE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m1[b] <- inspect(m1_fit, "r2")[1]
+  
+  m2_fit <- sem(model_2,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = TRUE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m2[b] <- inspect(m2_fit, "r2")[1]
+  
+  m3_fit <- sem(model_3,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = TRUE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m3[b] <- inspect(m3_fit, "r2")[1]
+
+  m4_fit <- sem(model_4,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = TRUE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m4[b] <- inspect(m4_fit, "r2")[1]
+}
+
+c22_boot_r2 <- cbind.data.frame(c22_r2_m1, c22_r2_m2, c22_r2_m3, c22_r2_m4)
+names(c22_boot_r2) <- paste("model", 1:4, sep="_")
+
+c22_boot_r2$boot <- 1:nrow(c22_boot_r2)
+c22_boot_r2_m <- pivot_longer(c22_boot_r2, cols=starts_with("model"), names_to="model", values_to="r-sqrd")
+
+b <- ggplot(c22_boot_r2_m, aes(x = model, y = `r-sqrd`)) +
+geom_boxplot(fill = "skyblue", alpha = 0.6) +
+labs(
+  x = "Model",
+  y = "Bootstrapped R²",
+  title = "Bootstrapped distributions of R² (chr 22) by model"
+) +
+theme_minimal(base_size = 14) +
+theme(
+  strip.text = element_text(face = "bold"),
+  strip.text.y=element_text(size=16),      
+          strip.text.x=element_text(size=16),        
+          axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.title=element_text(size=16),
+)
+
+save_plot("real_data_maps/boot_r2_chr22.pdf", b)
 ```
 
 Fit measures & model selection
@@ -9501,10 +9511,7 @@ p <- ggplot(data=gw_fitmeasures_latent,
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
-      labs(title=paste("p-values for genome-wide models,
-                       chr equal regressions, 
-                       latent variables (H0: data is compatible with model)",
-                       sep=""),
+      labs(title=NULL,
            x="Scale", y="-log10(p-value)") +
       theme(strip.text.y=element_text(size=16),             
             strip.text.x=element_text(size=16),             
@@ -9528,7 +9535,7 @@ q <- ggplot(data=gw_fitmeasures_latent,
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
-      labs(title="CFI for genome-wide models, chr equal regressions, latent variables",
+      labs(title=NULL,
            x="Scale", y="CFI") +
       theme(strip.text.y=element_text(size=16),   
             strip.text.x=element_text(size=16),      
@@ -9552,7 +9559,7 @@ r <- ggplot(data=gw_fitmeasures_latent,
       facet_grid(DAG~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
-      labs(title="GFI for genome-wide models, chr equal regressions, latent variables",
+      labs(title=NULL,
            x="Scale", y="GFI") +
       theme(strip.text.y=element_text(size=16),    
             strip.text.x=element_text(size=16),    
@@ -9692,9 +9699,7 @@ p <- ggplot(data=gw_fitmeasures_latent,
       scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("cyan3", "brown1"), 
                          name="model") +
-      labs(title=paste("p-values for genome-wide models,
-                       latent variables (H0: data is compatible with model)",
-                       sep=""),
+      labs(title=NULL,
            x="Scale", y="-log10(p-value)") +
       theme(strip.text.y=element_text(size=16), 
             strip.text.x=element_text(size=16),   
@@ -9746,7 +9751,7 @@ r <- ggplot(data=gw_fitmeasures_latent,
       scale_y_continuous(breaks=pretty_breaks()) +
       scale_x_log10(breaks=c(1e+4, 1e+5, 1e+6)) +
       scale_color_manual(values=c("cyan3", "brown1")) +
-      labs(title="GFI for genome-wide models, latent variables",
+      labs(title=NULL,
            x="Scale", y="GFI") +
       theme(strip.text.y=element_text(size=16),      
             strip.text.x=element_text(size=16),      
@@ -9856,7 +9861,7 @@ p <- ggplot(data=chr_fitmeasures_latent,
       scale_x_continuous(breaks=1:22) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="p-values for chr-specific models, latent variables (H0: data is compatible with model)",
+      labs(title=NULL,
            x="Chromosome", y="-log10(p-value)") +
       theme(strip.text.y=element_text(size=16),       
             strip.text.x=element_text(size=16),       
@@ -9883,7 +9888,7 @@ q <- ggplot(data=chr_fitmeasures_latent,
       scale_x_continuous(breaks=1:22) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="CFI for chr-specific models, latent variables",
+      labs(title=NULL,
            x="Chromosome", y="CFI") +
       theme(strip.text.y=element_text(size=16),       
             strip.text.x=element_text(size=16),       
@@ -9910,7 +9915,7 @@ r <- ggplot(data=chr_fitmeasures_latent,
       scale_x_continuous(breaks=1:22) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="GFI for chr-specific models, latent variables",
+      labs(title=NULL,
            x="Chromosome", y="GFI") +
       theme(strip.text.y=element_text(size=16),       
             strip.text.x=element_text(size=16),       
@@ -9998,7 +10003,7 @@ p <- ggplot(data=gw_LRT,
       scale_shape_manual(values=c(0, 1, 2, 3), name="DAG") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Const. Model") +
-      labs(title="LRT test of nested free-chrom vs genome-wide models",
+      labs(title=NULL,
            x="Scale", y="-log10(p-value)") +
       theme(strip.text.y=element_text(size=16),       
             strip.text.x=element_text(size=16),      
@@ -10097,7 +10102,7 @@ for(scal in unique(chr_LRT_latent$scale)) {
         scale_y_continuous(breaks=pretty_breaks()) +
         scale_x_continuous(breaks=1:22) +
         #scale_color_manual(values=c("purple3", "seagreen4")) +
-        labs(title="LRT test of nested DAGs 3 & 4 (models fit per chromosome, latent variables)",
+        labs(title=NULL,
              x="Chromosome", y="-log10(p-value)") +
         theme(strip.text.y=element_text(size=16),      
               strip.text.x=element_text(size=16),   
@@ -10164,7 +10169,7 @@ Variance explained
 
 # genome-wide models, DAGs 1-2 
 ## 10 kb
-gw_r2_10kb_gls <- data.frame()
+gw_r2_10kb <- data.frame()
 for(dag in 1:2) { 
   for(m in unique(human_maps_10kb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
@@ -10172,15 +10177,14 @@ for(dag in 1:2) {
     
     tmp$DAG <- dag
     tmp$constrained_model <- m
-    tmp$method <- "GLS"
-    
-    gw_r2_10kb_gls <- rbind.data.frame(gw_r2_10kb_gls, tmp)
+
+    gw_r2_10kb <- rbind.data.frame(gw_r2_10kb, tmp)
   }
 }
-gw_r2_10kb_gls$scale <- 1e+4
+gw_r2_10kb$scale <- 1e+4
 
 ## 100 kb
-gw_r2_100kb_gls <- data.frame()
+gw_r2_100kb <- data.frame()
 for(dag in 1:2) { 
   for(m in unique(human_maps_100kb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
@@ -10188,15 +10192,14 @@ for(dag in 1:2) {
     
     tmp$DAG <- dag
     tmp$constrained_model <- m
-    tmp$method <- "GLS"
-    
-    gw_r2_100kb_gls <- rbind.data.frame(gw_r2_100kb_gls, tmp)
+
+    gw_r2_100kb <- rbind.data.frame(gw_r2_100kb, tmp)
   }
 }
-gw_r2_100kb_gls$scale <- 1e+5
+gw_r2_100kb$scale <- 1e+5
 
 ## 1 Mb
-gw_r2_1Mb_gls <- data.frame()
+gw_r2_1Mb <- data.frame()
 for(dag in 1:2) { 
   for(m in unique(human_maps_1Mb$constrained_model)) { 
     tmp <- fread(paste("real_data_maps/lavaan_out/YRI_DAG", dag, 
@@ -10204,16 +10207,15 @@ for(dag in 1:2) {
     
     tmp$DAG <- dag
     tmp$constrained_model <- m
-    tmp$method <- "GLS"
-    
-    gw_r2_1Mb_gls <- rbind.data.frame(gw_r2_1Mb_gls, tmp)
+
+    gw_r2_1Mb <- rbind.data.frame(gw_r2_1Mb, tmp)
   }
 }
-gw_r2_1Mb_gls$scale <- 1e+6
+gw_r2_1Mb$scale <- 1e+6
 
-gw_r2_gls <- rbind.data.frame(gw_r2_10kb_gls,
-                              gw_r2_100kb_gls,
-                              gw_r2_1Mb_gls) 
+gw_r2 <- rbind.data.frame(gw_r2_10kb,
+                              gw_r2_100kb,
+                              gw_r2_1Mb) 
 
 gw_r2_B <- pivot_longer(gw_r2_gls, cols=ends_with(".B"))
 gw_r2_pi <- pivot_longer(gw_r2_gls, cols=ends_with(".avg_pi"))
@@ -10228,7 +10230,7 @@ p <- ggplot(data=gw_r2_pi,
       scale_x_discrete(labels=as.character(1:22)) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in diversity (genome-wide model, latents, DAGs 0-1)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),      
             strip.text.x=element_text(size=16),        
@@ -10253,7 +10255,7 @@ q <- ggplot(data=gw_r2_B,
       scale_x_discrete(labels=as.character(1:22)) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in B (genome-wide model, latents, DAGs 0-1)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),      
             strip.text.x=element_text(size=16),        
@@ -10263,14 +10265,14 @@ q <- ggplot(data=gw_r2_B,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_r2_B_DAGs0-1_latents.svg", q, 
+save_plot("real_data_maps/chr_r2_B_DAGs1-2_latents.svg", q, 
           base_height=10, base_width=20)
-save_plot("real_data_maps/chr_r2_B_DAGs0-1_latents.pdf", q, 
+save_plot("real_data_maps/chr_r2_B_DAGs1-2_latents.pdf", q, 
           base_height=10, base_width=20)
 
 # per chromosome SEM models, DAGs 1-2
 ## 10 kb
-chr_r2_10kb_gls <- data.frame()
+chr_r2_10kb <- data.frame()
 for(dag in 1:2) {
   for(m in unique(human_maps_10kb$constrained_model)) { 
     chr_list <- list(length=22)
@@ -10287,13 +10289,13 @@ for(dag in 1:2) {
     }
         
     df <- do.call(rbind.data.frame, chr_list)
-    chr_r2_10kb_gls <- rbind.data.frame(chr_r2_10kb_gls, df)
+    chr_r2_10kb <- rbind.data.frame(chr_r2_10kb, df)
   }
 }
-chr_r2_10kb_gls$scale <- 1e+4
+chr_r2_10kb$scale <- 1e+4
 
 ## 100 kb
-chr_r2_100kb_gls <- data.frame()
+chr_r2_100kb <- data.frame()
 for(dag in 1:2) {
   for(m in unique(human_maps_100kb$constrained_model)) { 
     chr_list <- list(length=22)
@@ -10310,13 +10312,13 @@ for(dag in 1:2) {
     }
         
     df <- do.call(rbind.data.frame, chr_list)
-    chr_r2_100kb_gls <- rbind.data.frame(chr_r2_100kb_gls, df)
+    chr_r2_100kb <- rbind.data.frame(chr_r2_100kb, df)
   }
 }
-chr_r2_100kb_gls$scale <- 1e+5
+chr_r2_100kb$scale <- 1e+5
 
 ## 1 Mb
-chr_r2_1Mb_gls <- data.frame()
+chr_r2_1Mb <- data.frame()
 for(dag in 1:2) {
   for(m in unique(human_maps_1Mb$constrained_model)) { 
     chr_list <- list(length=22)
@@ -10333,15 +10335,15 @@ for(dag in 1:2) {
     }
         
     df <- do.call(rbind.data.frame, chr_list)
-    chr_r2_1Mb_gls <- rbind.data.frame(chr_r2_1Mb_gls, df)
+    chr_r2_1Mb <- rbind.data.frame(chr_r2_1Mb, df)
   }
 }
-chr_r2_1Mb_gls$scale <- 1e+6
+chr_r2_1Mb$scale <- 1e+6
 
-# NOTE: there are no fit measures available for DAGs 0-1
-chr_r2_DAGs12 <- rbind.data.frame(chr_r2_10kb_gls,
-                                  chr_r2_100kb_gls,
-                                  chr_r2_1Mb_gls)
+# NOTE: there are no fit measures available for DAGs 1-2
+chr_r2_DAGs12 <- rbind.data.frame(chr_r2_10kb,
+                                  chr_r2_100kb,
+                                  chr_r2_1Mb)
 
 p <- ggplot(data=chr_r2_DAGs12, 
              aes(x=chrom, 
@@ -10353,7 +10355,7 @@ p <- ggplot(data=chr_r2_DAGs12,
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in pi (chr-specific models, latents, DAGs 1-2)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),    
             strip.text.x=element_text(size=16),    
@@ -10363,9 +10365,9 @@ p <- ggplot(data=chr_r2_DAGs12,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_r2_pi_DAGs0-1_latents.svg", p, 
+save_plot("real_data_maps/chr_r2_pi_DAGs1-2_latents.svg", p, 
           base_height=10, base_width=20)
-save_plot("real_data_maps/chr_r2_pi_DAGs0-1_latents.pdf", p, 
+save_plot("real_data_maps/chr_r2_pi_DAGs1-2_latents.pdf", p, 
           base_height=10, base_width=20)
 
 q <- ggplot(data=chr_r2_DAGs12, 
@@ -10378,7 +10380,7 @@ q <- ggplot(data=chr_r2_DAGs12,
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in B (chr-specific models, latents, DAGs 0-1)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),      
             strip.text.x=element_text(size=16),        
@@ -10459,7 +10461,7 @@ p <- ggplot(data=gw_r2_pi,
       #scale_shape_manual(values=c(0, 1)) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in diversity (genome-wide model, latents, DAGs 2-3)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),          
             strip.text.x=element_text(size=16),       
@@ -10485,7 +10487,7 @@ q <- ggplot(data=gw_r2_B,
       scale_shape_manual(values=c(0, 1)) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in B (genome-wide model, DAGs 2-3)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),    
             strip.text.x=element_text(size=16),     
@@ -10511,7 +10513,7 @@ r <- ggplot(data=gw_r2_mut,
       scale_shape_manual(values=c(0, 1)) +
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in mut. (genome-wide model, DAGs 2-3)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),     
             strip.text.x=element_text(size=16),     
@@ -10614,7 +10616,7 @@ p <- ggplot(data=chr_r2_ext_DAGs34,
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in pi (chr-specific models, latents, DAGs 2-3)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),    
             strip.text.x=element_text(size=16),         
@@ -10632,15 +10634,14 @@ save_plot("real_data_maps/chr_r2_pi_DAGs3-4_latents.pdf", p,
 q <- ggplot(data=chr_r2_ext_DAGs34, 
              aes(x=chrom, 
                  y=B, 
-                 color=as.factor(DAG),
-                 alpha=gfi)) +
+                 color=as.factor(DAG))) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("cyan3", "brown1"),
                          name="DAG") +
-      labs(title="Variance Explained in B (chr-specific models, latents DAGs 2-3)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),      
             strip.text.x=element_text(size=16),     
@@ -10658,15 +10659,14 @@ save_plot("real_data_maps/chr_r2_B_DAGs3-4_latents.pdf", q,
 r <- ggplot(data=chr_r2_ext_DAGs34, 
              aes(x=chrom, 
                  y=avg_mut, 
-                 color=as.factor(DAG),
-                 alpha=gfi)) +
+                 color=as.factor(DAG))) +
       geom_point(size=2) + 
       facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
       scale_y_continuous(breaks=pretty_breaks(), limits=c(0,1)) +
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("cyan3", "brown1"), 
                          name="DAG") +
-      labs(title="Variance Explained in mut. (chr-specific models, latents, DAGs 2-3)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),   
             strip.text.x=element_text(size=16),   
@@ -10702,7 +10702,7 @@ r <- ggplot(data=chr_r2_dags,
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("purple3", "seagreen4", "brown1", "cyan3"), 
                          name="DAG") +
-      labs(title="Variance Explained in diversity (chr-specific models, latents)",
+      labs(title=NULL,
            x="Chromosome", y="Variance Explained") +
       theme(strip.text.y=element_text(size=16),        
             strip.text.x=element_text(size=16),      
@@ -10786,7 +10786,7 @@ p <- ggplot(data=filter(gw_params, lhs=="avg_pi"),
       scale_shape_manual(values=c(0, 1), name="DAG") +
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="DAG") +
-      labs(title="Std. Path Coefficients to pi (genome-wide model)",
+      labs(title=NULL,
            x="Variable", y="Direct Std. PC to Diversity") +
       theme(strip.text.y=element_text(size=16),        
             strip.text.x=element_text(size=16),         
@@ -10811,7 +10811,7 @@ q <- ggplot(data=filter(gw_params, lhs=="B"),
       scale_x_discrete() +
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="DAG") +
-      labs(title="Std. Path Coefficients to B (genome-wide model)",
+      labs(title=NULL,
            x="Variable", y="Direct Std. PC to B") +
       theme(strip.text.y=element_text(size=16),      
             strip.text.x=element_text(size=16),     
@@ -10914,7 +10914,7 @@ p <- ggplot(data=filter(chr_params, lhs=="avg_pi"),
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="DAG") +
-      labs(title="Path Coefficients to Pi (DAG 0, pval_est < 0.05)",
+      labs(title=NULL,
            x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(strip.text.y=element_text(size=16),  
             strip.text.x=element_text(size=16),     
@@ -10941,7 +10941,7 @@ q <- ggplot(data=filter(chr_params, lhs=="B"),
       scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="DAG") +
-      labs(title="Path Coefficients to B (DAG 0, pval_est < 0.05)",
+      labs(title=NULL,
            x="Chromosome", y="Direct Std. PC to B") +
       theme(strip.text.y=element_text(size=16),     
             strip.text.x=element_text(size=16),     
@@ -11019,7 +11019,7 @@ p <- ggplot(data=filter(gw_params, lhs=="avg_pi"),
       scale_x_discrete() +
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="DAG") +
-      labs(title="Std. Path Coefficients to B (genome-wide model)",
+      labs(title=NULL,
            x="Variable", y="Direct Std. PC to Diversity") +
       theme(strip.text.y=element_text(size=16),      
             strip.text.x=element_text(size=16),      
@@ -11044,7 +11044,7 @@ q <- ggplot(data=filter(gw_params, lhs=="B"),
       scale_x_discrete() +
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="DAG") +
-      labs(title="Std. Path Coefficients to B (genome-wide model)",
+      labs(title=NULL,
            x="Variable", y="Direct Std. PC to B") +
       theme(strip.text.y=element_text(size=16),     
             strip.text.x=element_text(size=16),   
@@ -11154,7 +11154,7 @@ p1 <- ggplot(data=filter(chr_params_ext, lhs=="avg_pi", DAG==3),
       #scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Variable") +
-      labs(title="Path Coefficients to Pi (pval_est < 0.05), DAG 3",
+      labs(title=NULL,
            x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(strip.text.y=element_text(size=16),     
             strip.text.x=element_text(size=16),     
@@ -11181,7 +11181,7 @@ p2 <- ggplot(data=filter(chr_params_ext, lhs=="avg_pi", DAG==4),
       #scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="Variable") +
-      labs(title="Path Coefficients to Pi (pval_est < 0.05), DAG 4",
+      labs(title=NULL,
            x="Chromosome", y="Direct Std. PC to Diversity") +
       theme(strip.text.y=element_text(size=16),     
             strip.text.x=element_text(size=16),     
@@ -11235,7 +11235,7 @@ q2 <- ggplot(data=filter(chr_params_ext, lhs=="B", DAG==4),
       #scale_shape_manual(values=c(0, 1, 2), name="Variable") +
       scale_color_manual(values=c("purple3", "seagreen4", "brown1"),
                          name="DAG") +
-      labs(title="Path Coefficients to B (pval_est < 0.05), DAG 4",
+      labs(title=NULL,
            x="Chromosome", y="Direct Std. PC to B") +
       theme(strip.text.y=element_text(size=16),        
             strip.text.x=element_text(size=16),       
@@ -11267,7 +11267,7 @@ r1 <- ggplot(data=filter(chr_params_ext,
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="Path",
                          labels=c("r>B>pi", "r>u>pi")) +
-      labs(title="Indirect Path Coefficients (pval_est < 0.05), DAG 3",
+      labs(title=NULL,
            x="Chromosome", y="Indirect Std. PC") +
       theme(strip.text.y=element_text(size=16),    
             strip.text.x=element_text(size=16),       
@@ -11299,7 +11299,7 @@ r2 <- ggplot(data=filter(chr_params_ext,
       scale_color_manual(values=c("brown1", "cyan3"),
                          name="Path",
                          labels=c("r>B>pi", "r>u>pi")) +
-      labs(title="Indirect Path Coefficients (pval_est < 0.05), DAG 4",
+      labs(title=NULL,
            x="Chromosome", y="Indirect Std. PC") +
       theme(strip.text.y=element_text(size=16),    
             strip.text.x=element_text(size=16),       
@@ -11333,7 +11333,7 @@ s1 <- ggplot(data=filter(chr_wide, chrom!=19, DAG==3),
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("brown1", "cyan3"), 
                          name="DAG") +
-      labs(title="Ratio of Path Coefficients to Pi (pval_est < 0.05), DAG 3",
+      labs(title=NULL,
            x="Chromosome", y="PC(B) / PC(Mu)") +
       theme(strip.text.y=element_text(size=16),
             strip.text.x=element_text(size=16),
@@ -11358,7 +11358,7 @@ s2 <- ggplot(data=filter(chr_wide, chrom!=19, DAG==4),
       scale_x_continuous(breaks=1:22) + 
       scale_color_manual(values=c("brown1", "cyan3"), 
                          name="DAG") +
-      labs(title="Ratio of Path Coefficients to Pi (pval_est < 0.05), DAG 4",
+      labs(title=NULL,
            x="Chromosome", y="PC(B) / PC(Mu)") +
       theme(strip.text.y=element_text(size=16),
             strip.text.x=element_text(size=16),
@@ -12343,7 +12343,7 @@ for(u in unique(human_maps_1Mb$mut_map)) {
                        c, "_", d, "_", m, "_", u, ".csv", sep=""),
                 col.names=F)
     
-            if(isTRUE(converged_3)) { # 3 & 4
+            if(isTRUE(converged_3)) {
               lrt_result <- tryCatch(
                 lavTestLRT(m3_fit, m4_fit),
                 error = function(e1) {
