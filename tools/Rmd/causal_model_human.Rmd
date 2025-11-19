@@ -5282,26 +5282,26 @@ mut_maps_1Mb <- mut_maps_1kb %>%
                                     sum_sites_gnomad,
                                     sum_sites_masked_gnomad))
 
-mut_maps_10kb$mean_mut_roulette[which(mut_maps_10kb$sum_sites_roulette < 7.5e+3)] <- NA
-mut_maps_10kb$mean_mut_masked_roulette[which(mut_maps_10kb$sum_sites_masked_roulette < 7.5e+3)] <- NA
-mut_maps_10kb$mean_mut_carlson[which(mut_maps_10kb$sum_sites_carlson < 7.5e+3)] <- NA
-mut_maps_10kb$mean_mut_masked_carlson[which(mut_maps_10kb$sum_sites_masked_carlson < 7.5e+3)] <- NA
-mut_maps_10kb$mean_mut_gnomad[which(mut_maps_10kb$sum_sites_gnomad < 7.5e+3)] <- NA
-mut_maps_10kb$mean_mut_masked_gnomad[which(mut_maps_10kb$sum_sites_masked_gnomad < 7.5e+3)] <- NA
+mut_maps_10kb$mean_mut_roulette[which(mut_maps_10kb$sum_sites_roulette < 5e+3)] <- NA
+mut_maps_10kb$mean_mut_masked_roulette[which(mut_maps_10kb$sum_sites_masked_roulette < 5e+3)] <- NA
+mut_maps_10kb$mean_mut_carlson[which(mut_maps_10kb$sum_sites_carlson < 5e+3)] <- NA
+mut_maps_10kb$mean_mut_masked_carlson[which(mut_maps_10kb$sum_sites_masked_carlson < 5e+3)] <- NA
+mut_maps_10kb$mean_mut_gnomad[which(mut_maps_10kb$sum_sites_gnomad < 5e+3)] <- NA
+mut_maps_10kb$mean_mut_masked_gnomad[which(mut_maps_10kb$sum_sites_masked_gnomad < 5e+3)] <- NA
 
-mut_maps_100kb$mean_mut_roulette[which(mut_maps_100kb$sum_sites_roulette < 7.5e+4)] <- NA
-mut_maps_100kb$mean_mut_masked_roulette[which(mut_maps_100kb$sum_sites_masked_roulette < 7.5e+4)] <- NA
-mut_maps_100kb$mean_mut_carlson[which(mut_maps_100kb$sum_sites_carlson < 7.5e+4)] <- NA
-mut_maps_100kb$mean_mut_masked_carlson[which(mut_maps_100kb$sum_sites_masked_carlson < 7.5e+4)] <- NA
-mut_maps_100kb$mean_mut_gnomad[which(mut_maps_100kb$sum_sites_gnomad < 7.5e+4)] <- NA
-mut_maps_100kb$mean_mut_masked_gnomad[which(mut_maps_100kb$sum_sites_masked_gnomad < 7.5e+4)] <- NA
+mut_maps_100kb$mean_mut_roulette[which(mut_maps_100kb$sum_sites_roulette < 5e+4)] <- NA
+mut_maps_100kb$mean_mut_masked_roulette[which(mut_maps_100kb$sum_sites_masked_roulette < 5e+4)] <- NA
+mut_maps_100kb$mean_mut_carlson[which(mut_maps_100kb$sum_sites_carlson < 5e+4)] <- NA
+mut_maps_100kb$mean_mut_masked_carlson[which(mut_maps_100kb$sum_sites_masked_carlson < 5e+4)] <- NA
+mut_maps_100kb$mean_mut_gnomad[which(mut_maps_100kb$sum_sites_gnomad < 5e+4)] <- NA
+mut_maps_100kb$mean_mut_masked_gnomad[which(mut_maps_100kb$sum_sites_masked_gnomad < 5e+4)] <- NA
 
-mut_maps_1Mb$mean_mut_roulette[which(mut_maps_1Mb$sum_sites_roulette < 5e+5)] <- NA
-mut_maps_1Mb$mean_mut_masked_roulette[which(mut_maps_1Mb$sum_sites_masked_roulette < 5e+5)] <- NA
-mut_maps_1Mb$mean_mut_carlson[which(mut_maps_1Mb$sum_sites_carlson < 5e+5)] <- NA
-mut_maps_1Mb$mean_mut_masked_carlson[which(mut_maps_1Mb$sum_sites_masked_carlson < 5e+5)] <- NA
-mut_maps_1Mb$mean_mut_gnomad[which(mut_maps_1Mb$sum_sites_gnomad < 5e+5)] <- NA
-mut_maps_1Mb$mean_mut_masked_gnomad[which(mut_maps_1Mb$sum_sites_masked_gnomad < 5e+5)] <- NA
+mut_maps_1Mb$mean_mut_roulette[which(mut_maps_1Mb$sum_sites_roulette < 2.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_roulette[which(mut_maps_1Mb$sum_sites_masked_roulette < 2.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_carlson[which(mut_maps_1Mb$sum_sites_carlson < 2.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_carlson[which(mut_maps_1Mb$sum_sites_masked_carlson < 2.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_gnomad[which(mut_maps_1Mb$sum_sites_gnomad < 2.5e+5)] <- NA
+mut_maps_1Mb$mean_mut_masked_gnomad[which(mut_maps_1Mb$sum_sites_masked_gnomad < 2.5e+5)] <- NA
 
 # testing measurement model on chr1, 1 Mb scale
 names(mut_maps_1Mb)[1] <- "chrom"
@@ -5314,7 +5314,7 @@ df_1Mb <- left_join(mut_maps_1Mb, obs_pi_1Mb, by=c("chrom",
           distinct(., chrom, chromStart, .keep_all=T)
 
 # ismc chr 1, from the book chapter Barroso & Dutheil 2026
-ismc_chr1 <- fread("/media/gvbarroso/extradrive1/iSMC/iSMC_Mbuti/Mbuti_chr1.theta.1Mb.bedgraph")
+ismc_chr1 <- fread("real_data_maps/Mbuti_chr1.theta.1Mb.bedgraph")
 ismc_chr1$chrom <- 1
 ismc_chr1$chrom <- as.integer(ismc_chr1$chrom)
 names(ismc_chr1)[4:9] <- c(paste("ismc", 1:4, sep="_"), "ismc_mean", "ismc_joint")
@@ -5325,6 +5325,8 @@ ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4
 
 m1 <- sem(model=ismc_measurement_1,
           data=ismc_chr1,
+          estimator="MLR",
+          optim.method="nlminb",
           std.ov=T,
           std.lv=T)
 
@@ -5332,6 +5334,9 @@ summary(m1)
 inspect(m1, "r2")
 parameterEstimates(m1)
 fitMeasures(m1)
+# p-value = 0.206
+# CFI = 0.998
+# GFI = 0.994
 
 ismc_measurement_2 <- "
 ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4 + ismc_joint
@@ -5339,20 +5344,24 @@ ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4 + ismc_joint
 
 m2 <- sem(model=ismc_measurement_2,
           data=ismc_chr1,
+          estimator="MLR",
+          optim.method="nlminb",
           std.ov=T,
           std.lv=T)
 
 lavTestLRT(m1, m2)
+# p = 0.5689
 
 ismc_chr1$ismc_latent <- as.numeric(predict(m1))
 
 q <- ggpairs(ismc_chr1[,4:ncol(ismc_chr1)])
+save_plot("~/Desktop/ismc_mut_Mbuti_chr1_1Mb.pdf", q, base_height=7, base_width=9)
                               
 df_chr1_1Mb <- left_join(filter(df_1Mb, chrom==1),
                                 ismc_chr1,
                                 by=c("chrom", "chromStart", "chromEnd"))
 
-mut_chr1_1Mb <-  filter(df_chr1_1Mb, coverage > 0.5)
+mut_chr1_1Mb <-  filter(df_chr1_1Mb, coverage >= 0.25) # where mut map will be applied to data
 
 mut_chr1_1Mb_log <- cbind.data.frame(mut_chr1_1Mb[,1:3],
                                      apply(mut_chr1_1Mb[,4:(ncol(mut_chr1_1Mb)-1)],
@@ -5364,11 +5373,14 @@ mu=~mean_mut_masked_roulette + mean_mut_masked_carlson + mean_mut_masked_gnomad 
 "
 
 m3 <- sem(model=mut_measurement_1,
-                data=mut_chr1_1Mb_log,
-                std.ov=T,
-                std.lv=T,
-                missing="fiml")
+          data=mut_chr1_1Mb_log,
+          estimator="MLR",
+          optim.method="nlminb",
+          std.ov=T,
+          std.lv=T,
+          missing="fiml")
 
+summary(m3)
 modificationIndices(m3)
 
 mut_measurement_2 <- "
@@ -5378,17 +5390,31 @@ mean_mut_masked_carlson ~~ ismc_mean
 
 m4 <- sem(model=mut_measurement_2,
           data=mut_chr1_1Mb_log,
+          estimator="MLR",
+          optim.method="nlminb",
           std.ov=T,
           std.lv=T,
           missing="fiml")
 
 summary(m4)
+# p=0.163
 inspect(m4, "r2")
 parameterEstimates(m4)
 lavInspect(m4, what="free")
 vcov(m4)
 
 mut_chr1_1Mb_log$mut_latent <- as.numeric(predict(m4))
+
+u <- mut_chr1_1Mb_log %>% dplyr::select(., mean_mut_masked_roulette, 
+                                           mean_mut_masked_carlson, 
+                                           mean_mut_masked_gnomad,
+                                           ismc_mean,
+                                           mut_latent)
+
+names(u) <- c("roulette", "carlson", "gnomad", "ismc", "latent")
+p <- ggpairs(u)
+
+save_plot("~/Desktop/mut_measurement_chr1_1Mb.pdf", p, base_height=7, base_width=9)
 
 # all chr models (cannot test model fit, we want to extract the latent)
 mut_10kb_log <- cbind.data.frame(mut_maps_10kb[,1:3],
@@ -5410,37 +5436,43 @@ for(c in 1:22) {
   tbl_chr <- filter(mut_10kb_log, chrom==c)
   m5 <- sem(model=mut_measurement_3,
             data=tbl_chr,
+            estimator="MLR",
+            optim.method="nlminb",
             std.ov=T,
             std.lv=T,
             missing="fiml")
   
   tbl_chr$mut_latent_log <- as.numeric(predict(m5))
   fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, mut_latent_log)),
-         paste("~/Desktop/causal_inference/real_data_maps/mut_latent_chr",
+         paste("~/Data/real_data_maps/mut_latent_chr",
                c, "_10kb.csv.gz", sep=""))
   
   tbl_chr <- filter(mut_100kb_log, chrom==c)
   m5 <- sem(model=mut_measurement_3,
             data=tbl_chr,
+            estimator="MLR",
+            optim.method="nlminb",
             std.ov=T,
             std.lv=T,
             missing="fiml")
   
   tbl_chr$mut_latent_log <- as.numeric(predict(m5))
   fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, mut_latent_log)),
-         paste("~/Desktop/causal_inference/real_data_maps/mut_latent_chr",
+         paste("~/Data/real_data_maps/mut_latent_chr",
                c, "_100kb.csv.gz", sep=""))
   
   tbl_chr <- filter(mut_1Mb_log, chrom==c)
   m5 <- sem(model=mut_measurement_3,
             data=tbl_chr,
+            estimator="MLR",
+            optim.method="nlminb",
             std.ov=T,
             std.lv=T,
             missing="fiml")
   
   tbl_chr$mut_latent_log <- as.numeric(predict(m5))
   fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, mut_latent_log)),
-         paste("~/Desktop/causal_inference/real_data_maps/mut_latent_chr",
+         paste("~/Data/real_data_maps/mut_latent_chr",
                c, "_1Mb.csv.gz", sep=""))
 }
 ```
@@ -5564,12 +5596,12 @@ names(ismc_chr1)[4:9] <- c(paste("ismc", 1:4, sep="_"), "ismc_mean", "ismc_joint
 ismc_missing <-  fread("/media/gvbarroso/extradrive1//iSMC/iSMC_Mbuti/Mbuti_chr1.missing.prop.1Mb.bedgraph")
 
 ismc_chr1$missing_prop <- ismc_missing$`LP6005441-DNA_A08`
-ismc_chr1$ismc_1[ismc_chr1$missing_prop > 0.5] <- NA
-ismc_chr1$ismc_2[ismc_chr1$missing_prop > 0.5] <- NA
-ismc_chr1$ismc_3[ismc_chr1$missing_prop > 0.5] <- NA
-ismc_chr1$ismc_4[ismc_chr1$missing_prop > 0.5] <- NA
-ismc_chr1$ismc_mean[ismc_chr1$missing_prop > 0.5] <- NA
-ismc_chr1$ismc_joint[ismc_chr1$missing_prop > 0.5] <- NA
+ismc_chr1$ismc_1[ismc_chr1$missing_prop > 0.75] <- NA
+ismc_chr1$ismc_2[ismc_chr1$missing_prop > 0.75] <- NA
+ismc_chr1$ismc_3[ismc_chr1$missing_prop > 0.75] <- NA
+ismc_chr1$ismc_4[ismc_chr1$missing_prop > 0.75] <- NA
+ismc_chr1$ismc_mean[ismc_chr1$missing_prop > 0.75] <- NA
+ismc_chr1$ismc_joint[ismc_chr1$missing_prop > 0.75] <- NA
 
 ismc_measurement_1 <- "
 ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4
@@ -5577,6 +5609,8 @@ ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4
 
 m1 <- sem(model=ismc_measurement_1,
           data=ismc_chr1,
+          estimator="MLR",
+          optim.method="nlminb",
           std.ov=T,
           std.lv=T,
           missing="fiml")
@@ -5592,6 +5626,8 @@ ismc=~ismc_1 + ismc_2 + ismc_3 + ismc_4 + ismc_joint
 
 m2 <- sem(model=ismc_measurement_2,
           data=ismc_chr1,
+          estimator="MLR",
+          optim.method="nlminb",
           std.ov=T,
           std.lv=T,
           missing="fiml")
@@ -5631,10 +5667,12 @@ rec=~mean_pyrho_CEU + mean_pyrho_YRI + mean_deCODE + ismc_latent
 "
 
 m3 <- sem(model=rec_measurement_1,
-                data=rec_chr1_log,
-                std.ov=T,
-                std.lv=T,
-                missing="fiml")
+          data=rec_chr1_log,
+          estimator="MLR",
+          optim.method="nlminb",
+          std.ov=T,
+          std.lv=T,
+          missing="fiml")
 
 summary(m3)
 inspect(m3, "r2")
@@ -5644,6 +5682,8 @@ vcov(m4)
 
 m4 <- sem(model=rec_measurement_1,
           data=na.omit(rec_chr1_log),
+          estimator="MLR",
+          optim.method="nlminb",
           std.ov=T,
           std.lv=T,
           estimator="GLS")
@@ -5679,6 +5719,8 @@ for(c in 1:22) {
   tbl_chr <- filter(rec_10kb_log, chrom==paste("chr", c, sep=""))
   m5 <- sem(model=rec_measurement_2,
             data=tbl_chr,
+            estimator="MLR",
+            optim.method="nlminb",
             std.ov=T,
             std.lv=T,
             missing="fiml")
@@ -5688,13 +5730,16 @@ for(c in 1:22) {
                                                      chromEnd, 
                                                      rec_latent_log))) %>%
         as.data.table()
+  
   names(df)[1] <- "chrom"
-  fwrite(df, paste("~/Desktop/causal_inference/real_data_maps/rec_latent_chr",
+  fwrite(df, paste("real_data_maps/rec_latent_chr",
                    c, "_10kb.csv.gz", sep=""))
   
   tbl_chr <- filter(rec_100kb_log, chrom==paste("chr", c, sep=""))
   m5 <- sem(model=rec_measurement_2,
             data=tbl_chr,
+            estimator="MLR",
+            optim.method="nlminb",
             std.ov=T,
             std.lv=T,
             missing="fiml")
@@ -5704,13 +5749,16 @@ for(c in 1:22) {
                                                      chromEnd, 
                                                      rec_latent_log))) %>%
         as.data.table()
+  
   names(df)[1] <- "chrom"
-  fwrite(df, paste("~/Desktop/causal_inference/real_data_maps/rec_latent_chr",
+  fwrite(df, paste("real_data_maps/rec_latent_chr",
                    c, "_100kb.csv.gz", sep=""))
   
   tbl_chr <- filter(rec_1Mb_log, chrom==paste("chr", c, sep=""))
   m5 <- sem(model=rec_measurement_2,
             data=tbl_chr,
+            estimator="MLR",
+            optim.method="nlminb",
             std.ov=T,
             std.lv=T,
             missing="fiml")
@@ -5720,8 +5768,9 @@ for(c in 1:22) {
                                                      chromEnd, 
                                                      rec_latent_log))) %>%
         as.data.table()
+  
   names(df)[1] <- "chrom"
-  fwrite(df, paste("~/Desktop/causal_inference/real_data_maps/rec_latent_chr",
+  fwrite(df, paste("real_data_maps/rec_latent_chr",
                    c, "_1Mb.csv.gz", sep=""))
 }
 ```
@@ -5748,6 +5797,8 @@ human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
 B_measurement <- "
 B=~roulette + carlson + gnomad # B maps from each mutation map 
 "
+
+save_plot("~/Desktop/mut_measurement_chr1_1Mb.pdf", r, base_height=7, base_width=9)
 
 for(m in unique(human_maps_1Mb$constrained_model)) {
   
@@ -5776,6 +5827,8 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
     tbl_chr <- filter(tmp_10kb, chrom==c)
     m1 <- sem(model=B_measurement,
               data=tbl_chr,
+              estimator="MLR",
+              optim.method="nlminb",
               std.ov=T,
               std.lv=T,
               missing="fiml")
@@ -5783,12 +5836,14 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
     tbl_chr$B_latent_log <- as.numeric(predict(m1))
     fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, 
                                     constrained_model, B_latent_log)),
-           paste("~/Desktop/causal_inference/real_data_maps/B_latent_chr",
+           paste("real_data_maps/B_latent_chr",
                  c, "_", m, "_10kb.csv.gz", sep=""))
     
     tbl_chr <- filter(tmp_100kb, chrom==c)
     m1 <- sem(model=B_measurement,
               data=tbl_chr,
+              estimator="MLR",
+              optim.method="nlminb",
               std.ov=T,
               std.lv=T,
               missing="fiml")
@@ -5796,24 +5851,42 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
     tbl_chr$B_latent_log <- as.numeric(predict(m1))
     fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, 
                                     constrained_model, B_latent_log)),
-           paste("~/Desktop/causal_inference/real_data_maps/B_latent_chr",
+           paste("real_data_maps/B_latent_chr",
                  c, "_", m, "_100kb.csv.gz", sep=""))
     
     tbl_chr <- filter(tmp_1Mb, chrom==c)
     m1 <- sem(model=B_measurement,
               data=tbl_chr,
+              estimator="MLR",
+              optim.method="nlminb",
               std.ov=T,
               std.lv=T,
               missing="fiml")
     
     tbl_chr$B_latent_log <- as.numeric(predict(m1))
+    
+    tbl_chr <- filter(tmp_1Mb, chrom==c)
+    m1 <- sem(model=B_measurement,
+              data=tbl_chr,
+              estimator="MLR",
+              optim.method="nlminb",
+              std.ov=T,
+              std.lv=T,
+              missing="fiml")
+    
+    tbl_chr$B_latent_log <- as.numeric(predict(m1))
+    
+    #r <- tbl_chr %>% dplyr::select(., roulette, 
+    #                               carlson, 
+    #                               gnomad,
+    #                               B_latent_log) %>% ggpairs()
+    
     fwrite(dplyr::select(tbl_chr, c(chrom, chromStart, chromEnd, 
                                     constrained_model, B_latent_log)),
-           paste("~/Desktop/causal_inference/real_data_maps/B_latent_chr",
+           paste("real_data_maps/B_latent_chr",
                  c, "_", m, "_1Mb.csv.gz", sep=""))
   }
 }
-
 ```
 
 ## SEM
@@ -9536,7 +9609,7 @@ theme(
 save_plot("real_data_maps/boot_r2_chr22.pdf", b)
 ```
 
-Simple correlations
+Simple correlations (latent constructs for B, mu, r)
 
 ```{r, simple-pearson, eval=T, include=F, message=F, warning=F}
 
@@ -9756,11 +9829,11 @@ for(var in unique(c(pearson_cors$var1, pearson_cors$var2))) {
                aes(x=chrom, 
                    y=correlation, 
                    color=var2)) +
-        geom_point(size=2) + geom_hline(yintercept=0, linetype="dashed") +
+        geom_point(size=3) + geom_hline(yintercept=0, linetype="dashed") +
         facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
         scale_y_continuous(breaks=pretty_breaks()) +
         scale_x_continuous(breaks=1:22) + 
-        scale_color_manual(values = brewer.pal(4, "Set2"), name=var) +
+        scale_color_manual(values=c("brown1", "cyan3", "purple3", "gold3"), name=paste(var, "vs.")) +
         labs(title=NULL, x="Chromosome", y="Pearson cor.") +
         theme(strip.text.y=element_text(size=16),     
               strip.text.x=element_text(size=16),    
@@ -9775,6 +9848,333 @@ for(var in unique(c(pearson_cors$var1, pearson_cors$var2))) {
   save_plot(paste("real_data_maps/pearson_", var, ".pdf", sep=""), p, 
             base_height=10, base_width=20)
 }
+```
+
+Check correlations with raw mutation maps
+
+```{r, simple-pearson-raw-mut, eval=T, include=F, message=F, warning=F}
+
+## reload
+human_maps_10kb <- fread("real_data_maps/maps_10kb_models.csv.gz") %>%
+                   filter(., mut_map!="uniform") %>%
+                   dplyr::select(-c(bin_100kb, bin_1Mb))
+
+human_maps_100kb <- fread("real_data_maps/maps_100kb_models.csv.gz") %>%
+                    filter(., mut_map!="uniform") %>%
+                    dplyr::select(-c(bin_100kb, bin_1Mb))
+
+human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
+                   filter(., mut_map!="uniform") %>%
+                   dplyr::select(-c(bin_100kb, bin_1Mb))
+
+# 10kb
+pearson_10kb <- list(length=length(unique(human_maps_10kb$mut_map)) *
+                     length(unique(human_maps_10kb$constrained_model)) *
+                     22)
+idx <- 1
+for(u in unique(human_maps_10kb$mut_map)) {
+  for(m in unique(human_maps_10kb$constrained_model)) {
+    for(c in 1:22) {
+    
+      data <- filter(human_maps_10kb, mut_map==u, constrained_model==m, chrom==c,
+                     coverage >= 0.75, demo=="equilibrium") %>%
+        dplyr::select(., avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+      n <- ncol(data)
+      
+      cor_mat <- matrix(NA, n, n)
+      p_mat <- matrix(NA, n, n)
+      colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+      colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+      
+      for (i in 1:n) {
+        for (j in 1:n) {
+          test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+          cor_mat[i, j] <- test$estimate
+          p_mat[i, j] <- test$p.value
+        }
+      }
+      
+      combined_mat <- matrix(NA_real_, n, n)
+      for (i in 1:n) {
+        for (j in 1:n) {
+          if (i > j) {
+            combined_mat[i, j] <- round(cor_mat[i, j], 4)
+          } else if (i < j) {
+            combined_mat[i, j] <- signif(p_mat[i, j], 3)
+          }
+        }
+      }
+      
+      combined_mat <- setDT(as.data.frame(combined_mat))
+      rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+      
+      var_names <- names(combined_mat)
+      combined_mat$V1 <- rownames(combined_mat)
+      
+      long <- combined_mat %>%
+        pivot_longer(
+          cols = -V1,
+          names_to = "variable2",
+          values_to = "value"
+        ) %>%
+        dplyr::rename(variable1 = V1) %>%
+        filter(variable1 != variable2) %>%
+        mutate(
+          i = match(variable1, var_names),  # row index
+          j = match(variable2, var_names),  # column index
+          pair_key = paste(pmin(variable1, variable2), pmax(variable1, variable2), sep = "|")
+        )
+      
+      corr_long <- long %>%
+        filter(i > j, !is.na(value)) %>%
+        transmute(
+          pair_key,
+          var1 = pmin(variable1, variable2),
+          var2 = pmax(variable1, variable2),
+          correlation = as.numeric(value)
+        )
+      
+      pval_long <- long %>%
+        filter(i < j, !is.na(value)) %>%
+        transmute(
+          pair_key,
+          pvalue = as.numeric(value)
+        )
+      
+      flat_matrix <- corr_long %>%
+        left_join(pval_long, by = "pair_key") %>%
+        arrange(., var1, var2)
+          
+      flat_matrix$chrom <- c
+      flat_matrix$constrained_model <- m
+      flat_matrix$mut_map <- u
+      
+      pearson_10kb[[idx]] <- flat_matrix
+      idx <- idx + 1
+    }
+  }
+}
+
+pearson_10kb <- do.call(rbind.data.frame, pearson_10kb)
+pearson_10kb$scale <- 1e+4
+
+# 100kb
+pearson_100kb <- list(length=length(unique(human_maps_100kb$mut_map)) *
+                      length(unique(human_maps_100kb$constrained_model)) *
+                      22)
+idx <- 1
+for(u in unique(human_maps_100kb$mut_map)) {
+  for(m in unique(human_maps_100kb$constrained_model)) {
+    for(c in 1:22) {
+    
+      data <- filter(human_maps_100kb, mut_map==u, constrained_model==m, chrom==c,
+                     coverage >= 0.5, demo=="equilibrium") %>%
+        dplyr::select(., avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+      n <- ncol(data)
+      
+      cor_mat <- matrix(NA, n, n)
+      p_mat <- matrix(NA, n, n)
+      colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+      colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+      
+      for (i in 1:n) {
+        for (j in 1:n) {
+          test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+          cor_mat[i, j] <- test$estimate
+          p_mat[i, j] <- test$p.value
+        }
+      }
+      
+      combined_mat <- matrix(NA_real_, n, n)
+      for (i in 1:n) {
+        for (j in 1:n) {
+          if (i > j) {
+            combined_mat[i, j] <- round(cor_mat[i, j], 4)
+          } else if (i < j) {
+            combined_mat[i, j] <- signif(p_mat[i, j], 3)
+          }
+        }
+      }
+      
+      combined_mat <- setDT(as.data.frame(combined_mat))
+      rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+      
+      var_names <- names(combined_mat)
+      combined_mat$V1 <- rownames(combined_mat)
+      
+      long <- combined_mat %>%
+        pivot_longer(
+          cols = -V1,
+          names_to = "variable2",
+          values_to = "value"
+        ) %>%
+        dplyr::rename(variable1 = V1) %>%
+        filter(variable1 != variable2) %>%
+        mutate(
+          i = match(variable1, var_names),  # row index
+          j = match(variable2, var_names),  # column index
+          pair_key = paste(pmin(variable1, variable2), pmax(variable1, variable2), sep = "|")
+        )
+      
+      corr_long <- long %>%
+        filter(i > j, !is.na(value)) %>%
+        transmute(
+          pair_key,
+          var1 = pmin(variable1, variable2),
+          var2 = pmax(variable1, variable2),
+          correlation = as.numeric(value)
+        )
+      
+      pval_long <- long %>%
+        filter(i < j, !is.na(value)) %>%
+        transmute(
+          pair_key,
+          pvalue = as.numeric(value)
+        )
+      
+      flat_matrix <- corr_long %>%
+        left_join(pval_long, by = "pair_key") %>%
+        arrange(., var1, var2)
+          
+      flat_matrix$chrom <- c
+      flat_matrix$constrained_model <- m
+      flat_matrix$mut_map <- u
+      
+      pearson_100kb[[idx]] <- flat_matrix
+      idx <- idx + 1
+    }
+  }
+}
+
+pearson_100kb <- do.call(rbind.data.frame, pearson_100kb)
+pearson_100kb$scale <- 1e+5
+
+# 1Mb
+pearson_1Mb <- list(length=length(unique(human_maps_1Mb$mut_map)) *
+                           length(unique(human_maps_1Mb$constrained_model)) *
+                           22)
+idx <- 1
+for(u in unique(human_maps_1Mb$mut_map)) {
+  for(m in unique(human_maps_1Mb$constrained_model)) {
+    for(c in 1:22) {
+    
+      data <- filter(human_maps_1Mb, mut_map==u, constrained_model==m, chrom==c,
+                     coverage >= 0.25, demo=="equilibrium") %>%
+        dplyr::select(., avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+      n <- ncol(data)
+      
+      cor_mat <- matrix(NA, n, n)
+      p_mat <- matrix(NA, n, n)
+      colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+      colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+      
+      for (i in 1:n) {
+        for (j in 1:n) {
+          test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+          cor_mat[i, j] <- test$estimate
+          p_mat[i, j] <- test$p.value
+        }
+      }
+      
+      combined_mat <- matrix(NA_real_, n, n)
+      for (i in 1:n) {
+        for (j in 1:n) {
+          if (i > j) {
+            combined_mat[i, j] <- round(cor_mat[i, j], 4)
+          } else if (i < j) {
+            combined_mat[i, j] <- signif(p_mat[i, j], 3)
+          }
+        }
+      }
+      
+      combined_mat <- setDT(as.data.frame(combined_mat))
+      rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+      
+      var_names <- names(combined_mat)
+      combined_mat$V1 <- rownames(combined_mat)
+      
+      long <- combined_mat %>%
+        pivot_longer(
+          cols = -V1,
+          names_to = "variable2",
+          values_to = "value"
+        ) %>%
+        dplyr::rename(variable1 = V1) %>%
+        filter(variable1 != variable2) %>%
+        mutate(
+          i = match(variable1, var_names),  # row index
+          j = match(variable2, var_names),  # column index
+          pair_key = paste(pmin(variable1, variable2), pmax(variable1, variable2), sep = "|")
+        )
+      
+      corr_long <- long %>%
+        filter(i > j, !is.na(value)) %>%
+        transmute(
+          pair_key,
+          var1 = pmin(variable1, variable2),
+          var2 = pmax(variable1, variable2),
+          correlation = as.numeric(value)
+        )
+      
+      pval_long <- long %>%
+        filter(i < j, !is.na(value)) %>%
+        transmute(
+          pair_key,
+          pvalue = as.numeric(value)
+        )
+      
+      flat_matrix <- corr_long %>%
+        left_join(pval_long, by = "pair_key") %>%
+        arrange(., var1, var2)
+          
+      flat_matrix$chrom <- c
+      flat_matrix$constrained_model <- m
+      flat_matrix$mut_map <- u
+      
+      pearson_1Mb[[idx]] <- flat_matrix
+      idx <- idx + 1
+    }
+  }
+}
+
+pearson_1Mb <- do.call(rbind.data.frame, pearson_1Mb)
+pearson_1Mb$scale <- 1e+6
+
+pearson_raw_muts <- rbind.data.frame(pearson_10kb, pearson_100kb, pearson_1Mb)
+
+tbl <- pearson_raw_muts %>% filter(., var1 == "avg_mut" | var2 == "avg_mut") %>%
+  mutate(
+    v1 = var1, v2 = var2,                  
+    var1 = if_else(v2 == "avg_mut", v2, v1),            
+    var2 = if_else(v2 == "avg_mut", v1, v2)             
+  ) %>% dplyr::select(-v1, -v2)
+
+for(scal in unique(tbl$scale)) {
+  
+  p <- ggplot(data=filter(tbl, pvalue < 0.05 / 22, scale==scal),
+               aes(x=chrom, 
+                   y=correlation, 
+                   color=var2)) +
+        geom_point(size=3) + geom_hline(yintercept=0, linetype="dashed") +
+        facet_grid(mut_map~constrained_model, labeller=label_both) + theme_bw() + 
+        scale_y_continuous(breaks=pretty_breaks()) +
+        scale_x_continuous(breaks=1:22) + 
+        scale_color_manual(values=c("brown1", "cyan3", "purple3", "gold3"), name="mut vs.") +
+        labs(title=NULL, x="Chromosome", y="Pearson cor.") +
+        theme(strip.text.y=element_text(size=16),     
+              strip.text.x=element_text(size=16),    
+              axis.title=element_text(size=16), 
+              axis.text=element_text(size=12), 
+              axis.text.x=element_text(size=12),
+              legend.text=element_text(size=16),
+              legend.title=element_text(size=16),
+              legend.position="bottom")
+  save_plot(paste("real_data_maps/pearson_raw_muts_", scal, ".svg", sep=""), p, 
+            base_height=10, base_width=20)
+  save_plot(paste("real_data_maps/pearson_raw_muts_", scal, ".pdf", sep=""), p, 
+            base_height=10, base_width=20)
+}
+
 ```
 
 Fit measures & model selection
@@ -10559,8 +10959,8 @@ gw_r2 <- rbind.data.frame(gw_r2_10kb,
                               gw_r2_100kb,
                               gw_r2_1Mb) 
 
-gw_r2_B <- pivot_longer(gw_r2_gls, cols=ends_with(".B"))
-gw_r2_pi <- pivot_longer(gw_r2_gls, cols=ends_with(".avg_pi"))
+gw_r2_B <- pivot_longer(gw_r2, cols=ends_with(".B"))
+gw_r2_pi <- pivot_longer(gw_r2, cols=ends_with(".avg_pi"))
 
 p <- ggplot(data=gw_r2_pi, 
             aes(x=name, 
