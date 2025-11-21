@@ -3632,7 +3632,7 @@ phastcons_scaled_delsites_10kb <- phast_bins %>%
     scaled_del_sites        = mean(scaled_del_sites),
     scaled_del_sites_masked = mean(scaled_del_sites_masked),
     .groups = "drop"
-  )
+  ) %>% dplyr::select(., -win10kb)
 
 phastcons_scaled_delsites_100kb <- phast_bins %>%
   group_by(chrom, win100kb) %>%
@@ -3642,7 +3642,7 @@ phastcons_scaled_delsites_100kb <- phast_bins %>%
     scaled_del_sites        = mean(scaled_del_sites),
     scaled_del_sites_masked = mean(scaled_del_sites_masked),
     .groups = "drop"
-  )
+  ) %>% dplyr::select(., -win100kb)
 
 phastcons_scaled_delsites_1Mb <- phast_bins %>%
   group_by(chrom, win1Mb) %>%
@@ -3652,7 +3652,18 @@ phastcons_scaled_delsites_1Mb <- phast_bins %>%
     scaled_del_sites        = mean(scaled_del_sites),
     scaled_del_sites_masked = mean(scaled_del_sites_masked),
     .groups = "drop"
-  )
+  ) %>% dplyr::select(., -win1Mb)
+
+phastcons_scaled_delsites_10kb$scale <- 1e4
+phastcons_scaled_delsites_100kb$scale <- 1e5
+phastcons_scaled_delsites_1Mb$scale <- 1e6
+
+phastcons_scaled_delsites <- rbind.data.frame(phastcons_scaled_delsites_10kb,
+                                              phastcons_scaled_delsites_100kb,
+                                              phastcons_scaled_delsites_1Mb)
+
+phastcons_scaled_delsites$constrained_model <- "phastcons"
+fwrite(phastcons_scaled_delsites, "real_data_maps/phastcons_scaled_delsites.csv.gz")
 
 # func. split exons
 scaled_func_delsites <- list(length=22)
@@ -3678,7 +3689,7 @@ func_split_scaled_delsites_10kb <- func_bins %>%
     scaled_del_sites        = mean(scaled_del_sites),
     scaled_del_sites_masked = mean(scaled_del_sites_masked),
     .groups = "drop"
-  )
+  ) %>% dplyr::select(., -win10kb)
 
 func_split_scaled_delsites_100kb <- func_bins %>%
   group_by(chrom, win100kb) %>%
@@ -3688,7 +3699,7 @@ func_split_scaled_delsites_100kb <- func_bins %>%
     scaled_del_sites        = mean(scaled_del_sites),
     scaled_del_sites_masked = mean(scaled_del_sites_masked),
     .groups = "drop"
-  )
+  ) %>% dplyr::select(., -win100kb)
 
 func_split_scaled_delsites_1Mb <- func_bins %>%
   group_by(chrom, win1Mb) %>%
@@ -3698,7 +3709,19 @@ func_split_scaled_delsites_1Mb <- func_bins %>%
     scaled_del_sites        = mean(scaled_del_sites),
     scaled_del_sites_masked = mean(scaled_del_sites_masked),
     .groups = "drop"
-  )
+  ) %>% dplyr::select(., -win1Mb)
+
+func_split_scaled_delsites_10kb$scale <- 1e4
+func_split_scaled_delsites_100kb$scale <- 1e5
+func_split_scaled_delsites_1Mb$scale <- 1e6
+
+func_split_scaled_delsites <- rbind.data.frame(func_split_scaled_delsites_10kb,
+                                               func_split_scaled_delsites_100kb,
+                                               func_split_scaled_delsites_1Mb)
+
+
+func_split_scaled_delsites$constrained_model <- "func_split_exons"
+fwrite(func_split_scaled_delsites, "real_data_maps/func_split_scaled_delsites.csv.gz")
 ```
 
 Combining tables
@@ -4496,13 +4519,13 @@ D0 <- DAG(
   B~avg_mut
 )
 
-DAG0 <- dagify(
+DAG1 <- dagify(
   pi ~ B,
   pi ~ u,
   B ~ u
 )
 
-DD0p <- DAG0 %>% 
+DD0p <- DAG1 %>% 
   tidy_dagitty(layout="auto") %>%
   arrange(name) %>% 
   ggplot(aes(x=x, y=y, xend=xend, yend=yend)) +
@@ -6922,7 +6945,7 @@ human_maps_1Mb <- fread("real_data_maps/maps_1Mb_models.csv.gz") %>%
                                      constrained_model))
 ```
 
-Fitting models
+Fitting models 
 
 ```{r, fitting-SEM-DAGs, eval=T, include=F, message=F, warning=F}
 
@@ -7041,7 +7064,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                 data       = sem_df_std,         
                 estimator  = "MLR",              
                 missing    = "fiml",             
-                meanstructure = TRUE,            
+                meanstructure = FALSE,            
                 std.ov     = TRUE,
                 fixed.x    = FALSE,
                 optim.method = "nlminb",         ,
@@ -7064,7 +7087,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
   
   fwrite(rbind.data.frame(names(fitMeasures(m1_gw)),
                           as.numeric(fitMeasures(m1_gw))), 
-         paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_10kb_genomewide_", 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_10kb_genomewide_", 
                "latents_", m, ".csv", sep=""),
          col.names=F)
   
@@ -7096,7 +7119,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                  data       = sem_df_std,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,  
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -7207,7 +7230,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                  estimator  = "MLR",              
                  missing    = "fiml",
                  fixed.x = FALSE,
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,               
                  optim.method = "nlminb",         
                  group="chrom",
@@ -7258,7 +7281,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                  data       = sem_df_std,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -7376,7 +7399,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                  data       = sem_df_std,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -7431,7 +7454,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                  data       = sem_df_std,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -7549,7 +7572,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                  data       = sem_df_std,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -7601,7 +7624,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                  data       = sem_df_std,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -7711,7 +7734,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -7740,7 +7763,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -7775,7 +7798,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -7816,7 +7839,7 @@ for(m in unique(human_maps_10kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -7947,7 +7970,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                 data       = dt,         
                 estimator  = "MLR",              
                 missing    = "fiml",             
-                meanstructure = TRUE,            
+                meanstructure = FALSE,            
                 std.ov     = TRUE,
                 fixed.x    = FALSE,
                 optim.method = "nlminb",         ,
@@ -7970,7 +7993,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
   
   fwrite(rbind.data.frame(names(fitMeasures(m1_gw)),
                           as.numeric(fitMeasures(m1_gw))), 
-         paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_100kb_genomewide_", 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_100kb_genomewide_", 
                "latents_", m, ".csv", sep=""),
          col.names=F)
   
@@ -7992,7 +8015,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,  
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -8093,7 +8116,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                  estimator  = "MLR",              
                  missing    = "fiml",
                  fixed.x = FALSE,
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,               
                  optim.method = "nlminb",         
                  group="chrom",
@@ -8134,7 +8157,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -8242,7 +8265,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -8286,7 +8309,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -8394,7 +8417,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -8436,7 +8459,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -8548,7 +8571,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -8577,7 +8600,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -8612,7 +8635,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -8653,7 +8676,7 @@ for(m in unique(human_maps_100kb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -8784,7 +8807,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                 data       = dt,         
                 estimator  = "MLR",              
                 missing    = "fiml",             
-                meanstructure = TRUE,            
+                meanstructure = FALSE,            
                 std.ov     = TRUE,
                 fixed.x    = FALSE,
                 optim.method = "nlminb",         ,
@@ -8807,7 +8830,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
   
   fwrite(rbind.data.frame(names(fitMeasures(m1_gw)),
                           as.numeric(fitMeasures(m1_gw))), 
-         paste("real_data_maps/lavaan_out/YRI_DAG0_fitmeasures_1Mb_genomewide_", 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_1Mb_genomewide_", 
                "latents_", m, ".csv", sep=""),
          col.names=F)
   
@@ -8829,7 +8852,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,  
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -8930,7 +8953,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                  estimator  = "MLR",              
                  missing    = "fiml",
                  fixed.x = FALSE,
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,               
                  optim.method = "nlminb",         
                  group="chrom",
@@ -8971,7 +8994,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -9079,7 +9102,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -9123,7 +9146,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -9231,7 +9254,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -9273,7 +9296,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                  data       = dt,         
                  estimator  = "MLR",              
                  missing    = "fiml",             
-                 meanstructure = TRUE,            
+                 meanstructure = FALSE,            
                  std.ov     = TRUE,    
                  fixed.x    = FALSE,
                  optim.method = "nlminb",         
@@ -9385,7 +9408,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -9414,7 +9437,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -9449,7 +9472,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -9490,7 +9513,7 @@ for(m in unique(human_maps_1Mb$constrained_model)) {
                data=filter(dt, chrom==c),
                estimator  = "MLR",              
                missing    = "fiml",             
-               meanstructure = TRUE,            
+               meanstructure = FALSE,            
                std.ov     = TRUE,     
                fixed.x    = TRUE,
                optim.method = "nlminb",    
@@ -9536,7 +9559,7 @@ for(b in 1:1000) {
              data=c22_boot,
              estimator  = "MLR",              
              missing    = "fiml",             
-             meanstructure = TRUE,            
+             meanstructure = FALSE,            
              std.ov     = TRUE,     
              fixed.x    = FALSE,
              optim.method = "nlminb",    
@@ -9548,7 +9571,7 @@ for(b in 1:1000) {
              data=c22_boot,
              estimator  = "MLR",              
              missing    = "fiml",             
-             meanstructure = TRUE,            
+             meanstructure = FALSE,            
              std.ov     = TRUE,     
              fixed.x    = FALSE,
              optim.method = "nlminb",    
@@ -9560,7 +9583,7 @@ for(b in 1:1000) {
              data=c22_boot,
              estimator  = "MLR",              
              missing    = "fiml",             
-             meanstructure = TRUE,            
+             meanstructure = FALSE,            
              std.ov     = TRUE,     
              fixed.x    = FALSE,
              optim.method = "nlminb",    
@@ -9572,7 +9595,7 @@ for(b in 1:1000) {
              data=c22_boot,
              estimator  = "MLR",              
              missing    = "fiml",             
-             meanstructure = TRUE,            
+             meanstructure = FALSE,            
              std.ov     = TRUE,     
              fixed.x    = FALSE,
              optim.method = "nlminb",    
@@ -9608,6 +9631,2720 @@ theme(
 
 save_plot("real_data_maps/boot_r2_chr22.pdf", b)
 ```
+
+Fitting models with prop_del_sites scaled by their mean s
+
+```{r, fitting-SEM-DAGs, eval=T, include=F, message=F, warning=F}
+
+split_sds <- fread("real_data_maps/func_split_scaled_delsites.csv.gz")
+phast_sds <- fread("real_data_maps/phastcons_scaled_delsites.csv.gz")
+
+scaled_del_sites <- rbind.data.frame(split_sds, phast_sds)
+
+df_10kb <- scaled_del_sites %>% filter(., scale==1e4) %>% 
+                                left_join(., human_maps_10kb,
+                                                       by=c("chrom",
+                                                       "chromStart",
+                                                       "chromEnd",
+                                                       "constrained_model"))
+
+# 10 kb
+for(m in unique(df_10kb$constrained_model)) { 
+
+  print(paste(m, Sys.Date(), Sys.time()), sep="\t")
+  cat(paste("10kb", m))
+  cat("\n")
+  
+  tbl_10kb <- filter(df_10kb, constrained_model==m)  
+  tbl_10kb$avg_pi <- log(tbl_10kb$avg_pi)
+  
+  # replace prop_del_sites by its weighted measure
+  if(any(tbl_10kb$prop_del_sites==0)) {
+    tbl_10kb$prop_del_sites <- log1p(tbl_10kb$scaled_del_sites_masked) 
+  } else {
+    tbl_10kb$prop_del_sites <- log(tbl_10kb$scaled_del_sites_masked) 
+  }
+  
+  tmp_B <- filter(B_10kb, constrained_model==m) %>%
+           dplyr::select(., -constrained_model)
+  
+  tbl_10kb <- left_join(tbl_10kb, tmp_B, by=c("chrom", 
+                                            "chromStart", 
+                                            "chromEnd"))
+  
+  tbl_10kb <- left_join(tbl_10kb, rec_latent_10kb, by=c("chrom", 
+                                                      "chromStart", 
+                                                      "chromEnd"))
+  
+  tbl_10kb <- left_join(tbl_10kb, mut_latent_10kb, by=c("chrom", 
+                                                     "chromStart", 
+                                                     "chromEnd"))
+  
+  tbl_10kb <- filter(tbl_10kb, coverage >= 0.75)
+  names(tbl_10kb)[8:10] <- c("B", "avg_rec", "avg_mut")
+
+  table_10kb_g <- add_genome_offsets_and_midpoint(tbl_10kb, chrom_lengths=NULL)
+  
+  data <- dplyr::select(table_10kb_g, avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+  n <- ncol(data)
+  
+  cor_mat <- matrix(NA, n, n)
+  p_mat <- matrix(NA, n, n)
+  colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+  colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+  
+  for (i in 1:n) {
+    for (j in 1:n) {
+      test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+      cor_mat[i, j] <- test$estimate
+      p_mat[i, j] <- test$p.value
+    }
+  }
+  
+  combined_mat <- matrix(NA_real_, n, n)
+  for (i in 1:n) {
+    for (j in 1:n) {
+      if (i > j) {
+        combined_mat[i, j] <- round(cor_mat[i, j], 4)
+      } else if (i < j) {
+        combined_mat[i, j] <- signif(p_mat[i, j], 3)
+      }
+    }
+  }
+  combined_mat <- setDT(as.data.frame(combined_mat))
+  rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+  fwrite(combined_mat, paste("real_data_maps/pearson_gw_10kb", m, ".csv", sep=""),
+         row.names=T, quote=F)
+  
+  dt <- copy(table_10kb_g) %>%
+        arrange(chrom, midpoint) %>%
+        as.data.table()
+  setDT(dt)
+  
+  # genome-wide models, DAGs 1-3 (DAG 4 will be tested per chr)
+  # model 1
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut", label = "c1", start = 0.25),
+      list(p = "B",       label = "c2", start = 0.5)
+    ),
+    B = list(
+      list(p = "avg_mut", label = "c3", start = -0.25)
+    )
+  )
+
+  covs <- list()
+  
+  defined <- c(
+    direct_mut_pi   = "c1",            # avg_mut -> avg_pi (direct)
+    indirect_mut_pi = "c3*c2",         # avg_mut -> B -> avg_pi (indirect)
+    total_mut_pi    = "c1 + c3*c2",    # total effect of avg_mut on avg_pi
+    direct_B_pi     = "c2"             # direct effect of B on avg_pi
+  )
+  
+  model1_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  out <- preprocess_sem_from_lavaan(model1_constrained, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+  
+  m1_gw <- sem(model1_constrained,
+                data       = sem_df_std,         
+                estimator  = "MLR",              
+                missing    = "fiml",             
+                meanstructure = FALSE,            
+                std.ov     = TRUE,
+                fixed.x    = FALSE,
+                optim.method = "nlminb",         ,
+                group="chrom",
+                group.equal="regressions",
+                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  summary(m1_gw, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+  inspect(m1_gw, "coef")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1_gw, "r2"))),
+                          as.numeric(unlist(inspect(m1_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1_gw)),
+                          as.numeric(fitMeasures(m1_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+
+  out <- preprocess_sem_from_lavaan(model_free_with_group_defs, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+  
+  m1_chr <- sem(model_free_with_group_defs,
+                 data       = sem_df_std,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,  
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  summary(m1_chr, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+  inspect(m1_chr, "coef")
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m1_gw, m1_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG1_gw-equal-freechrom_10kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m1_chr); aic_constr <- AIC(m1_gw)
+    bic_free <- BIC(m1_chr); bic_constr <- BIC(m1_gw)
+    df_free  <- tryCatch(fitMeasures(m1_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m1_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m1_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m1_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1_chr, "r2"))),
+                          as.numeric(unlist(inspect(m1_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1_chr)),
+                          as.numeric(fitMeasures(m1_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 2
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",     label = "c1", start = 0.25),
+      list(p = "B",           label = "c2", start = 0.5),
+      list(p = "prop_del_sites", label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites", label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25)
+    ),
+    avg_mut = list(), 
+    prop_del_sites = list()
+  )
+
+  covs <- list()
+  
+  defined <- c(
+    mu_B_pi = "c1*c5"
+  )
+  
+  model2_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  out <- preprocess_sem_from_lavaan(model2_constrained, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+  
+  m2_gw <- sem(model2_constrained,
+                 data       = sem_df_std,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",
+                 fixed.x = FALSE,
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,               
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2_gw, "r2"))),
+                          as.numeric(unlist(inspect(m2_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2_gw)),
+                          as.numeric(fitMeasures(m2_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+  
+  out <- preprocess_sem_from_lavaan(model_free_with_group_defs, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+  
+  m2_chr <- sem(model_free_with_group_defs,
+                 data       = sem_df_std,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m2_gw, m2_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG2_gw-equal-freechrom_10kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m2_chr); aic_constr <- AIC(m2_gw)
+    bic_free <- BIC(m2_chr); bic_constr <- BIC(m2_gw)
+    df_free  <- tryCatch(fitMeasures(m2_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m2_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m2_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m2_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2_chr, "r2"))),
+                          as.numeric(unlist(inspect(m2_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2_chr)),
+                          as.numeric(fitMeasures(m2_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 3
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",       label = "c1", start = 0.25),
+      list(p = "B",             label = "c2", start = 0.5),
+      list(p = "prop_del_sites",label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites",label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25),
+      list(p = "avg_rec",       label = "c6", start = 0.25)
+    ),
+    avg_mut = list(
+      list(p = "avg_rec",       label = "c7", start = 0.25)
+    ),
+    avg_rec = list(),
+    prop_del_sites = list()
+  )
+  
+  # Covariances
+  covs <- list()
+  
+  # Defined combinations (named character vector)
+  defined <- c(
+    mu_B_pi      = "c1*c5",
+    rec_B_pi     = "c2*c6",
+    rec_mu_pi    = "c1*c7",
+    rec_mu_B_pi  = "c2*c5*c7"
+  )
+
+  model3_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  model3_constrained <- paste0(model3_constrained, "\n", "avg_mut ~~ 0*prop_del_sites")
+  
+  out <- preprocess_sem_from_lavaan(model3_constrained, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+  
+  m3_gw <- sem(model3_constrained,
+                 data       = sem_df_std,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3_gw, "r2"))),
+                          as.numeric(unlist(inspect(m3_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3_gw)),
+                          as.numeric(fitMeasures(m3_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+  
+  model_free_with_group_defs <- paste0(model_free_with_group_defs, "\n", "avg_mut ~~ 0*prop_del_sites")
+
+  
+  out <- preprocess_sem_from_lavaan(model_free_with_group_defs, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+
+  m3_chr <- sem(model_free_with_group_defs,
+                 data       = sem_df_std,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m3_gw, m3_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG3_gw-equal-freechrom_10kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m3_chr); aic_constr <- AIC(m3_gw)
+    bic_free <- BIC(m3_chr); bic_constr <- BIC(m3_gw)
+    df_free  <- tryCatch(fitMeasures(m3_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m3_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m3_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m3_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3_chr, "r2"))),
+                          as.numeric(unlist(inspect(m3_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3_chr)),
+                          as.numeric(fitMeasures(m3_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 4
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",       label = "c1", start = 0.25),
+      list(p = "B",             label = "c2", start = 0.5),
+      list(p = "prop_del_sites",label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites",label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25),
+      list(p = "avg_rec",       label = "c6", start = 0.25)
+    ),
+    avg_mut = list(
+      list(p = "avg_rec",       label = "c7", start = 0.25)
+    ),
+    avg_rec = list(),
+    prop_del_sites = list()
+  )
+  
+  # Covariances
+  covs <- list(
+    c("avg_mut", "prop_del_sites")
+  )
+  
+  # Defined combinations (named character vector)
+  defined <- c(
+    mu_B_pi      = "c1*c5",
+    rec_B_pi     = "c2*c6",
+    rec_mu_pi    = "c1*c7",
+    rec_mu_B_pi  = "c2*c5*c7"
+  )
+
+  model4_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  out <- preprocess_sem_from_lavaan(model4_constrained, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+  
+  m4_gw <- sem(model4_constrained,
+                 data       = sem_df_std,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m4_gw, "r2"))),
+                          as.numeric(unlist(inspect(m4_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_r2_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m4_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_params_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m4_gw)),
+                          as.numeric(fitMeasures(m4_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_10kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+  
+  out <- preprocess_sem_from_lavaan(model_free_with_group_defs, 
+                                  df = dt,
+                                  taper_radius = 5e5,
+                                  pos = "midpoint",
+                                  chrom = "chrom") 
+  full_df <- out$full_df
+  sem_df_std <- out$sem_df_std
+  sem_df_std$chrom <- full_df$chrom
+  sem_df_std$chrom <- as.factor(sem_df_std$chrom)
+
+  m4_chr <- sem(model_free_with_group_defs,
+                 data       = sem_df_std,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m4_gw, m4_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG4_gw-equal-freechrom_10kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m4_chr); aic_constr <- AIC(m4_gw)
+    bic_free <- BIC(m4_chr); bic_constr <- BIC(m4_gw)
+    df_free  <- tryCatch(fitMeasures(m4_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m4_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m4_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m4_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m4_chr, "r2"))),
+                          as.numeric(unlist(inspect(m4_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_r2_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m4_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_params_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m4_chr)),
+                          as.numeric(fitMeasures(m4_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_10kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+
+  # one model per chrom
+  for(c in 1:22) {
+    
+    data <- filter(table_10kb_g, chrom==c) %>%
+      dplyr::select(., avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+    n <- ncol(data)
+    
+    cor_mat <- matrix(NA, n, n)
+    p_mat <- matrix(NA, n, n)
+    colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+    colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+    
+    for (i in 1:n) {
+      for (j in 1:n) {
+        test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+        cor_mat[i, j] <- test$estimate
+        p_mat[i, j] <- test$p.value
+      }
+    }
+    
+    combined_mat <- matrix(NA_real_, n, n)
+    for (i in 1:n) {
+      for (j in 1:n) {
+        if (i > j) {
+          combined_mat[i, j] <- round(cor_mat[i, j], 4)
+        } else if (i < j) {
+          combined_mat[i, j] <- signif(p_mat[i, j], 3)
+        }
+      }
+    }
+    combined_mat <- setDT(as.data.frame(combined_mat))
+    rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_", m, "_10kb.csv", sep=""),
+           row.names=T, quote=F)
+  
+    model_1 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    B ~ start(-0.25)*c3*avg_mut
+    "
+    
+    m1_fit <- sem(model_1,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m1_fit, "r2")),
+                            as.numeric(inspect(m1_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m1_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_2 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    mu_B_pi:=c1*c5
+    "
+    
+    m2_fit <- sem(model_2,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m2_fit, "r2")),
+                            as.numeric(inspect(m2_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m2_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_3 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ 0*prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m3_fit <- sem(model_3,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m3_fit, "r2")),
+                            as.numeric(inspect(m3_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m3_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m3_fit)),
+                            as.numeric(fitMeasures(m3_fit))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    model_4 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m4_fit <- sem(model_4,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m4_fit, "r2")),
+                            as.numeric(inspect(m4_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_r2_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m4_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_params_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m4_fit)),
+                            as.numeric(fitMeasures(m4_fit))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_10kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    fwrite(lavTestLRT(m3_fit, m4_fit),
+           paste("real_data_maps/lavaan_out/LRT_DAG3_DAG4_10kb_chr",
+                 c, "_latents_", m, ".csv", sep=""))
+  }
+}
+
+df_100kb <- scaled_del_sites %>% filter(., scale==1e5) %>% 
+                                left_join(., human_maps_100kb,
+                                                       by=c("chrom",
+                                                       "chromStart",
+                                                       "chromEnd",
+                                                       "constrained_model"))
+
+# 100 kb
+for(m in unique(df_100kb$constrained_model)) { 
+
+  print(paste(m, Sys.Date(), Sys.time()), sep="\t")
+  cat(paste("100kb", m))
+  cat("\n")
+  
+  tbl_100kb <- filter(df_100kb, constrained_model==m)  
+  tbl_100kb$avg_pi <- log(tbl_100kb$avg_pi)
+  
+  # replace prop_del_sites by its weighted measure
+  if(any(tbl_100kb$prop_del_sites==0)) {
+    tbl_100kb$prop_del_sites <- log1p(tbl_100kb$scaled_del_sites_masked) 
+  } else {
+    tbl_100kb$prop_del_sites <- log(tbl_100kb$scaled_del_sites_masked) 
+  }
+  
+  tmp_B <- filter(B_100kb, constrained_model==m) %>%
+           dplyr::select(., -constrained_model)
+  
+  tbl_100kb <- left_join(tbl_100kb, tmp_B, by=c("chrom", 
+                                            "chromStart", 
+                                            "chromEnd"))
+  
+  tbl_100kb <- left_join(tbl_100kb, rec_latent_100kb, by=c("chrom", 
+                                                      "chromStart", 
+                                                      "chromEnd"))
+  
+  tbl_100kb <- left_join(tbl_100kb, mut_latent_100kb, by=c("chrom", 
+                                                     "chromStart", 
+                                                     "chromEnd"))
+  
+  tbl_100kb <- filter(tbl_100kb, coverage >= 0.5)
+  names(tbl_100kb)[8:10] <- c("B", "avg_rec", "avg_mut")
+  
+  table_100kb_g <- add_genome_offsets_and_midpoint(tbl_100kb, chrom_lengths=NULL)
+  
+  data <- dplyr::select(table_100kb_g, avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+  n <- ncol(data)
+  
+  cor_mat <- matrix(NA, n, n)
+  p_mat <- matrix(NA, n, n)
+  colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+  colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+  
+  for (i in 1:n) {
+    for (j in 1:n) {
+      test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+      cor_mat[i, j] <- test$estimate
+      p_mat[i, j] <- test$p.value
+    }
+  }
+  
+  combined_mat <- matrix(NA_real_, n, n)
+  for (i in 1:n) {
+    for (j in 1:n) {
+      if (i > j) {
+        combined_mat[i, j] <- round(cor_mat[i, j], 4)
+      } else if (i < j) {
+        combined_mat[i, j] <- signif(p_mat[i, j], 3)
+      }
+    }
+  }
+  combined_mat <- setDT(as.data.frame(combined_mat))
+  rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+  fwrite(combined_mat, "real_data_maps/pearson_gw_100kb.csv", row.names=T, quote=F)
+
+  dt <- copy(table_100kb_g) %>%
+        arrange(chrom, midpoint) %>%
+        as.data.table()
+  setDT(dt)
+  
+  # model 1
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut", label = "c1", start = 0.25),
+      list(p = "B",       label = "c2", start = 0.5)
+    ),
+    B = list(
+      list(p = "avg_mut", label = "c3", start = -0.25)
+    )
+  )
+
+  covs <- list()
+  
+  defined <- c(
+    direct_mut_pi   = "c1",            # avg_mut -> avg_pi (direct)
+    indirect_mut_pi = "c3*c2",         # avg_mut -> B -> avg_pi (indirect)
+    total_mut_pi    = "c1 + c3*c2",    # total effect of avg_mut on avg_pi
+    direct_B_pi     = "c2"             # direct effect of B on avg_pi
+  )
+  
+  model1_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  m1_gw <- sem(model1_constrained,
+                data       = dt,         
+                estimator  = "MLR",              
+                missing    = "fiml",             
+                meanstructure = FALSE,            
+                std.ov     = TRUE,
+                fixed.x    = FALSE,
+                optim.method = "nlminb",         ,
+                group="chrom",
+                group.equal="regressions",
+                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  summary(m1_gw, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+  inspect(m1_gw, "coef")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1_gw, "r2"))),
+                          as.numeric(unlist(inspect(m1_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1_gw)),
+                          as.numeric(fitMeasures(m1_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+
+  m1_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,  
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  summary(m1_chr, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+  inspect(m1_chr, "coef")
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m1_gw, m1_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG1_gw-equal-freechrom_100kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m1_chr); aic_constr <- AIC(m1_gw)
+    bic_free <- BIC(m1_chr); bic_constr <- BIC(m1_gw)
+    df_free  <- tryCatch(fitMeasures(m1_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m1_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m1_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m1_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1_chr, "r2"))),
+                          as.numeric(unlist(inspect(m1_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1_chr)),
+                          as.numeric(fitMeasures(m1_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 2
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",     label = "c1", start = 0.25),
+      list(p = "B",           label = "c2", start = 0.5),
+      list(p = "prop_del_sites", label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites", label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25)
+    ),
+    avg_mut = list(), 
+    prop_del_sites = list()
+  )
+
+  covs <- list()
+  
+  defined <- c(
+    mu_B_pi = "c1*c5"
+  )
+  
+  model2_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  m2_gw <- sem(model2_constrained,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",
+                 fixed.x = FALSE,
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,               
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2_gw, "r2"))),
+                          as.numeric(unlist(inspect(m2_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2_gw)),
+                          as.numeric(fitMeasures(m2_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+  
+  m2_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m2_gw, m2_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG2_gw-equal-freechrom_100kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m2_chr); aic_constr <- AIC(m2_gw)
+    bic_free <- BIC(m2_chr); bic_constr <- BIC(m2_gw)
+    df_free  <- tryCatch(fitMeasures(m2_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m2_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m2_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m2_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2_chr, "r2"))),
+                          as.numeric(unlist(inspect(m2_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2_chr)),
+                          as.numeric(fitMeasures(m2_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 3
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",       label = "c1", start = 0.25),
+      list(p = "B",             label = "c2", start = 0.5),
+      list(p = "prop_del_sites",label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites",label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25),
+      list(p = "avg_rec",       label = "c6", start = 0.25)
+    ),
+    avg_mut = list(
+      list(p = "avg_rec",       label = "c7", start = 0.25)
+    ),
+    avg_rec = list(),
+    prop_del_sites = list()
+  )
+  
+  # Covariances
+  covs <- list()
+  
+  # Defined combinations (named character vector)
+  defined <- c(
+    mu_B_pi      = "c1*c5",
+    rec_B_pi     = "c2*c6",
+    rec_mu_pi    = "c1*c7",
+    rec_mu_B_pi  = "c2*c5*c7"
+  )
+
+  model3_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  model3_constrained <- paste0(model3_constrained, "\n", "avg_mut ~~ 0*prop_del_sites")
+
+  m3_gw <- sem(model3_constrained,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3_gw, "r2"))),
+                          as.numeric(unlist(inspect(m3_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3_gw)),
+                          as.numeric(fitMeasures(m3_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+
+  model_free_with_group_defs <- paste0(model_free_with_group_defs, "\n", "avg_mut ~~ 0*prop_del_sites")
+
+  m3_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m3_gw, m3_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG3_gw-equal-freechrom_100kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m3_chr); aic_constr <- AIC(m3_gw)
+    bic_free <- BIC(m3_chr); bic_constr <- BIC(m3_gw)
+    df_free  <- tryCatch(fitMeasures(m3_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m3_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m3_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m3_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3_chr, "r2"))),
+                          as.numeric(unlist(inspect(m3_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3_chr)),
+                          as.numeric(fitMeasures(m3_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 4
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",       label = "c1", start = 0.25),
+      list(p = "B",             label = "c2", start = 0.5),
+      list(p = "prop_del_sites",label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites",label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25),
+      list(p = "avg_rec",       label = "c6", start = 0.25)
+    ),
+    avg_mut = list(
+      list(p = "avg_rec",       label = "c7", start = 0.25)
+    ),
+    avg_rec = list(),
+    prop_del_sites = list()
+  )
+  
+  # Covariances
+  covs <- list(
+    c("avg_mut", "prop_del_sites")
+  )
+  
+  # Defined combinations (named character vector)
+  defined <- c(
+    mu_B_pi      = "c1*c5",
+    rec_B_pi     = "c2*c6",
+    rec_mu_pi    = "c1*c7",
+    rec_mu_B_pi  = "c2*c5*c7"
+  )
+
+  model4_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  m4_gw <- sem(model4_constrained,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m4_gw, "r2"))),
+                          as.numeric(unlist(inspect(m4_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_r2_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m4_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_params_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m4_gw)),
+                          as.numeric(fitMeasures(m4_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_100kb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+
+  m4_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m4_gw, m4_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG4_gw-equal-freechrom_100kb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m4_chr); aic_constr <- AIC(m4_gw)
+    bic_free <- BIC(m4_chr); bic_constr <- BIC(m4_gw)
+    df_free  <- tryCatch(fitMeasures(m4_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m4_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m4_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m4_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m4_chr, "r2"))),
+                          as.numeric(unlist(inspect(m4_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_r2_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m4_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_params_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m4_chr)),
+                          as.numeric(fitMeasures(m4_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_100kb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+
+  # one model per chrom
+  for(c in 1:22) {
+  
+    data <- filter(table_100kb_g, chrom==c) %>%
+      dplyr::select(., avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+    n <- ncol(data)
+    
+    cor_mat <- matrix(NA, n, n)
+    p_mat <- matrix(NA, n, n)
+    colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+    colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+    
+    for (i in 1:n) {
+      for (j in 1:n) {
+        test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+        cor_mat[i, j] <- test$estimate
+        p_mat[i, j] <- test$p.value
+      }
+    }
+    
+    combined_mat <- matrix(NA_real_, n, n)
+    for (i in 1:n) {
+      for (j in 1:n) {
+        if (i > j) {
+          combined_mat[i, j] <- round(cor_mat[i, j], 4)
+        } else if (i < j) {
+          combined_mat[i, j] <- signif(p_mat[i, j], 3)
+        }
+        # Diagonal remains NA
+      }
+    }
+    
+    combined_mat <- setDT(as.data.frame(combined_mat))
+    rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_", m, "_100kb.csv", sep=""),
+           row.names=T, quote=F)
+    
+    model_1 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    B ~ start(-0.25)*c3*avg_mut
+    "
+    
+    m1_fit <- sem(model_1,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m1_fit, "r2")),
+                            as.numeric(inspect(m1_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m1_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_2 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    mu_B_pi:=c1*c5
+    "
+    
+    m2_fit <- sem(model_2,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m2_fit, "r2")),
+                            as.numeric(inspect(m2_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m2_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_3 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ 0*prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m3_fit <- sem(model_3,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m3_fit, "r2")),
+                            as.numeric(inspect(m3_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m3_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m3_fit)),
+                            as.numeric(fitMeasures(m3_fit))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    model_4 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m4_fit <- sem(model_4,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m4_fit, "r2")),
+                            as.numeric(inspect(m4_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_r2_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m4_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_params_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m4_fit)),
+                            as.numeric(fitMeasures(m4_fit))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_100kb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    fwrite(lavTestLRT(m3_fit, m4_fit),
+           paste("real_data_maps/lavaan_out/LRT_DAG3_DAG4_100kb_chr",
+                 c, "_latents_", m, ".csv", sep=""))
+  }
+}
+
+
+df_1Mb <- scaled_del_sites %>% filter(., scale==1e6) %>% 
+                                left_join(., human_maps_1Mb,
+                                                       by=c("chrom",
+                                                       "chromStart",
+                                                       "chromEnd",
+                                                       "constrained_model"))
+# 1 Mb
+for(m in unique(df_1Mb$constrained_model)) { 
+
+  print(paste(m, Sys.Date(), Sys.time()), sep="\t")
+  cat(paste("1Mb", m))
+  cat("\n")
+  
+  tbl_1Mb <- filter(df_1Mb, constrained_model==m)  
+  tbl_1Mb$avg_pi <- log(tbl_1Mb$avg_pi)
+  
+  # replace prop_del_sites by its weighted measure
+  if(any(tbl_1Mb$prop_del_sites==0)) {
+    tbl_1Mb$prop_del_sites <- log1p(tbl_1Mb$scaled_del_sites_masked) 
+  } else {
+    tbl_1Mb$prop_del_sites <- log(tbl_1Mb$scaled_del_sites_masked) 
+  }
+  
+  tmp_B <- filter(B_1Mb, constrained_model==m) %>%
+           dplyr::select(., -constrained_model)
+  
+  tbl_1Mb <- left_join(tbl_1Mb, tmp_B, by=c("chrom", 
+                                            "chromStart", 
+                                            "chromEnd"))
+  
+  tbl_1Mb <- left_join(tbl_1Mb, rec_latent_1Mb, by=c("chrom", 
+                                                      "chromStart", 
+                                                      "chromEnd"))
+  
+  tbl_1Mb <- left_join(tbl_1Mb, mut_latent_1Mb, by=c("chrom", 
+                                                     "chromStart", 
+                                                     "chromEnd"))
+  
+  tbl_1Mb <- filter(tbl_1Mb, coverage >= 0.25)
+  names(tbl_1Mb)[8:10] <- c("B", "avg_rec", "avg_mut")
+  
+  table_1Mb_g <- add_genome_offsets_and_midpoint(tbl_1Mb, chrom_lengths=NULL)
+  
+  data <- dplyr::select(table_1Mb_g, avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+  n <- ncol(data)
+  
+  cor_mat <- matrix(NA, n, n)
+  p_mat <- matrix(NA, n, n)
+  colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+  colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+  
+  for (i in 1:n) {
+    for (j in 1:n) {
+      test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+      cor_mat[i, j] <- test$estimate
+      p_mat[i, j] <- test$p.value
+    }
+  }
+  
+  combined_mat <- matrix(NA_real_, n, n)
+  for (i in 1:n) {
+    for (j in 1:n) {
+      if (i > j) {
+        combined_mat[i, j] <- round(cor_mat[i, j], 4)
+      } else if (i < j) {
+        combined_mat[i, j] <- signif(p_mat[i, j], 3)
+      }
+    }
+  }
+  combined_mat <- setDT(as.data.frame(combined_mat))
+  rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+  fwrite(combined_mat, "real_data_maps/pearson_gw_1Mb.csv", row.names=T, quote=F)
+
+  dt <- copy(table_1Mb_g) %>%
+        arrange(chrom, midpoint) %>%
+        as.data.table()
+  setDT(dt)
+  
+  # model 1
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut", label = "c1", start = 0.25),
+      list(p = "B",       label = "c2", start = 0.5)
+    ),
+    B = list(
+      list(p = "avg_mut", label = "c3", start = -0.25)
+    )
+  )
+
+  covs <- list()
+  
+  defined <- c(
+    direct_mut_pi   = "c1",            # avg_mut -> avg_pi (direct)
+    indirect_mut_pi = "c3*c2",         # avg_mut -> B -> avg_pi (indirect)
+    total_mut_pi    = "c1 + c3*c2",    # total effect of avg_mut on avg_pi
+    direct_B_pi     = "c2"             # direct effect of B on avg_pi
+  )
+  
+  model1_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  m1_gw <- sem(model1_constrained,
+                data       = dt,         
+                estimator  = "MLR",              
+                missing    = "fiml",             
+                meanstructure = FALSE,            
+                std.ov     = TRUE,
+                fixed.x    = FALSE,
+                optim.method = "nlminb",         ,
+                group="chrom",
+                group.equal="regressions",
+                control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  summary(m1_gw, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+  inspect(m1_gw, "coef")
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1_gw, "r2"))),
+                          as.numeric(unlist(inspect(m1_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1_gw)),
+                          as.numeric(fitMeasures(m1_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+
+  m1_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,  
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  summary(m1_chr, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+  inspect(m1_chr, "coef")
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m1_gw, m1_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG1_gw-equal-freechrom_1Mb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m1_chr); aic_constr <- AIC(m1_gw)
+    bic_free <- BIC(m1_chr); bic_constr <- BIC(m1_gw)
+    df_free  <- tryCatch(fitMeasures(m1_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m1_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m1_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m1_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m1_chr, "r2"))),
+                          as.numeric(unlist(inspect(m1_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_r2_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m1_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_params_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m1_chr)),
+                          as.numeric(fitMeasures(m1_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG1_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 2
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",     label = "c1", start = 0.25),
+      list(p = "B",           label = "c2", start = 0.5),
+      list(p = "prop_del_sites", label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites", label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25)
+    ),
+    avg_mut = list(), 
+    prop_del_sites = list()
+  )
+
+  covs <- list()
+  
+  defined <- c(
+    mu_B_pi = "c1*c5"
+  )
+  
+  model2_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  m2_gw <- sem(model2_constrained,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",
+                 fixed.x = FALSE,
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,               
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2_gw, "r2"))),
+                          as.numeric(unlist(inspect(m2_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2_gw)),
+                          as.numeric(fitMeasures(m2_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+  
+  m2_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m2_gw, m2_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG2_gw-equal-freechrom_1Mb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m2_chr); aic_constr <- AIC(m2_gw)
+    bic_free <- BIC(m2_chr); bic_constr <- BIC(m2_gw)
+    df_free  <- tryCatch(fitMeasures(m2_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m2_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m2_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m2_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m2_chr, "r2"))),
+                          as.numeric(unlist(inspect(m2_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_r2_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m2_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_params_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m2_chr)),
+                          as.numeric(fitMeasures(m2_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG2_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 3
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",       label = "c1", start = 0.25),
+      list(p = "B",             label = "c2", start = 0.5),
+      list(p = "prop_del_sites",label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites",label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25),
+      list(p = "avg_rec",       label = "c6", start = 0.25)
+    ),
+    avg_mut = list(
+      list(p = "avg_rec",       label = "c7", start = 0.25)
+    ),
+    avg_rec = list(),
+    prop_del_sites = list()
+  )
+  
+  # Covariances
+  covs <- list()
+  
+  # Defined combinations (named character vector)
+  defined <- c(
+    mu_B_pi      = "c1*c5",
+    rec_B_pi     = "c2*c6",
+    rec_mu_pi    = "c1*c7",
+    rec_mu_B_pi  = "c2*c5*c7"
+  )
+
+  model3_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  model3_constrained <- paste0(model3_constrained, "\n", "avg_mut ~~ 0*prop_del_sites")
+
+  m3_gw <- sem(model3_constrained,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3_gw, "r2"))),
+                          as.numeric(unlist(inspect(m3_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3_gw)),
+                          as.numeric(fitMeasures(m3_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+
+  model_free_with_group_defs <- paste0(model_free_with_group_defs, "\n", "avg_mut ~~ 0*prop_del_sites")
+
+  m3_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m3_gw, m3_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG3_gw-equal-freechrom_1Mb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m3_chr); aic_constr <- AIC(m3_gw)
+    bic_free <- BIC(m3_chr); bic_constr <- BIC(m3_gw)
+    df_free  <- tryCatch(fitMeasures(m3_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m3_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m3_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m3_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m3_chr, "r2"))),
+                          as.numeric(unlist(inspect(m3_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_r2_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m3_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_params_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m3_chr)),
+                          as.numeric(fitMeasures(m3_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # model 4
+  edges <- list(
+    avg_pi = list(
+      list(p = "avg_mut",       label = "c1", start = 0.25),
+      list(p = "B",             label = "c2", start = 0.5),
+      list(p = "prop_del_sites",label = "c3", start = -0.25)
+    ),
+    B = list(
+      list(p = "prop_del_sites",label = "c4", start = -0.25),
+      list(p = "avg_mut",       label = "c5", start = -0.25),
+      list(p = "avg_rec",       label = "c6", start = 0.25)
+    ),
+    avg_mut = list(
+      list(p = "avg_rec",       label = "c7", start = 0.25)
+    ),
+    avg_rec = list(),
+    prop_del_sites = list()
+  )
+  
+  # Covariances
+  covs <- list(
+    c("avg_mut", "prop_del_sites")
+  )
+  
+  # Defined combinations (named character vector)
+  defined <- c(
+    mu_B_pi      = "c1*c5",
+    rec_B_pi     = "c2*c6",
+    rec_mu_pi    = "c1*c7",
+    rec_mu_B_pi  = "c2*c5*c7"
+  )
+
+  model4_constrained <- make_lavaan_model(edges,
+                                          covs = covs,
+                                          defined = defined,
+                                          groups = 22,
+                                          free_by = "groups",
+                                          label_prefix = "x")
+  
+  m4_gw <- sem(model4_constrained,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="regressions",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m4_gw, "r2"))),
+                          as.numeric(unlist(inspect(m4_gw, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_r2_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m4_gw, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_params_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m4_gw)),
+                          as.numeric(fitMeasures(m4_gw))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, ".csv", sep=""),
+         col.names=F)
+  
+  # build a per_group_map that marks every lhs~rhs as group-specific
+  per_group_map <- character()
+  for (lhs in names(edges)) {
+    for (r in edges[[lhs]]) {
+      rhs <- if (is.list(r)) r$p else r
+      per_group_map[paste0(lhs, "~", rhs)] <- "groups"
+    }
+  }
+  
+  model_free_with_group_defs <- make_lavaan_model_free_with_grouped_defined(
+    edges = edges, covs = covs, defined = defined,
+    groups = 22, per_group_map = per_group_map, label_prefix = "x"
+  )
+
+  m4_chr <- sem(model_free_with_group_defs,
+                 data       = dt,         
+                 estimator  = "MLR",              
+                 missing    = "fiml",             
+                 meanstructure = FALSE,            
+                 std.ov     = TRUE,    
+                 fixed.x    = FALSE,
+                 optim.method = "nlminb",         
+                 group="chrom",
+                 group.equal="none",
+                 control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  lrt_res <- tryCatch(
+    lavTestLRT(m4_gw, m4_chr, method = "satorra.bentler.2001"),
+    error = function(e) {
+      message("lavTestLRT failed: ", e$message)
+      NULL
+    }
+  )
+  
+  out_path <- paste0("real_data_maps/lavaan_out/LRT_DAG4_gw-equal-freechrom_1Mb_latents_", m, ".csv")
+
+  if (!is.null(lrt_res)) {
+    # lavTestLRT returns a matrix/data.frame; coerce to data.table for fwrite
+    df <- as.data.table(lrt_res, keep.rownames = "comparison")
+    # ensure numeric columns stay numeric; some lavTestLRT variants add attributes
+    num_cols <- setdiff(names(df), "comparison")
+    df[, (num_cols) := lapply(.SD, function(x) {
+      xn <- as.numeric(x)
+      if (all(is.na(xn)) && is.character(x)) return(x) else return(xn)
+    }), .SDcols = num_cols]
+    fwrite(df, out_path)
+    message("Wrote lavTestLRT results to: ", out_path)
+  } else {
+    # Fallback: AIC/BIC and sample-size-adjusted comparisons
+    aic_free <- AIC(m4_chr); aic_constr <- AIC(m4_gw)
+    bic_free <- BIC(m4_chr); bic_constr <- BIC(m4_gw)
+    df_free  <- tryCatch(fitMeasures(m4_chr, "df"), error = function(e) NA)
+    df_constr<- tryCatch(fitMeasures(m4_gw, "df"), error = function(e) NA)
+    nobs_free<- tryCatch(fitMeasures(m4_chr, "nobs"), error = function(e) NA)
+    nobs_constr<- tryCatch(fitMeasures(m4_gw, "nobs"), error = function(e) NA)
+  
+    fallback_df <- data.table(
+      comparison = c("free", "constrained"),
+      AIC = c(aic_free, aic_constr),
+      BIC = c(bic_free, bic_constr),
+      df  = c(df_free, df_constr),
+      nobs = c(nobs_free, nobs_constr)
+    )
+    fwrite(fallback_df, out_path)
+    message("lavTestLRT failed; wrote AIC/BIC fallback to: ", out_path)
+  }
+  
+  fwrite(rbind.data.frame(names(unlist(inspect(m4_chr, "r2"))),
+                          as.numeric(unlist(inspect(m4_chr, "r2")))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_r2_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  fwrite(parameterestimates(m4_chr, ci=T), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_params_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""))
+  
+  fwrite(rbind.data.frame(names(fitMeasures(m4_chr)),
+                          as.numeric(fitMeasures(m4_chr))), 
+         paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_1Mb_genomewide_", 
+               "latents_", m, "_freechrom.csv", sep=""),
+         col.names=F)
+  
+  # one model per chrom
+  for(c in 1:22) {
+  
+    data <- filter(table_1Mb_g, chrom==c) %>%
+      dplyr::select(., avg_pi, prop_del_sites, B, avg_rec, avg_mut)
+    n <- ncol(data)
+    
+    cor_mat <- matrix(NA, n, n)
+    p_mat <- matrix(NA, n, n)
+    colnames(cor_mat) <- rownames(cor_mat) <- colnames(data)
+    colnames(p_mat) <- rownames(p_mat) <- colnames(data)
+    
+    for (i in 1:n) {
+      for (j in 1:n) {
+        test <- cor.test(data[[i]], data[[j]], method = "pearson", use = "complete.obs")
+        cor_mat[i, j] <- test$estimate
+        p_mat[i, j] <- test$p.value
+      }
+    }
+    
+    combined_mat <- matrix(NA_real_, n, n)
+    for (i in 1:n) {
+      for (j in 1:n) {
+        if (i > j) {
+          combined_mat[i, j] <- round(cor_mat[i, j], 4)
+        } else if (i < j) {
+          combined_mat[i, j] <- signif(p_mat[i, j], 3)
+        }
+        # Diagonal remains NA
+      }
+    }
+    
+    combined_mat <- setDT(as.data.frame(combined_mat))
+    rownames(combined_mat) <- colnames(combined_mat) <- colnames(data)
+    fwrite(combined_mat, paste("real_data_maps/pearson_chr", c, "_", m, "_1Mb.csv", sep=""),
+           row.names=T, quote=F)
+    
+    model_1 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    B ~ start(-0.25)*c3*avg_mut
+    "
+    
+    m1_fit <- sem(model_1,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m1_fit, "r2")),
+                            as.numeric(inspect(m1_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m1_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG1_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_2 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    mu_B_pi:=c1*c5
+    "
+    
+    m2_fit <- sem(model_2,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m2_fit, "r2")),
+                            as.numeric(inspect(m2_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m2_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG2_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    model_3 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ 0*prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m3_fit <- sem(model_3,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m3_fit, "r2")),
+                            as.numeric(inspect(m3_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m3_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m3_fit)),
+                            as.numeric(fitMeasures(m3_fit))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG3_fitmeasures_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    model_4 <- "
+    avg_pi ~ start(0.25)*c1*avg_mut
+    avg_pi ~ start(0.5)*c2*B
+    avg_pi ~ start(-0.25)*c3*prop_del_sites
+    B ~ start(-0.25)*c4*prop_del_sites
+    B ~ start(-0.25)*c5*avg_mut
+    B ~ start(0.25)*c6*avg_rec
+    avg_mut ~ start(0.25)*c7*avg_rec
+    avg_mut ~~ prop_del_sites
+    mu_B_pi:=c1*c5
+    rec_B_pi:=c2*c6
+    rec_mu_pi:=c1*c7
+    rec_mu_B_pi:=c2*c5*c7
+    "
+    
+    m4_fit <- sem(model_4,
+               data=filter(dt, chrom==c),
+               estimator  = "MLR",              
+               missing    = "fiml",             
+               meanstructure = FALSE,            
+               std.ov     = TRUE,     
+               fixed.x    = TRUE,
+               optim.method = "nlminb",    
+               control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+    
+    fwrite(rbind.data.frame(names(inspect(m4_fit, "r2")),
+                            as.numeric(inspect(m4_fit, "r2"))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_r2_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+  
+    fwrite(parameterestimates(m4_fit, ci=T), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_params_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""))
+    
+    fwrite(rbind.data.frame(names(fitMeasures(m4_fit)),
+                            as.numeric(fitMeasures(m4_fit))), 
+           paste("real_data_maps/lavaan_out/YRI_DAG4_fitmeasures_1Mb_chr", 
+                 c, "_latents_", m, ".csv", sep=""),
+           col.names=F)
+    
+    fwrite(lavTestLRT(m3_fit, m4_fit),
+           paste("real_data_maps/lavaan_out/LRT_DAG3_DAG4_1Mb_chr",
+                 c, "_latents_", m, ".csv", sep=""))
+  }
+}
+
+# bootstrapping chr 22 to test if the high R^2 is due to sampling low drift-variance windows
+nboot <- 1e3
+c22 <- filter(dt, chrom==c)
+c22_r2_m1 <- numeric(length=nboot)
+c22_r2_m2 <- numeric(length=nboot)
+c22_r2_m3 <- numeric(length=nboot)
+c22_r2_m4 <- numeric(length=nboot)
+
+for(b in 1:1000) {
+  
+  cat(paste("boot", b, "\n"))
+  
+  c22_boot <- c22 %>% dplyr::slice_sample(prop=1, replace=TRUE)
+  
+  m1_fit <- sem(model_1,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = FALSE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m1[b] <- inspect(m1_fit, "r2")[1]
+  
+  m2_fit <- sem(model_2,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = FALSE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m2[b] <- inspect(m2_fit, "r2")[1]
+  
+  m3_fit <- sem(model_3,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = FALSE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m3[b] <- inspect(m3_fit, "r2")[1]
+
+  m4_fit <- sem(model_4,
+             data=c22_boot,
+             estimator  = "MLR",              
+             missing    = "fiml",             
+             meanstructure = FALSE,            
+             std.ov     = TRUE,     
+             fixed.x    = FALSE,
+             optim.method = "nlminb",    
+             control    = list(trace = 0, rel.tol = 1e-8, iter.max = 1000))
+  
+  c22_r2_m4[b] <- inspect(m4_fit, "r2")[1]
+}
+
+c22_boot_r2 <- cbind.data.frame(c22_r2_m1, c22_r2_m2, c22_r2_m3, c22_r2_m4)
+names(c22_boot_r2) <- paste("model", 1:4, sep="_")
+
+c22_boot_r2$boot <- 1:nrow(c22_boot_r2)
+c22_boot_r2_m <- pivot_longer(c22_boot_r2, cols=starts_with("model"), names_to="model", values_to="r-sqrd")
+
+b <- ggplot(c22_boot_r2_m, aes(x = model, y = `r-sqrd`)) +
+geom_boxplot(fill = "skyblue", alpha = 0.6) +
+labs(
+  x = "Model",
+  y = "Bootstrapped R²",
+  title = "Bootstrapped distributions of R² (chr 22) by model"
+) +
+theme_minimal(base_size = 14) +
+theme(
+  strip.text = element_text(face = "bold"),
+  strip.text.y=element_text(size=16),      
+          strip.text.x=element_text(size=16),        
+          axis.title=element_text(size=16), 
+          axis.text=element_text(size=12), 
+          axis.text.x=element_text(size=12),
+          legend.text=element_text(size=16),
+          legend.title=element_text(size=16),
+)
+
+save_plot("real_data_maps/boot_r2_chr22.pdf", b)
+```
+
 
 Simple correlations (latent constructs for B, mu, r)
 
@@ -11458,6 +14195,14 @@ save_plot("real_data_maps/chr_r2_pi_latents.svg", r,
           base_height=10, base_width=20)
 save_plot("real_data_maps/chr_r2_pi_latents.pdf", r, 
           base_height=10, base_width=20)
+
+chr_r2_dags %>% filter(., scale==1e4) %>% summarise(., max_10kb = max(avg_pi, na.rm = TRUE))
+chr_r2_dags %>% filter(., scale==1e4) %>% summarise(., min_10kb = min(avg_pi, na.rm = TRUE))
+chr_r2_dags %>% filter(., scale==1e5) %>% summarise(., max_100kb = max(avg_pi, na.rm = TRUE))
+chr_r2_dags %>% filter(., scale==1e5) %>% summarise(., max_100kb = min(avg_pi, na.rm = TRUE))
+chr_r2_dags %>% filter(., scale==1e6) %>% summarise(., max_1Mb = max(avg_pi, na.rm = TRUE))
+chr_r2_dags %>% filter(., scale==1e6) %>% summarise(., min_1Mb = min(avg_pi, na.rm = TRUE))
+
 ```
 
 Parameter estimates
@@ -11875,7 +14620,7 @@ chr_params <- rbind.data.frame(chr_params_10kb,
                                chr_params_100kb,
                                chr_params_1Mb)  %>%
               filter(., pvalue < 0.05 / 22) %>% # Bonferroni over 22 autosomes
-              filter(., op=="~" | op==":=") 
+              filter(., op=="~" | op==":=" | (lhs=="avg_mut" & op=="~~" & rhs=="prop_del_sites")) 
 
 chr_params_ext <- left_join(chr_params, 
                             chr_fitmeasures_latent,
@@ -12054,6 +14799,26 @@ r2 <- ggplot(data=filter(chr_params_ext,
 save_plot("real_data_maps/chr_params_indirect_latents_DAG4.svg", r2, 
           base_height=10, base_width=20)
 save_plot("real_data_maps/chr_params_indirect_latents_DAG4.pdf", r2, 
+          base_height=10, base_width=20)
+
+t1 <- ggplot(data=filter(chr_params_ext, op=="~~"), 
+             aes(x=chrom, y=est)) +
+      geom_point(size=3) + geom_hline(yintercept=0, linetype="dashed") +
+      facet_grid(scale~constrained_model, labeller=label_both) + theme_bw() + 
+      scale_y_continuous(breaks=pretty_breaks()) +
+      scale_x_continuous(breaks=1:22) + 
+      labs(title=NULL, x="Chromosome", y="Cov(mut., E)") +
+      theme(strip.text.y=element_text(size=16),    
+            strip.text.x=element_text(size=16),       
+            axis.title=element_text(size=16), 
+            axis.text=element_text(size=12), 
+            axis.text.x=element_text(size=12),
+            legend.text=element_text(size=16),
+            legend.title=element_text(size=16),
+            legend.position="bottom")
+save_plot("real_data_maps/chr_cov_mut_E.svg", t1, 
+          base_height=10, base_width=20)
+save_plot("real_data_maps/chr_cov_mut_E.pdf", t1, 
           base_height=10, base_width=20)
 
 # ratios of PCs from B and Mu to Pi
@@ -14251,9 +17016,9 @@ p <- ggplot(data=filter(chr_params,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_params_pi_DAG0_simpi.svg", p, 
+save_plot("real_data_maps/chr_params_pi_DAG1_simpi.svg", p, 
           base_height=10, base_width=20)
-save_plot("real_data_maps/chr_params_pi_DAG0_simpi.pdf", p, 
+save_plot("real_data_maps/chr_params_pi_DAG1_simpi.pdf", p, 
           base_height=10, base_width=20)
 
 q <- ggplot(data=filter(chr_params,
@@ -14309,9 +17074,9 @@ p <- ggplot(data=filter(chr_params,
             legend.text=element_text(size=16),
             legend.title=element_text(size=16),
             legend.position="bottom")
-save_plot("real_data_maps/chr_params_B_DAG0_simpi.svg", p, 
+save_plot("real_data_maps/chr_params_B_DAG1_simpi.svg", p, 
           base_height=10, base_width=20)
-save_plot("real_data_maps/chr_params_B_DAG0_simpi.pdf", p, 
+save_plot("real_data_maps/chr_params_B_DAG1_simpi.pdf", p, 
           base_height=10, base_width=20)
 
 q <- ggplot(data=filter(chr_params,
